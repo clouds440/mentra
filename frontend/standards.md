@@ -1,0 +1,94 @@
+# Frontend Engineering Standards
+
+> **Build for the requirements we have, while leaving clean boundaries for the requirements we expect. Do not implement future features before they exist.**
+
+These standards describe the current React, TypeScript, Vite, and Tailwind CSS codebase. Update them when an important frontend convention changes.
+
+## Project structure
+
+- `components/`: shared application components grouped by responsibility. Keep feature-specific components in a named feature folder such as `components/chat/`.
+- `components/ui/`: small, composable primitives such as buttons, fields, cards, and loading indicators. Do not put feature or domain components here.
+- `components/navigation/`: application navigation and shell controls.
+- `pages/`: route-level screens. Route screens should compose feature components instead of owning the entire application.
+- `layouts/`: shared page structure and outlet boundaries used by multiple routes.
+- `hooks/`: reusable React hooks, named with the `use` prefix.
+- `services/`: communication with external systems, including the centralized backend API client.
+- `types/`: shared frontend types that have more than one meaningful consumer.
+- `utils/`: small, domain-independent helpers used by unrelated areas.
+- `styles/`: global CSS and Tailwind base directives; component styling otherwise uses Tailwind classes.
+
+Create folders to meet a real architectural need, not to imitate a large project. An empty folder is preferable to speculative abstractions.
+
+## Routing and application layout
+
+- Use React Router routes in `App.tsx`; `AppLayout` owns the persistent application shell and renders active pages through an outlet.
+- Route paths are lowercase and resource-oriented: `/` for Chat, `/library`, `/progress`, `/assessments`, and `/settings`.
+- Navigation belongs in the application shell, not repeated inside individual pages. Keep desktop collapse and mobile drawer behavior accessible and operable.
+- Keep page-specific behavior and UI with the relevant page/feature. Do not add routes, guards, onboarding, or account flows without a product requirement.
+
+## Components
+
+- Keep components focused and composable; avoid large components that combine unrelated presentation and behavior.
+- Use semantic HTML and preserve keyboard access, visible focus, and disabled behavior.
+- Do not spread backend calls throughout presentation components; use `services/`.
+- Shared primitives accept `className` and extend native HTML attributes when appropriate.
+- Prefer composition over a broad prop surface. Do not generalize a one-off component until a second real use case exists.
+- Keep feature UI such as chat messages and composers outside `components/ui/`; reserve that directory for primitives.
+- Use the established icon library (`lucide-react`) consistently. Give icon-only controls accessible names and titles where useful; do not use emoji as application icons.
+- Empty states should explain the current state honestly and offer only actions that work. Do not present mock data as saved learner activity or invent analytics.
+- Render chat Markdown with `react-markdown` and `remark-gfm`; keep richer rendering behavior with the chat feature rather than creating a global rich-text abstraction.
+
+## TypeScript
+
+- Keep strict type checking enabled and avoid `any`.
+- Give public component props and shared service contracts explicit types.
+- Extend native React HTML attribute types rather than re-declaring standard element properties.
+- Define frontend API types for the data the UI actually consumes; do not blindly duplicate every backend model.
+
+## State
+
+- Keep state local by default and lift it only when multiple components need to share it.
+- Do not add a global state library until there is a demonstrated need.
+- Treat server state (backend data and request lifecycle) separately from local UI state.
+
+## API access
+
+- Route backend HTTP communication through `services/api.ts`; do not scatter `fetch(...)` through components.
+- Use the environment-configured `VITE_API_URL`. A browser must be able to resolve this URL; do not use a Docker-only service name in the browser bundle.
+- The shared client owns JSON headers/parsing and converts standard backend errors into useful typed errors. Keep it small; add retries, caching, auth, or streaming only when required by a real feature.
+
+## Utilities
+
+> A function belongs in global utilities only when it is domain-independent and useful from multiple unrelated areas. Otherwise keep it close to the feature using it.
+
+`cn(...)` is the current shared Tailwind class composer: it combines conditional classes and resolves conflicting Tailwind utilities for consistent primitive overrides.
+It uses `clsx` for conditional class inputs and `tailwind-merge` so caller overrides replace conflicting utility classes.
+
+## Styling
+
+- Use Tailwind CSS utilities and the global base rules in `src/styles/global.css`.
+- Reuse the existing slate/sky/violet palette and common spacing, radius, focus, and responsive patterns.
+- Avoid arbitrary one-off values when an existing utility or established pattern fits.
+- Preserve visible keyboard focus and responsive behavior. Shared UI primitives should have consistent defaults while allowing appropriate `className` overrides.
+- Respect reduced-motion preferences for non-essential motion.
+
+## Mock data
+
+Keep temporary sample content isolated from page components and label prototype interactions clearly. Do not treat frontend mock data as persistence, a backend contract, or a permanent product convention.
+
+## Naming
+
+- React components and component files use `PascalCase`.
+- Hooks use `useCamelCase`; utility functions use `camelCase`.
+- Shared types and interfaces use `PascalCase`; prefer descriptive names such as `ButtonProps`.
+- Follow existing file and export conventions; avoid adding barrel files outside a useful shared boundary.
+
+## Testing
+
+Test behavior and boundaries that matter. Do not write tests merely to inflate coverage.
+
+Prioritize meaningful primitive behavior, user interactions, and important rendering or state behavior. Add a test runner when the application has behavior that warrants it; the current frontend validation includes strict TypeScript checks and a production build.
+
+## Dependencies
+
+> Do not add a dependency for something that can be implemented clearly and safely in a few lines, but also do not reimplement complex, security-sensitive, or well-solved infrastructure merely to avoid a dependency. Every dependency should have a reason to exist.
