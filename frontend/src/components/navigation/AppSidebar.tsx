@@ -1,16 +1,20 @@
 import {
   BookOpen,
+  ChevronDown,
   CircleHelp,
+  CircleUserRound,
   LayoutGrid,
   MessageSquareText,
   Settings2,
   Sparkles,
   X,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import mentraLogo from '../../assets/mentra-logo.png';
 import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';
+import { useAuth } from '../auth/AuthProvider';
 import { cn } from '../../utils/cn';
 
 const primaryNavigation = [
@@ -33,6 +37,32 @@ export function AppSidebar({
   onCloseMobile,
   onNewChat,
 }: AppSidebarProps) {
+  const { identity } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const accountName = identity?.username ?? (identity?.provider ? `${identity.provider} student` : 'Learner');
+  const accountMark = (identity?.username ?? identity?.provider)?.slice(0, 1).toUpperCase();
+
+  useEffect(() => {
+    if (!accountOpen) return undefined;
+    function dismiss(event: PointerEvent) {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setAccountOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [accountOpen]);
+
   return (
     <>
       {mobileOpen && (
@@ -87,6 +117,7 @@ export function AppSidebar({
               collapsed && 'lg:justify-center lg:px-0',
             )}
             onClick={() => {
+              setAccountOpen(false);
               onNewChat();
               onCloseMobile();
             }}
@@ -113,7 +144,10 @@ export function AppSidebar({
                 )
               }
               end={to === '/'}
-              onClick={onCloseMobile}
+              onClick={() => {
+                setAccountOpen(false);
+                onCloseMobile();
+              }}
               title={collapsed ? label : undefined}
               to={to}
             >
@@ -135,29 +169,72 @@ export function AppSidebar({
         )}
 
         <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
-          <NavLink
-            aria-label={collapsed ? 'Settings' : undefined}
-            className={({ isActive }) =>
-              cn(
-                'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                isActive
-                  ? 'bg-active font-medium text-foreground'
-                  : 'text-muted hover:bg-hover hover:text-foreground',
+          <div className="relative" ref={accountRef}>
+            <div
+              hidden={!accountOpen}
+              className="absolute bottom-full left-0 z-30 mb-2 w-60 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-border bg-background shadow-xl shadow-black/10"
+              id="sidebar-account-panel"
+            >
+                <div className="border-b border-border px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
+                  <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
+                </div>
+                <div className="p-2">
+                  <NavLink
+                    className={({ isActive }) =>
+                      cn(
+                        'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                        isActive
+                          ? 'bg-active font-medium text-foreground'
+                          : 'text-muted hover:bg-hover hover:text-foreground',
+                      )
+                    }
+                    onClick={() => {
+                      setAccountOpen(false);
+                      onCloseMobile();
+                    }}
+                    to="/settings"
+                  >
+                    <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
+                    <span>Settings</span>
+                  </NavLink>
+                </div>
+                <div className="border-t border-border px-2 pb-2">
+                  <ThemeSelector collapsed={false} />
+                </div>
+                <div className="border-t border-border p-2">
+                  <LogoutButton />
+                </div>
+            </div>
+
+            <button
+              aria-controls="sidebar-account-panel"
+              aria-expanded={accountOpen}
+              aria-label={`Account menu for ${accountName}`}
+              className={cn(
+                'flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left text-sm transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 collapsed && 'lg:justify-center lg:px-0',
-              )
-            }
-            onClick={onCloseMobile}
-            title={collapsed ? 'Settings' : undefined}
-            to="/settings"
-          >
-            <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
-            <span className={cn(collapsed && 'lg:hidden')}>Settings</span>
-          </NavLink>
-          <ThemeSelector collapsed={collapsed} />
-          <LogoutButton collapsed={collapsed} />
-          {!collapsed && (
-            <p className="px-3 pb-1 pt-3 text-[11px] text-subtle">A quieter way to learn.</p>
-          )}
+                accountOpen && 'bg-hover',
+              )}
+              onClick={() => setAccountOpen((open) => !open)}
+              ref={accountButtonRef}
+              title={collapsed ? 'Account' : undefined}
+              type="button"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-active text-xs font-semibold text-foreground">
+                {accountMark ?? <CircleUserRound aria-hidden="true" size={16} />}
+              </span>
+              <span className={cn('min-w-0 flex-1 truncate font-medium text-foreground', collapsed && 'lg:hidden')}>
+                Account
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={cn('shrink-0 text-subtle transition-transform duration-150', accountOpen && 'rotate-180', collapsed && 'lg:hidden')}
+                size={16}
+              />
+            </button>
+          </div>
+          {!collapsed && <p className="px-2 pb-1 pt-3 text-[11px] text-subtle">A quieter way to learn.</p>}
         </div>
       </aside>
     </>

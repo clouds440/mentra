@@ -48,5 +48,6 @@ def session_response(result: TokenResponse, response: Response, cookie: bool):
     response.headers['Cache-Control'] = 'no-store'
     if cookie:
         set_session_cookie(response, result.access_token, result.expires_at)
-        return IdentityResponse(learner_id=result.learner_id, user_id=result.user_id, provider=result.provider)
+        return IdentityResponse(learner_id=result.learner_id, user_id=result.user_id,
+                                provider=result.provider, username=result.username)
     return result

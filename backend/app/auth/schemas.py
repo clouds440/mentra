@@ -35,6 +35,7 @@ class IdentityResponse(AuthSchema):
     learner_id: LearnerId
     user_id: str | None = None
     provider: str | None = None
+    username: str | None = None
 
 
 class TokenResponse(IdentityResponse):

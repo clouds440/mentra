@@ -31,7 +31,10 @@ services:
       BACKEND_PORT: ${BACKEND_PORT:-8000}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://mentra:mentra_local@postgres:5432/mentra}
+      # Pass through the complete caller-provided URL. Local PostgreSQL credentials
+      # above configure only the optional postgres service; they are never merged
+      # into DATABASE_URL.
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
       AUTH_SESSION_SECONDS: ${AUTH_SESSION_SECONDS:-3600}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-lax}

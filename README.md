@@ -142,6 +142,8 @@ Switch compatible chat providers by changing `AI_BASE_URL`, `AI_MODEL`, and `AI_
 
 Read [PostgreSQL and identity setup](./docs/identity-and-postgresql.md) for migrations, native Python setup, trusted external providers, and PostgreSQL tests. [Frontend authentication](./docs/frontend-auth.md) describes browser session configuration and end-to-end tests. Learner-owned data uses internal `learner_id` UUIDs; services and LangChain access it through repository-backed learner contracts.
 
+GitHub Actions can apply Alembic revisions to Supabase PostgreSQL on `main` pushes after the repository secret `SUPABASE_DATABASE_URL` is configured. See the [schema deployment instructions](./docs/identity-and-postgresql.md#deploying-schema-updates-from-github).
+
 Read [Student Profile and calibration](./docs/student-profile.md) for the separate high-level profile, API contracts, conservative adaptation, and the EduVerse provisioning request. Neither onboarding nor its AI evaluator writes granular concept mastery.
 
 ## Engineering standards

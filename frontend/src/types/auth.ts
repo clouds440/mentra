@@ -2,6 +2,7 @@ export interface AuthIdentity {
   learner_id: string;
   user_id: string | null;
   provider: string | null;
+  username: string | null;
 }
 
 export interface AuthCredentials {

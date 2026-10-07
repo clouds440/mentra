@@ -15,8 +15,15 @@ async function signUp(page: Page, name: string) {
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
 }
 
+async function openAccountMenu(page: Page) {
+  await page.getByRole('button', { name: /^Account menu/ }).click();
+}
+
 test('registration uses real auth, HTTP-only cookies, refresh, and return visits', async ({ page, context, browser }) => {
-  await signUp(page, username());
+  const name = username();
+  await signUp(page, name);
+  await openAccountMenu(page);
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
   const cookies = await context.cookies('http://127.0.0.1:18003/api/v1/auth/me');
   const session = cookies.find((cookie) => cookie.name === 'mentra_session');
   expect(session?.httpOnly).toBe(true);
@@ -42,6 +49,7 @@ test('registration uses real auth, HTTP-only cookies, refresh, and return visits
 test('protected routes preserve destination and existing-user login restores it', async ({ page }) => {
   const name = username();
   await signUp(page, name);
+  await openAccountMenu(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto('/library');
@@ -58,6 +66,7 @@ test('logout revokes real server access, clears cookies, and syncs another tab',
   const second = await context.newPage();
   await second.goto('/settings');
   await expect(second.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+  await openAccountMenu(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(second).toHaveURL(/\/login$/);
@@ -81,6 +90,7 @@ test('validation, password visibility, duplicate accounts, and incorrect passwor
   await expect(page.getByText('Use at least 12 characters for your password.')).toBeVisible();
   await expect(page.getByLabel('Username', { exact: true })).toBeFocused();
   await signUp(page, name);
+  await openAccountMenu(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByRole('link', { name: 'Create an account' }).click();
@@ -112,10 +122,12 @@ test('background network failure keeps a known session authenticated', async ({ 
 test('failed logout retains the session and allows retry', async ({ page, context }) => {
   await signUp(page, username());
   await context.setOffline(true);
+  await openAccountMenu(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Couldn’t reach Mentra. Check your connection and try again.');
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
   await context.setOffline(false);
+  await openAccountMenu(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 });
@@ -157,6 +169,7 @@ test('mobile navigation exposes logout and auth stays usable on a short screen',
   await finishOnboardingWithoutAssessment(page);
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
+  await openAccountMenu(page);
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Main navigation' })).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
   await page.screenshot({ path: testInfo.outputPath('mobile-logout.png') });

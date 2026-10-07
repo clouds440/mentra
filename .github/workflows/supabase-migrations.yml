@@ -1,0 +1,66 @@
+name: Apply database migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/alembic/**"
+      - "backend/alembic.ini"
+      - "backend/app/db/**"
+      - "backend/app/learner/repositories/tables/**"
+      - "backend/app/student_profile/repositories/tables.py"
+      - ".github/workflows/supabase-migrations.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-schema-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Upgrade Supabase schema with Alembic
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      PYTHONPATH: .
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install migration dependencies
+        run: >-
+          python -m pip install
+          "SQLAlchemy==2.0.54"
+          "alembic==1.20.0"
+          "psycopg[binary]==3.3.6"
+          "pydantic-settings==2.3.4"
+          "PyJWT[crypto]==2.15.1"
+
+      - name: Require the Supabase connection secret
+        shell: bash
+        run: |
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "Set the SUPABASE_DATABASE_URL GitHub Actions secret to the Supabase PostgreSQL Session Pooler URL."
+            exit 1
+          fi
+
+      - name: Apply pending Alembic revisions
+        run: python -m app.db.migrate
+
+      - name: Check schema metadata for drift
+        run: python -m alembic -c alembic.ini check

@@ -38,7 +38,8 @@ def identity(request: Request, response: Response, principal: AuthenticatedIdent
     token = request.cookies.get(COOKIE_NAME)
     if token and not request.headers.get('authorization'):
         set_session_cookie(response, token, principal.expires_at)
-    return IdentityResponse(learner_id=principal.learner_id, user_id=principal.user_id, provider=principal.provider)
+    return IdentityResponse(learner_id=principal.learner_id, user_id=principal.user_id,
+                            provider=principal.provider, username=principal.username)
 
 
 @router.post('/logout', status_code=204)

@@ -21,10 +21,10 @@ class PostgresIdentityRepository:
         return AuthenticatedIdentity(**{field: row[field] for field in AuthenticatedIdentity.__dataclass_fields__})
 
     @staticmethod
-    def _create_session(session, learner_id, digest, expires, now, *, user_id=None, provider=None):
+    def _create_session(session, learner_id, digest, expires, now, *, user_id=None, provider=None, username=None):
         row = dict(session_id=str(uuid4()), learner_id=learner_id, user_id=user_id, provider=provider,
-                   token_digest=digest, expires_at=expires, created_at=now)
-        session.execute(auth_session.insert().values(**row))
+                   token_digest=digest, expires_at=expires, created_at=now, username=username)
+        session.execute(auth_session.insert().values(**{key: value for key, value in row.items() if key != 'username'}))
         return PostgresIdentityRepository._principal(row)
 
     def get_account(self, username):
@@ -41,7 +41,8 @@ class PostgresIdentityRepository:
             session.execute(learner.insert().values(id=learner_id, created_at=now))
             session.execute(mentra_account.insert().values(user_id=user_id, learner_id=learner_id,
                 username=username, password_hash=password_hash, created_at=now))
-            return self._create_session(session, learner_id, token_digest, expires_at, now, user_id=user_id)
+            return self._create_session(session, learner_id, token_digest, expires_at, now,
+                                        user_id=user_id, username=username)
 
     def create_account_session(self, account, token_digest, expires_at, now, new_hash=None):
         with self.sessions.begin() as session:
@@ -50,7 +51,8 @@ class PostgresIdentityRepository:
                 raise AuthenticationError()
             if new_hash is not None:
                 session.execute(update(mentra_account).where(mentra_account.c.user_id == account.user_id).values(password_hash=new_hash))
-            return self._create_session(session, account.learner_id, token_digest, expires_at, now, user_id=account.user_id)
+            return self._create_session(session, account.learner_id, token_digest, expires_at, now,
+                                        user_id=account.user_id, username=account.username)
 
     def external_session(self, provider, subject, token_digest, expires_at, now):
         with self.sessions.begin() as session:
@@ -66,9 +68,12 @@ class PostgresIdentityRepository:
 
     def get_session(self, token_digest, now):
         with self.sessions.begin() as session:
-            row = session.execute(select(auth_session).where(auth_session.c.token_digest == token_digest,
+            statement = select(auth_session, mentra_account.c.username.label('username')).select_from(
+                auth_session.outerjoin(mentra_account, auth_session.c.user_id == mentra_account.c.user_id)
+            ).where(auth_session.c.token_digest == token_digest,
                 auth_session.c.revoked_at.is_(None),
-                or_(auth_session.c.expires_at.is_(None), auth_session.c.expires_at > now))).mappings().first()
+                or_(auth_session.c.expires_at.is_(None), auth_session.c.expires_at > now))
+            row = session.execute(statement).mappings().first()
             return self._principal(row) if row else None
 
     def revoke_session(self, token_digest, now):

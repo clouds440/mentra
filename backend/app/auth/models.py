@@ -17,6 +17,7 @@ class AuthenticatedIdentity:
     expires_at: datetime | None
     user_id: str | None = None
     provider: str | None = None
+    username: str | None = None
 
 
 @dataclass(frozen=True)

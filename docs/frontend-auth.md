@@ -22,6 +22,8 @@ opaque session token in the `mentra_session` HTTP-only cookie at `/api/v1`; only
 is persisted in PostgreSQL. JavaScript does not read or persist tokens.
 
 `AuthProvider` restores identity with `/auth/me` on initial load, focus, and tab return.
+Standalone identity responses include the account username for the sidebar account
+drawer; external identities use their configured provider label.
 Tab messages trigger a fresh server check. Network failures offer retry or preserve an
 already verified identity; a 401 redirects to login. Logout waits for server revocation,
 and a failed request keeps the workspace available for retry. Changing learner identity

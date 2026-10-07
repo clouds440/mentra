@@ -221,6 +221,7 @@ class AuthenticationTests(unittest.TestCase):
         with TestClient(application) as client:
             response = client.post('/api/v1/auth/register', json={'username': 'alice', 'password': 'a long unique passphrase'})
             self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.json()['username'], 'alice')
             self.assertEqual(response.headers['cache-control'], 'no-store')
             token = response.json()['access_token']
             headers = {'Authorization': 'Bearer ' + token}
@@ -245,6 +246,7 @@ class AuthenticationTests(unittest.TestCase):
             response = client.post('/api/v1/auth/register', json={'username': 'alice', 'password': 'a long unique passphrase'})
             self.assertEqual(response.status_code, 201)
             self.assertNotIn('access_token', response.json())
+            self.assertEqual(response.json()['username'], 'alice')
             cookie = response.headers['set-cookie']
             self.assertIn('HttpOnly', cookie)
             self.assertIn('SameSite=lax', cookie)

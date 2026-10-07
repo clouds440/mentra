@@ -27,7 +27,8 @@ class AuthService:
     @staticmethod
     def _response(token, identity):
         return TokenResponse(access_token=token, expires_at=identity.expires_at,
-            learner_id=identity.learner_id, user_id=identity.user_id, provider=identity.provider)
+            learner_id=identity.learner_id, user_id=identity.user_id, provider=identity.provider,
+            username=identity.username)
 
     def register(self, request: RegisterRequest, *, persistent=False):
         request = RegisterRequest.model_validate(request.model_dump())
