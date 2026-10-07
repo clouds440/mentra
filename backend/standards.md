@@ -16,6 +16,8 @@ These standards describe the current Python and FastAPI codebase. Update them wh
 
 LangChain may consume RAG capabilities, but RAG should not become inseparably coupled to LangChain. The expected future existence of learner modeling, assessments, OCR, document processing, embeddings, vector retrieval, LLM providers, and adaptive learning justifies clean boundaries—not empty abstraction layers or fake implementations today.
 
+Chat models are constructed through the Mentra model factory in `langchain/`; compatible providers are configured through environment variables, not hard-coded SDK clients in callers. Embedding inference and Qdrant access belong in `rag/` and remain independent of chat configuration. Local embedding model files must be baked into the backend image, and vector collections must track/validate the embedding model identity as well as vector configuration.
+
 Do not add empty folders or modules merely to mirror a template. Create them when they contain useful code.
 
 ## Coding rules

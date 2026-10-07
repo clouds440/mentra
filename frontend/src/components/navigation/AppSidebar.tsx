@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import mentraLogo from '../../assets/mentra-logo.png';
 import { cn } from '../../utils/cn';
 
 const primaryNavigation = [
@@ -22,9 +23,6 @@ interface AppSidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   onNewChat: () => void;
-  conversations: { id: string; title: string }[];
-  activeConversationId: string | null;
-  onSelectConversation: (id: string) => void;
 }
 
 export function AppSidebar({
@@ -32,9 +30,6 @@ export function AppSidebar({
   mobileOpen,
   onCloseMobile,
   onNewChat,
-  conversations,
-  activeConversationId,
-  onSelectConversation,
 }: AppSidebarProps) {
   return (
     <>
@@ -55,11 +50,14 @@ export function AppSidebar({
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-[4.35rem] items-center justify-between border-b border-white/[0.07] px-4">
+        <div className="flex h-14 items-center justify-between border-b border-white/[0.07] px-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-300 text-sm font-bold text-slate-950">
-              M
-            </div>
+            <img
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 shrink-0 object-contain"
+              src={mentraLogo}
+            />
             <span
               className={cn(
                 'text-[15px] font-semibold tracking-tight text-slate-100',
@@ -124,32 +122,13 @@ export function AppSidebar({
         </nav>
 
         {!collapsed && (
-          <section aria-label="Sample conversations" className="mt-8 flex-1 overflow-y-auto px-3">
+          <section aria-label="Conversation history" className="mt-8 flex-1 overflow-y-auto px-3">
             <h2 className="px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-              Sample chats
+              Recent chats
             </h2>
-            <div className="space-y-1">
-              {conversations.map((conversation) => (
-                <button
-                  aria-current={
-                    activeConversationId === conversation.id ? 'true' : undefined
-                  }
-                  className={cn(
-                    'w-full truncate rounded-lg px-3 py-2 text-left text-[13px] text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300',
-                    activeConversationId === conversation.id &&
-                      'bg-white/[0.05] text-slate-200',
-                  )}
-                  key={conversation.id}
-                  onClick={() => {
-                    onSelectConversation(conversation.id);
-                    onCloseMobile();
-                  }}
-                  type="button"
-                >
-                  {conversation.title}
-                </button>
-              ))}
-            </div>
+            <p className="px-3 py-2 text-xs leading-5 text-slate-600">
+              Chats are kept in memory for this session only.
+            </p>
           </section>
         )}
 

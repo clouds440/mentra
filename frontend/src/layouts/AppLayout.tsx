@@ -2,10 +2,9 @@ import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
-import { conversations, sampleConversations } from '../pages/chat/mockConversations';
 
 const pageTitles: Record<string, string> = {
-  '/': 'Chat',
+  '/': 'New Chat',
   '/library': 'Library',
   '/progress': 'Progress',
   '/assessments': 'Assessments',
@@ -17,36 +16,29 @@ export function AppLayout() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    sampleConversations[0]?.id ?? null,
-  );
   const [newChatKey, setNewChatKey] = useState(0);
-  const title = pageTitles[location.pathname] ?? 'Mentra';
+  const [chatTitle, setChatTitle] = useState('New Chat');
+  const title =
+    location.pathname === '/'
+      ? chatTitle
+      : pageTitles[location.pathname] ?? 'Mentra';
 
   function startNewChat() {
-    setActiveConversationId(null);
+    setChatTitle('New Chat');
     setNewChatKey((key) => key + 1);
-    navigate('/');
-  }
-
-  function selectConversation(id: string) {
-    setActiveConversationId(id);
     navigate('/');
   }
 
   return (
     <div className="flex h-dvh min-h-[30rem] overflow-hidden bg-slate-950 text-slate-100">
       <AppSidebar
-        activeConversationId={activeConversationId}
         collapsed={collapsed}
-        conversations={conversations}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         onNewChat={startNewChat}
-        onSelectConversation={selectConversation}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[4.35rem] shrink-0 items-center justify-between border-b border-white/[0.07] px-4 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center border-b border-white/[0.07] px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label="Open navigation menu"
@@ -71,15 +63,9 @@ export function AppLayout() {
             </button>
             <span className="text-sm font-medium text-slate-200">{title}</span>
           </div>
-          <span className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Private workspace
-          </span>
         </header>
         <main className="min-h-0 flex-1">
-          <Outlet
-            context={{ activeConversationId, newChatKey }}
-          />
+          <Outlet context={{ newChatKey, setChatTitle }} />
         </main>
       </div>
     </div>

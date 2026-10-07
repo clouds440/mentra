@@ -9,16 +9,30 @@ from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
 from app.core.logging import configure_logging, logger
 from app.db.database import init_db
+from app.langchain.chat_service import ChatService
+from app.langchain.model_factory import model_factory
+from app.rag.embeddings import SentenceTransformerEmbeddingService
+from app.rag.qdrant_store import QdrantVectorStore
+from app.rag.vector_store import VectorStore
 
 
 def create_app() -> FastAPI:
     configure_logging()
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncGenerator[None, None, None]:
-        init_db()
-        logger.info("Mentra backend started successfully.")
-        yield
+    async def lifespan(application: FastAPI) -> AsyncGenerator[None, None, None]:
+        embedding_service = SentenceTransformerEmbeddingService(settings)
+        vector_store: VectorStore = QdrantVectorStore(settings, embedding_service)
+        try:
+            init_db()
+            application.state.embedding_service = embedding_service
+            application.state.vector_store = vector_store
+            application.state.model_factory = model_factory
+            application.state.chat_service = ChatService(model_factory)
+            logger.info("Mentra backend started successfully.")
+            yield
+        finally:
+            vector_store.close()
 
     app = FastAPI(
         title="Mentra API",

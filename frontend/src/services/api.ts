@@ -1,3 +1,5 @@
+import type { ChatResponse, ChatTurn } from '../types/chat';
+
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export interface HealthResponse {
@@ -69,4 +71,15 @@ export async function apiRequest<T>(
 
 export async function fetchHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>('/api/v1/health');
+}
+
+export async function sendChatMessage(
+  messages: ChatTurn[],
+  signal?: AbortSignal,
+): Promise<ChatResponse> {
+  return apiRequest<ChatResponse>('/api/v1/chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
+    signal,
+  });
 }

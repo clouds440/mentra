@@ -8,11 +8,13 @@ Mentra is a clean, monorepo-based foundation for an adaptive AI learning assista
 - Centralized FastAPI error responses for application, HTTP, validation, and unexpected errors
 - React + TypeScript + Vite + Tailwind CSS frontend with a responsive, routed learning workspace
 - Local-first workspace shell with Chat, Library, Progress, Assessments, and Settings routes
-- Sample-only chat preview with Markdown content, composer keyboard behavior, and honest empty states
+- Server-backed AI chat with in-memory conversation context and Markdown responses
 - Multi-stage frontend image serving the built app with Nginx
 - SQLite-ready backend configuration and database layer
 - Docker Compose setup for backend and frontend services
-- Clear separation for future LangChain orchestration and RAG work
+- Provider-independent LangChain chat model factory for OpenAI-compatible endpoints
+- Local, image-baked BGE embeddings kept independent from chat models
+- Remote Qdrant Cloud adapter with collection dimension and embedding-identity validation
 - Environment-based configuration through `.env` values
 
 ## Project structure
@@ -36,12 +38,17 @@ mentra/
 │   │   ├── schemas/
 │   │   │   └── errors.py
 │   │   ├── langchain/
+│   │   │   ├── model_factory.py
 │   │   │   └── README.md
 │   │   ├── rag/
+│   │   │   ├── embeddings.py
+│   │   │   ├── qdrant_store.py
+│   │   │   ├── vector_store.py
 │   │   │   └── README.md
 │   │   ├── __init__.py
 │   │   └── main.py
 │   ├── tests/
+│   ├── bake_embedding_model.py
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── .dockerignore
@@ -106,7 +113,7 @@ Copy the example file and adjust environment values as needed:
 cp .env.example .env
 ```
 
-The values are used for the backend and frontend configuration, including CORS and the SQLite path. `VITE_API_URL` is baked into the frontend bundle when its image is built, so it must be an address reachable from the user's browser (the default is `http://localhost:8000`).
+The values configure the OpenAI-compatible chat endpoint, local embedding model, Qdrant Cloud collection, CORS, and SQLite path. Set `AI_MODEL`, `AI_BASE_URL`, and `AI_API_KEY` before starting. Set the Qdrant values for readiness to pass. `VITE_API_URL` is baked into the frontend bundle when its image is built, so it must be an address reachable from the user's browser (the default is `http://localhost:8000`).
 
 ## Run with Docker
 
@@ -118,7 +125,7 @@ docker compose up --build
 
 - http://localhost:5173
 
-The app opens directly in Chat; no Mentra login is required. Google Drive is a future optional backup/restore integration, not an access requirement. Chat content in this starter is local preview data and is not sent to an AI service or persisted.
+The app opens directly in Chat; no Mentra login is required. Google Drive is a future optional backup/restore integration, not an access requirement. Chat turns are sent to the configured AI provider through the backend and kept only in frontend memory; they are not persisted.
 
 ## Workspace routes
 
@@ -139,6 +146,7 @@ The app opens directly in Chat; no Mentra login is required. Google Drive is a f
 ## Health endpoint
 
 - http://localhost:8000/api/v1/health
+- http://localhost:8000/api/v1/health/ready (configuration and dependency diagnostics)
 
 ## Stop and rebuild
 
@@ -156,10 +164,10 @@ docker compose build --no-cache
 
 ## LangChain and RAG boundaries
 
-- `backend/app/langchain/`: reserved for LLM orchestration, prompt management, model/provider abstractions, and future agent orchestration logic.
-- `backend/app/rag/`: reserved for ingestion, chunking, embeddings, vector retrieval, and document intelligence workflows.
+- `backend/app/langchain/`: model factory for OpenAI-compatible chat endpoints; chat configuration does not control embeddings.
+- `backend/app/rag/`: local embedding interface/implementation and Qdrant vector-store adapter. Ingestion, chunking, and retrieval workflows are not implemented yet.
 
-These are intentionally separated so future work can evolve independently without mixing concerns.
+Switch compatible chat providers by changing `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY`. The local embedding model is baked into the backend image; changing it requires an image rebuild and Qdrant reindex. Readiness verifies configuration and Qdrant without invoking the chat model. Qdrant connectivity is checked by readiness rather than liveness, so an outage does not prevent the backend health endpoint from responding.
 
 ## Engineering standards
 

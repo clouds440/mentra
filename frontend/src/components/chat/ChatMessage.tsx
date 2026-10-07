@@ -1,7 +1,7 @@
-import { Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ChatMessageData } from '../../pages/chat/mockConversations';
+import mentraLogo from '../../assets/mentra-logo.png';
+import type { ChatMessageData } from '../../types/chat';
 
 interface ChatMessageProps {
   message: ChatMessageData;
@@ -18,9 +18,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {isAssistant && (
         <div
           aria-hidden="true"
-          className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-sky-300/15 bg-sky-300/[0.07] text-sky-200"
+          className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center"
         >
-          <Sparkles size={14} strokeWidth={1.8} />
+          <img alt="" className="h-6 w-6 object-contain" src={mentraLogo} />
         </div>
       )}
       <div
@@ -49,8 +49,8 @@ interface ThinkingIndicatorProps {
 export function ThinkingIndicator({ label = 'Mentra is thinking' }: ThinkingIndicatorProps) {
   return (
     <div aria-live="polite" className="flex items-center gap-3.5 text-sm text-slate-500">
-      <span className="grid h-7 w-7 place-items-center rounded-lg border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
-        <Sparkles aria-hidden="true" size={14} strokeWidth={1.8} />
+      <span className="grid h-7 w-7 place-items-center">
+        <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={mentraLogo} />
       </span>
       <span className="flex items-center gap-2">
         {label}

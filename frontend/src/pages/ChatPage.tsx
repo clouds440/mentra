@@ -3,15 +3,12 @@ import { useOutletContext } from 'react-router-dom';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatMessage, ThinkingIndicator } from '../components/chat/ChatMessage';
-import {
-  sampleConversations,
-  sampleReply,
-  type ChatMessageData,
-} from './chat/mockConversations';
+import { ApiError, sendChatMessage } from '../services/api';
+import type { ChatMessageData } from '../types/chat';
 
 interface ChatOutletContext {
-  activeConversationId: string | null;
   newChatKey: number;
+  setChatTitle: (title: string) => void;
 }
 
 function createMessage(role: ChatMessageData['role'], content: string): ChatMessageData {
@@ -23,60 +20,81 @@ function createMessage(role: ChatMessageData['role'], content: string): ChatMess
 }
 
 export function ChatPage() {
-  const { activeConversationId, newChatKey } = useOutletContext<ChatOutletContext>();
-  const selectedConversation = sampleConversations.find(
-    (conversation) => conversation.id === activeConversationId,
-  );
+  const { newChatKey, setChatTitle } = useOutletContext<ChatOutletContext>();
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [draft, setDraft] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pendingReplyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setMessages(selectedConversation?.messages ?? []);
+    requestControllerRef.current?.abort();
+    setMessages([]);
     setDraft('');
     setIsThinking(false);
-    if (pendingReplyRef.current) clearTimeout(pendingReplyRef.current);
+    setErrorMessage(null);
+    setChatTitle('New Chat');
 
     return () => {
-      if (pendingReplyRef.current) clearTimeout(pendingReplyRef.current);
+      requestControllerRef.current?.abort();
     };
-  }, [activeConversationId, newChatKey]);
+  }, [newChatKey, setChatTitle]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (container) container.scrollTop = container.scrollHeight;
   }, [messages, isThinking]);
 
-  function sendMessage() {
+  async function sendMessage() {
     const content = draft.trim();
     if (!content || isThinking) return;
 
-    setMessages((current) => [...current, createMessage('user', content)]);
+    const userMessage = createMessage('user', content);
+    const conversation = [...messages, userMessage];
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    setMessages(conversation);
+    if (messages.length === 0) {
+      const title =
+        content.length > 48 ? `${content.slice(0, 45).trimEnd()}...` : content;
+      setChatTitle(title);
+    }
     setDraft('');
     setIsThinking(true);
+    setErrorMessage(null);
 
-    pendingReplyRef.current = setTimeout(() => {
-      setMessages((current) => [...current, createMessage('assistant', sampleReply)]);
-      setIsThinking(false);
-      pendingReplyRef.current = null;
-    }, 900);
+    try {
+      const response = await sendChatMessage(
+        conversation.map(({ role, content: messageContent }) => ({
+          role,
+          content: messageContent,
+        })),
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      setMessages((current) => [
+        ...current,
+        createMessage('assistant', response.content),
+      ]);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setMessages((current) => current.filter((message) => message.id !== userMessage.id));
+      setDraft(content);
+      setErrorMessage(getChatErrorMessage(error));
+      if (messages.length === 0) {
+        setChatTitle('New Chat');
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        requestControllerRef.current = null;
+        setIsThinking(false);
+      }
+    }
   }
 
   return (
     <section aria-label="Chat workspace" className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.06] px-4 sm:px-6">
-        <div className="min-w-0">
-          <h1 className="truncate text-[13px] font-medium text-slate-300">
-            {selectedConversation?.title ?? 'New conversation'}
-          </h1>
-        </div>
-        <span className="ml-3 shrink-0 rounded-full border border-white/[0.07] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
-          Preview
-        </span>
-      </div>
-
       {messages.length === 0 ? (
         <ChatEmptyState onChooseSuggestion={setDraft} />
       ) : (
@@ -91,13 +109,22 @@ export function ChatPage() {
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
-            {isThinking && <ThinkingIndicator label="Preparing a sample reply" />}
+            {isThinking && <ThinkingIndicator />}
           </div>
         </div>
       )}
 
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         <div className="mx-auto w-full max-w-3xl">
+          {errorMessage && (
+            <p
+              aria-live="polite"
+              className="mb-3 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-3.5 py-2.5 text-sm text-rose-200"
+              role="alert"
+            >
+              {errorMessage}
+            </p>
+          )}
           <ChatComposer
             isThinking={isThinking}
             onChange={setDraft}
@@ -105,10 +132,23 @@ export function ChatPage() {
             value={draft}
           />
           <p className="mt-2.5 text-center text-[10px] text-slate-600">
-            Mentra preview · sample replies only, no AI connection yet
+            Mentra can make mistakes. Check important information.
           </p>
         </div>
       </div>
     </section>
   );
+}
+
+function getChatErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 503) {
+    return 'AI chat is not configured on the backend. Please contact your administrator.';
+  }
+  if (error instanceof ApiError && error.status === 502) {
+    return 'The AI provider could not respond. Please try again shortly.';
+  }
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  return 'Could not reach Mentra. Check your connection and try again.';
 }

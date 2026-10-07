@@ -2,6 +2,8 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
     container_name: mentra-backend
     restart: unless-stopped
     ports:
@@ -13,8 +15,19 @@ services:
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
       SQLITE_DB_PATH: ${SQLITE_DB_PATH:-/data/mentra.db}
-      LLM_PROVIDER: ${LLM_PROVIDER:-none}
-      VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER:-none}
+      AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.2}
+      AI_TIMEOUT: ${AI_TIMEOUT:-30}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      QDRANT_URL: ${QDRANT_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
+      QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
     volumes:
       - ./data:/data
     healthcheck:
