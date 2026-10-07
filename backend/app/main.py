@@ -10,7 +10,11 @@ from app.core.exception_handlers import register_exception_handlers
 from app.core.logging import configure_logging, logger
 from app.db.database import init_db
 from app.langchain.chat_service import ChatService
+from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import model_factory
+from app.learner.factory import create_learner_engine
+from app.auth.factory import create_auth_service
+from app.student_profile.factory import create_student_profile_service
 from app.rag.embeddings import SentenceTransformerEmbeddingService
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.vector_store import VectorStore
@@ -21,14 +25,18 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncGenerator[None, None, None]:
+        init_db()
         embedding_service = SentenceTransformerEmbeddingService(settings)
         vector_store: VectorStore = QdrantVectorStore(settings, embedding_service)
         try:
-            init_db()
+            application.state.learner_service = create_learner_engine()
+            application.state.auth_service = create_auth_service()
+            application.state.llm = MentraLLM(model_factory)
+            application.state.student_profile_service = create_student_profile_service(model_factory, application.state.llm)
             application.state.embedding_service = embedding_service
             application.state.vector_store = vector_store
             application.state.model_factory = model_factory
-            application.state.chat_service = ChatService(model_factory)
+            application.state.chat_service = ChatService(application.state.llm)
             logger.info("Mentra backend started successfully.")
             yield
         finally:

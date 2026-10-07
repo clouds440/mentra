@@ -26,8 +26,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
       <div
         className={
           isAssistant
-            ? 'min-w-0 max-w-full flex-1 text-[14px] leading-7 text-slate-300'
-              : 'max-w-[88%] whitespace-pre-wrap rounded-2xl border border-white/[0.07] bg-white/[0.055] px-4 py-3 text-[14px] leading-6 text-slate-100 sm:max-w-[78%]'
+            ? 'min-w-0 max-w-full flex-1 text-[14px] leading-7 text-body'
+              : 'max-w-[88%] whitespace-pre-wrap rounded-2xl border border-border bg-message px-4 py-3 text-[14px] leading-6 text-foreground sm:max-w-[78%]'
         }
       >
         {isAssistant ? (
@@ -46,18 +46,18 @@ interface ThinkingIndicatorProps {
   label?: string;
 }
 
-export function ThinkingIndicator({ label = 'Mentra is thinking' }: ThinkingIndicatorProps) {
+export function ThinkingIndicator({ label = '' }: ThinkingIndicatorProps) {
   return (
-    <div aria-live="polite" className="flex items-center gap-3.5 text-sm text-slate-500">
+    <div aria-live="polite" className="flex items-center gap-3.5 text-sm text-subtle">
       <span className="grid h-7 w-7 place-items-center">
         <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={mentraLogo} />
       </span>
       <span className="flex items-center gap-2">
         {label}
         <span aria-hidden="true" className="flex gap-1">
-          <i className="h-1 w-1 animate-pulse rounded-full bg-slate-500" />
-          <i className="h-1 w-1 animate-pulse rounded-full bg-slate-500 [animation-delay:150ms]" />
-          <i className="h-1 w-1 animate-pulse rounded-full bg-slate-500 [animation-delay:300ms]" />
+          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle" />
+          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle [animation-delay:150ms]" />
+          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle [animation-delay:300ms]" />
         </span>
       </span>
     </div>

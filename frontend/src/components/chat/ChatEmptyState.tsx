@@ -27,23 +27,23 @@ export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
       >
         <img alt="" className="h-12 w-12 object-contain" src={mentraLogo} />
       </div>
-      <p className="text-sm font-medium tracking-wide text-sky-200/90">Mentra</p>
-      <h1 className="mt-3 text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">
+      <p className="text-sm font-medium tracking-wide text-accent/90">Mentra</p>
+      <h1 className="mt-3 text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
         What are we learning today?
       </h1>
-      <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">
+      <p className="mt-3 max-w-md text-sm leading-6 text-subtle">
         Start with a question, or choose a prompt to find your next step.
       </p>
       <div className="mt-8 flex max-w-xl flex-wrap justify-center gap-2">
         {suggestions.map(({ label, prompt, icon: Icon }) => (
           <Button
-            className="gap-2 rounded-full border-white/[0.09] px-3.5 text-xs font-normal text-slate-300 hover:border-white/15 hover:text-white"
+            className="gap-2 rounded-full border-border px-3.5 text-xs font-normal text-body hover:border-border-strong hover:text-foreground"
             key={label}
             onClick={() => onChooseSuggestion(prompt)}
             size="sm"
             variant="secondary"
           >
-            <Icon aria-hidden="true" className="text-sky-200/80" size={14} />
+            <Icon aria-hidden="true" className="text-accent/80" size={14} />
             {label}
           </Button>
         ))}

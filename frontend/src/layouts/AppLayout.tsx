@@ -30,7 +30,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex h-dvh min-h-[30rem] overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex h-dvh min-h-[30rem] overflow-hidden bg-background text-foreground">
       <AppSidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -38,11 +38,11 @@ export function AppLayout() {
         onNewChat={startNewChat}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center border-b border-white/[0.07] px-4 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center border-b border-border px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label="Open navigation menu"
-              className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 lg:hidden"
+              className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
               onClick={() => setMobileOpen(true)}
               type="button"
             >
@@ -50,7 +50,7 @@ export function AppLayout() {
             </button>
             <button
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="hidden h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 lg:grid"
+              className="hidden h-9 w-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:grid"
               onClick={() => setCollapsed((value) => !value)}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
@@ -61,7 +61,7 @@ export function AppLayout() {
                 <PanelLeftClose aria-hidden="true" size={18} />
               )}
             </button>
-            <span className="text-sm font-medium text-slate-200">{title}</span>
+            <span className="text-sm font-medium text-heading">{title}</span>
           </div>
         </header>
         <main className="min-h-0 flex-1">

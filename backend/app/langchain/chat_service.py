@@ -1,45 +1,43 @@
 import logging
 from typing import Literal
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from app.core.exceptions import AppError
+from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import ModelConfigurationError, ModelFactory
+from app.langchain.prompts import PromptSource
+from app.learner.schemas import LearnerContextPacket
 
 logger = logging.getLogger("mentra")
 
-MENTRA_SYSTEM_PROMPT = (
-    "You are Mentra, a supportive learning assistant. Explain ideas clearly, "
-    "encourage understanding, and guide learners one step at a time."
-)
-
-
 class ChatService:
-    def __init__(self, model_factory: ModelFactory) -> None:
-        self._model_factory = model_factory
+    def __init__(self, llm: MentraLLM | ModelFactory) -> None:
+        self._llm = llm if isinstance(llm, MentraLLM) else MentraLLM(llm)
 
     async def reply(
         self,
         messages: list[tuple[Literal["user", "assistant"], str]],
+        *,
+        learner_context: LearnerContextPacket | None = None,
     ) -> str:
+        conversation = [
+            HumanMessage(content=content)
+            if role == "user"
+            else AIMessage(content=content)
+            for role, content in messages
+        ]
         try:
-            model = self._model_factory.get_model()
+            response = await self._llm.ainvoke_messages(
+                PromptSource.CHAT, conversation,
+                additional_sources=((PromptSource.LEARNER_CONTEXT,) if learner_context is not None else ()),
+                system_context=learner_context.model_dump_json(exclude_none=True) if learner_context is not None else None)
         except ModelConfigurationError as exc:
             raise AppError(
                 "AI_CONFIGURATION_ERROR",
                 str(exc),
                 status_code=503,
             ) from exc
-
-        conversation = [SystemMessage(content=MENTRA_SYSTEM_PROMPT)]
-        conversation.extend(
-            HumanMessage(content=content)
-            if role == "user"
-            else AIMessage(content=content)
-            for role, content in messages
-        )
-        try:
-            response = await model.ainvoke(conversation)
         except Exception as exc:
             logger.exception("Chat provider request failed.")
             raise AppError(

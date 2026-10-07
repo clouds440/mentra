@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import mentraLogo from '../../assets/mentra-logo.png';
+import { ThemeSelector } from '../theme/ThemeSelector';
+import { LogoutButton } from '../auth/LogoutButton';
 import { cn } from '../../utils/cn';
 
 const primaryNavigation = [
@@ -36,7 +38,7 @@ export function AppSidebar({
       {mobileOpen && (
         <button
           aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 bg-slate-950/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
           onClick={onCloseMobile}
           type="button"
         />
@@ -45,12 +47,12 @@ export function AppSidebar({
       <aside
         aria-label="Main navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-white/[0.07] bg-slate-950 transition-[width,transform] duration-200 ease-out lg:relative lg:z-20 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-border bg-background transition-[width,transform] duration-200 ease-out lg:relative lg:z-20 lg:translate-x-0',
           collapsed && 'lg:w-[4.5rem]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-white/[0.07] px-4">
+        <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <div className="flex min-w-0 items-center gap-3">
             <img
               alt=""
@@ -60,7 +62,7 @@ export function AppSidebar({
             />
             <span
               className={cn(
-                'text-[15px] font-semibold tracking-tight text-slate-100',
+                'text-[15px] font-semibold tracking-tight text-foreground',
                 collapsed && 'lg:hidden',
               )}
             >
@@ -69,7 +71,7 @@ export function AppSidebar({
           </div>
           <button
             aria-label="Close navigation menu"
-            className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 lg:hidden"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
             onClick={onCloseMobile}
             type="button"
           >
@@ -81,7 +83,7 @@ export function AppSidebar({
           <button
             aria-label="Start a new chat"
             className={cn(
-              'flex h-10 w-full items-center gap-3 rounded-lg border border-white/[0.09] px-3 text-sm font-medium text-slate-200 transition-colors hover:border-white/15 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300',
+              'flex h-10 w-full items-center gap-3 rounded-lg border border-border px-3 text-sm font-medium text-heading transition-colors hover:border-border-strong hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
               collapsed && 'lg:justify-center lg:px-0',
             )}
             onClick={() => {
@@ -91,7 +93,7 @@ export function AppSidebar({
             title={collapsed ? 'New chat' : undefined}
             type="button"
           >
-            <Sparkles aria-hidden="true" className="shrink-0 text-sky-300" size={17} />
+            <Sparkles aria-hidden="true" className="shrink-0 text-accent" size={17} />
             <span className={cn(collapsed && 'lg:hidden')}>New chat</span>
           </button>
         </div>
@@ -103,10 +105,10 @@ export function AppSidebar({
               aria-label={collapsed ? label : undefined}
               className={({ isActive }) =>
                 cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300',
+                  'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   isActive
-                    ? 'bg-white/[0.08] font-medium text-white'
-                    : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-100',
+                    ? 'bg-active font-medium text-foreground'
+                    : 'text-muted hover:bg-hover hover:text-foreground',
                   collapsed && 'lg:justify-center lg:px-0',
                 )
               }
@@ -123,24 +125,24 @@ export function AppSidebar({
 
         {!collapsed && (
           <section aria-label="Conversation history" className="mt-8 flex-1 overflow-y-auto px-3">
-            <h2 className="px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+            <h2 className="px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">
               Recent chats
             </h2>
-            <p className="px-3 py-2 text-xs leading-5 text-slate-600">
+            <p className="px-3 py-2 text-xs leading-5 text-subtle">
               Chats are kept in memory for this session only.
             </p>
           </section>
         )}
 
-        <div className={cn('border-t border-white/[0.07] p-3', collapsed && 'lg:px-2')}>
+        <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
           <NavLink
             aria-label={collapsed ? 'Settings' : undefined}
             className={({ isActive }) =>
               cn(
-                'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300',
+                'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 isActive
-                  ? 'bg-white/[0.08] font-medium text-white'
-                  : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-100',
+                  ? 'bg-active font-medium text-foreground'
+                  : 'text-muted hover:bg-hover hover:text-foreground',
                 collapsed && 'lg:justify-center lg:px-0',
               )
             }
@@ -151,8 +153,10 @@ export function AppSidebar({
             <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
             <span className={cn(collapsed && 'lg:hidden')}>Settings</span>
           </NavLink>
+          <ThemeSelector collapsed={collapsed} />
+          <LogoutButton collapsed={collapsed} />
           {!collapsed && (
-            <p className="px-3 pb-1 pt-3 text-[11px] text-slate-600">A quieter way to learn.</p>
+            <p className="px-3 pb-1 pt-3 text-[11px] text-subtle">A quieter way to learn.</p>
           )}
         </div>
       </aside>

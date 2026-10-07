@@ -119,7 +119,7 @@ export function ChatPage() {
           {errorMessage && (
             <p
               aria-live="polite"
-              className="mb-3 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-3.5 py-2.5 text-sm text-rose-200"
+              className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger"
               role="alert"
             >
               {errorMessage}
@@ -131,7 +131,7 @@ export function ChatPage() {
             onSubmit={sendMessage}
             value={draft}
           />
-          <p className="mt-2.5 text-center text-[10px] text-slate-600">
+          <p className="mt-2.5 text-center text-[10px] text-subtle">
             Mentra can make mistakes. Check important information.
           </p>
         </div>
@@ -142,10 +142,10 @@ export function ChatPage() {
 
 function getChatErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 503) {
-    return 'AI chat is not configured on the backend. Please contact your administrator.';
+    return 'Sorry! Mentra is currently overloaded. Please try again shortly.';
   }
   if (error instanceof ApiError && error.status === 502) {
-    return 'The AI provider could not respond. Please try again shortly.';
+    return 'Mentra could not respond. Please try again shortly.';
   }
   if (error instanceof ApiError) {
     return error.message;

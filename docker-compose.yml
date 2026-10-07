@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mentra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mentra_local}
+      POSTGRES_DB: ${POSTGRES_DB:-mentra}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - mentra_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
@@ -14,7 +31,11 @@ services:
       BACKEND_PORT: ${BACKEND_PORT:-8000}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
-      SQLITE_DB_PATH: ${SQLITE_DB_PATH:-/data/mentra.db}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://mentra:mentra_local@postgres:5432/mentra}
+      AUTH_SESSION_SECONDS: ${AUTH_SESSION_SECONDS:-3600}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-lax}
+      AUTH_EXTERNAL_PROVIDERS: '${AUTH_EXTERNAL_PROVIDERS:-{}}'
       AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
       AI_MODEL: ${AI_MODEL:-}
       AI_BASE_URL: ${AI_BASE_URL:-}
@@ -28,8 +49,9 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
-    volumes:
-      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${BACKEND_PORT:-8000}/api/v1/health').read()"]
       interval: 10s
@@ -55,3 +77,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+volumes:
+  mentra_postgres:

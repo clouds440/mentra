@@ -21,6 +21,8 @@ credentials/
 **/.turbo/
 **/.npm/
 *.tsbuildinfo
+**/test-results/
+**/playwright-report/
 
 # Python environments, bytecode, and test/tool caches
 .venv/

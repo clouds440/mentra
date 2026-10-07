@@ -8,3 +8,4 @@ export { Spinner } from './Spinner';
 export type { SpinnerProps } from './Spinner';
 export { Textarea } from './Textarea';
 export type { TextareaProps } from './Textarea';
+export { Select } from './Select';

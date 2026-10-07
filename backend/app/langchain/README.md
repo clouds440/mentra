@@ -1,8 +1,10 @@
 # LangChain and chat models
 
-`ModelFactory` is the Mentra-owned entry point for chat-model construction. Callers should request a model with `model_factory.get_model()` rather than constructing `ChatOpenAI` or a provider SDK client directly.
+`ModelFactory` is the Mentra-owned entry point for provider model construction. `MentraLLM` is the shared request/invocation component used by chat and structured Student Profile evaluation. Every invocation supplies an internal `PromptSource`; that closed enum selects the relevant prompt module. HTTP input cannot choose a prompt source. Optional response schemas are validated in this same component.
 
-`ChatService` owns the short Mentra system prompt and maps the current user/assistant turns to LangChain messages. The `/api/v1/chat` API accepts the in-memory conversation history and returns one assistant message; it does not persist the conversation or stream responses.
+Keep system instructions in a source-specific module under `prompts/`. Each module owns its prompt version; `prompts/registry.py` maps `PromptSource` to both the prompt and version. Add a new source and prompt module together, then route its service through the shared `MentraLLM`. Chat uses `chat`; profile evaluation uses `student_profile_evaluation`; granular learner context is an additional registered source fragment. The `/api/v1/chat` API accepts in-memory conversation history and returns one assistant message; it does not persist or stream the conversation.
+
+Application startup creates one `MentraLLM` instance and injects it into chat and the profile evaluator. Each workflow chooses its source in trusted server code. The common component resolves instructions, constructs ordered LangChain messages, binds structured output when requested, and validates the result. Provider construction remains in `ModelFactory`; evidence validation and persistence remain in Student Profile services.
 
 The current adapter is `openai_compatible`. Configure `AI_MODEL`, `AI_BASE_URL`, and `AI_API_KEY` for the chosen endpoint; changing those values is sufficient to switch among compatible services such as OpenAI, DeepSeek, and Groq. `AI_TEMPERATURE`, `AI_TIMEOUT`, and `AI_MAX_RETRIES` tune request behavior. No provider URL or model name is hard-coded.
 

@@ -20,13 +20,13 @@ export function LibraryPage() {
       icon={<BookOpen aria-hidden="true" size={19} strokeWidth={1.7} />}
       title="Library"
     >
-      <div className="mt-8 flex flex-col gap-5 border-b border-white/[0.07] pb-7 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-8 flex flex-col gap-5 border-b border-border pb-7 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs text-slate-500">Content types planned for the library</p>
+          <p className="text-xs text-subtle">Content types planned for the library</p>
           <ul aria-label="Potential material types" className="mt-3 flex flex-wrap gap-2">
             {materialTypes.map(({ label, icon: Icon }) => (
               <li
-                className="inline-flex items-center gap-2 rounded-lg border border-white/[0.07] px-3 py-2 text-xs text-slate-400"
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted"
                 key={label}
               >
                 <Icon aria-hidden="true" size={14} />

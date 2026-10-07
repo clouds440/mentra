@@ -16,7 +16,7 @@ export function AssessmentsPage() {
       <ul aria-label="Assessment areas" className="mt-8 flex flex-wrap gap-2">
         {assessmentAreas.map((area) => (
           <li
-            className="rounded-lg border border-white/[0.07] px-3 py-2 text-xs text-slate-400"
+            className="rounded-lg border border-border px-3 py-2 text-xs text-muted"
             key={area}
           >
             {area}

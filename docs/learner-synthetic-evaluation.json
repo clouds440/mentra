@@ -1,0 +1,325 @@
+{
+  "kind": "synthetic behavioral evaluation; not measured real-world accuracy",
+  "seed": 47291,
+  "observations": 1200,
+  "evaluation": {
+    "count": 1050,
+    "mae": 0.27531997312878265,
+    "rmse": 0.36569471244519686,
+    "calibration_error": 0.022528402521478426,
+    "policy_version": "mastery-v2",
+    "supported_count": 852,
+    "skipped_count": 150,
+    "coverage": 0.8114285714285714,
+    "supported_metrics": {
+      "count": 852,
+      "mae": 0.22310560068688,
+      "rmse": 0.3266691587152728,
+      "calibration_error": 0.02659016742670463
+    },
+    "mean_squared_error": 0.13373262271037523,
+    "baseline_metrics": {
+      "count": 1050,
+      "mae": 0.5,
+      "rmse": 0.5,
+      "calibration_error": 0.08952380952380952
+    },
+    "groups": {
+      "difficulty:easy": {
+        "count": 450,
+        "mae": 0.22140985326188178,
+        "rmse": 0.3207717309232938,
+        "calibration_error": 0.08436167357991832
+      },
+      "difficulty:hard": {
+        "count": 300,
+        "mae": 0.31322053809788897,
+        "rmse": 0.3923659782692014,
+        "calibration_error": 0.12633990505268108
+      },
+      "difficulty:medium": {
+        "count": 300,
+        "mae": 0.3182845879600276,
+        "rmse": 0.3997141022579474,
+        "calibration_error": 0.04535664961999343
+      },
+      "student:00fcf1db-42ca-583c-b1c8-82435e8a1332": {
+        "count": 150,
+        "mae": 0.20302056572681462,
+        "rmse": 0.30600132433180033,
+        "calibration_error": 0.08667039466748347
+      },
+      "student:2ae73074-79c0-52eb-a6cd-56f30131ed46": {
+        "count": 150,
+        "mae": 0.30869784485993124,
+        "rmse": 0.3905490386178854,
+        "calibration_error": 0.14576056358200362
+      },
+      "student:513a57f9-0d27-5371-92b9-7a5286662df5": {
+        "count": 150,
+        "mae": 0.5,
+        "rmse": 0.5,
+        "calibration_error": 0.02666666666666667
+      },
+      "student:66625bfa-4aa6-5f01-94e4-a3b948c23760": {
+        "count": 150,
+        "mae": 0.09731396854778838,
+        "rmse": 0.18261023001429647,
+        "calibration_error": 0.047553876008558926
+      },
+      "student:82fe4a43-522d-53fa-b259-d1d3b13b05d8": {
+        "count": 150,
+        "mae": 0.32587562651689034,
+        "rmse": 0.41948669923524723,
+        "calibration_error": 0.1200879317426698
+      },
+      "student:a5119cf8-f094-56ef-953b-e794af026116": {
+        "count": 150,
+        "mae": 0.30521702333419487,
+        "rmse": 0.37773807490270633,
+        "calibration_error": 0.058671261244478835
+      },
+      "student:ea9b1d5e-287c-51e2-b7e7-7bbe51fcc6e3": {
+        "count": 150,
+        "mae": 0.18711478291585912,
+        "rmse": 0.29658279913389546,
+        "calibration_error": 0.058569550055136796
+      }
+    },
+    "brier_score": 0.13373262271037523,
+    "log_loss": 0.4137505021575978
+  },
+  "states": {
+    "strong": {
+      "learner_id": "00fcf1db-42ca-583c-b1c8-82435e8a1332",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.6242398065188953,
+      "estimate_confidence": 0.5680331770366411,
+      "retention_confidence": 0.5680331770366411,
+      "evidence_count": 150,
+      "independent_successes": 135,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-07T05:00:00Z",
+      "last_demonstrated_at": "2026-01-07T05:00:00Z",
+      "knowledge_status": "developing",
+      "mastery_lower_bound": 0.3705382284815192,
+      "mastery_upper_bound": 0.8779413845562715,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.6
+    },
+    "learning": {
+      "learner_id": "2ae73074-79c0-52eb-a6cd-56f30131ed46",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.6441196415097531,
+      "estimate_confidence": 0.8385739234660692,
+      "retention_confidence": 0.8385739234660692,
+      "evidence_count": 150,
+      "independent_successes": 84,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-07T05:00:00Z",
+      "last_demonstrated_at": "2026-01-07T05:00:00Z",
+      "knowledge_status": "developing",
+      "mastery_lower_bound": 0.3933197556670878,
+      "mastery_upper_bound": 0.8949195273524184,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.6
+    },
+    "repeated-item": {
+      "learner_id": "513a57f9-0d27-5371-92b9-7a5286662df5",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.504830143380791,
+      "estimate_confidence": 0.026870339209446977,
+      "retention_confidence": 0.11778481847049926,
+      "evidence_count": 150,
+      "independent_successes": 1,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-01T00:00:00Z",
+      "last_demonstrated_at": "2026-01-01T00:00:00Z",
+      "knowledge_status": "insufficient_evidence",
+      "mastery_lower_bound": 0.0,
+      "mastery_upper_bound": 1.0,
+      "independent_item_count": 1,
+      "recommended_difficulty": 0.3
+    },
+    "easy-only": {
+      "learner_id": "66625bfa-4aa6-5f01-94e4-a3b948c23760",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.46300572768265263,
+      "estimate_confidence": 0.9498943400608887,
+      "retention_confidence": 0.9498943400608887,
+      "evidence_count": 150,
+      "independent_successes": 146,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.1,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-07T05:00:00Z",
+      "last_demonstrated_at": "2026-01-07T05:00:00Z",
+      "knowledge_status": "developing",
+      "mastery_lower_bound": 0.2018075984875322,
+      "mastery_upper_bound": 0.7242038568777731,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.30000000000000004
+    },
+    "regression": {
+      "learner_id": "82fe4a43-522d-53fa-b259-d1d3b13b05d8",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.27856962112986877,
+      "estimate_confidence": 0.4751065621724697,
+      "retention_confidence": 2.1264622277962634e-09,
+      "evidence_count": 150,
+      "independent_successes": 94,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-06T18:00:00Z",
+      "last_demonstrated_at": "2026-01-04T23:00:00Z",
+      "knowledge_status": "needs_practice",
+      "mastery_lower_bound": 0.04373823404797714,
+      "mastery_upper_bound": 0.5134010082117604,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.3
+    },
+    "guided": {
+      "learner_id": "96b6ee5a-d7fe-55f3-b4f5-cb6ba1c5e20b",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": null,
+      "estimate_confidence": null,
+      "retention_confidence": null,
+      "evidence_count": 150,
+      "independent_successes": 0,
+      "hint_dependency": 1.0,
+      "difficulty_tested": null,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": null,
+      "last_demonstrated_at": null,
+      "knowledge_status": "insufficient_evidence",
+      "mastery_lower_bound": 0.0,
+      "mastery_upper_bound": 1.0,
+      "independent_item_count": 0,
+      "recommended_difficulty": 0.3
+    },
+    "mixed": {
+      "learner_id": "a5119cf8-f094-56ef-953b-e794af026116",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.5064169488019549,
+      "estimate_confidence": 0.9037223543331535,
+      "retention_confidence": 0.04263349930546296,
+      "evidence_count": 150,
+      "independent_successes": 76,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-07T04:00:00Z",
+      "last_demonstrated_at": "2026-01-06T14:00:00Z",
+      "knowledge_status": "needs_verification",
+      "mastery_lower_bound": 0.244522502569204,
+      "mastery_upper_bound": 0.7683113950347058,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.30000000000000004
+    },
+    "novice": {
+      "learner_id": "ea9b1d5e-287c-51e2-b7e7-7bbe51fcc6e3",
+      "concept_id": "1dbe9d3c-76dc-44dc-8964-335a177b764f",
+      "mastery": 0.2116924872342435,
+      "estimate_confidence": 0.5118786026522943,
+      "retention_confidence": 1.3157126275538664e-10,
+      "evidence_count": 150,
+      "independent_successes": 13,
+      "hint_dependency": 0.0,
+      "difficulty_tested": 0.8,
+      "version": 151,
+      "mastery_policy_version": "mastery-v2",
+      "retention_policy_version": "retention-v2",
+      "verification_required": false,
+      "last_evidence_at": "2026-01-07T05:00:00Z",
+      "last_verified_at": "2026-01-07T00:00:00Z",
+      "last_demonstrated_at": "2026-01-04T19:00:00Z",
+      "knowledge_status": "needs_practice",
+      "mastery_lower_bound": 0.0,
+      "mastery_upper_bound": 0.42568205872296505,
+      "independent_item_count": 64,
+      "recommended_difficulty": 0.3
+    }
+  },
+  "performance": {
+    "ingestion_seconds": 13.89557199999399,
+    "observations_per_second": 86.35844569770276,
+    "retrieval": {
+      "strong": {
+        "milliseconds": 57.01959999714745,
+        "connections": 13,
+        "packet_bytes": 731
+      },
+      "learning": {
+        "milliseconds": 45.6724999967264,
+        "connections": 13,
+        "packet_bytes": 731
+      },
+      "repeated-item": {
+        "milliseconds": 49.2859999940265,
+        "connections": 13,
+        "packet_bytes": 698
+      },
+      "easy-only": {
+        "milliseconds": 44.734499999322,
+        "connections": 13,
+        "packet_bytes": 702
+      },
+      "regression": {
+        "milliseconds": 48.56819999986328,
+        "connections": 13,
+        "packet_bytes": 757
+      },
+      "guided": {
+        "milliseconds": 50.1044999982696,
+        "connections": 13,
+        "packet_bytes": 570
+      },
+      "mixed": {
+        "milliseconds": 44.44709999370389,
+        "connections": 13,
+        "packet_bytes": 755
+      },
+      "novice": {
+        "milliseconds": 44.101100000261795,
+        "connections": 13,
+        "packet_bytes": 726
+      }
+    }
+  },
+  "restart_replay_equal": true
+}

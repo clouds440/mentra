@@ -22,7 +22,9 @@ ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "exec uvicorn app.main:app --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]
+CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]

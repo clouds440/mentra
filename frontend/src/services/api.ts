@@ -11,7 +11,14 @@ interface ApiErrorResponse {
   error?: {
     code?: string;
     message?: string;
+    details?: ValidationIssue[];
   };
+}
+
+export interface ValidationIssue {
+  location: (string | number)[];
+  message: string;
+  type: string;
 }
 
 export class ApiError extends Error {
@@ -19,6 +26,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly code: string,
+    public readonly details: ValidationIssue[] = [],
   ) {
     super(message);
     this.name = 'ApiError';
@@ -41,7 +49,7 @@ export async function apiRequest<T>(
   }
 
   const url = `${apiBaseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
-  const response = await fetch(url, { ...init, headers });
+  const response = await fetch(url, { credentials: 'include', ...init, headers });
   const bodyText = await response.text();
   let body: unknown;
 
@@ -63,6 +71,7 @@ export async function apiRequest<T>(
       apiError?.error?.message ?? `Request failed with status ${response.status}.`,
       response.status,
       apiError?.error?.code ?? 'HTTP_ERROR',
+      apiError?.error?.details ?? [],
     );
   }
 

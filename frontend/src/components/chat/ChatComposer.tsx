@@ -35,7 +35,7 @@ export function ChatComposer({
   return (
     <form
       aria-label="Message Mentra"
-      className="rounded-2xl border border-white/[0.12] bg-slate-900/70 p-2 shadow-lg shadow-black/10 focus-within:border-white/20"
+      className="rounded-2xl border border-border-strong bg-surface p-2 shadow-lg shadow-shadow/10 focus-within:border-border-hover"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -43,7 +43,7 @@ export function ChatComposer({
     >
       <Textarea
         aria-label="Ask Mentra anything"
-        className="max-h-48 min-h-[3.25rem] resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-sm leading-6 placeholder:text-slate-500 focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60"
+        className="max-h-48 min-h-[3.25rem] resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-sm leading-6 placeholder:text-subtle focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60"
         disabled={isThinking}
         onChange={(event) => onChange(event.currentTarget.value)}
         onKeyDown={handleKeyDown}
@@ -55,7 +55,7 @@ export function ChatComposer({
       <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
         <button
           aria-label="Attach material (coming soon)"
-          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-slate-500"
+          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle"
           disabled
           title="Attachments are not available yet"
           type="button"
@@ -64,7 +64,7 @@ export function ChatComposer({
           <span className="hidden sm:inline">Attach</span>
         </button>
         <div className="flex items-center gap-3">
-          <span className="hidden text-[11px] text-slate-600 sm:inline">
+          <span className="hidden text-[11px] text-subtle sm:inline">
             Enter to send · Shift + Enter for a new line
           </span>
           <Button

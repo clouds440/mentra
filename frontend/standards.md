@@ -25,6 +25,8 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Route paths are lowercase and resource-oriented: `/` for Chat, `/library`, `/progress`, `/assessments`, and `/settings`.
 - Navigation belongs in the application shell, not repeated inside individual pages. Keep desktop collapse and mobile drawer behavior accessible and operable.
 - Keep page-specific behavior and UI with the relevant page/feature. Do not add routes, guards, onboarding, or account flows without a product requirement.
+- `/login` and `/register` use `AuthLayout` and a shared username/password form. `RequireGuest` redirects signed-in users; `RequireAuth` guards the workspace and preserves the requested destination.
+- The authenticated `StudentProfileProvider` owns profile restoration. `ProfileReady` handles loading/retry; `RequireOnboardingComplete` gates the workspace. `/onboarding` collects required information and optional calibration; `/calibration` resumes later from Settings.
 
 ## Components
 
@@ -50,12 +52,14 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Keep state local by default and lift it only when multiple components need to share it.
 - Do not add a global state library until there is a demonstrated need.
 - Treat server state (backend data and request lifecycle) separately from local UI state.
+- `AuthProvider` owns authenticated identity and session restoration. Tokens live only in backend-issued HTTP-only cookies, never local/session storage or JavaScript state. Tab messages signal a session change; each tab verifies identity with `/auth/me`.
 
 ## API access
 
 - Route backend HTTP communication through `services/api.ts`; do not scatter `fetch(...)` through components.
 - Use the environment-configured `VITE_API_URL`. A browser must be able to resolve this URL; do not use a Docker-only service name in the browser bundle.
 - The shared client owns JSON headers/parsing and converts standard backend errors into useful typed errors. Keep it small; add retries, caching, auth, or streaming only when required by a real feature.
+- Requests include cookie credentials. `services/auth.ts` requests cookie transport, enforces a request timeout, and uses actual backend contracts. Clear client identity only after successful logout; keep retryable network errors distinct from an unauthenticated response.
 
 ## Utilities
 
@@ -67,7 +71,7 @@ It uses `clsx` for conditional class inputs and `tailwind-merge` so caller overr
 ## Styling
 
 - Use Tailwind CSS utilities and the global base rules in `src/styles/global.css`.
-- Reuse the existing slate/sky/violet palette and common spacing, radius, focus, and responsive patterns.
+- Reuse semantic theme tokens and common spacing, radius, focus, and responsive patterns. Both palettes live centrally in `styles/global.css`; avoid raw palette colors or component-specific theme branches.
 - Avoid arbitrary one-off values when an existing utility or established pattern fits.
 - Preserve visible keyboard focus and responsive behavior. Shared UI primitives should have consistent defaults while allowing appropriate `className` overrides.
 - Respect reduced-motion preferences for non-essential motion.
@@ -87,7 +91,7 @@ Keep temporary sample content isolated from page components and label prototype 
 
 Test behavior and boundaries that matter. Do not write tests merely to inflate coverage.
 
-Prioritize meaningful primitive behavior, user interactions, and important rendering or state behavior. Add a test runner when the application has behavior that warrants it; the current frontend validation includes strict TypeScript checks and a production build.
+Prioritize meaningful primitive behavior, user interactions, and important rendering or state behavior. Run `npm run build` for strict TypeScript checks and a production build, and `npm run check:theme` for theme behavior. `npm run test:e2e` uses Playwright with real auth/profile APIs and an isolated migrated PostgreSQL schema; `test:auth` / `test:profile` select subsets. Only the AI evaluator is a test double, not authentication or persistence. See [auth test setup](../docs/frontend-auth.md) and [profile tests](../docs/student-profile.md).
 
 ## Dependencies
 
