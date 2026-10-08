@@ -28,10 +28,10 @@ async def recent(request: Request, cursor: str | None = Query(None, max_length=3
 
 @router.post('/turns')
 async def send(body: SendTurn, request: Request, identity=Depends(require_onboarded_identity)):
-    async def generate(messages, selection):
-        response = await generate_reply(messages, ChatSelection(**selection), request, identity, service(request).policy)
+    async def generate(messages, selection, scope):
+        response = await generate_reply(messages, ChatSelection(**selection), request, identity, service(request).policy, scope)
         return response.model_dump(mode='json')
-    return await service(request).send(identity.learner_id, body, generate)
+    return await service(request).send(identity.learner_id, body, generate, with_scope=True)
 
 
 @router.get('/{conversation_id}/messages')

@@ -1,3 +1,4 @@
+import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Select } from '../ui';
@@ -53,7 +54,7 @@ export function SourceSelector({ selection, onChange, disabled }: { selection: C
     {selection.mode === 'SOURCE_SPECIFIC' && <label className="block">Selected material<Select multiple className="mt-1" value={selection.document_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, document_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{documents.filter(d => d.active_generation_id && (selection.include_archived || (!d.archived && contexts.some(c => c.status !== 'ARCHIVED' && d.context_ids.includes(c.context_id))))).map(d => <option key={d.id} value={d.id}>{d.title}{d.archived ? ' (archived)' : ''}</option>)}</Select></label>}
     {selection.mode === 'SOURCE_SPECIFIC' && nextOffset < total && <Button size="sm" variant="secondary" disabled={disabled || loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Loading material…' : 'Load more material'}</Button>}
     {selection.mode === 'CROSS_CONTEXT' && <label className="block">Selected learning contexts<Select multiple className="mt-1" value={selection.context_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, context_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{contexts.filter(c => c.status !== 'ARCHIVED' || selection.include_archived).map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>}
-    {selection.mode !== 'STANDARD' && <label className="flex gap-2"><input type="checkbox" disabled={disabled} checked={selection.include_archived ?? false} onChange={e => choose({ ...selection, include_archived: e.target.checked })} />Allow explicitly selected archived material</label>}
+    {selection.mode !== 'STANDARD' && <Toggle label="Allow explicitly selected archived material" disabled={disabled} checked={selection.include_archived ?? false} onChange={e => choose({ ...selection, include_archived: e.target.checked })} />}
     {notice && <p role="status" className="text-muted">{notice}</p>}
     {error && <p role="alert" className="text-danger">{error}</p>}<Link to="/library" className="inline-block text-accent">Add or manage material in Library</Link>
     <p className="text-xs text-subtle">Only ready material can ground an answer. Selected sources stay within your Library.</p></div>

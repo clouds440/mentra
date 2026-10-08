@@ -53,7 +53,8 @@ class MentraLLM:
     async def ainvoke_messages(self, source: PromptSource, messages: Sequence[BaseMessage], *,
                                output_schema: type[BaseModel] | None = None,
                                additional_sources: Sequence[PromptSource] = (),
-                               system_context: str | None = None):
+                               system_context: str | None = None,
+                               tools: Sequence | None = None):
         """Use a registered source prompt with ordered chat turns and optional data."""
         system_messages = [message for message in messages if isinstance(message, SystemMessage)]
         if system_messages:
@@ -71,5 +72,7 @@ class MentraLLM:
                 system = f"{system}\n\n{system_context}"
             prepared = [SystemMessage(content=system), *messages]
         model = self._model(source, output_schema)
+        if tools:
+            model = model.bind_tools(tools)
         result = await model.ainvoke(prepared)
         return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result

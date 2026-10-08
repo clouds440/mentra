@@ -1,3 +1,4 @@
+import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button, Input, Select } from '../ui';
 import { createContext, uploadMaterial, materialError } from '../../services/rag';
@@ -30,7 +31,7 @@ export function MaterialUpload({ contexts, capabilities, replacement, onAccepted
     <label className="block text-sm">File<Input ref={input} type="file" className="mt-2" required disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); key.current = crypto.randomUUID(); }} /></label>
     {!replacement && <><label className="block text-sm">Material title<Input className="mt-2" value={title} maxLength={200} disabled={busy} placeholder="Use the filename if left blank" onChange={e => { setTitle(e.target.value); key.current = crypto.randomUUID(); }} /></label>
     <label className="block text-sm">Learning context<Select className="mt-2" value={contextId} disabled={busy} onChange={e => { setContextId(e.target.value); key.current = crypto.randomUUID(); }}><option value="">Create a context</option>{contexts.filter(c => c.status !== 'ARCHIVED').map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>
-    {!contextId && <><label className="block text-sm">New context name<Input className="mt-2" value={newName} maxLength={200} disabled={busy} onChange={e => setNewName(e.target.value)} /></label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={activate} disabled={busy} onChange={e => setActivate(e.target.checked)} />Make this my current learning context</label></>}</>}
+    {!contextId && <><label className="block text-sm">New context name<Input className="mt-2" value={newName} maxLength={200} disabled={busy} onChange={e => setNewName(e.target.value)} /></label><Toggle label="Make this my current learning context" checked={activate} disabled={busy} onChange={e => setActivate(e.target.checked)} /></>}</>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     <Button type="submit" disabled={!file || busy}>{busy ? 'Uploading…' : replacement ? 'Submit replacement' : 'Upload material'}</Button>
   </form>;

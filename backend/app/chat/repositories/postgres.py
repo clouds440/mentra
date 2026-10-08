@@ -183,6 +183,9 @@ class ChatRepository:
             if not error:
                 sequence += 1
                 payload = dict(response)
+                from app.history_management.repositories.postgres import MemoryRepository
+                if not MemoryRepository.references_current(session, owner, payload):
+                    payload = dict(content='The referenced memory or conversation changed while I was answering. Please send your question again so I can use the current information.', history_references=[], memory_references=[])
                 content = payload.pop('content')
                 payload.pop('role', None)
                 session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=row['id'], sequence=sequence,
@@ -224,6 +227,8 @@ class ChatRepository:
             values = dict(revision=revision+1, updated_at=now())
             if remove:
                 values['deleted_at'] = now()
+                from app.history_management.repositories.postgres import MemoryRepository
+                MemoryRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
                 session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
                 session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))

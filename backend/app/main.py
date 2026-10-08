@@ -23,6 +23,7 @@ from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.vector_store import VectorStore
 from app.rag.factory import create_rag_service
 from app.rag.upload_limit import MaterialUploadLimit
+from app.history_management.factory import create_history_management
 
 
 def create_app() -> FastAPI:
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
             application.state.model_factory = model_factory
             application.state.chat_service = ChatService(application.state.llm)
             application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
+            application.state.history_management = create_history_management(get_session_factory(), application.state.llm, application.state.student_profile_service)
             logger.info("Mentra backend started successfully.")
             yield
         finally:

@@ -1,0 +1,17 @@
+{
+  "synthetic_messages": 10000,
+  "synthetic_conversations": 200,
+  "synthetic_memories": 500,
+  "history_query_count_min": 2,
+  "history_query_count_max": 2,
+  "cold_ms": 17.26,
+  "warm_median_ms": 8.31,
+  "p95_ms": 11.09,
+  "selected_indexes": [
+    "idx_chat_history_fts"
+  ],
+  "max_windows": 3,
+  "max_expanded_messages": 9,
+  "memory_recall_limit": 5,
+  "note": "Local dedicated PostgreSQL 17 fixture; latency is not a production SLO."
+}

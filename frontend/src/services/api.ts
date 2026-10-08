@@ -14,7 +14,7 @@ async function withResponse<T>(url: string, init: RequestInit, consume: (respons
   } catch (error) {
     if (parent?.aborted) throw error;
     if (timedOut) throw new ApiError('The request took too long. Try again.', 0, 'REQUEST_TIMEOUT');
-    if (error instanceof TypeError) throw new ApiError('Couldnâ€™t reach Mentra. Check your connection and try again.', 0, 'NETWORK_ERROR');
+    if (error instanceof TypeError) throw new ApiError('Couldn\u2019t reach Mentra. Check your connection and try again.', 0, 'NETWORK_ERROR');
     throw error;
   } finally {
     clearTimeout(timer);

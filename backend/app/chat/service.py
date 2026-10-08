@@ -14,23 +14,31 @@ class ConversationService:
         self.policy = policy or HistoryContextPolicy()
         self.tasks = set()
 
-    async def send(self, owner, request, generate):
+    async def send(self, owner, request, generate, *, with_scope=False):
         if not request.content.strip():
             raise AppError('CHAT_EMPTY_MESSAGE', 'Enter a message.', 422)
         job = await run_in_threadpool(self.repository.begin_turn, owner, request)
         if job['run']:
-            task = asyncio.create_task(self._generate(owner, job, generate))
+            task = asyncio.create_task(self._generate(owner, job, generate, with_scope))
             self.tasks.add(task)
             task.add_done_callback(self.tasks.discard)
             await asyncio.shield(task)
         return await run_in_threadpool(self.repository.status, owner, job['conversation_id'], job['turn_id'], True)
 
-    async def _generate(self, owner, job, generate):
+    async def _generate(self, owner, job, generate, with_scope=False):
         try:
             rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
             # Context selection runs once, after retrieval, when the complete prompt budget is known.
-            response = await asyncio.wait_for(generate(history, job['selection']), timeout=150)
+            if with_scope:
+                current = next(row for row in rows if row['sequence'] == job['user_sequence'])
+                scope = dict(job, current_user_message_id=current['id'], context_rows=rows,
+                    visible_ids=[], visible_user_messages=[], evidence_ids={current['id']},
+                    history_references=[], memory_references=[])
+                invocation = generate(history, job['selection'], scope)
+            else:
+                invocation = generate(history, job['selection'])
+            response = await asyncio.wait_for(invocation, timeout=150)
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
         except asyncio.CancelledError:
             await run_in_threadpool(self.repository.finish, owner, job, None, 'Generation interrupted. Retry this message.')
@@ -38,7 +46,7 @@ class ConversationService:
         except Exception as error:
             message = error.message if isinstance(error, AppError) else 'Mentra could not complete this response. Retry this message.'
             if not isinstance(error, AppError):
-                logger.exception('Persistent chat generation failed')
+                logger.error('Persistent chat generation failed (%s)', type(error).__name__)
             await run_in_threadpool(self.repository.finish, owner, job, None, message)
 
     async def close(self):

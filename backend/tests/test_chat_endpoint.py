@@ -55,6 +55,11 @@ def create_test_client(factory: FakeModelFactory) -> TestClient:
 
 
 class ChatEndpointTests(unittest.TestCase):
+    def test_empty_provider_answer_is_not_persisted_as_success(self):
+        client = create_test_client(FakeModelFactory(FakeChatModel('')))
+        response = client.post('/api/v1/chat', json={'messages':[{'role':'user','content':'Hello'}]})
+        self.assertEqual(response.status_code, 502)
+
     def test_chat_returns_reply_and_sends_system_prompt_and_history(self) -> None:
         model = FakeChatModel("Let's work through it.")
         client = create_test_client(FakeModelFactory(model))

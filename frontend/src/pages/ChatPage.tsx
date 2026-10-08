@@ -30,8 +30,10 @@ export function ChatPage() {
   const prependRef = useRef<number | null>(null);
   const bottomRef = useRef(true);
 
-  useEffect(() => { setDraftId(crypto.randomUUID()); setDraft(''); setValidation(null); setSelection({ mode: 'STANDARD' }); }, [newChatKey, identity?.learner_id]);
-  useEffect(() => {
+  // Reset before the new workspace becomes interactive, so the first keystroke
+  // cannot be erased by a deferred navigation/account effect.
+  useLayoutEffect(() => { setDraftId(crypto.randomUUID()); setDraft(''); setValidation(null); setSelection({ mode: 'STANDARD' }); }, [newChatKey, identity?.learner_id]);
+  useLayoutEffect(() => {
     setDraft(''); setValidation(null); bottomRef.current = true;
     if (conversationId) void chatStore.open(conversationId);
     else setSelection({ mode: 'STANDARD' });

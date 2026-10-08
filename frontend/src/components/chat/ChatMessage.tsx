@@ -1,9 +1,13 @@
 import { MarkdownContent } from '../content/MarkdownContent';
 import mentraLogo from '../../assets/mentra-logo.png';
 import type { ChatMessageData } from '../../types/chat';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
 import { SourceViewer, sourceLocation } from '../library/SourceViewer';
 import type { SourceReference } from '../../types/rag';
+import type { HistoryReference, MemoryReference } from '../../types/memories';
+import { Spinner } from '../ui/Spinner';
+
+const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 
 interface MarkdownNode { type: string; value?: string; url?: string; children?: MarkdownNode[] }
 function citationPlugin(tokens: string[]) {
@@ -13,7 +17,7 @@ function citationPlugin(tokens: string[]) {
       node.children = node.children.flatMap(child => {
         if (child.type !== 'text' || !child.value) { visit(child); return [child]; }
         const parts: MarkdownNode[] = []; let start = 0;
-        for (const match of child.value.matchAll(/\[\[(S\d+)\]\]/g)) {
+        for (const match of child.value.matchAll(/\[\[([SHM]\d+)\]\]/g)) {
           if (!tokens.includes(match[1])) continue;
           const index = match.index ?? 0;
           parts.push({ type: 'text', value: child.value.slice(start, index) }, { type: 'link', url: `#mentra-source-${match[1]}`, children: [{ type: 'text', value: `[${match[1]}]` }] });
@@ -32,15 +36,18 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const [source, setSource] = useState<SourceReference>();
+  const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
-  const citations = useMemo(() => citationPlugin(message.citations ?? []), [message.citations]);
+  const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)]), [message.citations, message.history_references, message.memory_references]);
   // Keep the renderer identity stable so opening the dialog retains its trigger
   // node and native dialog focus restoration works for keyboard users.
   const markdownComponents = useMemo(() => ({ a: ({ href, children }: { href?: string; children?: ReactNode }) => {
     const token = href?.startsWith('#mentra-source-') ? href.slice('#mentra-source-'.length) : undefined;
     const found = message.sources?.find(s => s.token === token && message.citations?.includes(s.token));
+    const history = [...(message.history_references ?? []), ...(message.memory_references ?? [])].find(item => item.token === token);
+    if (history) return <button className="text-accent underline" onClick={() => setHistoryReference(history)} aria-label={`Open ${history.token.startsWith('H') ? 'history' : 'memory'} reference ${history.token}`}>{children}</button>;
     return found ? <button className="text-accent underline" onClick={() => setSource(found)} aria-label={`Open cited source ${found.title}`}>{children}</button> : <a href={href} rel="noopener noreferrer">{children}</a>;
-  } }), [message.sources, message.citations]);
+  } }), [message.sources, message.citations, message.history_references, message.memory_references]);
 
   return (
     <article
@@ -69,6 +76,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}
             {message.retrieval_status && ['unavailable', 'no_matches', 'no_eligible_sources'].includes(message.retrieval_status) && <p className="mt-3 text-xs text-subtle">{message.retrieval_status === 'unavailable' ? 'Study material retrieval was unavailable for this answer.' : 'No supporting Library passages were found for this answer.'}</p>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
+            {historyReference && <Suspense fallback={<span role="status"><Spinner />Loading reference…</span>}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
+            {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="text-accent hover:underline" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
           </div>
         ) : (
           <MarkdownContent content={message.content} />

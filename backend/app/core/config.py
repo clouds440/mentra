@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
+    memory_active_limit: int = Field(default=200, ge=1, le=1000)
+    memory_pending_limit: int = Field(default=50, ge=1, le=1000)
+    memory_goal_days: int = Field(default=30, ge=1, le=3650)
+    memory_fact_days: int = Field(default=180, ge=1, le=3650)
+    memory_preference_days: int = Field(default=365, ge=1, le=3650)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"
     qdrant_url: str = ""

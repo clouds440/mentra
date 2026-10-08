@@ -33,6 +33,10 @@ from app.chat.repositories.postgres import ChatRepository
 from app.chat.service import ConversationService
 from app.api.routes.conversations import router as conversations_router
 from testing.rag import TestEmbedding, TestChatFactory
+from testing.history_model import HistoryChatFactory
+from app.langchain.llm import MentraLLM
+from app.history_management.factory import create_history_management
+from app.api.routes.memories import router as memories_router
 from app.student_profile.repositories.postgres import PostgresStudentProfileRepository
 from app.student_profile.service import StudentProfileService
 from app.api.routes.student_profile import router as profile_router
@@ -52,8 +56,10 @@ async def lifespan(application):
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
     application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
         embedding, vector, FileStorage(storage.name), settings)
-    application.state.chat_service = ChatService(TestChatFactory())
+    llm = MentraLLM(HistoryChatFactory())
+    application.state.chat_service = ChatService(llm)
     application.state.conversation_service = ConversationService(ChatRepository(database.sessions))
+    application.state.history_management = create_history_management(database.sessions, llm, application.state.student_profile_service)
     worker = IngestionWorker(application.state.rag_service)
     stopping = asyncio.Event()
 
@@ -86,6 +92,7 @@ app.include_router(profile_router, prefix='/api/v1')
 app.include_router(rag_router, prefix='/api/v1')
 app.include_router(chat_router, prefix='/api/v1')
 app.include_router(conversations_router, prefix='/api/v1')
+app.include_router(memories_router, prefix='/api/v1')
 
 
 def cleanup_database():

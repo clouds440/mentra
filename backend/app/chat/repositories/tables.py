@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Text, BigInteger, Integer, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index
+from sqlalchemy import Table, Column, Text, BigInteger, Integer, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 from app.auth.repositories.tables import learner
@@ -48,3 +48,5 @@ changes = Table('chat_change', metadata, owner(True), Column('revision', BigInte
     CheckConstraint('revision > 0', name='chat_change_revision'))
 
 TABLES = (conversations, messages, turns, sync_state, changes)
+messages.append_constraint(Index('idx_chat_history_fts', func.to_tsvector(literal_column("'simple'"), messages.c.content), postgresql_using='gin'))
+Index('idx_chat_history_trgm', messages.c.content, postgresql_using='gin', postgresql_ops={'content': 'public.gin_trgm_ops'})

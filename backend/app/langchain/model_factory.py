@@ -63,6 +63,7 @@ class ModelFactory:
             temperature=self._settings.ai_temperature,
             timeout=self._settings.ai_timeout,
             max_retries=self._settings.ai_max_retries,
+            max_tokens=self._settings.chat_output_token_reserve,
         )
 
 

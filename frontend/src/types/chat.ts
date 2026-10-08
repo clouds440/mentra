@@ -1,4 +1,5 @@
 import type { SourceReference, ChatSelection } from './rag';
+import type { HistoryReference, MemoryReference } from './memories';
 export interface ChatMessageData {
   id: string;
   role: 'user' | 'assistant';
@@ -8,6 +9,8 @@ export interface ChatMessageData {
   retrieval_status?: string;
   retrieval_warning?: string | null;
   retrieval_scope?: ChatSelection | null;
+  history_references?: HistoryReference[];
+  memory_references?: MemoryReference[];
 }
 
 export type ChatTurn = Pick<ChatMessageData, 'role' | 'content'>;
@@ -20,4 +23,6 @@ export interface ChatResponse {
   retrieval_status?: string;
   retrieval_warning?: string | null;
   retrieval_scope?: ChatSelection | null;
+  history_references?: HistoryReference[];
+  memory_references?: MemoryReference[];
 }

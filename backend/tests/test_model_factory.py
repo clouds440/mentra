@@ -38,6 +38,7 @@ class ModelFactoryTests(unittest.TestCase):
                     ai_temperature=0.7,
                     ai_timeout=12,
                     ai_max_retries=4,
+                    chat_output_token_reserve=1024,
                 )
             ).get_model()
 
@@ -51,6 +52,7 @@ class ModelFactoryTests(unittest.TestCase):
                 "temperature": 0.7,
                 "timeout": 12,
                 "max_retries": 4,
+                "max_tokens": 1024,
             },
         )
 

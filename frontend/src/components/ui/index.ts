@@ -1,3 +1,5 @@
+export { Toggle } from './Toggle';
+export type { ToggleProps } from './Toggle';
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
 export { Card } from './Card';

@@ -7,6 +7,7 @@ from app.learner.repositories.tables import metadata
 from app.student_profile.repositories import tables as profile_tables
 from app.rag.repositories import tables as rag_tables
 from app.chat.repositories import tables as chat_tables
+from app.history_management.repositories import tables as memory_tables
 
 config = context.config
 

@@ -1,5 +1,10 @@
 import { Database, Sparkles } from 'lucide-react';
 import { ProfileSettings } from '../components/student-profile/ProfileSettings';
+import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { Spinner } from '../components/ui/Spinner';
+
+const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
 
 const settingSections = [
   {
@@ -17,6 +22,17 @@ const settingSections = [
 ];
 
 export function SettingsPage() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'memories' ? 'memories' : 'profile';
+  const [visitedMemories, setVisitedMemories] = useState(tab === 'memories');
+  useEffect(() => { if (tab === 'memories') setVisitedMemories(true); }, [tab]);
+  function changeTab(value: string) {
+    if (value === 'memories') setVisitedMemories(true);
+    const next = new URLSearchParams(params);
+    if (value === 'profile') { next.delete('tab'); next.delete('memory'); }
+    else next.set('tab', 'memories');
+    setParams(next);
+  }
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
@@ -32,6 +48,17 @@ export function SettingsPage() {
           </p>
         </div>
 
+        <div role="tablist" aria-label="Settings sections" className="mt-7 flex gap-2 border-b border-border" onKeyDown={event => {
+          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const current = (event.target as HTMLElement).id === 'settings-tab-profile' ? 'profile' : 'memories';
+            const value = event.key === 'Home' ? 'profile' : event.key === 'End' ? 'memories' : current === 'profile' ? 'memories' : 'profile';
+            changeTab(value); document.getElementById(`settings-tab-${value}`)?.focus();
+          }
+        }}>
+          {(['profile', 'memories'] as const).map(value => <button key={value} id={`settings-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`settings-panel-${value}`} tabIndex={tab === value ? 0 : -1} className={`border-b-2 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${tab === value ? 'border-accent text-foreground' : 'border-transparent text-muted hover:text-foreground'}`} onClick={() => changeTab(value)}>{value === 'profile' ? 'Profile & preferences' : 'Memories'}</button>)}
+        </div>
+        <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
         <ProfileSettings />
         <div className="mt-6 divide-y divide-border border-y border-border">
           {settingSections.map(({ title, description, detail, icon: Icon }) => (
@@ -48,6 +75,10 @@ export function SettingsPage() {
           ))}
 
 
+        </div>
+        </div>
+        <div role="tabpanel" id="settings-panel-memories" aria-labelledby="settings-tab-memories" hidden={tab !== 'memories'}>
+          {(visitedMemories || tab === 'memories') && <Suspense fallback={<div role="status" className="mt-7 flex items-center gap-2 text-sm text-muted"><Spinner />Loading memories…</div>}><MemoriesSettings active={tab === 'memories'} /></Suspense>}
         </div>
       </div>
     </div>

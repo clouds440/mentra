@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Brain,
   ChevronDown,
   CircleHelp,
   CircleUserRound,
@@ -10,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import mentraLogo from '../../assets/mentra-logo.png';
 import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -39,6 +40,8 @@ export function AppSidebar({
   onNewChat,
 }: AppSidebarProps) {
   const { identity } = useAuth();
+  const location = useLocation();
+  const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
@@ -174,11 +177,12 @@ export function AppSidebar({
                   <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
                 </div>
                 <div className="p-2">
-                  <NavLink
-                    className={({ isActive }) =>
+                  <Link
+                    aria-current={location.pathname === '/settings' && !memoryActive ? 'page' : undefined}
+                    className={
                       cn(
                         'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                        isActive
+                        location.pathname === '/settings' && !memoryActive
                           ? 'bg-active font-medium text-foreground'
                           : 'text-muted hover:bg-hover hover:text-foreground',
                       )
@@ -191,7 +195,10 @@ export function AppSidebar({
                   >
                     <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
                     <span>Settings</span>
-                  </NavLink>
+                  </Link>
+                  <Link to="/settings?tab=memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', memoryActive ? 'bg-active font-medium text-foreground' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
+                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span>Memories</span>
+                  </Link>
                 </div>
                 <div className="border-t border-border px-2 pb-2">
                   <ThemeSelector collapsed={false} />

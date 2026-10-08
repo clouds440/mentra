@@ -1,0 +1,18 @@
+{
+  "provider": "Deterministic local HTTP provider; verifies tool protocol, not model quality",
+  "checks": [
+    "Rebuilt image starts with automatic migration 0006, auth and onboarding",
+    "Actual ChatOpenAI tool binding, semantic structured validation and evidence-backed persistence",
+    "Actual tool-result pairing, memory recall and cross-chat history with distinct M/H references",
+    "Restart preserves memories, saved evidence, chat references and session",
+    "Second account cannot retrieve memory detail or history references",
+    "Chat deletion preserves active memory and detached minimum evidence",
+    "Manual edit, optimistic revision conflict and permanent memory/evidence purge",
+    "Rebuilt Nginx frontend serves Settings deep link and memory API/UI bundle",
+    "Browser on rebuilt Nginx image verifies manual CRUD, reload, confirmation and tool-written memory against rebuilt API via test-only URL proxy"
+  ],
+  "images": {
+    "mentra-backend:latest": "sha256:f5ebbf8642d0040cc7dd8cc49b29c0efbb71c19632b94402a91649ac81750ffc",
+    "mentra-frontend:latest": "sha256:07162c84161d35a8930bae27e9e53d158b495acd0b4fade0a4014422dfc78458"
+  }
+}
