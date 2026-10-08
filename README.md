@@ -94,18 +94,19 @@ docker compose up --build -d --wait --wait-timeout 180
 
 - http://localhost:5173
 
-The UI opens at `/login` for guests. Registration signs you in immediately, then requires profile information and offers a recommended, optional 1–2 minute calibration before entering the workspace. An HTTP-only cookie restores your session on refresh and return visits; onboarding and assessment progress follow your account. View/edit your profile and retry calibration evaluation in Settings. Sign out from the sidebar to revoke the session. Google Drive is a future optional backup/restore integration, not an access requirement. Chat turns are sent to the configured AI provider through the backend and kept only in frontend memory; they are not persisted.
+The UI opens at `/login` for guests. Registration signs you in immediately, then requires profile information and offers a recommended, optional 1â€“2 minute calibration before entering the workspace. An HTTP-only cookie restores your session on refresh and return visits; onboarding and assessment progress follow your account. View/edit your profile and retry calibration evaluation in Settings. Sign out from the sidebar to revoke the session. Conversations and their messages are persisted per account in PostgreSQL, with incremental browser caching and recoverable turns. See [persistent chat](docs/persistent-chat.md).
 
 ## Workspace routes
 
-- `/login` and `/register` — username/password authentication
-- `/onboarding` — mandatory profile information and optional calibration
-- `/calibration` — later calibration from Settings
-- `/` — Chat
-- `/library` — study material placeholder
-- `/progress` — granular learning progress placeholder
-- `/assessments` — practice and assessment placeholder
-- `/settings` — editable Student Profile, calibration/retry, theme, and backup placeholder
+- `/login` and `/register` â€” username/password authentication
+- `/onboarding` â€” mandatory profile information and optional calibration
+- `/calibration` â€” later calibration from Settings
+- `/` â€” Chat
+- `/chat/:conversationId` ? saved conversations, paged history, and recoverable responses
+- `/library` â€” study material placeholder
+- `/progress` â€” granular learning progress placeholder
+- `/assessments` â€” practice and assessment placeholder
+- `/settings` â€” editable Student Profile, calibration/retry, theme, and account data information
 
 ## Backend URL
 

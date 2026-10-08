@@ -19,7 +19,7 @@ export function AppLayout() {
   const [newChatKey, setNewChatKey] = useState(0);
   const [chatTitle, setChatTitle] = useState('New Chat');
   const title =
-    location.pathname === '/'
+    location.pathname === '/' || location.pathname.startsWith('/chat/')
       ? chatTitle
       : pageTitles[location.pathname] ?? 'Mentra';
 

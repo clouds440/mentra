@@ -29,6 +29,9 @@ from app.rag.worker import IngestionWorker
 from app.api.routes.rag import router as rag_router
 from app.api.routes.chat import router as chat_router
 from app.langchain.chat_service import ChatService
+from app.chat.repositories.postgres import ChatRepository
+from app.chat.service import ConversationService
+from app.api.routes.conversations import router as conversations_router
 from testing.rag import TestEmbedding, TestChatFactory
 from app.student_profile.repositories.postgres import PostgresStudentProfileRepository
 from app.student_profile.service import StudentProfileService
@@ -50,6 +53,7 @@ async def lifespan(application):
     application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
         embedding, vector, FileStorage(storage.name), settings)
     application.state.chat_service = ChatService(TestChatFactory())
+    application.state.conversation_service = ConversationService(ChatRepository(database.sessions))
     worker = IngestionWorker(application.state.rag_service)
     stopping = asyncio.Event()
 
@@ -64,6 +68,7 @@ async def lifespan(application):
     try:
         yield
     finally:
+        await application.state.conversation_service.close()
         stopping.set()
         await task
         vector.close()
@@ -80,6 +85,7 @@ app.include_router(health_router, prefix='/api/v1')
 app.include_router(profile_router, prefix='/api/v1')
 app.include_router(rag_router, prefix='/api/v1')
 app.include_router(chat_router, prefix='/api/v1')
+app.include_router(conversations_router, prefix='/api/v1')
 
 
 def cleanup_database():

@@ -9,6 +9,9 @@ from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
 from app.core.logging import configure_logging, logger
 from app.db.database import init_db
+from app.db.database import get_session_factory
+from app.chat.repositories.postgres import ChatRepository
+from app.chat.service import ConversationService
 from app.langchain.chat_service import ChatService
 from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import model_factory
@@ -40,9 +43,12 @@ def create_app() -> FastAPI:
             application.state.rag_service = create_rag_service(application.state.learner_service, embedding_service, vector_store)
             application.state.model_factory = model_factory
             application.state.chat_service = ChatService(application.state.llm)
+            application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
             logger.info("Mentra backend started successfully.")
             yield
         finally:
+            if hasattr(application.state, 'conversation_service'):
+                await application.state.conversation_service.close()
             if hasattr(application.state, 'rag_service'):
                 application.state.rag_service.close()
             vector_store.close()

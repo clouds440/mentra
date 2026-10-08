@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { AssessmentsPage } from './pages/AssessmentsPage';
 import { ChatPage } from './pages/ChatPage';
+import { ChatSession } from './components/chat/ChatSession';
 import { LibraryPage } from './pages/LibraryPage';
 import { MaterialDetailPage } from './pages/MaterialDetailPage';
 import { ProgressPage } from './pages/ProgressPage';
@@ -18,6 +19,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ChatSession />
         <Routes>
           <Route element={<RequireGuest />}>
             <Route element={<AuthLayout />}>
@@ -32,6 +34,7 @@ function App() {
               <Route element={<RequireOnboardingComplete />}>
                 <Route element={<AppLayout />}>
                   <Route index element={<ChatPage />} />
+                  <Route path="chat/:conversationId" element={<ChatPage />} />
                   <Route path="library" element={<LibraryPage />} />
                   <Route path="library/:documentId" element={<MaterialDetailPage />} />
                   <Route path="progress" element={<ProgressPage />} />

@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "startup applies chat migration and authenticated bootstrap is empty",
+    "provider-backed turn is persisted and retry is idempotent",
+    "backend restart preserves session, conversation and exact messages",
+    "committed changes replay from the original synchronization cursor",
+    "second account cannot access the conversation",
+    "deletion excludes history and prevents reopening",
+    "rebuilt Nginx image serves persistent chat routes and new API client bundle"
+  ]
+}

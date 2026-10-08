@@ -3,11 +3,14 @@ from typing import Literal
 from fastapi import APIRouter, Request, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 import re
+import json
 from starlette.concurrency import run_in_threadpool
 from app.core.exceptions import AppError
 from app.rag.schemas import ChatSelection, SearchRequest, SourceReference
 
 from app.langchain.chat_service import ChatService
+from app.chat.context import HistoryContextPolicy
+from app.langchain.prompts import PromptSource, get_system_prompt
 from app.student_profile.dependencies import require_onboarded_identity
 
 router = APIRouter(tags=["chat"])
@@ -40,14 +43,18 @@ class ChatResponse(BaseModel):
     retrieval_scope: ChatSelection | None = None
 
 
-@router.post("/chat", response_model=ChatResponse, response_model_exclude_unset=True, summary="Send a chat message")
+@router.post("/chat", response_model=ChatResponse, response_model_exclude_unset=True, summary="Legacy stateless chat", deprecated=True)
 async def chat(request: ChatRequest, http_request: Request, identity=Depends(require_onboarded_identity)) -> ChatResponse:
+    return await generate_reply([(message.role, message.content) for message in request.messages], request.retrieval, http_request, identity)
+
+
+async def generate_reply(messages, retrieval, http_request, identity, history_policy=None) -> ChatResponse:
     chat_service: ChatService = http_request.app.state.chat_service
     rag_service = getattr(http_request.app.state, 'rag_service', None)
     result, warning = None, None
     if rag_service is not None:
-        query = next((turn.content for turn in reversed(request.messages) if turn.role == 'user'), '')
-        selection = request.retrieval.model_dump() if request.retrieval else {}
+        query = next((content for role, content in reversed(messages) if role == 'user'), '')
+        selection = retrieval.model_dump() if retrieval else {}
         try:
             result = await run_in_threadpool(rag_service.search, identity.learner_id, SearchRequest(query=query, **selection))
         except AppError as exc:
@@ -59,8 +66,12 @@ async def chat(request: ChatRequest, http_request: Request, identity=Depends(req
     if result and result.warnings:
         warning = ' '.join(result.warnings)
     kwargs = {'source_packet': packet} if rag_service is not None else {}
+    system_text = get_system_prompt(PromptSource.CHAT)
+    if rag_service is not None:
+        system_text += '\n\n' + get_system_prompt(PromptSource.RAG_CONTEXT) + '\n\n' + json.dumps({'study_sources': packet}, ensure_ascii=False)
+    messages = (history_policy or HistoryContextPolicy()).for_prompt(messages, system_text)
     reply = await chat_service.reply(
-        [(message.role, message.content) for message in request.messages], **kwargs
+        messages, **kwargs
     )
     if rag_service is None:
         return ChatResponse(role='assistant', content=reply)
@@ -70,7 +81,7 @@ async def chat(request: ChatRequest, http_request: Request, identity=Depends(req
     # Unknown markers never become links. The UI only resolves the allowlisted tokens.
     return ChatResponse(role='assistant', content=reply, sources=sources, citations=cited,
                         retrieval_status=packet['status'], retrieval_warning=warning,
-                        retrieval_scope=ChatSelection(mode=request.retrieval.mode if request.retrieval else 'STANDARD',
+                        retrieval_scope=ChatSelection(mode=retrieval.mode if retrieval else 'STANDARD',
                             context_ids=result.context_ids if result else None,
                             document_ids=list(dict.fromkeys(s.document_id for s in sources)),
-                            include_archived=request.retrieval.include_archived if request.retrieval else False))
+                            include_archived=retrieval.include_archived if retrieval else False))

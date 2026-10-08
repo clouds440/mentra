@@ -16,6 +16,7 @@ import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';
 import { useAuth } from '../auth/AuthProvider';
 import { cn } from '../../utils/cn';
+import { ConversationList } from '../chat/ConversationList';
 
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
@@ -158,14 +159,7 @@ export function AppSidebar({
         </nav>
 
         {!collapsed && (
-          <section aria-label="Conversation history" className="mt-8 flex-1 overflow-y-auto px-3">
-            <h2 className="px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">
-              Recent chats
-            </h2>
-            <p className="px-3 py-2 text-xs leading-5 text-subtle">
-              Chats are kept in memory for this session only.
-            </p>
-          </section>
+          <ConversationList onOpen={() => { setAccountOpen(false); onCloseMobile(); }} />
         )}
 
         <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     ai_temperature: float = Field(default=0.2, ge=0, le=2)
     ai_timeout: float = Field(default=30, gt=0)
     ai_max_retries: int = Field(default=2, ge=0)
+    chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
+    chat_context_window_tokens: int = Field(default=16384, ge=1024)
+    chat_output_token_reserve: int = Field(default=2048, ge=128)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"
     qdrant_url: str = ""

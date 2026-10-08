@@ -1,5 +1,3 @@
-import type { ChatResponse, ChatTurn } from '../types/chat';
-import type { ChatSelection } from '../types/rag';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -16,7 +14,7 @@ async function withResponse<T>(url: string, init: RequestInit, consume: (respons
   } catch (error) {
     if (parent?.aborted) throw error;
     if (timedOut) throw new ApiError('The request took too long. Try again.', 0, 'REQUEST_TIMEOUT');
-    if (error instanceof TypeError) throw new ApiError('Couldn’t reach Mentra. Check your connection and try again.', 0, 'NETWORK_ERROR');
+    if (error instanceof TypeError) throw new ApiError('Couldnâ€™t reach Mentra. Check your connection and try again.', 0, 'NETWORK_ERROR');
     throw error;
   } finally {
     clearTimeout(timer);
@@ -103,18 +101,6 @@ export async function apiRequest<T>(
 
 export async function fetchHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>('/api/v1/health');
-}
-
-export async function sendChatMessage(
-  messages: ChatTurn[],
-  signal?: AbortSignal,
-  retrieval?: ChatSelection,
-): Promise<ChatResponse> {
-  return apiRequest<ChatResponse>('/api/v1/chat', {
-    method: 'POST',
-    body: JSON.stringify({ messages, retrieval }),
-    signal,
-  });
 }
 
 export async function apiBlob(path: string, signal?: AbortSignal): Promise<Blob> {

@@ -1,5 +1,4 @@
-import { Cloud, Database, Sparkles } from 'lucide-react';
-import { Button } from '../components/ui';
+import { Database, Sparkles } from 'lucide-react';
 import { ProfileSettings } from '../components/student-profile/ProfileSettings';
 
 const settingSections = [
@@ -12,7 +11,7 @@ const settingSections = [
   {
     title: 'Your data',
     description: 'Your learner profile is linked to your Mentra account.',
-    detail: 'Your learning evidence and progress follow your account.',
+    detail: 'Your conversations, learner profile, learning evidence, and progress follow your account.',
     icon: Database,
   },
 ];
@@ -29,7 +28,7 @@ export function SettingsPage() {
             Settings
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Your workspace preferences live here. Optional backup and model settings will be available as Mentra grows.
+            Manage your profile and workspace preferences. Your conversations are saved to your Mentra account.
           </p>
         </div>
 
@@ -48,30 +47,7 @@ export function SettingsPage() {
             </section>
           ))}
 
-          <section className="flex flex-col gap-5 py-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-4 sm:gap-6">
-              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted">
-                <Cloud aria-hidden="true" size={17} strokeWidth={1.8} />
-              </span>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm font-medium text-heading">Optional backup</h2>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-subtle">
-                    Coming soon
-                  </span>
-                </div>
-                <p className="mt-1.5 max-w-lg text-sm leading-6 text-muted">
-                  Mentra can optionally back up your local data to Google Drive. Drive is for backup and restore—not for signing in.
-                </p>
-                <p className="mt-2 text-xs text-subtle">
-                  Mentra works locally; Google Drive is optional.
-                </p>
-              </div>
-            </div>
-            <Button className="shrink-0 self-start sm:self-auto" disabled size="sm" variant="secondary">
-              Connect Google Drive
-            </Button>
-          </section>
+
         </div>
       </div>
     </div>
