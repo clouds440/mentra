@@ -23,8 +23,8 @@ class ChatRepository:
         self.sessions = sessions
 
     def _sync_lock(self, session, owner):
-        session.execute(insert(ss).values(learner_id=owner, revision=0, floor=0).on_conflict_do_nothing())
-        return session.execute(select(ss).where(ss.c.learner_id == owner).with_for_update()).mappings().one()
+        from app.db.owner_transactions import lock_owner
+        return lock_owner(session, owner)
 
     def _change(self, session, owner, conversation_id, state):
         revision = state['revision'] + 1
@@ -229,6 +229,8 @@ class ChatRepository:
                 values['deleted_at'] = now()
                 from app.history_management.repositories.postgres import MemoryRepository
                 MemoryRepository.detach_chat(session, owner, conversation_id)
+                from app.history_management.repositories.events.postgres import EventRepository
+                EventRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
                 session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
                 session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))

@@ -1,6 +1,7 @@
 """Explicit Alembic entry point shared by deployment and isolated test fixtures."""
 
 from pathlib import Path
+from time import monotonic, sleep
 
 from alembic.config import Config
 from alembic import command
@@ -16,14 +17,26 @@ def migration_config(connection=None) -> Config:
     return config
 
 
-def upgrade(engine=None) -> None:
+def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
     if engine is None:
         from app.db.database import get_engine
         engine = get_engine()
     with engine.connect() as connection:
         from sqlalchemy import text
-        connection.execute(text('SELECT pg_advisory_lock(17483, 1)'))
-        connection.commit()
+        # A blocking SELECT holds a transaction snapshot while waiting. Another
+        # migration's CREATE INDEX CONCURRENTLY can wait for that snapshot and
+        # deadlock with this lock request, even across isolated test schemas.
+        # Keep the existing session lock, but release each failed probe's
+        # transaction before waiting outside PostgreSQL.
+        deadline = monotonic() + lock_timeout
+        while True:
+            acquired = connection.scalar(text('SELECT pg_try_advisory_lock(17483, 1)'))
+            connection.commit()
+            if acquired:
+                break
+            if monotonic() >= deadline:
+                raise RuntimeError('Timed out waiting for the database migration lock.')
+            sleep(0.05)
         try:
             command.upgrade(migration_config(connection), 'head')
         finally:

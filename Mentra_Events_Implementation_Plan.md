@@ -1,6 +1,6 @@
 # Mentra Events Implementation Plan
 
-**Status:** Proof-checked against the current checkout on 2026-10-08; ready for review. Application implementation and dependency installation have not started. Dependency rehearsal, migrations and runtime tests remain implementation acceptance gates, not claimed results.
+**Status:** Implementation started on 2026-10-09. The first Events backend increment (manual CRUD/lifecycle, preferences, temporal preview, owned persistence, receipts and sync) is implemented and verified in isolation. Full delivery is incomplete: safe graph dependency selection, automatic capture/confirmation, Notifications/worker and the Progress frontend remain open. See section 12 and `docs/events.md` for actual evidence and limits.
 
 **Scope:** A reusable events submodule inside history management, separate event storage and tools, automatic capture, durable LangGraph human confirmation, manual management in Progress, a standalone reusable Notifications module with in-app delivery, strictly one reminder per event, and a learner-backed Learning tab. This plan supplements the implemented memory module; it does not merge the two domains.
 
@@ -216,10 +216,10 @@ Use a bounded account-scoped in-memory event store and separate Notifications st
 
 ### Phase 1 — Domain and canonical persistence
 
-- [ ] Add provider-independent event contracts, composed facade and repository boundaries.
-- [ ] Implement owned event/preferences/evidence/revision/receipt/suppression/change tables and frozen migration.
-- [ ] Implement transactional manual CRUD/lifecycle, revision conflicts, idempotency, date-mode constraints and context ownership.
-- [ ] Rehearse upgrade/downgrade/no-drift against existing memory/chat/profile/RAG records.
+- [x] Add provider-independent event contracts, composed facade and repository boundaries.
+- [x] Implement owned event/preferences/evidence/revision/receipt/suppression/change tables and frozen migration.
+- [x] Implement transactional manual CRUD/lifecycle, revision conflicts, idempotency, date-mode constraints and context ownership.
+- [x] Rehearse upgrade/downgrade/no-drift against existing memory/chat/profile/RAG records.
 
 **Exit:** Independently persistent user-managed events with no memory-table mixing.
 
@@ -297,8 +297,8 @@ Use a bounded account-scoped in-memory event store and separate Notifications st
 
 | Phase | Status | Evidence / gaps |
 | --- | --- | --- |
-| 0 | Planning audit complete; review and dependency rehearsal pending | Current code/dependencies inspected; capture/retention/in-app delivery choices answered, standalone Notifications and one lifetime reminder required. Engineering defaults require review. |
-| 1 | Not started | Implementation acceptance evidence must be recorded before completion. |
+| 0 | In progress; dependency gate unresolved | Python 3.12 disposable-container rehearsal preserved core 0.3.86/provider 0.3.35. Compatible graph 0.6.11 candidates lack strict serializer controls; patched graph 1.0.10 conflicts with the pinned stack. No production dependencies changed. |
+| 1 | Backend foundation implemented and verified in isolation | Frozen `20261009_0007` plus additive ledger retention migration `20261009_0008`; public owner transaction boundary; event/evidence/audit/preferences/receipt/suppression/reminder/sync tables; authenticated CRUD/lifecycle/preview/read APIs. Re-pass: 40 focused local tests passed; image evidence in 12.2. Full release gates remain open. |
 | 2 | Not started | Implementation acceptance evidence must be recorded before completion. |
 | 3 | Not started | Implementation acceptance evidence must be recorded before completion. |
 | 4A | Not started | Reusable Notifications contracts, migrations and isolated producer tests required. |
@@ -309,8 +309,28 @@ Use a bounded account-scoped in-memory event store and separate Notifications st
 
 Completion requires separate event tools/tables; independent preference enforcement; supported auto-add and truthful proposal outcomes; durable confirmation with owner-safe cleanup; manual Progress management and real learner-backed Learning UI; standalone reusable Notifications backend/UI and at-most-one lifetime reminder per event; source-deletion retention and permanent purge; bounded context/cache/queries; migration and failure/race tests; final rebuilt-image/worker verification. Defining tool schemas or drawing a calendar alone is not completion.
 
-**Review focus:** The dedicated events domain, two Progress tabs, independent default-on capture, saved-event retention and in-app reminders are agreed. One reminder per event and a standalone Notifications module are also required. Numerical timing/retention/capacity defaults below are documented engineering proposals. Implementation starts after review and authorization; no application changes were made during this audit.
+**Review focus:** The dedicated events domain, two Progress tabs, independent default-on capture, saved-event retention and in-app reminders are agreed. One reminder per event and a standalone Notifications module are also required. Numerical timing/retention/capacity defaults below are documented engineering proposals. The user authorized starting implementation on 2026-10-09; the first backend increment uses the documented one-off/timing/capacity defaults. The remaining phases retain their acceptance gates.
 
+
+### 12.1 First implementation increment (2026-10-09)
+
+- Files: `backend/app/history_management/events/`, `backend/app/history_management/repositories/events/`, `backend/app/db/owner_transactions.py`, `backend/app/api/routes/events.py`, factory/router/main/chat-deletion composition, and frozen migration `backend/alembic/versions/20261009_0007_events.py`. Public domain and SQL persistence remain separate. Optional context ownership uses public learner reads plus composite FKs; completing an event never submits learner evidence.
+- Related bug fixed: migration advisory-lock acquisition retained a waiting transaction snapshot, deadlocking concurrent index builds during simultaneous isolated schema upgrades. `backend/app/db/migrate.py` now uses committed nonblocking lock probes and a bounded wait; competing schema and timeout-cleanup tests are included.
+- Local command: set `PYTHONPATH=backend` and explicit disposable `TEST_DATABASE_URL`, then `.venv/Scripts/python.exe -m unittest backend.tests.test_events backend.tests.test_events_api backend.tests.test_migration_concurrency -v`. **23 passed**, including a run concurrent with the Docker suite. Logs: `.events-tests.log` and `.events-concurrent-local-tests.log`.
+- Docker build: `docker build -t mentra-events-foundation-verify -f backend/Dockerfile backend` passed. This is an isolated verification image; production dependencies, images/containers and application database were not changed. Build evidence: `.events-image-build.log`.
+- Docker regression: **145 passed** in the final rebuilt Python 3.12 image (70.919 seconds), while local focused tests also exercised concurrent isolated migrations. Command uses the rebuilt image's Python 3.12 and application code, read-only `backend/tests` and `backend/testing` mounts, and an explicit disposable database: `python -m unittest tests.test_events tests.test_events_api tests.test_migration_concurrency tests.test_history_management tests.test_persistent_chat tests.auth.test_auth tests.student_profile.test_profile tests.learner.test_persistence tests.learner.test_integrations -v`. Log: `.events-docker-tests.log`.
+- Migration evidence: isolated fresh upgrade, downgrade to `20261008_0006`, re-upgrade, zero metadata drift and unchanged snapshots for all non-event tables. No application migration was applied. Database-level malformed reminder/date/ownership checks and immutable delivery/identity fences were verified.
+- Phase 0 evidence: candidate graph/saver resolution/install rehearsed in disposable backend containers. `langgraph==0.6.11`/checkpoint `3.0.1`/saver `3.0.4` preserves existing LangChain but lacks strict msgpack serializer controls; patched `langgraph==1.0.10`/saver `3.0.4` cannot resolve with core `0.3.86`/provider `0.3.35`. Production requirements remain unchanged. `backend/testing/event_dependencies.py` reproduces the hardening gate. Durable graph/resume/cleanup has **not** passed. See `docs/events.md` for upstream metadata/advisory links and the next decision.
+- Remaining: phases 2, 3, 4A, 4B and 5 are unimplemented; broader adversarial/performance/browser/account-purge and actual deployed runtime gates in phases 6/7 remain open. Reminder ledgers do not yet deliver notifications. Progress still uses its existing placeholder. This increment does not claim full Events rollout completion.
+
+### 12.2 Implementation verification re-pass (2026-10-09)
+
+- Reproduced and fixed reminder timing changes on unrelated edits, missed reminders rearmed on reopen, equivalent UTC-offset rejection, operation recovery after context loss, context-deletion races, unbounded owner-write waits, upcoming summary mismatches, extreme-date range failures, DST-fold validation/preview errors and historical civil-day second precision. Host timezone aliases are rejected; valid past dates do not resolve unused historical default reminders. Bulk preference/source changes batch queries and page/sync projections share one clock instant.
+- Added frozen `20261009_0008_event_reminder_retention.py`, leaving 0007 unchanged. Direct ledger deletion is forbidden while its event exists; event deletion still cascades. Downgrade/re-upgrade preserves ledger rows and the original delivered-update fence. Existing migration tests also verify non-event snapshots, metadata drift and concurrent upgrades.
+- Local focused command from 12.1: **40 passed** in 7.216 seconds. Logs include `.events-repass-tests.log`; `.events-repass-before.log` and `.events-repass-ledger-before.log` retain reproduced failures before fixes.
+- Rebuilt actual Python 3.12 backend image `mentra-events-foundation-verify`; build log `.events-repass-build.log`. **All 333 backend tests passed** in 138.216 seconds: `python -m unittest discover -s tests -v`, with read-only test/testing mounts and an explicit disposable PostgreSQL database. Final log `.events-repass-docker-tests.log`.
+- Frontend `npm.cmd run check:theme` passed; `npm.cmd run build` passed (TypeScript and Vite, 17.51 seconds). The build required execution outside the restricted sandbox because esbuild could not spawn there. Log `.events-repass-frontend-build.log`. Frontend source was unchanged; these checks do not claim browser acceptance for the unimplemented UI.
+- Dedicated PostgreSQL 17 disposable container `mentra-events-repass-test-20261009`, temporary owned schemas only. No application database migration, deployment or dependency change. Dependency gate and all remaining rollout phases listed in 12.1 remain open.
 
 ## 13. Complete frontend implementation specification
 

@@ -8,9 +8,10 @@ from .repositories.postgres import fingerprint, now
 
 
 class HistoryManagement:
-    def __init__(self, repository, reader, validator, profile=None, freshness_days=None):
+    def __init__(self, repository, reader, validator, profile=None, freshness_days=None, events=None):
         self.repository, self.reader, self.validator = repository, reader, validator
         self.profile = profile
+        self.events = events
         self.freshness_days = freshness_days or dict(goal=30, fact=180, preference=365)
 
     async def lookup(self, owner, scope, body, budget):

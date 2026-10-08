@@ -45,7 +45,8 @@ def create_app() -> FastAPI:
             application.state.model_factory = model_factory
             application.state.chat_service = ChatService(application.state.llm)
             application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
-            application.state.history_management = create_history_management(get_session_factory(), application.state.llm, application.state.student_profile_service)
+            application.state.history_management = create_history_management(get_session_factory(), application.state.llm,
+                application.state.student_profile_service, application.state.learner_service)
             logger.info("Mentra backend started successfully.")
             yield
         finally:

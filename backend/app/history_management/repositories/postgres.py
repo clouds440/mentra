@@ -7,7 +7,7 @@ from uuid import uuid4, UUID
 from sqlalchemy import select, update, delete, func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from app.core.exceptions import AppError
-from app.chat.repositories.postgres import ChatRepository
+from app.db.owner_transactions import lock_owner
 from app.chat.repositories.tables import turns
 from .tables import memories as m, evidence as e, revisions as r, preferences as p, suppression as s, receipts as rc
 
@@ -31,11 +31,10 @@ def conflict():
 class MemoryRepository:
     def __init__(self, sessions, active_limit=200, pending_limit=50):
         self.sessions = sessions
-        self.chat = ChatRepository(sessions)
         self.active_limit, self.pending_limit = active_limit, pending_limit
 
     def _lock(self, session, owner):
-        self.chat._sync_lock(session, owner)
+        lock_owner(session, owner)
         session.execute(insert(p).values(learner_id=owner, automatic_memory=True, revision=1).on_conflict_do_nothing())
         return dict(session.execute(select(p).where(p.c.learner_id == owner)).mappings().one())
 
