@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Literal
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -20,6 +21,7 @@ class ChatService:
         messages: list[tuple[Literal["user", "assistant"], str]],
         *,
         learner_context: LearnerContextPacket | None = None,
+        source_packet: dict | None = None,
     ) -> str:
         conversation = [
             HumanMessage(content=content)
@@ -28,10 +30,18 @@ class ChatService:
             for role, content in messages
         ]
         try:
+            sources = []
+            context = {}
+            if learner_context is not None:
+                sources.append(PromptSource.LEARNER_CONTEXT)
+                context['learner'] = learner_context.model_dump(mode='json', exclude_none=True)
+            if source_packet is not None:
+                sources.append(PromptSource.RAG_CONTEXT)
+                context['study_sources'] = source_packet
             response = await self._llm.ainvoke_messages(
                 PromptSource.CHAT, conversation,
-                additional_sources=((PromptSource.LEARNER_CONTEXT,) if learner_context is not None else ()),
-                system_context=learner_context.model_dump_json(exclude_none=True) if learner_context is not None else None)
+                additional_sources=tuple(sources),
+                system_context=json.dumps(context, ensure_ascii=False) if context else None)
         except ModelConfigurationError as exc:
             raise AppError(
                 "AI_CONFIGURATION_ERROR",

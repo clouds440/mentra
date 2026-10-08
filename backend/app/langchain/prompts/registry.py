@@ -8,6 +8,7 @@ class PromptSource(StrEnum):
     CHAT = "chat"
     LEARNER_CONTEXT = "learner_context"
     STUDENT_PROFILE_EVALUATION = "student_profile_evaluation"
+    RAG_CONTEXT = "rag_context"
 
 
 @lru_cache(maxsize=len(PromptSource))
@@ -20,6 +21,8 @@ def get_system_prompt(source: PromptSource) -> str:
         from .learner_context import SYSTEM_PROMPT
     elif source is PromptSource.STUDENT_PROFILE_EVALUATION:
         from .student_profile import SYSTEM_PROMPT
+    elif source is PromptSource.RAG_CONTEXT:
+        from .rag_context import SYSTEM_PROMPT
     else:  # Defensive if the enum grows without a registered prompt module.
         raise ValueError(f"No system prompt is registered for {source!r}")
     return SYSTEM_PROMPT
@@ -35,6 +38,8 @@ def get_prompt_version(source: PromptSource) -> str:
         from .learner_context import VERSION
     elif source is PromptSource.STUDENT_PROFILE_EVALUATION:
         from .student_profile import VERSION
+    elif source is PromptSource.RAG_CONTEXT:
+        from .rag_context import VERSION
     else:
         raise ValueError(f"No prompt version is registered for {source!r}")
     return VERSION

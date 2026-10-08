@@ -21,6 +21,8 @@ Mentra is an adaptive AI learning assistant with a FastAPI backend, React + Type
 - Provider-independent chat model factory for OpenAI-compatible endpoints
 - Local, image-baked BGE embeddings kept independent from chat models and exposed through `EmbeddingService`
 - Remote Qdrant Cloud adapter with collection dimension and embedding-identity validation
+- Learner-owned Library uploads, durable ingestion, local document/OCR extraction, hybrid retrieval, grounded chat citations and source lifecycle workflows
+- Shared [Mentra Vision module](backend/app/vision/README.md) for local image and PDF-page OCR, with independent capability providers
 - Environment-based configuration through `.env` values
 
 ## Project structure
@@ -35,7 +37,8 @@ mentra/
 |   |   |-- learner/            # Granular concept knowledge and immutable evidence
 |   |   |-- integrations/       # Trusted platform profile provisioning contracts
 |   |   |-- langchain/          # Shared LLM, source-specific prompts, chat, profile evaluator, learner tools
-|   |   |-- rag/                # EmbeddingService, local BGE implementation, Qdrant adapter, learner scope
+|   |   |-- rag/                # Source storage, durable ingestion, parsers, retrieval, vector adapters, evaluation
+|   |   |-- vision/             # Shared stateless OCR and PDF-page rasterization with capability providers
 |   |   |-- db/                 # Connection lifecycle and migration entry point
 |   |   |-- core/               # Settings, logging, errors, identifiers
 |   |   |-- main.py
@@ -134,7 +137,7 @@ docker compose build --no-cache
 ## LangChain and RAG boundaries
 
 - `backend/app/langchain/`: `ModelFactory` constructs the configured OpenAI-compatible chat model; the shared `MentraLLM` handles invocations, source-specific prompt composition, and structured-output validation. Workflow services select a trusted `PromptSource`; prompt modules live under `backend/app/langchain/prompts/` and own their versions. The application injects the same component into chat and Student Profile evaluation. Learner tools are scoped to the authenticated internal `learner_id`.
-- `backend/app/rag/`: `EmbeddingService` loads the local, image-baked BGE model; `QdrantVectorStore` uses it and validates collection identity. Embeddings are separate from the chat LLM. Document ingestion, chunking, and search/retrieval workflows are still planned; future RAG integration should use these interfaces rather than construct embeddings or Qdrant clients in LangChain.
+- `backend/app/rag/`: the framework-independent source service owns private uploads, versioned extraction/chunking, scoped dense/lexical retrieval, optional local reranking, and source lifecycle. A separate durable worker shares the private materials volume with the API. LangChain receives bounded source packets and owns answer generation; it never constructs embeddings or Qdrant clients in chat code. Read [RAG setup and contracts](./docs/rag.md) and [verification evidence](./docs/rag-verification.md).
 
 Switch compatible chat providers by changing `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY`. `EMBEDDING_MODEL` and `EMBEDDING_DEVICE` configure the independent local embedding service. The local embedding model is baked into the backend image; changing it requires an image rebuild and Qdrant reindex. Readiness verifies configuration, the local embedding model, and Qdrant without invoking the chat model. Qdrant connectivity is checked by readiness rather than liveness, so an outage does not prevent the backend health endpoint from responding.
 

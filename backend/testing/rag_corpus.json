@@ -1,0 +1,8 @@
+[
+  {"id":"decorator_fact","query":"How do Python decorators wrap functions?","context":"Python","relevant_source_ids":["python-decorators"],"support":"Decorators wrap functions to add behavior."},
+  {"id":"decorator_paraphrase","query":"How can I reuse logging around functions?","context":"Python","relevant_source_ids":["python-decorators"],"support":"A decorator can wrap a function to log calls."},
+  {"id":"rare_identifier","query":"Explain SQLSTATE 23505","context":"Databases","relevant_source_ids":["database-errors"],"support":"SQLSTATE 23505 indicates a unique constraint violation."},
+  {"id":"old_material_exclusion","query":"Explain decorators","context":"Python","relevant_source_ids":["python-decorators"],"excluded_source_ids":["database-errors"]},
+  {"id":"cross_context","query":"Compare a Python dictionary with a database table","context":"cross-context","relevant_source_ids":["python-dictionaries","database-tables"]},
+  {"id":"no_support","query":"What is the orbital period of Neptune?","context":"Python","relevant_source_ids":[]}
+]

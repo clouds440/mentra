@@ -9,6 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Local OCR and scanned-PDF rasterization; no document content leaves the worker.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng poppler-utils && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
 RUN pip install --no-cache-dir -r requirements.txt
@@ -18,10 +21,16 @@ ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
 COPY bake_embedding_model.py ./
 RUN python bake_embedding_model.py
 
+ARG RAG_RERANKER_MODEL=
+ENV RAG_RERANKER_MODEL=${RAG_RERANKER_MODEL}
+COPY bake_reranker_model.py ./
+RUN python bake_reranker_model.py
+
 ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 
 COPY app ./app
+COPY scripts ./scripts
 COPY alembic.ini ./
 COPY alembic ./alembic
 

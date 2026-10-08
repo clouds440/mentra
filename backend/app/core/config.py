@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     qdrant_collection: str = ""
     qdrant_distance: str = "Cosine"
+    rag_storage_dir: str = "/var/lib/mentra/materials"
+    rag_max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1024)
+    rag_max_pages: int = Field(default=200, ge=1, le=1000)
+    rag_max_chunks: int = Field(default=5000, ge=1)
+    rag_storage_quota_bytes: int = Field(default=512 * 1024 * 1024, ge=1024)
+    rag_parser_timeout: int = Field(default=120, ge=1, le=600)
+    rag_job_lease_seconds: int = Field(default=300, ge=30)
+    rag_hybrid_enabled: bool = True
+    rag_reranker_path: str = ''
+    rag_reranker_timeout: float = Field(default=5, gt=0, le=30)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -43,6 +53,12 @@ class Settings(BaseSettings):
         development = self.app_env.lower() in {'development', 'dev', 'test'}
         if self.auth_cookie_same_site == 'none' and development and not self.auth_cookie_secure:
             raise ValueError('AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true and HTTPS')
+        return self
+
+    @model_validator(mode='after')
+    def rag_limits(self):
+        if self.rag_job_lease_seconds <= self.rag_parser_timeout:
+            raise ValueError('RAG_JOB_LEASE_SECONDS must exceed RAG_PARSER_TIMEOUT')
         return self
 
     @property

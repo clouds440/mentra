@@ -1,6 +1,28 @@
 import type { ChatResponse, ChatTurn } from '../types/chat';
+import type { ChatSelection } from '../types/rag';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+
+async function withResponse<T>(url: string, init: RequestInit, consume: (response: Response) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const parent = init.signal;
+  const cancel = () => controller.abort(parent?.reason);
+  if (parent?.aborted) cancel();
+  else parent?.addEventListener('abort', cancel, { once: true });
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 120_000);
+  try {
+    return await consume(await fetch(url, { credentials: 'include', ...init, signal: controller.signal }));
+  } catch (error) {
+    if (parent?.aborted) throw error;
+    if (timedOut) throw new ApiError('The request took too long. Try again.', 0, 'REQUEST_TIMEOUT');
+    if (error instanceof TypeError) throw new ApiError('Couldn’t reach Mentra. Check your connection and try again.', 0, 'NETWORK_ERROR');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    parent?.removeEventListener('abort', cancel);
+  }
+}
 
 export interface HealthResponse {
   status: string;
@@ -49,7 +71,7 @@ export async function apiRequest<T>(
   }
 
   const url = `${apiBaseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
-  const response = await fetch(url, { credentials: 'include', ...init, headers });
+  return withResponse(url, { ...init, headers }, async response => {
   const bodyText = await response.text();
   let body: unknown;
 
@@ -75,7 +97,8 @@ export async function apiRequest<T>(
     );
   }
 
-  return body as T;
+    return body as T;
+  });
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
@@ -85,10 +108,21 @@ export async function fetchHealth(): Promise<HealthResponse> {
 export async function sendChatMessage(
   messages: ChatTurn[],
   signal?: AbortSignal,
+  retrieval?: ChatSelection,
 ): Promise<ChatResponse> {
   return apiRequest<ChatResponse>('/api/v1/chat', {
     method: 'POST',
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, retrieval }),
     signal,
+  });
+}
+
+export async function apiBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  return withResponse(`${apiBaseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`, { signal }, async response => {
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as ApiErrorResponse;
+    throw new ApiError(body.error?.message ?? 'This source is unavailable.', response.status, body.error?.code ?? 'HTTP_ERROR');
+  }
+    return response.blob();
   });
 }

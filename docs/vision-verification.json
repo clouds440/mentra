@@ -1,0 +1,25 @@
+{
+  "module": "mentra vision",
+  "asset_revisions": {
+    "Pillow": "12.3.0",
+    "tesseract": "tesseract 5.5.0",
+    "pdftoppm": "pdftoppm version 25.03.0"
+  },
+  "checks": [
+    {
+      "format": "png",
+      "text": "Python decorators wrap functions.\n",
+      "matches_existing_fixture": true
+    },
+    {
+      "format": "jpg",
+      "text": "Python decorators wrap functions.\n",
+      "matches_existing_fixture": true
+    },
+    {
+      "format": "pdf",
+      "text": "Python decorators wrap functions.\n",
+      "matches_existing_fixture": true
+    }
+  ]
+}

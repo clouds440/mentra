@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { SourceSelector } from '../components/chat/SourceSelector';
+import { useAuth } from '../components/auth/AuthProvider';
+import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatMessage, ThinkingIndicator } from '../components/chat/ChatMessage';
@@ -20,6 +23,10 @@ function createMessage(role: ChatMessageData['role'], content: string): ChatMess
 }
 
 export function ChatPage() {
+  const { identity } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const selectedDocument = params.get('document');
+  const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
   const { newChatKey, setChatTitle } = useOutletContext<ChatOutletContext>();
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [draft, setDraft] = useState('');
@@ -35,11 +42,16 @@ export function ChatPage() {
     setIsThinking(false);
     setErrorMessage(null);
     setChatTitle('New Chat');
+    setSelection({ mode: 'STANDARD' });
 
     return () => {
       requestControllerRef.current?.abort();
     };
-  }, [newChatKey, setChatTitle]);
+  }, [newChatKey, setChatTitle, identity?.learner_id]);
+
+  useEffect(() => {
+    if (selectedDocument) setSelection({ mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] });
+  }, [selectedDocument]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -49,6 +61,9 @@ export function ChatPage() {
   async function sendMessage() {
     const content = draft.trim();
     if (!content || isThinking) return;
+    if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
+      setErrorMessage('Choose study sources before sending, or use automatic material selection.'); return;
+    }
 
     const userMessage = createMessage('user', content);
     const conversation = [...messages, userMessage];
@@ -71,11 +86,12 @@ export function ChatPage() {
           content: messageContent,
         })),
         controller.signal,
+        selection,
       );
       if (controller.signal.aborted) return;
       setMessages((current) => [
         ...current,
-        createMessage('assistant', response.content),
+        { ...createMessage('assistant', response.content), sources: response.sources, citations: response.citations, retrieval_status: response.retrieval_status, retrieval_warning: response.retrieval_warning, retrieval_scope: response.retrieval_scope },
       ]);
     } catch (error) {
       if (controller.signal.aborted) return;
@@ -116,6 +132,7 @@ export function ChatPage() {
 
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         <div className="mx-auto w-full max-w-3xl">
+          <SourceSelector key={identity?.learner_id} selection={selection} disabled={isThinking} onChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} />
           {errorMessage && (
             <p
               aria-live="polite"
@@ -141,6 +158,8 @@ export function ChatPage() {
 }
 
 function getChatErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.code === 'VALIDATION_ERROR' && error.details.length) return error.details[0].message;
+  if (error instanceof ApiError && error.code.startsWith('RAG_')) return error.message;
   if (error instanceof ApiError && error.status === 503) {
     return 'Sorry! Mentra is currently overloaded. Please try again shortly.';
   }

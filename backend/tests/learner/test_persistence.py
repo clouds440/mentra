@@ -40,7 +40,9 @@ class LearnerPersistenceTests(unittest.TestCase):
             'learning_evidence', 'evidence_decision', 'learner_concept_state', 'misconception',
             'candidate_concept', 'learner_audit', 'concept_redirect'}.issubset(tables))
         with self.db.engine.connect() as connection:
-            self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '20261007_0003')
+            from alembic.script import ScriptDirectory
+            from app.db.migrate import migration_config
+            self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), ScriptDirectory.from_config(migration_config()).get_current_head())
             command.check(migration_config(connection))
 
     def test_migration_downgrade_and_fresh_upgrade(self):

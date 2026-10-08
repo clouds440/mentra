@@ -25,6 +25,15 @@ class FakeSentenceTransformer:
 
 
 class EmbeddingServiceTests(unittest.TestCase):
+    def test_non_finite_model_vectors_are_rejected(self):
+        from unittest.mock import Mock
+        for value in (float('nan'), float('inf')):
+            model = FakeSentenceTransformer()
+            model.encode = Mock(return_value=[[value, .5]])
+            service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path, model_loader=lambda *_a, **_k: model)
+            with self.assertRaisesRegex(EmbeddingModelError, 'non-finite'):
+                service.embed_documents(['source'])
+
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = Path(self.temp_dir.name)

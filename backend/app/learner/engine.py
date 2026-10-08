@@ -101,6 +101,12 @@ class LearnerEngine:
         contexts = self.contexts.select(request.learner_id, include_related=False)
         return ActiveContextsResponse(contexts=[summary(c) for c in contexts])
 
+    def get_context_summaries(self, learner_id: str, context_ids: list[str] | None = None) -> list[LearningContextSummary]:
+        """Read canonical owned contexts without resolving or activating them."""
+        if context_ids is not None:
+            return [summary(self.contexts.require(learner_id, key)) for key in dict.fromkeys(context_ids)]
+        return [summary(c) for c in self.repository.list_for_learner(learner_id)]
+
     def get_related_contexts(self, learner_id: str, query: str) -> list[LearningContextSummary]:
         return [summary(c) for c in self.contexts.select(learner_id, query=query) if c.status != 'ACTIVE']
 

@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.db.urls import postgres_url
 from app.learner.repositories.tables import metadata
 from app.student_profile.repositories import tables as profile_tables
+from app.rag.repositories import tables as rag_tables
 
 config = context.config
 

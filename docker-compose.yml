@@ -17,10 +17,12 @@ services:
       retries: 10
 
   backend:
+    image: mentra-backend
     build:
       context: ./backend
       args:
         EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+        RAG_RERANKER_MODEL: ${RAG_RERANKER_MODEL:-}
     container_name: mentra-backend
     restart: unless-stopped
     ports:
@@ -52,6 +54,20 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
+      RAG_STORAGE_DIR: /var/lib/mentra/materials
+      RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
+      RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
+      RAG_HYBRID_ENABLED: ${RAG_HYBRID_ENABLED:-true}
+      RAG_RERANKER_PATH: ${RAG_RERANKER_PATH:-}
+      RAG_RERANKER_TIMEOUT: ${RAG_RERANKER_TIMEOUT:-5}
+      RAG_MAX_PAGES: ${RAG_MAX_PAGES:-200}
+      RAG_MAX_CHUNKS: ${RAG_MAX_CHUNKS:-5000}
+      RAG_PARSER_TIMEOUT: ${RAG_PARSER_TIMEOUT:-120}
+      RAG_JOB_LEASE_SECONDS: ${RAG_JOB_LEASE_SECONDS:-300}
+      OMP_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+      MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+    volumes:
+      - mentra_materials:/var/lib/mentra/materials
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +77,34 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  rag-worker:
+    image: mentra-backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.rag.worker"]
+    stop_grace_period: 150s
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      QDRANT_URL: ${QDRANT_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
+      QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
+      RAG_STORAGE_DIR: /var/lib/mentra/materials
+      RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
+      RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
+      RAG_MAX_PAGES: ${RAG_MAX_PAGES:-200}
+      RAG_MAX_CHUNKS: ${RAG_MAX_CHUNKS:-5000}
+      RAG_PARSER_TIMEOUT: ${RAG_PARSER_TIMEOUT:-120}
+      RAG_JOB_LEASE_SECONDS: ${RAG_JOB_LEASE_SECONDS:-300}
+      OMP_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+      MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+    volumes:
+      - mentra_materials:/var/lib/mentra/materials
+    depends_on:
+      backend:
+        condition: service_healthy
 
   frontend:
     build:
@@ -83,3 +127,4 @@ services:
 
 volumes:
   mentra_postgres:
+  mentra_materials:

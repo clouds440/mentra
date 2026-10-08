@@ -2,13 +2,23 @@ import logging
 import uuid
 from typing import Any
 from urllib.parse import urlsplit
+from threading import Lock
 
 from app.core.config import Settings
 from app.rag.embeddings import EmbeddingService
-from app.rag.vector_store import VectorStore, VectorStoreError
+from app.rag.vector_store import VectorStore, VectorStoreError, VectorChunk, VectorMatch
 
 logger = logging.getLogger("mentra")
 METADATA_PAYLOAD_KEY = "_mentra_index_metadata"
+
+
+def legacy_scope_filter(learner_id, context_ids):
+    from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchValue
+    return Filter(must=[
+        FieldCondition(key='learner_id', match=MatchValue(value=learner_id)),
+        FieldCondition(key='learning_context_id', match=MatchAny(any=context_ids)),
+        FieldCondition(key='status', match=MatchValue(value='ACTIVE')),
+    ])
 
 
 class VectorStoreConfigurationError(VectorStoreError):
@@ -29,6 +39,8 @@ class QdrantVectorStore(VectorStore):
         self._settings = app_settings
         self._embedding_service = embedding_service
         self._client = client
+        self._index_lock = Lock()
+        self._indexes_initialized = False
 
     @property
     def collection_name(self) -> str:
@@ -47,6 +59,7 @@ class QdrantVectorStore(VectorStore):
                         distance=distance,
                     ),
                 )
+                self._indexes_initialized = False
                 self._write_index_identity(client, models)
             self._validate_collection(client)
         except VectorStoreError:
@@ -80,6 +93,85 @@ class QdrantVectorStore(VectorStore):
     def close(self) -> None:
         if self._client is not None:
             self._client.close()
+
+    def _chunk_filter(self, learner_id, *, generation_ids=None, document_id=None):
+        m = self._get_models()
+        conditions = [m.FieldCondition(key='record_type', match=m.MatchValue(value='chunk')),
+                      m.FieldCondition(key='learner_id', match=m.MatchValue(value=learner_id))]
+        if generation_ids is not None:
+            conditions.append(m.FieldCondition(key='generation_id', match=m.MatchAny(any=generation_ids)))
+        if document_id is not None:
+            conditions.append(m.FieldCondition(key='document_id', match=m.MatchValue(value=document_id)))
+        return m.Filter(must=conditions)
+
+    def initialize_chunk_indexes(self):
+        # Identity checks stay live for every ingestion; only redundant index
+        # creation is cached. An externally replaced collection must fail closed.
+        self.ensure_collection()
+        with self._index_lock:
+            if self._indexes_initialized:
+                return
+            m = self._get_models()
+            try:
+                for field in ('record_type', 'learner_id', 'document_id', 'generation_id', 'context_ids'):
+                    self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+            except Exception as exc:
+                raise VectorStoreError('Could not initialize material filter indexes.') from exc
+            self._indexes_initialized = True
+
+    def upsert_chunks(self, chunks: list[VectorChunk]) -> None:
+        if not chunks:
+            return
+        m = self._get_models()
+        try:
+            self._get_client().upsert(self.collection_name, points=[m.PointStruct(id=c.id, vector=c.vector,
+                payload=dict(record_type='chunk', learner_id=c.learner_id, document_id=c.document_id,
+                             generation_id=c.generation_id, context_ids=c.context_ids)) for c in chunks], wait=True)
+        except Exception as exc:
+            raise VectorStoreError('Could not index material.') from exc
+
+    def query_chunks(self, learner_id: str, generation_ids: list[str], vector: list[float], limit: int) -> list[VectorMatch]:
+        if not generation_ids:
+            return []
+        try:
+            self.validate_collection()
+            result = self._get_client().query_points(self.collection_name, query=vector,
+                query_filter=self._chunk_filter(learner_id, generation_ids=generation_ids),
+                limit=limit, with_payload=False, with_vectors=False)
+            return [VectorMatch(str(p.id), float(p.score)) for p in result.points]
+        except VectorStoreError:
+            raise
+        except Exception as exc:
+            raise VectorStoreError('Could not retrieve material.') from exc
+
+    def delete_chunks(self, learner_id: str, document_id: str, generation_id: str | None = None) -> None:
+        try:
+            self._get_client().delete(self.collection_name, points_selector=self._get_models().FilterSelector(
+                filter=self._chunk_filter(learner_id, document_id=document_id,
+                    generation_ids=[generation_id] if generation_id else None)), wait=True)
+        except Exception as exc:
+            raise VectorStoreError('Could not clean material index.') from exc
+
+    def count_chunks(self, learner_id: str, generation_id: str) -> int:
+        try:
+            return self._get_client().count(self.collection_name,
+                count_filter=self._chunk_filter(learner_id, generation_ids=[generation_id]), exact=True).count
+        except Exception as exc:
+            raise VectorStoreError('Could not verify material index.') from exc
+
+    def indexed_chunk_ids(self, learner_id: str, generation_id: str, ids: list[str]) -> set[str]:
+        found = set()
+        try:
+            for start in range(0, len(ids), 500):
+                points = self._get_client().retrieve(self.collection_name, ids=ids[start:start + 500],
+                    with_payload=True, with_vectors=False)
+                for point in points:
+                    payload = point.payload or {}
+                    if payload.get('record_type') == 'chunk' and payload.get('learner_id') == learner_id and payload.get('generation_id') == generation_id:
+                        found.add(str(point.id))
+            return found
+        except Exception as exc:
+            raise VectorStoreError('Could not verify material point identities.') from exc
 
     def _get_client(self) -> Any:
         missing = [

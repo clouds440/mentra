@@ -1,4 +1,5 @@
 import json
+import math
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -24,6 +25,13 @@ class EmbeddingService(Protocol):
 
     @property
     def model_version(self) -> str: ...
+
+    @property
+    def max_tokens(self) -> int: ...
+
+    def token_count(self, text: str) -> int: ...
+
+    def query_token_count(self, text: str) -> int: ...
 
     def embed_query(self, text: str) -> list[float]: ...
 
@@ -119,7 +127,19 @@ class SentenceTransformerEmbeddingService:
             return []
         return self._encode(texts)
 
+    @property
+    def max_tokens(self) -> int:
+        return int(self._model.max_seq_length)
+
+    def token_count(self, text: str) -> int:
+        return len(self._model.tokenizer.encode(text, add_special_tokens=True, truncation=False))
+
+    def query_token_count(self, text: str) -> int:
+        return self.token_count(QUERY_INSTRUCTION + text)
+
     def _encode(self, texts: Sequence[str]) -> list[list[float]]:
+        if hasattr(self._model, 'tokenizer') and any(self.token_count(text) > self.max_tokens for text in texts):
+            raise EmbeddingModelError('Embedding input exceeds the model token budget.')
         embeddings = self._model.encode(
             list(texts),
             batch_size=self._batch_size,
@@ -136,4 +156,6 @@ class SentenceTransformerEmbeddingService:
             raise EmbeddingModelError(
                 "Embedding model returned a vector with an unexpected dimension."
             )
+        if any(not math.isfinite(value) for vector in vectors for value in vector):
+            raise EmbeddingModelError('Embedding model returned a non-finite vector.')
         return vectors

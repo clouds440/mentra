@@ -41,6 +41,8 @@ class LearnerService(Protocol):
         request: ConceptResolutionRequest,
     ) -> ConceptResolution: ...
 
+    def get_context_summaries(self, learner_id: str, context_ids: list[str] | None = None) -> list[LearningContextSummary]: ...
+
     def submit_evidence(
         self,
         request: EvidenceSubmissionRequest,

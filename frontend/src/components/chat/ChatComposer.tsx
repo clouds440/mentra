@@ -1,4 +1,5 @@
 import { ArrowUp, Paperclip } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLayoutEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Button, Textarea } from '../ui';
@@ -53,16 +54,15 @@ export function ChatComposer({
         value={value}
       />
       <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
-        <button
-          aria-label="Attach material (coming soon)"
+        <Link
+          to="/library"
+          aria-label="Add study material in Library"
           className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle"
-          disabled
-          title="Attachments are not available yet"
-          type="button"
+          title="Add study material in Library"
         >
           <Paperclip aria-hidden="true" size={16} />
-          <span className="hidden sm:inline">Attach</span>
-        </button>
+          <span className="hidden sm:inline">Add material</span>
+        </Link>
         <div className="flex items-center gap-3">
           <span className="hidden text-[11px] text-subtle sm:inline">
             Enter to send · Shift + Enter for a new line

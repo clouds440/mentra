@@ -8,6 +8,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { AssessmentsPage } from './pages/AssessmentsPage';
 import { ChatPage } from './pages/ChatPage';
 import { LibraryPage } from './pages/LibraryPage';
+import { MaterialDetailPage } from './pages/MaterialDetailPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingPage } from './pages/OnboardingPage';
@@ -32,6 +33,7 @@ function App() {
                 <Route element={<AppLayout />}>
                   <Route index element={<ChatPage />} />
                   <Route path="library" element={<LibraryPage />} />
+                  <Route path="library/:documentId" element={<MaterialDetailPage />} />
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="assessments" element={<AssessmentsPage />} />
                   <Route path="settings" element={<SettingsPage />} />

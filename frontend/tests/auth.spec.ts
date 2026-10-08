@@ -16,7 +16,8 @@ async function signUp(page: Page, name: string) {
 }
 
 async function openAccountMenu(page: Page) {
-  await page.getByRole('button', { name: /^Account menu/ }).click();
+  const trigger = page.getByRole('button', { name: /^Account menu/ });
+  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
 }
 
 test('registration uses real auth, HTTP-only cookies, refresh, and return visits', async ({ page, context, browser }) => {

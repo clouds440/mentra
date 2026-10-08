@@ -1,0 +1,26 @@
+{
+  "production_api": true,
+  "durable_worker": true,
+  "private_shared_volume": true,
+  "real_embeddings": true,
+  "real_server_qdrant": true,
+  "chat_provider": "local deterministic HTTP fixture",
+  "checks": [
+    "upload survives while the worker is stopped",
+    "separate production worker claims and publishes the durable upload",
+    "real HTTP chat orchestration returns a resolvable authorized citation",
+    "API restart preserves the session, source metadata and shared-volume bytes",
+    "worker restart claims a queued reindex without losing the active source",
+    "another authenticated learner cannot fetch the original source bytes",
+    "deletion immediately excludes source access and the worker purges persisted bytes"
+  ],
+  "browser": {
+    "built_frontend": true,
+    "nginx_spa_routes": true,
+    "authenticated_upload": true,
+    "real_embedding_ingestion": true,
+    "citation_dialog": true,
+    "authenticated_original_download": true,
+    "deletion": true
+  }
+}

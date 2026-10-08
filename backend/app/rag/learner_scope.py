@@ -14,13 +14,10 @@ class LearnerRetrievalScope(LearnerSchema):
     concept_ids: list[str]
 
     def qdrant_filter(self):
-        from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchValue
-
-        return Filter(must=[
-            FieldCondition(key='learner_id', match=MatchValue(value=self.learner_id)),
-            FieldCondition(key='learning_context_id', match=MatchAny(any=self.context_ids)),
-            FieldCondition(key='status', match=MatchValue(value='ACTIVE')),
-        ])
+        # Compatibility for existing consumers; production retrieval uses typed
+        # generation selectors. Vendor syntax belongs to the adapter only.
+        from app.rag.qdrant_store import legacy_scope_filter
+        return legacy_scope_filter(self.learner_id, self.context_ids)
 
 
 class LearnerDocumentMetadata(LearnerSchema):
