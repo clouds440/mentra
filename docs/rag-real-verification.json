@@ -12,7 +12,7 @@
       "methods": [
         "native"
       ],
-      "elapsed_ms": 2766.48
+      "elapsed_ms": 1951.67
     },
     {
       "format": "pdf",
@@ -21,7 +21,7 @@
       "methods": [
         "native"
       ],
-      "elapsed_ms": 1765.57
+      "elapsed_ms": 1394.84
     },
     {
       "format": "docx",
@@ -31,7 +31,7 @@
         "native",
         "native"
       ],
-      "elapsed_ms": 1435.76
+      "elapsed_ms": 1375.05
     },
     {
       "format": "pptx",
@@ -41,7 +41,7 @@
         "native",
         "native"
       ],
-      "elapsed_ms": 1592.87
+      "elapsed_ms": 1396.27
     },
     {
       "format": "png",
@@ -50,7 +50,7 @@
       "methods": [
         "ocr"
       ],
-      "elapsed_ms": 1586.72,
+      "elapsed_ms": 1383.59,
       "printed_text_character_error_rate": 0.0
     },
     {
@@ -60,7 +60,7 @@
       "methods": [
         "ocr"
       ],
-      "elapsed_ms": 1540.02,
+      "elapsed_ms": 1369.81,
       "printed_text_character_error_rate": 0.0
     },
     {
@@ -70,7 +70,7 @@
       "methods": [
         "ocr"
       ],
-      "elapsed_ms": 1938.67,
+      "elapsed_ms": 1532.6,
       "printed_text_character_error_rate": 0.0
     },
     {
@@ -81,10 +81,10 @@
         "image_ocr",
         "native"
       ],
-      "elapsed_ms": 1951.43
+      "elapsed_ms": 1600.74
     }
   ],
-  "parser_revision": "native-local-ocr-v1:pypdf=6.12.1;python-docx=1.2.0;python-pptx=1.0.2;Pillow=12.3.0;tesseract=tesseract 5.5.0;pdftoppm=pdftoppm version 25.03.0",
+  "parser_revision": "documents-native-vision-v2:pypdf=6.12.1;python-docx=1.2.0;python-pptx=1.0.2;beautifulsoup4=4.15.0;Pillow=12.3.0;tesseract=tesseract 5.5.0;pdftoppm=pdftoppm version 25.03.0",
   "reranker": {
     "model_name": "cross-encoder/ms-marco-MiniLM-L-6-v2",
     "model_version": "233902d25c440f23af6f7d6e94d2946bac0bee0a"
@@ -162,8 +162,8 @@
     "no_answer_queries": 1,
     "no_answer_candidate_rate": 1.0,
     "latency_ms": {
-      "p50": 136.815,
-      "p95": 199.88,
+      "p50": 116.67,
+      "p95": 128.07,
       "samples": 6,
       "includes_cold_start": true
     },
@@ -249,8 +249,8 @@
     "no_answer_queries": 1,
     "no_answer_candidate_rate": 1.0,
     "latency_ms": {
-      "p50": 84.28999999999999,
-      "p95": 96.84,
+      "p50": 75.39,
+      "p95": 79.53,
       "samples": 6,
       "includes_cold_start": true
     },
@@ -336,8 +336,8 @@
     "no_answer_queries": 1,
     "no_answer_candidate_rate": 1.0,
     "latency_ms": {
-      "p50": 168.70999999999998,
-      "p95": 229.56,
+      "p50": 118.03,
+      "p95": 207.0,
       "samples": 6,
       "includes_cold_start": true
     },
@@ -350,5 +350,5 @@
       "ok"
     ]
   },
-  "peak_process_rss_mib": 675.87890625
+  "peak_process_rss_mib": 678.4375
 }

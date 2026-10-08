@@ -25,11 +25,12 @@ class ProcessingTests(unittest.TestCase):
 
     def test_exact_token_budget_preserves_every_source_character(self):
         text = 'Decorators add behavior.\nCode and formulas: x = y + 2.'
-        chunks = chunk_blocks([dict(text=text, page=3)], CharacterEmbedding(), 'owner', 'doc', str(uuid4()), 100)
+        chunks = chunk_blocks([dict(text=text, page=3, language='ts')], CharacterEmbedding(), 'owner', 'doc', str(uuid4()), 100)
         self.assertEqual(''.join(c['content'] for c in chunks), text)
         self.assertTrue(all(c['token_count'] <= 30 for c in chunks))
         self.assertEqual(chunks[-1]['spans'][0]['end'], len(text))
         self.assertTrue(all(c['spans'][0]['page'] == 3 for c in chunks))
+        self.assertTrue(all(c['spans'][0]['language'] == 'ts' for c in chunks))
 
     def test_empty_extraction_fails(self):
         with self.assertRaises(ExtractionError):

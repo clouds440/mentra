@@ -4,7 +4,7 @@ import time
 from uuid import UUID, uuid5
 from app.rag.errors import ExtractionError
 
-CHUNKER_VERSION = 'block-token-v1'
+CHUNKER_VERSION = 'block-token-v2'
 
 
 def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunks, max_seconds=120):
@@ -45,6 +45,8 @@ def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunk
                 raise ExtractionError('A source unit cannot fit the embedding budget.')
             span = dict(block=number, start=start, end=end, page=block.get('page'),
                         slide=block.get('slide'), method=block.get('method', 'native'))
+            if block.get('language'):
+                span['language'] = block['language']
             ordinal = len(items)
             items.append(dict(id=str(uuid5(UUID(generation_id), str(ordinal))), learner_id=owner,
                 document_id=document_id, generation_id=generation_id, ordinal=ordinal, content=content,

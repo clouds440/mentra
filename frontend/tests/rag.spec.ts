@@ -11,6 +11,24 @@ async function register(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
+test('Library accepts extensionless source files and source extension aliases', async ({ page }) => {
+  await register(page);
+  await page.goto('/library');
+  const picker = page.getByLabel('File', { exact: true });
+  await expect(picker).not.toHaveAttribute('accept');
+  await picker.setInputFiles({ name: 'Dockerfile', mimeType: 'text/plain', buffer: Buffer.from('FROM python:3.12\n# Python decorators wrap functions.\nRUN echo "keep source"\n') });
+  await page.getByLabel('Material title', { exact: true }).fill('Source Files');
+  await page.getByLabel('New context name', { exact: true }).fill('Programming');
+  await page.getByRole('button', { name: 'Upload material', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Study in chat', exact: true })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('link', { name: 'Source Files', exact: true }).click();
+  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await picker.setInputFiles({ name: 'decorators.hpp', mimeType: 'text/plain', buffer: Buffer.from('// Python decorators wrap functions.\nvoid wrapper();\n') });
+  await page.getByRole('button', { name: 'Submit replacement', exact: true }).click();
+  await expect(page.getByText(/decorators.hpp.*Latest upload/)).toBeVisible();
+  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+});
+
 test('Library upload, refresh, grounded chat, citation, replacement and deletion', async ({ page }) => {
   await page.goto('/register');
   await page.getByLabel('Username', { exact: true }).fill(`rag_${randomUUID().slice(0, 8)}`);

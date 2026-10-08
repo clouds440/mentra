@@ -1,5 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownContent } from '../content/MarkdownContent';
 import mentraLogo from '../../assets/mentra-logo.png';
 import type { ChatMessageData } from '../../types/chat';
 import { useMemo, useState, type ReactNode } from 'react';
@@ -60,19 +59,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
         className={
           isAssistant
             ? 'min-w-0 max-w-full flex-1 text-[14px] leading-7 text-body'
-              : 'max-w-[88%] whitespace-pre-wrap rounded-2xl border border-border bg-message px-4 py-3 text-[14px] leading-6 text-foreground sm:max-w-[78%]'
+              : 'min-w-0 max-w-[94%] rounded-2xl border border-border bg-message px-4 py-3 text-[14px] leading-6 text-foreground sm:max-w-[88%]'
         }
       >
         {isAssistant ? (
           <div className="markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm, citations]} components={markdownComponents}>{message.content}</ReactMarkdown>
+            <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}
             {message.retrieval_status && ['unavailable', 'no_matches', 'no_eligible_sources'].includes(message.retrieval_status) && <p className="mt-3 text-xs text-subtle">{message.retrieval_status === 'unavailable' ? 'Study material retrieval was unavailable for this answer.' : 'No supporting Library passages were found for this answer.'}</p>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
           </div>
         ) : (
-          message.content
+          <MarkdownContent content={message.content} />
         )}
       </div>
     </article>

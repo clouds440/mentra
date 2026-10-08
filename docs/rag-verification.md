@@ -6,8 +6,8 @@ Verified on 2026-10-08 against the working tree. The end-to-end baseline is impl
 
 | Check | Result |
 | --- | --- |
-| Complete backend unittest suite after RAG/Vision optimization review | 209 passed in 157.756 seconds |
-| Complete Chromium browser suite | 23 passed, including five RAG workflows and existing auth/profile regressions |
+| Complete backend unittest suite after shared Documents extraction | 231 passed in 89.502 seconds |
+| Complete Chromium production-browser suite | 30 passed, including six RAG workflows, five code/Markdown checks and existing auth/profile regressions |
 | Frontend TypeScript and Vite production build | Passed |
 | Semantic theme checker | Passed |
 | Backend and Nginx frontend Docker images | Built successfully |
@@ -19,6 +19,16 @@ Verified on 2026-10-08 against the working tree. The end-to-end baseline is impl
 The backend tests exercise ownership, immutable provenance, idempotency, context policy, archive consent, empty explicit selections, canonical concept tags, token budgets, hybrid retrieval, bounded reranker fallback, durable lease fencing, retries, replacement publication, deletion outages and late-write cleanup. Checkpoint recovery reuses canonical chunks and verified vector points; publication checks expected point IDs and their owner/generation payloads. Old citations resolve their exact published generation. Unpublished cancelled generations cannot expose chunks. Trusted assessment grounding and server-bound read-only LangChain tools are covered independently of ordinary chat.
 
 OCR was subsequently extracted unchanged into the shared [Mentra Vision module](../backend/app/vision/README.md). Twelve additional tests verify tool commands, output, limits, exception behavior, provider substitution, temporary-file cleanup, concurrent request isolation and RAG capability/fingerprint compatibility. [Standalone real OCR results](vision-verification.json) and the real format/runtime checks confirm the extraction preserves the existing pipeline. No frontend behavior changed during this extraction; the browser-suite result above remains the preceding frontend verification.
+
+## Frontend code and Markdown rendering
+
+[Code rendering contracts and visual evidence](code-rendering.md) document shared Prism/React Markdown components for user messages, assistant messages and Library sources. Production-browser checks verify copy/wrap behavior, theme palettes, 320px overflow containment, source metadata, original-fetch reuse, HTML inline code, Markdown documents and continuous source chunks. Chunker identity now includes per-span language metadata; old published sources remain accessible. Backend/frontend Docker images were rebuilt.
+
+## Shared document extraction
+
+[Mentra Documents](../backend/app/documents/README.md) now owns standalone format detection, independent reader engines, extraction isolation and Vision handoff. RAG retains a thin error/capability adapter. PDF/DOCX/PPTX use their existing format libraries; HTML uses Beautiful Soup with explicit inclusion of scripts/styles/templates. Text/code use ordinary UTF-8 reads and preserve their respective previous paragraph or exact source conventions. Identical embedded images share one OCR result per document while retaining occurrence provenance.
+
+Twenty reader tests cover native compatibility, exact coding whitespace, HTML code/comments/templates, deep nesting, Office/HTML image routing, OCR failures, signature checks, limits, provider injection, standalone imports, child cancellation and malformed results. A downstream workflow test ingests and retrieves HTML inline code/styles and Python source. [Standalone real documents results](documents-verification.json) cover 16 fixtures through the default isolated public API, including Office-image, HTML and exact Python/TS/TSX/JS/JSX source cases. Source extensions, aliases and named files are checked for exact text preservation; a browser regression uploads Dockerfile and replaces it with a C++ header. All six RAG browser workflows passed (five existing workflows and the new source-upload regression). Frontend TypeScript/Vite and backend/frontend Docker rebuilds also passed. The new reader fingerprint intentionally distinguishes this added functionality from old ingestion configurations. Published sources remain usable; old pending configurations require a new reindex generation.
 
 ## Duplicate-work and correctness review
 
@@ -32,7 +42,7 @@ The follow-up review removed repeated operations while retaining the accuracy ch
 - PDF parsing probes OCR capabilities once per document and reuses each page's image view. Vision validates standalone positive integer page arguments before provider work and avoids repeated tool discovery in capability reporting.
 - Concept-focused retrieval restricts eligible material before dense/lexical candidate ranking, so unrelated material cannot crowd matching concepts out. The concept policy is checked again during final reauthorization. Non-finite embedding vectors and invalid reranker score sets fail safely.
 
-The final full suite passed 209 tests. `docker compose build backend` rebuilt `mentra-backend:latest`; the packaged runtime and standalone OCR checks used that actual Compose image. Running application services were not recreated. No schema change was needed for this review.
+The final full suite passed 231 tests. `docker compose build backend` rebuilt `mentra-backend:latest`; the packaged runtime and standalone OCR checks used that actual Compose image. Running application services were not recreated. No schema change was needed for this review.
 
 Browser coverage includes upload, refresh/polling, grounded chat, citation navigation and original download, replacement, archive/unarchive, reindex and deletion. It also checks cross-account isolation, explicit selection after source removal, archive-consent reset in automatic mode, 320px Light/Dark layouts, keyboard dismissal and focus restoration. Final visual review caught inherited Markdown/section spacing on dialogs; source and deletion dialogs now portal outside those content layouts, and a viewport-centering regression assertion passes.
 
@@ -58,11 +68,11 @@ The compact comparison has six judged queries over four short sources: five answ
 
 | Pipeline | p50 | Observed p95 | Samples |
 | --- | ---: | ---: | ---: |
-| Dense | 136.815 ms | 199.88 ms | 6 |
-| Hybrid | 84.29 ms | 96.84 ms | 6 |
-| Hybrid with optional reranker | 168.71 ms | 229.56 ms | 6 |
+| Dense | 116.67 ms | 128.07 ms | 6 |
+| Hybrid | 75.39 ms | 79.53 ms | 6 |
+| Hybrid with optional reranker | 118.03 ms | 207.00 ms | 6 |
 
-Measurements include cold-start queries and shared query-embedding cache effects. This rerun shared the host with backend and packaged-runtime verification, so it is not a controlled before/after latency comparison. At six samples, the reported p95 is the largest observed time, not a reliable capacity estimate. Peak process RSS was approximately 676 MiB for the smoke/evaluation process; this is not the combined API/worker/parser deployment memory requirement. All six reranker calls completed within the configured five-second timeout.
+Measurements include cold-start queries and shared query-embedding cache effects. These are smoke-test measurements on a shared host, not a controlled before/after latency comparison. At six samples, the reported p95 is the largest observed time, not a reliable capacity estimate. Peak process RSS was approximately 678 MiB for the smoke/evaluation process; this is not the combined API/worker/parser deployment memory requirement. All six reranker calls completed within the configured five-second timeout.
 
 The no-support query returned two candidates in each pipeline. Retrieval returns candidates rather than declaring their factual sufficiency; the answer prompt requires support or abstention, but representative real-model answer/abstention calibration remains necessary before claiming answer-quality targets. English OCR, handwriting, equations, multilingual inputs and realistic long-document/load benchmarks also need representative judgments.
 

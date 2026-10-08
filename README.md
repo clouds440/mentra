@@ -134,12 +134,16 @@ Routine rebuilds preserve the PostgreSQL volume and recreate containers using th
 docker compose build --no-cache
 ```
 
-## LangChain and RAG boundaries
+## Documents, Vision, LangChain and RAG boundaries
 
+- `backend/app/documents/`: shared file detection and component format readers for document consumers, with embedded image extraction through Vision. Read [Mentra Documents](./backend/app/documents/README.md) for the public API, supported formats and library choices.
+- `backend/app/vision/`: reusable stateless OCR and PDF rasterization providers. Read [Mentra Vision](./backend/app/vision/README.md).
 - `backend/app/langchain/`: `ModelFactory` constructs the configured OpenAI-compatible chat model; the shared `MentraLLM` handles invocations, source-specific prompt composition, and structured-output validation. Workflow services select a trusted `PromptSource`; prompt modules live under `backend/app/langchain/prompts/` and own their versions. The application injects the same component into chat and Student Profile evaluation. Learner tools are scoped to the authenticated internal `learner_id`.
 - `backend/app/rag/`: the framework-independent source service owns private uploads, versioned extraction/chunking, scoped dense/lexical retrieval, optional local reranking, and source lifecycle. A separate durable worker shares the private materials volume with the API. LangChain receives bounded source packets and owns answer generation; it never constructs embeddings or Qdrant clients in chat code. Read [RAG setup and contracts](./docs/rag.md) and [verification evidence](./docs/rag-verification.md).
 
 Switch compatible chat providers by changing `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY`. `EMBEDDING_MODEL` and `EMBEDDING_DEVICE` configure the independent local embedding service. The local embedding model is baked into the backend image; changing it requires an image rebuild and Qdrant reindex. Readiness verifies configuration, the local embedding model, and Qdrant without invoking the chat model. Qdrant connectivity is checked by readiness rather than liveness, so an outage does not prevent the backend health endpoint from responding.
+
+Chat renders user and assistant Markdown with shared Prism code blocks. Library sources reuse the same formatting, with extracted/original views, authenticated downloads and responsive Light/Dark styling. See [code rendering and visual evidence](./docs/code-rendering.md).
 
 ## Persistence and identity
 

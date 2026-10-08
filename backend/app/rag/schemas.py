@@ -53,6 +53,7 @@ class SourceSpan(RAGSchema):
     start: int
     end: int
     method: str = 'native'
+    language: str | None = None
 
 
 class SourceReference(RAGSchema):
@@ -62,6 +63,8 @@ class SourceReference(RAGSchema):
     generation_id: str
     chunk_id: str
     title: str
+    filename: str | None = None
+    media_type: str | None = None
     heading_path: list[str]
     spans: list[SourceSpan]
     excerpt: str

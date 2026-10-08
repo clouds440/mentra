@@ -8,7 +8,8 @@ from unittest.mock import Mock, patch
 from app.vision import VisionError, VisionService, create_vision_service
 from app.vision.providers.local import PopplerPDFPageRasterizer, TesseractImageOCR
 from app.rag.errors import ExtractionError
-from app.rag.parsers import NativeDocumentParser, capabilities, ocr_image, ocr_pdf_page
+from app.rag.parsers import NativeDocumentParser
+from app.documents import DocumentReadError, create_document_reader
 
 
 class VisionOCRTests(unittest.TestCase):
@@ -115,19 +116,22 @@ class VisionOCRTests(unittest.TestCase):
         self.assertTrue(all(not path.parent.exists() for path in paths))
 
     def test_rag_translates_only_safe_vision_errors(self):
-        with patch('app.rag.parsers._vision') as vision:
-            vision.extract_image_text.side_effect = VisionError('Image exceeds the pixel limit.')
-            vision.extract_pdf_page_text.side_effect = VisionError('Image exceeds the pixel limit.')
-            for call in (lambda: ocr_image(Path('source.png')), lambda: ocr_pdf_page(Path('source.pdf'), 1)):
-                with self.assertRaisesRegex(ExtractionError, 'Image exceeds the pixel limit.'):
-                    call()
+        vision = Mock()
+        vision.capabilities.return_value = SimpleNamespace(image_formats=('png', 'jpg'), image_ocr=True, pdf_page_ocr=True)
+        vision.asset_revisions.return_value = ()
+        vision.extract_image_text.side_effect = VisionError('Image exceeds the pixel limit.')
+        parser = NativeDocumentParser(create_document_reader(vision=vision, isolated=False))
+        with self.assertRaisesRegex(ExtractionError, 'Image exceeds the pixel limit.'):
+            parser.parse(Path('source.png'), 'image/png', 200, 120)
 
     def test_rag_capabilities_and_cache_identity_keep_the_existing_shape(self):
-        with patch('app.rag.parsers._vision') as vision, patch('app.rag.parsers.package_version', return_value='test'):
+        with patch('app.documents.service.package_version', return_value='test'):
+            vision = Mock()
             vision.capabilities.return_value = SimpleNamespace(image_formats=('png', 'jpg'), image_ocr=True, pdf_page_ocr=True)
             vision.asset_revisions.return_value = (('Pillow', 'pillow'), ('tesseract', 'tesseract version'), ('pdftoppm', 'poppler version'))
-            result = capabilities()
-            self.assertEqual(result['formats'][-2:], ['png', 'jpg'])
-            self.assertEqual(set(result), {'formats', 'image_ocr', 'scanned_pdf_ocr'})
-            self.assertEqual(NativeDocumentParser().version,
-                'native-local-ocr-v1:pypdf=test;python-docx=test;python-pptx=test;Pillow=pillow;tesseract=tesseract version;pdftoppm=poppler version')
+            parser = NativeDocumentParser(create_document_reader(vision=vision, isolated=False))
+            result = parser.capabilities()
+            self.assertEqual(result['formats'][:6], ['txt', 'pdf', 'docx', 'pptx', 'png', 'jpg'])
+            self.assertEqual(set(result), {'formats', 'image_ocr', 'scanned_pdf_ocr', 'parser_revision'})
+            self.assertEqual(parser.version,
+                'documents-native-vision-v3:pypdf=test;python-docx=test;python-pptx=test;beautifulsoup4=test;Pillow=pillow;tesseract=tesseract version;pdftoppm=poppler version')

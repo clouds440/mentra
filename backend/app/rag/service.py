@@ -132,9 +132,10 @@ class RAGService:
             raise not_found()
 
     def source_chunks(self, owner, document_id, version_id, include_archived=False, offset=0, generation_id=None):
-        doc, _ = self.repository.source(owner, document_id, version_id)
+        doc, version = self.repository.source(owner, document_id, version_id)
         self._source_policy(owner, doc, include_archived)
-        return self.repository.source_chunks(owner, document_id, version_id, offset=offset, generation_id=generation_id)
+        return [dict(row, filename=version['filename'], media_type=version['media_type']) for row in
+                self.repository.source_chunks(owner, document_id, version_id, offset=offset, generation_id=generation_id)]
 
     def get_chunk(self, owner, chunk_id, include_archived=False):
         row = self.repository.get_chunk(owner, chunk_id)
@@ -254,6 +255,7 @@ class RAGService:
                 continue
             source = SourceReference(token=f'S{len(result)+1}', document_id=row['document_id'], version_id=row['version_id'],
                 generation_id=row['generation_id'], chunk_id=key, title=row['title'], heading_path=row['heading_path'],
+                filename=row.get('filename'), media_type=row.get('media_type'),
                 spans=row['spans'], excerpt=row['content'], warnings=row['warnings'], include_archived=request.include_archived)
             result.append(RetrievedChunk(content=row['content'], score=score, score_type=score_type, source=source,
                 context_ids=doc_contexts[row['document_id']], concept_ids=row['concept_ids'], dense_rank=dense_ranks.get(key),

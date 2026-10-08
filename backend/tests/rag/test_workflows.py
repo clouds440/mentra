@@ -40,6 +40,24 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_shared_reader_html_scripts_and_code_survive_rag_ingestion(self):
+        cases = [('source.py', b'def decorators():\n    return "wrapper"\n', '    return "wrapper"'),
+            ('notes.html', b'<h1>Decorators</h1><script>const decorators = "wrappers";</script><style>.decorators {color: red;}</style>', 'const decorators')]
+        for filename, data, expected in cases:
+            with self.subTest(filename=filename):
+                accepted = self.service.accept_upload(self.owner, io.BytesIO(data), filename, filename,
+                    [self.context.context_id], 'shared-' + filename)
+                self.worker.run_once()
+                self.assertEqual(self.repo.get_job(self.owner, accepted['job_id'])['state'], 'SUCCEEDED')
+                result = self.service.search_document(self.owner, accepted['document_id'], 'decorators')
+                self.assertTrue(any(expected in chunk.content for chunk in result.chunks))
+                matched = next(chunk for chunk in result.chunks if expected in chunk.content)
+                self.assertEqual(matched.source.filename, filename)
+                self.assertEqual(matched.source.spans[0].language, 'py' if filename.endswith('.py') else 'js')
+                passages = self.service.source_chunks(self.owner, accepted['document_id'], matched.source.version_id)
+                self.assertTrue(all(chunk['filename'] == filename for chunk in passages))
+                self.assertIn('py' if filename.endswith('.py') else 'css', {span.get('language') for chunk in passages for span in chunk['spans']})
+
     def test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget(self):
         from unittest.mock import Mock
         self.ready()

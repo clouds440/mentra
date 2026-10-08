@@ -14,7 +14,7 @@ text = vision.extract_image_text(Path('/private/source.png'))
 page_text = vision.extract_pdf_page_text(Path('/private/source.pdf'), page=1)
 ```
 
-The caller supplies an authorized local file. Image OCR returns the original decoded text, including whitespace; it does not normalize, strip, chunk or assign document provenance. PDF page numbers must be positive integers; invalid page arguments fail before rendering or creating temporary files. The caller owns document/page-range validation, routing, warnings, job policy and resource admission. RAG continues to perform those responsibilities in its bounded, killable parser subprocess.
+The caller supplies an authorized local file. Image OCR returns the original decoded text, including whitespace; it does not normalize, strip, chunk or assign document provenance. PDF page numbers must be positive integers; invalid page arguments fail before rendering or creating temporary files. The caller owns document/page-range validation, routing, warnings, job policy and resource admission. Mentra Documents owns format routing, provenance and extraction warnings in its bounded, killable reader subprocess; RAG owns ingestion jobs and admission.
 
 ## Preserved behavior
 
@@ -23,10 +23,10 @@ The caller supplies an authorized local file. Image OCR returns the original dec
 - Tesseract `stdout`, English (`eng`), 45-second tool timeout and UTF-8 replacement decoding.
 - Poppler single-page PNG rendering at 120 DPI with the same 30-second tool timeout.
 - One private temporary directory per PDF-page request, cleaned on success or failure.
-- Existing missing-tool capability semantics, validation message and tool exception behavior. `VisionError` carries the safe pixel-limit message; RAG translates it to its existing `ExtractionError`.
-- Asset revision reporting for Pillow/Tesseract/poppler. RAG's parser fingerprint retains its previous ordering and value, so extraction alone does not invalidate ingestion checkpoints or require reindexing.
+- Existing missing-tool capability semantics, validation message and tool exception behavior. `VisionError` carries the safe pixel-limit message; Documents translates it to `DocumentReadError`, and the RAG adapter preserves its existing `ExtractionError` contract.
+- Asset revision reporting for Pillow/Tesseract/poppler. These versions feed the shared Documents reader fingerprint. The original Vision extraction preserved identity; subsequent document capability additions intentionally use a new Documents revision.
 
-RAG retains native PDF/DOCX/PPTX/TXT parsing, scanned/mixed-page detection, page/slide/heading provenance, warnings, limits and its outer subprocess cancellation. Embedded image OCR calls this shared service. No image recognition, CLIP, captions, new language or new endpoint is introduced in this extraction.
+[Mentra Documents](../documents/README.md) now owns native format parsing, scanned/mixed-page detection, page/slide/heading provenance, warnings, limits and outer subprocess cancellation. Embedded image OCR calls this shared service. No image recognition, CLIP, captions, new language or new endpoint is introduced in this extraction.
 
 ## Module boundaries and scaling
 

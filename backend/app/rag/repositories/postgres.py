@@ -421,8 +421,10 @@ class RAGRepository:
         if not ids or not eligible_ids:
             return []
         with self.sessions() as session:
-            query = select(chunks, generations.c.version_id, generations.c.warnings, documents.c.title).join(generations,
-                chunks.c.generation_id == generations.c.id).join(documents, chunks.c.document_id == documents.c.id).where(
+            query = select(chunks, generations.c.version_id, generations.c.warnings, documents.c.title,
+                versions.c.filename, versions.c.media_type).join(generations,
+                chunks.c.generation_id == generations.c.id).join(documents, chunks.c.document_id == documents.c.id).join(
+                versions, generations.c.version_id == versions.c.id).where(
                 chunks.c.learner_id == owner, chunks.c.id.in_(ids), generations.c.state == 'READY',
                 chunks.c.generation_id.in_(eligible_ids), documents.c.active_generation_id == chunks.c.generation_id,
                 documents.c.deleted_at.is_(None))

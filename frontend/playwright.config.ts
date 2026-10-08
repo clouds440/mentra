@@ -28,7 +28,7 @@ export default defineConfig({
         AUTH_COOKIE_SECURE: 'false', AUTH_COOKIE_SAME_SITE: 'lax' },
     },
     {
-      command: 'npm run dev -- --port 15173 --strictPort',
+      command: process.env.FRONTEND_PREVIEW === '1' ? 'npm run preview -- --port 15173 --strictPort' : 'npm run dev -- --port 15173 --strictPort',
       cwd: frontendRoot,
       url: 'http://127.0.0.1:15173',
       reuseExistingServer: false,

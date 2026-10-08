@@ -71,8 +71,9 @@ export function ChatPage() {
     requestControllerRef.current = controller;
     setMessages(conversation);
     if (messages.length === 0) {
-      const title =
-        content.length > 48 ? `${content.slice(0, 45).trimEnd()}...` : content;
+      const firstLine = content.split(/\r?\n/).find(line => line.trim())?.trim() ?? '';
+      const plainTitle = /^(?:```|~~~)/.test(firstLine) ? 'Code discussion' : firstLine.replace(/^#{1,6}\s+/, '').replace(/\*\*|__|`/g, '');
+      const title = plainTitle.length > 48 ? `${plainTitle.slice(0, 45).trimEnd()}...` : plainTitle;
       setChatTitle(title);
     }
     setDraft('');

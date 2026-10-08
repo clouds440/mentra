@@ -1,0 +1,211 @@
+{
+  "module": "mentra documents",
+  "reader_revision": "documents-native-vision-v3:pypdf=6.12.1;python-docx=1.2.0;python-pptx=1.0.2;beautifulsoup4=4.15.0;Pillow=12.3.0;tesseract=tesseract 5.5.0;pdftoppm=pdftoppm version 25.03.0",
+  "checks": [
+    {
+      "format": "txt",
+      "fixture": 0,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [],
+      "warnings": []
+    },
+    {
+      "format": "pdf",
+      "fixture": 1,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [],
+      "warnings": []
+    },
+    {
+      "format": "docx",
+      "fixture": 2,
+      "blocks": 2,
+      "methods": [
+        "native",
+        "native"
+      ],
+      "languages": [],
+      "warnings": [
+        "Headers, footers, comments, drawing text and handwritten annotations may be incomplete; inspect the original."
+      ]
+    },
+    {
+      "format": "pptx",
+      "fixture": 3,
+      "blocks": 2,
+      "methods": [
+        "native",
+        "native"
+      ],
+      "languages": [],
+      "warnings": [
+        "Speaker notes, charts and drawing text may be incomplete; inspect the original."
+      ]
+    },
+    {
+      "format": "png",
+      "fixture": 4,
+      "blocks": 1,
+      "methods": [
+        "ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "This image was read with English OCR; verify handwriting and equations."
+      ]
+    },
+    {
+      "format": "jpg",
+      "fixture": 5,
+      "blocks": 1,
+      "methods": [
+        "ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "This image was read with English OCR; verify handwriting and equations."
+      ]
+    },
+    {
+      "format": "pdf",
+      "fixture": 6,
+      "blocks": 1,
+      "methods": [
+        "ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "Page 1 was read with OCR; verify equations and handwriting."
+      ]
+    },
+    {
+      "format": "pdf",
+      "fixture": 7,
+      "blocks": 2,
+      "methods": [
+        "native",
+        "image_ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "Image text on page 1 was read with OCR; verify it against the source."
+      ]
+    },
+    {
+      "format": "docx",
+      "fixture": 8,
+      "blocks": 6,
+      "methods": [
+        "native",
+        "native",
+        "native",
+        "image_ocr",
+        "native",
+        "image_ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "Document image text was read with English OCR; verify handwriting and equations.",
+        "Headers, footers, comments, drawing text and handwritten annotations may be incomplete; inspect the original."
+      ]
+    },
+    {
+      "format": "pptx",
+      "fixture": 9,
+      "blocks": 2,
+      "methods": [
+        "native",
+        "image_ocr"
+      ],
+      "languages": [],
+      "warnings": [
+        "Image text on slide 1 was read with English OCR; verify it against the source.",
+        "Speaker notes, charts and drawing text may be incomplete; inspect the original."
+      ]
+    },
+    {
+      "format": "html",
+      "fixture": 10,
+      "blocks": 4,
+      "methods": [
+        "native",
+        "native",
+        "native",
+        "image_ocr"
+      ],
+      "languages": [
+        "js",
+        "css"
+      ],
+      "warnings": [
+        "HTML image text was read with English OCR; verify it against the source."
+      ]
+    },
+    {
+      "format": "py",
+      "fixture": 11,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [
+        "py"
+      ],
+      "warnings": []
+    },
+    {
+      "format": "ts",
+      "fixture": 12,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [
+        "ts"
+      ],
+      "warnings": []
+    },
+    {
+      "format": "tsx",
+      "fixture": 13,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [
+        "tsx"
+      ],
+      "warnings": []
+    },
+    {
+      "format": "js",
+      "fixture": 14,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [
+        "js"
+      ],
+      "warnings": []
+    },
+    {
+      "format": "jsx",
+      "fixture": 15,
+      "blocks": 1,
+      "methods": [
+        "native"
+      ],
+      "languages": [
+        "jsx"
+      ],
+      "warnings": []
+    }
+  ]
+}

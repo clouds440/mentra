@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from app.rag.parsers import parse_native
+from types import SimpleNamespace
+from app.documents import create_document_reader
+
+
+def parse_native(path, kind, max_pages):
+    return create_document_reader(isolated=False).read_in_process(path, kind, max_pages)
 
 
 class ParserStructureTests(unittest.TestCase):
@@ -39,7 +44,7 @@ class ParserStructureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'short.pdf'
             path.write_bytes(build_pdf('Notes'))
-            with patch('app.rag.parsers.capabilities', return_value={'image_ocr':False, 'scanned_pdf_ocr':False}):
-                parsed = parse_native(path, 'pdf', 200)
+            vision = SimpleNamespace(capabilities=lambda: SimpleNamespace(image_formats=(), image_ocr=False, pdf_page_ocr=False), asset_revisions=lambda: ())
+            parsed = create_document_reader(vision=vision, isolated=False).read_in_process(path, 'pdf', 200)
             self.assertEqual(parsed['blocks'][0]['text'].strip(), 'Notes')
             self.assertEqual(parsed['blocks'][0]['method'], 'native')
