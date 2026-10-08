@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.student_profile import StudentProfileService, ProfileDetails, ProfileUpdate, EvidenceInput, EvidenceItem
-from app.student_profile.schemas import VersionRequest, AnswerRequest, DIMENSIONS, AIEvaluation, EducationLevel
+from app.student_profile.schemas import VersionRequest, AnswerRequest, CalibrationCompletionRequest, DIMENSIONS, AIEvaluation, EducationLevel
 from app.student_profile.repositories.postgres import PostgresStudentProfileRepository
 from app.student_profile.repositories.tables import student_profile, calibration_attempt, profile_evidence
 from app.student_profile.calibration.blueprints import blueprint, banks
@@ -126,6 +126,35 @@ class StudentProfileTests(unittest.TestCase):
         with self.assertRaises(AppError):
             asyncio.run(self.service.calibration.complete(A, view.id, VersionRequest(expected_version=updated.version)))
         self.assertEqual(self.count(profile_evidence), 0)
+
+    def test_bulk_completion_validates_atomically_and_retries_without_duplicate_evidence(self):
+        self.fill_details()
+        view = self.service.calibration.start(A)
+        answers = {question.id: question.options[0].id for question in view.questions}
+        question = view.questions[0]
+        invalid_answers = [
+            {key: value for key, value in answers.items() if key != question.id},
+            answers | {question.id: 'invalid'},
+            {('unknown' if key == question.id else key): value for key, value in answers.items()},
+        ]
+        for invalid in invalid_answers:
+            with self.assertRaises(AppError):
+                asyncio.run(self.service.calibration.complete(A, view.id,
+                    CalibrationCompletionRequest(expected_version=view.version, answers=invalid)))
+            self.assertEqual(self.service.calibration.get(A), view)
+            self.assertEqual(self.count(profile_evidence), 0)
+        with self.assertRaises(AppError):
+            asyncio.run(self.service.calibration.complete(A, view.id,
+                CalibrationCompletionRequest(expected_version=view.version + 1, answers=answers)))
+        self.assertEqual(self.service.calibration.get(A), view)
+        request = CalibrationCompletionRequest(expected_version=view.version, answers=answers)
+        result = asyncio.run(self.service.calibration.complete(A, view.id, request))
+        self.assertEqual(self.service.calibration.get(A).answers, answers)
+        self.assertEqual(result.profile.evaluation_status, 'applied')
+        again = asyncio.run(self.service.calibration.complete(A, view.id, request))
+        self.assertEqual(again, result)
+        self.assertEqual(self.count(profile_evidence), 1)
+        self.assertEqual(len(self.evaluator.calls), 1)
 
     def test_hybrid_evaluation_has_item_results_and_never_writes_learner_mastery(self):
         result = self.complete()

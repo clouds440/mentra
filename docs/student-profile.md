@@ -31,8 +31,9 @@ evaluation and broader evidence are needed before making stronger accuracy claim
    chat directly. Existing accounts and future external identities use the same gate.
 2. The profile is persisted, and Mentra offers a recommended 1–2 minute calibration.
    The learner may skip this assessment; estimated fields remain unknown.
-3. Each selected answer is saved immediately. Refresh/login resumes the first
-   unanswered question. Back navigation permits edits while the attempt is in progress.
+3. Selections and Next/Back navigation stay in frontend memory. Finish submits all
+   eight answers in one request. Back navigation permits edits before submission;
+   refreshing or leaving the assessment discards unsubmitted selections.
 4. Completing all eight answers stores deterministic evidence and completes onboarding
    before requesting AI evaluation. If the provider is unavailable, answers remain
    saved, estimates stay unknown, and the learner can enter Mentra and retry in Settings.
@@ -121,8 +122,8 @@ a request body.
 | `PUT /student-profile/details` | `{expected_version, details: ProfileDetails}` |
 | `GET /student-profile/calibration` | Resumable/current assessment or null; no answer keys |
 | `POST /student-profile/calibration` | Start or resume the current assessment |
-| `PATCH /student-profile/calibration/{id}/answers` | `{expected_version, question_id, option_id}` |
-| `POST /student-profile/calibration/{id}/complete` | `{expected_version}`; returns profile and evidence ID |
+| `PATCH /student-profile/calibration/{id}/answers` | Legacy compatibility only: `{expected_version, question_id, option_id}`; unused by the frontend |
+| `POST /student-profile/calibration/{id}/complete` | `{expected_version, answers: {question_id: option_id}}`; validates and saves all answers atomically, returns profile and evidence ID. Omitting answers supports previously saved legacy attempts. |
 | `POST /student-profile/calibration/skip` | `{expected_version}`; requires complete information |
 | `POST /student-profile/calibration/evaluate` | Retry saved calibration evaluation |
 
@@ -199,8 +200,9 @@ evolution, ownership/immutable history, concurrency/leases, stale contexts, sche
 EduVerse subject/signature validation, repeated provisioning/manual-edit preservation,
 mobile layouts, and Light/Dark/System themes.
 
-Recovery checks also cover a committed answer whose HTTP response is lost, optimistic
-conflicts from another editor, and a persistence failure during final estimate application.
+Recovery checks cover failed bulk submission with local choices retained for retry,
+atomic validation of all answers, optimistic conflicts, idempotent completion, and a
+persistence failure during final estimate application.
 The profile/evaluation transaction rolls back together; an expired claim can be retried
 without counting the same evidence twice. See the [dated verification report](student-profile-verification.md)
 for observed results and Docker image/startup checks.

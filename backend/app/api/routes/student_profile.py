@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from app.auth.dependencies import require_identity
 from app.student_profile.dependencies import get_student_profile_service
-from app.student_profile.schemas import StudentProfile, ProfileUpdate, VersionRequest, AnswerRequest, CalibrationView, CalibrationResult
+from app.student_profile.schemas import StudentProfile, ProfileUpdate, VersionRequest, AnswerRequest, CalibrationCompletionRequest, CalibrationView, CalibrationResult
 
 router = APIRouter(prefix='/student-profile', tags=['student profile'])
 
@@ -45,5 +45,5 @@ def save_answer(attempt_id: UUID, body: AnswerRequest, identity=Depends(require_
 
 
 @router.post('/calibration/{attempt_id}/complete', response_model=CalibrationResult)
-async def complete_calibration(attempt_id: UUID, body: VersionRequest, identity=Depends(require_identity), service=Depends(get_student_profile_service)):
+async def complete_calibration(attempt_id: UUID, body: CalibrationCompletionRequest, identity=Depends(require_identity), service=Depends(get_student_profile_service)):
     return await service.calibration.complete(identity.learner_id, str(attempt_id), body)

@@ -67,6 +67,13 @@ class CalibrationService:
             if attempt.status == 'in_progress':
                 if request.expected_version != attempt.version:
                     raise conflict('Your assessment changed elsewhere. Reload it and try again.')
+                answers = getattr(request, 'answers', None)
+                if answers is not None:
+                    if set(answers) != {question.id for question in attempt.questions}:
+                        raise AppError('CALIBRATION_INCOMPLETE', 'Answer all eight questions before finishing.', 422)
+                    if any(answers[question.id] not in {option.id for option in question.options} for question in attempt.questions):
+                        raise AppError('INVALID_CALIBRATION_ANSWER', 'Choose an available answer for each question.', 422)
+                    attempt.answers = dict(answers)
                 try:
                     observation = score(attempt, self.clock())
                 except ValueError as exc:

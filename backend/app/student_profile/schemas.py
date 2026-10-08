@@ -86,6 +86,10 @@ class AnswerRequest(VersionRequest):
     option_id: str = Field(min_length=1, max_length=16)
 
 
+class CalibrationCompletionRequest(VersionRequest):
+    answers: dict[str, str] | None = Field(default=None, max_length=8)
+
+
 class Option(Contract):
     id: str
     text: str

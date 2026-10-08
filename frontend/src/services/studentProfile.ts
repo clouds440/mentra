@@ -20,11 +20,8 @@ export const updateDetails = (details: ProfileDetails, version: number) => reque
 });
 export const getCalibration = (signal?: AbortSignal) => request<CalibrationAttempt | null>('/calibration', { signal });
 export const startCalibration = () => request<CalibrationAttempt>('/calibration', { method: 'POST' });
-export const saveAnswer = (attempt: CalibrationAttempt, questionId: string, optionId: string) => request<CalibrationAttempt>(`/calibration/${attempt.id}/answers`, {
-  method: 'PATCH', body: JSON.stringify({ question_id: questionId, option_id: optionId, expected_version: attempt.version }),
-});
-export const completeCalibration = (attempt: CalibrationAttempt) => request<{ profile: StudentProfile; evidence_id: string }>(`/calibration/${attempt.id}/complete`, {
-  method: 'POST', body: JSON.stringify({ expected_version: attempt.version }),
+export const completeCalibration = (attempt: CalibrationAttempt, answers: Record<string, string>) => request<{ profile: StudentProfile; evidence_id: string }>(`/calibration/${attempt.id}/complete`, {
+  method: 'POST', body: JSON.stringify({ expected_version: attempt.version, answers }),
 });
 export const skipCalibration = (version: number) => request<StudentProfile>('/calibration/skip', {
   method: 'POST', body: JSON.stringify({ expected_version: version }),

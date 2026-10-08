@@ -53,13 +53,13 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
   }
   function complete(next: StudentProfile) { setFinished(next); replace(next); }
   const results = finished ? profile : attempt?.status === 'completed' ? profile : null;
-  return <main className="min-h-dvh bg-background px-5 py-6 text-foreground sm:px-6 sm:py-10">
+  return <main className="min-h-dvh bg-background px-3 py-4 text-foreground sm:px-6 sm:py-10">
     <div className="mx-auto w-full max-w-xl">
       <header className="mb-7 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5"><img src={mentraLogo} alt="" aria-hidden="true" className="h-8 w-8 object-contain" /><span className="text-lg font-semibold tracking-tight">mentra</span></div>
         <div className="w-28"><LogoutButton /></div>
       </header>
-      <Card className="auth-enter rounded-2xl p-6 shadow-lg shadow-shadow/5 backdrop-blur-none sm:p-8">
+      <Card className="auth-enter rounded-2xl p-4 shadow-lg shadow-shadow/5 backdrop-blur-none sm:p-8">
         {!hasDetails ? <><p className="text-xs font-medium uppercase tracking-wider text-accent">Step 1 of 2 · Your profile</p>
           <h1 className="mt-3 text-2xl font-medium tracking-tight">Make Mentra yours</h1>
           <p className="mb-7 mt-2 text-sm leading-6 text-muted">Tell Mentra a little about you. These details help it teach at the right level, and you can edit them later.</p>
@@ -70,7 +70,7 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
             <div className="mt-7"><ProfileEstimates profile={results} /></div>
             <Button className="mt-7 w-full" onClick={() => navigate(target, { replace: true })}>{calibrationOnly ? 'Back to settings' : 'Enter Mentra'}<ArrowRight aria-hidden="true" size={16} /></Button></>
             : loading ? <div className="py-12 text-center"><Spinner className="mx-auto text-accent" label="Restoring your calibration" /><p className="mt-4 text-sm text-muted">Restoring your progress…</p></div>
-              : attempt?.status === 'in_progress' ? <CalibrationAssessment key={attempt.id} initialAttempt={attempt} onComplete={complete} onSkip={() => { void skip(); }} />
+              : attempt?.status === 'in_progress' ? <CalibrationAssessment key={attempt.id} initialAttempt={attempt} onComplete={complete} skipping={pending} onSkip={() => { void skip(); }} />
                 : <><p className="text-xs font-medium uppercase tracking-wider text-accent">{calibrationOnly ? 'Personalization' : 'Step 2 of 2'} · Recommended</p>
                   <span className="mt-6 grid h-10 w-10 place-items-center rounded-xl bg-active text-accent"><Sparkles aria-hidden="true" size={20} /></span>
                   <h1 className="mt-4 text-2xl font-medium tracking-tight">A quick starting point</h1>

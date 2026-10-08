@@ -37,7 +37,7 @@ test('information is mandatory and optional calibration resumes across refresh a
   await expect(page.getByRole('link', { name: 'Start calibration', exact: true })).toBeVisible();
 });
 
-test('calibration autosaves, restores progress, evaluates results, and profile preferences remain editable', async ({ page, context }) => {
+test('calibration submits together, evaluates results, and profile preferences remain editable', async ({ page, context }) => {
   await register(page);
   await fillProfile(page, 'undergraduate', 'Computer science');
   await page.getByRole('button', { name: 'Start quick calibration', exact: true }).click();
@@ -47,6 +47,9 @@ test('calibration autosaves, restores progress, evaluates results, and profile p
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByText('Question 2 of 8', { exact: true })).toBeVisible();
   await page.reload();
+  await expect(page.getByText('Question 1 of 8', { exact: true })).toBeVisible();
+  await page.getByRole('group', { name: 'Answer choices' }).locator('label').first().click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByText('Question 2 of 8', { exact: true })).toBeVisible();
   for (let index = 2; index <= 8; index++) {
     await expect(page.getByText(`Question ${index} of 8`, { exact: true })).toBeVisible();
@@ -92,37 +95,86 @@ test('skipped calibration can be completed later in settings and uses level-appr
   await expect(page).toHaveURL(/\/settings$/);
 });
 
-test('a lost autosave response and a conflicting answer recover the actual saved draft', async ({ page, context }) => {
+test('a failed final submission preserves local choices for a single bulk retry', async ({ page, context }) => {
   await register(page);
   await fillProfile(page);
   await page.getByRole('button', { name: 'Start quick calibration' }).click();
   await expect(page.getByText('Question 1 of 8', { exact: true })).toBeVisible();
-  const answerRoute = '**/api/v1/student-profile/calibration/*/answers';
-  await page.route(answerRoute, async (route) => {
-    const response = await route.fetch();
-    expect(response.status()).toBe(200);
-    await route.abort('failed');
+  await page.route('**/api/v1/student-profile/calibration/*/complete', async (route) => {
+    expect(Object.keys(route.request().postDataJSON().answers)).toHaveLength(8);
+    await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
   }, { times: 1 });
-  await page.getByRole('group', { name: 'Answer choices' }).locator('label').first().click();
+  for (let index = 1; index <= 8; index++) {
+    await expect(page.getByText(`Question ${index} of 8`, { exact: true })).toBeVisible();
+    await page.getByRole('group', { name: 'Answer choices' }).locator('label').first().click();
+    await page.getByRole('button', { name: index === 8 ? 'Finish calibration' : 'Next', exact: true }).click();
+  }
   await expect(page.getByRole('button', { name: 'Reload assessment' })).toBeVisible();
   const endpoint = 'http://127.0.0.1:18003/api/v1/student-profile/calibration';
   const saved = await (await context.request.get(endpoint)).json();
-  expect(Object.keys(saved.answers)).toHaveLength(1);
+  expect(Object.keys(saved.answers)).toHaveLength(0);
   await page.getByRole('button', { name: 'Reload assessment' }).click();
   await expect(page.getByRole('radio').first()).toBeChecked();
-  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
-  const question = saved.questions[0];
-  const conflict = await context.request.patch(`${endpoint}/${saved.id}/answers`, {
-    headers: { Origin: 'http://127.0.0.1:15173' },
-    data: { expected_version: saved.version, question_id: question.id, option_id: question.options[1].id },
+  await page.getByRole('button', { name: 'Finish calibration', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your starting point is ready' })).toBeVisible();
+  expect(Object.keys((await (await context.request.get(endpoint)).json()).answers)).toHaveLength(8);
+});
+
+test('selection and navigation stay local and stable until one bulk submission', async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await register(page);
+  await fillProfile(page);
+  await page.getByRole('button', { name: 'Start quick calibration' }).click();
+  await expect(page.getByText('Question 1 of 8', { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 568 });
+  const group = page.getByRole('group', { name: 'Answer choices' });
+  const assessment = page.getByRole('region', { name: 'Calibration assessment' });
+  let saves = 0;
+  await page.route('**/api/v1/student-profile/calibration/*/answers', async (route) => {
+    saves++;
+    await route.continue();
   });
-  expect(conflict.status()).toBe(200);
-  await page.getByRole('group', { name: 'Answer choices' }).locator('label').nth(2).click();
-  await expect(page.getByRole('alert')).toContainText('changed elsewhere');
-  await page.getByRole('button', { name: 'Reload assessment' }).click();
+  const before = await group.boundingBox();
+  await group.locator('label').first().click();
+  await expect(page.getByRole('radio').first()).toBeChecked();
+  await group.locator('label').nth(1).click();
+  await expect(page.getByRole('radio').nth(1)).toBeChecked();
+  await expect(assessment).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByRole('radio').first()).toBeEnabled();
+  const after = await group.boundingBox();
+  expect(after?.height).toBe(before?.height);
+  expect(after?.width).toBe(before?.width);
+  expect(saves).toBe(0);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText('Question 2 of 8', { exact: true })).toBeVisible();
+  await group.locator('label').nth(2).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('radio').nth(1)).toBeChecked();
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByText('Question 2 of 8', { exact: true })).toBeVisible();
+  await expect(page.getByRole('radio').nth(2)).toBeChecked();
+  expect(saves).toBe(0);
+  for (const width of [320, 375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 568 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+  }
+  const endpoint = 'http://127.0.0.1:18003/api/v1/student-profile/calibration';
+  expect(Object.keys((await (await context.request.get(endpoint)).json()).answers)).toHaveLength(0);
+  await page.setViewportSize({ width: 320, height: 568 });
+  let submissions = 0;
+  await page.route('**/api/v1/student-profile/calibration/*/complete', async (route) => {
+    submissions++;
+    expect(Object.keys(route.request().postDataJSON().answers)).toHaveLength(8);
+    await route.continue();
+  });
+  for (let index = 2; index <= 8; index++) {
+    await group.locator('label').first().click();
+    await page.getByRole('button', { name: index === 8 ? 'Finish calibration' : 'Next', exact: true }).click();
+  }
+  await expect(page.getByRole('heading', { name: 'Your starting point is ready' })).toBeVisible();
+  expect(saves).toBe(0);
+  expect(submissions).toBe(1);
 });
 
 test('AI outage preserves answers, leaves estimates unknown, and evaluation can be retried', async ({ page, context }) => {
