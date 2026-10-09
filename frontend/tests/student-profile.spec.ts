@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { fillProfile } from './profile-helpers';
@@ -68,8 +69,8 @@ test('calibration submits together, evaluates results, and profile preferences r
   await page.getByRole('button', { name: 'Enter Mentra' }).click();
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Edit profile' }).click();
-  await page.getByLabel('Learning preference', { exact: true }).selectOption('concise');
-  await page.getByLabel('Explanation depth', { exact: true }).selectOption('brief');
+  await chooseOption(page.getByLabel('Learning preference', { exact: true }), 'concise');
+  await chooseOption(page.getByLabel('Explanation depth', { exact: true }), 'brief');
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible();
   await page.reload();

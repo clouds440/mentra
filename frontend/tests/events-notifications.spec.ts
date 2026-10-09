@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -8,12 +9,13 @@ test('event editing, reminder inbox and notification preferences', async ({ page
   await page.getByLabel('Password', { exact: true }).fill('an isolated agenda test password');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await finishOnboardingWithoutAssessment(page);
-  await page.getByRole('link', { name: 'Events', exact: true }).click();
+  await page.getByRole('link', { name: 'Progress', exact: true }).click();
+  await page.getByRole('tab', { name: 'Events', exact: true }).click();
   await page.getByRole('button', { name: 'New event', exact: true }).click();
   await page.getByLabel('Title', { exact: true }).fill('Revision session');
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   await page.getByLabel('Date', { exact: true }).fill(tomorrow);
-  await page.getByLabel('Reminder', { exact: true }).selectOption('disabled');
+  await chooseOption(page.getByLabel('Reminder', { exact: true }), 'disabled');
   await page.getByRole('button', { name: 'Check dates & reminder' }).click();
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
   const detail = page.getByRole('region', { name: 'Event details' });

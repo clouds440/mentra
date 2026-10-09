@@ -38,12 +38,12 @@ export function SettingsPage() {
   }
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
+      <div className="page-container">
         <div className="max-w-2xl">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent/80">
             Your workspace
           </p>
-          <h1 className="mt-3 text-3xl font-medium tracking-tight text-foreground">
+          <h1 className="mt-3 page-title">
             Settings
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted">

@@ -8,6 +8,8 @@
   --card: 255 255 255;
   --surface: 241 245 249;
   --input: 255 255 255;
+  --popover: 244 247 251;
+  --overlay-opacity: 0.36;
   --border: 226 232 240;
   --border-strong: 203 213 225;
   --border-hover: 148 163 184;
@@ -44,6 +46,8 @@
   --card: 10 19 37;
   --surface: 11 19 36;
   --input: 2 6 23;
+  --popover: 18 28 47;
+  --overlay-opacity: 0.52;
   --border: 20 23 39;
   --border-strong: 40 43 58;
   --border-hover: 53 56 69;
@@ -371,3 +375,13 @@ html[data-theme-ready] aside {
   .source-header { padding: 18px 16px 0; }
   .source-reader { padding: 20px 16px; }
 }
+
+@layer components {
+  .field-control { @apply min-h-11 rounded-xl border border-border-strong bg-input px-3 py-2.5 text-sm text-foreground outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50; }
+  .overlay-panel { @apply border border-border-strong bg-popover text-foreground shadow-xl shadow-shadow/15; }
+  .page-container { @apply mx-auto w-full max-w-4xl space-y-6 px-5 py-10; }
+  .page-title { @apply text-3xl font-medium tracking-tight text-heading; }
+  .page-description { @apply text-sm leading-6 text-muted; }
+  .overlay-backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
+}
+dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); backdrop-filter: blur(3px); }

@@ -11,7 +11,6 @@ const pageTitles: Record<string, string> = {
   '/assessments': 'Assessments',
   '/settings': 'Settings',
   '/notifications': 'Notifications',
-  '/events': 'Events',
 };
 
 export function AppLayout() {

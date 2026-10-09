@@ -7,7 +7,7 @@ export default {
         'background', 'card', 'surface', 'input', 'border', 'border-strong',
         'border-hover', 'foreground', 'heading', 'body', 'muted', 'subtle',
         'hover', 'active', 'message', 'accent', 'accent-foreground', 'primary',
-        'primary-hover', 'danger', 'overlay', 'shadow',
+        'primary-hover', 'danger', 'overlay', 'shadow', 'popover',
       ].map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`])),
     },
   },

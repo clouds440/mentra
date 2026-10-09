@@ -1,3 +1,4 @@
+import { EventAgenda } from '../events/EventAgenda';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -27,8 +28,8 @@ function Progress() {
     return () => controller.abort();
   }, [tab, context, reload]);
   const percent = (value: number | null) => value === null ? 'Unknown' : `${Math.round(value * 100)}%`;
-  return <div className="h-full overflow-y-auto"><div className="mx-auto max-w-4xl space-y-6 px-5 py-10">
-    <h1 className="text-3xl font-medium">Progress</h1><p className="text-sm text-muted">Your learning evidence, study recommendations and upcoming plans.</p>
+  return <div className="h-full overflow-y-auto"><div className="page-container">
+    <h1 className="page-title">Progress</h1><p className="text-sm text-muted">Your learning evidence, study recommendations and upcoming plans.</p>
     <div role="tablist" aria-label="Progress sections" className="flex gap-2 border-b border-border" onKeyDown={event => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 'learning' : event.key === 'End' ? 'events' : tab === 'learning' ? 'events' : 'learning'; setParams({ tab: next }); document.getElementById(`progress-${next}`)?.focus(); }
     }}>{(['learning', 'events'] as const).map(value => <button id={`progress-${value}`} key={value} role="tab" aria-selected={value === tab} aria-controls={`progress-panel-${value}`} tabIndex={value === tab ? 0 : -1} className={`border-b-2 px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-accent ${value === tab ? 'border-accent' : 'border-transparent text-muted'}`} onClick={() => setParams({ tab: value })}>{value === 'learning' ? 'Learning' : 'Events'}</button>)}</div>
@@ -44,6 +45,6 @@ function Progress() {
       {!!learning.verification.length && <><h2 className="text-lg font-medium">Check your understanding</h2><ul>{learning.verification.map(item => <li key={item.concept_id} className="py-2"><span className="font-medium">{item.name}</span><p className="text-sm text-muted">{item.reason}</p></li>)}</ul></>}
       </>}
     </section>
-    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4"><Link to="/events" className="text-accent underline">Open your event agenda</Link><h2 className="text-lg font-medium">Pending event proposals</h2>{!proposals && !error && <p role="status">Loading proposals…</p>}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}{proposals?.map(value => <EventProposalCard key={value.id} initial={value} />)}</section>
+    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda />}<h2 className="text-lg font-medium">Pending event proposals</h2>{!proposals && !error && <p role="status">Loading proposals…</p>}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}{proposals?.map(value => <EventProposalCard key={value.id} initial={value} />)}</section>
   </div></div>;
 }

@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -33,7 +34,7 @@ test('assessment grading, correction, paper confirmation and learning progress',
   expect(response.ok()).toBeTruthy();const context=await response.json();
   await page.getByRole('link',{name:'Assessments',exact:true}).click();
   await page.getByRole('button',{name:'Create assessment',exact:true}).click();
-  await page.getByLabel('Assessment learning context',{exact:true}).selectOption(context.context_id);
+  await chooseOption(page.getByLabel('Assessment learning context',{exact:true}), context.context_id);
   await page.getByLabel('Topic',{exact:true}).fill('Linear equations');
   await page.getByLabel('Concept names (comma separated, optional)',{exact:true}).fill('Linear equations');
   await page.getByLabel('Confirm these names as new learning concepts if needed').check();

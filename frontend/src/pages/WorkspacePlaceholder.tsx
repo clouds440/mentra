@@ -26,7 +26,7 @@ export function WorkspacePlaceholder({
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent/80">
             {eyebrow}
           </p>
-          <h1 className="mt-3 text-3xl font-medium tracking-tight text-foreground">
+          <h1 className="mt-3 page-title">
             {title}
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted">{description}</p>

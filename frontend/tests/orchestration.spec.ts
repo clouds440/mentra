@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -23,7 +24,7 @@ test('chat file extraction and explicit Library admission survive reload', async
   const before = await page.request.get('http://127.0.0.1:18003/api/v1/documents');
   expect((await before.json()).total).toBe(0);
   await message.getByRole('button', { name: 'Add to Library', exact: true }).click();
-  await page.getByLabel('Learning context for biology.txt', { exact: true }).selectOption(context.context_id);
+  await chooseOption(page.getByLabel('Learning context for biology.txt', { exact: true }), context.context_id);
   await page.getByRole('button', { name: 'Add extracted content', exact: true }).click();
   await expect(message.getByRole('link', { name: 'View in Library · processing status' })).toBeVisible();
   await page.reload();

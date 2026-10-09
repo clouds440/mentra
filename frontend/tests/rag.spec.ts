@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -136,7 +137,7 @@ test('removed source selections stay explicit and switching to automatic clears 
   await expect(page.getByRole('alert')).toContainText('Choose study sources before sending');
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(0);
   await page.getByLabel('Allow explicitly selected archived material').check();
-  await page.getByLabel('Study sources', { exact: true }).selectOption('STANDARD');
+  await chooseOption(page.getByLabel('Study sources', { exact: true }), 'STANDARD');
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('article', { name: 'Mentra response' })).toContainText('No supporting Library material was found');
 });

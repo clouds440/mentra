@@ -1,6 +1,6 @@
+import { Popover } from '../ui/Popover';
 import {
   BookOpen,
-  CalendarDays,
   Brain,
   ChevronDown,
   CircleHelp,
@@ -11,7 +11,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import mentraLogo from '../../assets/mentra-logo.png';
 import { ThemeSelector } from '../theme/ThemeSelector';
@@ -23,7 +23,6 @@ import { ConversationList } from '../chat/ConversationList';
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
   { label: 'Library', to: '/library', icon: BookOpen },
-  { label: 'Events', to: '/events', icon: CalendarDays },
   { label: 'Progress', to: '/progress', icon: LayoutGrid },
   { label: 'Assessments', to: '/assessments', icon: CircleHelp },
 ];
@@ -45,36 +44,17 @@ export function AppSidebar({
   const location = useLocation();
   const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const accountName = identity?.username ?? (identity?.provider ? `${identity.provider} student` : 'Learner');
   const accountMark = (identity?.username ?? identity?.provider)?.slice(0, 1).toUpperCase();
 
-  useEffect(() => {
-    if (!accountOpen) return undefined;
-    function dismiss(event: PointerEvent) {
-      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setAccountOpen(false);
-        accountButtonRef.current?.focus();
-      }
-    }
-    document.addEventListener('pointerdown', dismiss);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', dismiss);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [accountOpen]);
 
   return (
     <>
       {mobileOpen && (
         <button
           aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+          className="fixed inset-0 z-40 overlay-backdrop lg:hidden"
           onClick={onCloseMobile}
           type="button"
         />
@@ -168,12 +148,8 @@ export function AppSidebar({
         )}
 
         <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
-          <div className="relative" ref={accountRef}>
-            <div
-              hidden={!accountOpen}
-              className="absolute bottom-full left-0 z-30 mb-2 w-60 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-border bg-background shadow-xl shadow-black/10"
-              id="sidebar-account-panel"
-            >
+          <div className="relative">
+            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
                 <div className="border-b border-border px-4 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
                   <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
@@ -208,7 +184,7 @@ export function AppSidebar({
                 <div className="border-t border-border p-2">
                   <LogoutButton />
                 </div>
-            </div>
+            </Popover>
 
             <button
               aria-controls="sidebar-account-panel"

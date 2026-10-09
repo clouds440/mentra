@@ -1,6 +1,6 @@
 import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Button, Input, Select } from '../ui';
+import { Button, FileInput, Input, Select } from '../ui';
 import { createContext, uploadMaterial, materialError } from '../../services/rag';
 import type { LearningContext, MaterialDocument, RAGCapabilities } from '../../types/rag';
 
@@ -28,7 +28,7 @@ export function MaterialUpload({ contexts, capabilities, replacement, onAccepted
   return <form aria-label={replacement ? 'Replace material' : 'Add material'} onSubmit={e => void submit(e)} className="space-y-4 rounded-2xl border border-border bg-surface p-5">
     <h2 className="font-medium">{replacement ? 'Upload a revised version' : 'Add study material'}</h2>
     <p className="text-sm text-muted">{capabilities.formats.slice(0, 7).map(f => f.toUpperCase()).join(', ')}{capabilities.formats.length > 7 ? ', plus source code and configuration files (including Dockerfile and Makefile)' : ''} · Up to {Math.floor(capabilities.max_upload_bytes / 1024 / 1024)} MiB. Processing continues after upload.</p>
-    <label className="block text-sm">File<Input ref={input} type="file" className="mt-2" required disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); key.current = crypto.randomUUID(); }} /></label>
+    <FileInput ref={input} label="File" filename={file?.name ?? ''} required disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); key.current = crypto.randomUUID(); }} />
     {!replacement && <><label className="block text-sm">Material title<Input className="mt-2" value={title} maxLength={200} disabled={busy} placeholder="Use the filename if left blank" onChange={e => { setTitle(e.target.value); key.current = crypto.randomUUID(); }} /></label>
     <label className="block text-sm">Learning context<Select className="mt-2" value={contextId} disabled={busy} onChange={e => { setContextId(e.target.value); key.current = crypto.randomUUID(); }}><option value="">Create a context</option>{contexts.filter(c => c.status !== 'ARCHIVED').map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>
     {!contextId && <><label className="block text-sm">New context name<Input className="mt-2" value={newName} maxLength={200} disabled={busy} onChange={e => setNewName(e.target.value)} /></label><Toggle label="Make this my current learning context" checked={activate} disabled={busy} onChange={e => setActivate(e.target.checked)} /></>}</>}

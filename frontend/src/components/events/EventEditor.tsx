@@ -1,3 +1,4 @@
+import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Input, Select } from '../ui';
 import { events } from '../../services/events';
@@ -50,7 +51,7 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
     <label className="block space-y-1 text-sm">Description<Input maxLength={1000} disabled={busy} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} /></label>
     <div className="grid gap-4 sm:grid-cols-2"><label className="block space-y-1 text-sm">Kind<Select disabled={busy} value={draft.kind} onChange={event => setDraft({ ...draft, kind: event.target.value as EventKind })}>{['quiz', 'exam', 'assignment', 'deadline', 'study', 'other'].map(kind => <option key={kind}>{kind}</option>)}</Select></label>
     <label className="block space-y-1 text-sm">Timezone<Input required disabled={busy} value={draft.timezone} onChange={event => setDraft({ ...draft, timezone: event.target.value })} /></label></div>
-    <label className="flex gap-2 text-sm"><input type="checkbox" disabled={busy} checked={timed} onChange={event => setTimed(event.target.checked)} />Include a time</label>
+    <Toggle label="Include a time" disabled={busy} checked={timed} onChange={event => setTimed(event.target.checked)} />
     {timed ? <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Start<Input type="datetime-local" required disabled={busy} value={start} onChange={event => setStart(event.target.value)} /></label><label className="text-sm">End (optional)<Input type="datetime-local" disabled={busy} value={end} onChange={event => setEnd(event.target.value)} /></label></div> : <label className="block text-sm">Date<Input type="date" required disabled={busy} value={draft.local_date ?? ''} onChange={event => setDraft({ ...draft, local_date: event.target.value })} /></label>}
     <label className="block text-sm">Reminder<Select aria-label="Reminder" disabled={busy} value={draft.reminder.mode} onChange={event => setDraft({ ...draft, reminder: { mode: event.target.value as 'default' | 'disabled' } })}><option value="default">Use default reminder</option><option value="disabled">No reminder</option>{draft.reminder.mode === 'at' && <option value="at">Keep existing explicit reminder</option>}</Select></label>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

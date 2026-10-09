@@ -68,12 +68,12 @@ Create folders to meet a real architectural need, not to imitate a large project
 
 ## Events and Progress integration requirements
 
-The manual Events backend exists; `ProgressPage` remains a placeholder. These rules apply when implementing the planned UI and do not imply that an Events client/store, Notifications inbox or Learning dashboard already exists. Follow the [Events delivery plan](../Mentra_Events_Implementation_Plan.md) and [current backend contracts](../docs/events.md).
+Events lives inside the Events tab of Progress, alongside the Learning view. Existing `/events?event=...` links redirect to `/progress?tab=events&event=...`; new links use the latter. The agenda/editor, pending proposals and generic Notifications inbox are implemented. Follow the [Events delivery plan](../Mentra_Events_Implementation_Plan.md) and [current backend contracts](../docs/events.md).
 
 - Keep event DTOs/client calls in feature types/services. Send no owner field; respect expected revisions, operation recovery, bounded pages, query-bound cursors and `PAGE_CHANGED` reloads. Present conflict, unavailable context and retryable `EVENTS_UNAVAILABLE` states distinctly.
 - Preserve date-only values as civil dates with their event IANA zone. Render aware timestamps deliberately in the selected zone; never parse a date-only string as an instant and shift its calendar day. Use server temporal preview for gap/fold choices and single-reminder validation.
 - Completing an event is a lifecycle action, not learner evidence. Learning views need genuine bounded public learner reads; unknown estimates remain unknown and empty views must not fabricate progress charts or percentages.
-- Capture, event reminders and memory preferences are independent. A pending/skipped/cancelled/delivered ledger describes scheduling history; never present a pending ledger as a delivered inbox notification. Generic Notifications and its shared polling coordinator remain planned work.
+- Capture, event reminders and memory preferences are independent. A pending/skipped/cancelled/delivered ledger describes scheduling history; never present a pending ledger as a delivered inbox notification. Generic Notifications and its shared polling coordinator own inbox delivery and unread state.
 - Reuse shared editor/detail forms and primitives when the feature ships. Keep loaded pages/detail projections bounded, reconcile by server revision, and pause hidden/offline polling. Browser acceptance must cover account changes, lost responses, timezone/date boundaries, accessibility, narrow screens and Light/Dark/System.
 
 ## Utilities
@@ -86,6 +86,10 @@ It uses `clsx` for conditional class inputs and `tailwind-merge` so caller overr
 ## Styling
 
 - Use Tailwind CSS utilities and the global base rules in `src/styles/global.css`.
+- Use the shared `Select` for all single/multiple choice dropdowns. Its listbox renders through `Popover`, remains anchored to the trigger and supports keyboard/typeahead interaction. Native select elements are hidden form adapters only.
+- Use `FileInput` for full file-picker fields and the existing icon picker for chat. Never expose the native file chooser chrome. Use `Toggle` for every interactive binary setting or confirmation; theme radios remain a mutually exclusive choice.
+- Menus and dialogs use the central `popover` surface and overlay scrim tokens. `Popover` handles portal placement, viewport margins, resize/scroll, outside dismissal and Escape; modal dropdowns portal inside the active dialog top layer.
+- Feature pages share `page-container`, `page-title`, `page-description` and `field-control` for layout, typography and fields.
 - Reuse semantic theme tokens and common spacing, radius, focus, and responsive patterns. Both palettes live centrally in `styles/global.css`; avoid raw palette colors or component-specific theme branches.
 - Avoid arbitrary one-off values when an existing utility or established pattern fits.
 - Preserve visible keyboard focus and responsive behavior. Shared UI primitives should have consistent defaults while allowing appropriate `className` overrides.

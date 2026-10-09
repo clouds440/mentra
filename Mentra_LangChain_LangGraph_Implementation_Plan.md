@@ -5,6 +5,10 @@
 **Scope:** LangChain + LangGraph orchestration module
 **Relationship:** `app.langchain` is the central AI orchestration point for all Mentra capabilities. It decides what runs, in which order, with which context, permissions, budgets and recovery policy. Domain services retain their canonical data and deterministic business rules.
 
+## UI consistency follow-up (2026-10-10)
+
+The six requested frontend fixes are wired: shared FileInput hides native chooser chrome; the full event agenda and proposals live in Progress/Events; all selection fields use the shared portaled Select; dropdowns/account menus/dialogs use central popover/scrim tokens; interactive binary controls use Toggle; shared page/field typography and spacing align across Library, Progress, Assessments, Notifications and Settings. Existing event URLs redirect without losing event IDs. Account-menu focus, dropdown keyboard/typeahead, multi-selection, viewport anchoring and cancellation are handled centrally. Verified: production Docker build and theme checks passed. The full browser regression passed 49/52; the three failing cases were a short-screen dropdown scroll bug (fixed) and ambiguous test locators (corrected). The four-case affected/mobile recheck passed, covering all 52 unique cases across both runs. Keyboard/typeahead, multi-selection, portals, file chooser interaction, legacy event redirect, switches and mobile Light/Dark screenshots were verified. Screenshots reviewed visually. Fresh frontend container rebuilt from the completed source and healthy; backend and workers running. Logs: `.ui-system-full-browser.log`, `.ui-system-mobile-recheck.log`, `.ui-system-final-docker-build.log`, `.ui-system-theme.log`.
+
 ## Live implementation progress
 
 Updated 2026-10-09 during implementation. **In progress** means code is being written and is not yet verified. **Implemented** means wired code exists; **Verified** requires the listed checks to pass. The full plan remains the completion contract.

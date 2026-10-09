@@ -1,7 +1,8 @@
+import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, Input, Select } from '../ui';
+import { Button, FileInput, Input, Select } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { assessments } from '../../services/assessments';
 import { listContexts, listMaterials } from '../../services/rag';
@@ -54,17 +55,17 @@ function Workspace() {
     try { const result = await assessments.list(controller.signal, more); if (!controller.signal.aborted) { setItems(previous => [...previous, ...result.items]); setMore(result.next_offset); } }
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to load more assessments.'); }
   }
-  return <div className="h-full overflow-y-auto"><div className="mx-auto max-w-4xl space-y-6 px-5 py-10">
-    <div className="flex items-center justify-between"><h1 className="text-3xl font-medium">Assessments</h1><Button disabled={busy} onClick={() => setCreating(value => !value)}>Create assessment</Button></div>
+  return <div className="h-full overflow-y-auto"><div className="page-container">
+    <div className="flex items-center justify-between"><h1 className="page-title">Assessments</h1><Button disabled={busy} onClick={() => setCreating(value => !value)}>Create assessment</Button></div>
     <p className="text-sm text-muted">Practice, verify understanding or calibrate specific concepts. Broad onboarding calibration remains separate.</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => setReload(value => value + 1)}>Refresh</button></p>}
     {creating && <form className="space-y-4 rounded-xl border border-border p-5" onSubmit={event => { event.preventDefault(); void generate(); }} onChange={() => setDraft(value => ({ ...value, client_request_id: crypto.randomUUID() }))}>
       <label className="block text-sm">Learning context<Select aria-label="Assessment learning context" required disabled={busy} value={draft.context_id} onChange={event => setDraft({ ...draft, context_id: event.target.value })}><option value="">Choose context</option>{contexts.filter(item => item.status !== 'ARCHIVED').map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></label>
       <label className="block text-sm">Topic<Input required disabled={busy} maxLength={200} value={draft.topic} onChange={event => setDraft({ ...draft, topic: event.target.value })} /></label>
       <label className="block text-sm">Concept names (comma separated, optional)<Input disabled={busy} value={labels} maxLength={1000} onChange={event => setLabels(event.target.value)} /></label>
-      <label className="flex gap-2 text-sm"><input type="checkbox" disabled={busy} checked={draft.confirm_new_concepts} onChange={event => setDraft({ ...draft, confirm_new_concepts: event.target.checked })} />Confirm these names as new learning concepts if needed</label>
+      <Toggle label="Confirm these names as new learning concepts if needed" disabled={busy} checked={draft.confirm_new_concepts} onChange={event => setDraft({ ...draft, confirm_new_concepts: event.target.checked })} />
       <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Question count<Input type="number" min={1} max={10} disabled={busy} value={draft.count} onChange={event => setDraft({ ...draft, count: Number(event.target.value) })} /></label><label className="text-sm">Purpose<Select aria-label="Assessment purpose" disabled={busy} value={draft.purpose} onChange={event => setDraft({ ...draft, purpose: event.target.value })}><option value="practice">Practice</option><option value="verification">Verification</option><option value="calibration">Granular calibration</option></Select></label></div>
-      <label className="flex gap-2 text-sm"><input type="checkbox" disabled={busy} checked={draft.grounded} onChange={event => setDraft({ ...draft, grounded: event.target.checked })} />Ground questions in selected Library documents</label>
+      <Toggle label="Ground questions in selected Library documents" disabled={busy} checked={draft.grounded} onChange={event => setDraft({ ...draft, grounded: event.target.checked })} />
       {draft.grounded && <Select multiple aria-label="Assessment study documents" disabled={busy} value={draft.document_ids} onChange={event => setDraft({ ...draft, document_ids: [...event.target.selectedOptions].map(option => option.value) })}>{documents.filter(item => item.active_generation_id && item.context_ids.includes(draft.context_id)).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</Select>}
       <Button type="submit" disabled={busy}>{busy ? 'Generating questions…' : 'Generate assessment'}</Button>
     </form>}
@@ -111,13 +112,13 @@ function AnswerSheet({ assessment, initial, onChange }: { assessment: Assessment
   }
   return <section aria-label="Assessment answer sheet" className="space-y-5">
     <p className="text-sm text-muted">Attempt {attempt.attempt_number} · {attempt.state}</p>{error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    {editable && <label className="block text-sm">Upload an answer sheet<input aria-label="Upload assessment answer sheet" className="mt-2 block max-w-full text-sm" type="file" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value=''; }} /></label>}
+    {editable && !correcting && <FileInput label="Upload an answer sheet" aria-label="Upload assessment answer sheet" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value=''; }} />}
     {attempt.extraction && <div className="space-y-2 text-sm text-muted"><p>Extraction and question mapping confidence are unknown. Review and correct every answer before submitting. Handwriting accuracy has not been verified.</p>{attempt.extraction.warnings.map((warning,index) => <p key={index}>{warning}</p>)}</div>}
     {assessment.questions.map((question,index) => { const grade=attempt.grades?.find(item => item.question_id===question.id); return <section key={question.id} className="space-y-2 border-t border-border pt-4"><h3 className="text-sm font-medium">Question {index+1} · {question.marks} marks</h3><MarkdownContent content={question.prompt} />
       {editable ? <textarea aria-label={`Answer ${index+1}`} className="min-h-28 w-full rounded-xl border border-border-strong bg-input p-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-accent" maxLength={8000} disabled={busy} value={answers[question.id] ?? ''} onChange={event => { setAnswers(previous => ({ ...previous, [question.id]:event.target.value })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : <MarkdownContent content={attempt.answers[question.id] ?? ''} />}
       {grade && <div className="space-y-1 text-sm"><p className="font-medium">{grade.score}/{question.marks} · Grade confidence {Math.round(grade.confidence*100)}%</p><MarkdownContent content={grade.feedback} />{grade.misconceptions.map((value,i) => <p key={i} className="text-muted">{value}</p>)}</div>}
     </section>; })}
-    {editable && <>{attempt.extraction && <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />I reviewed and corrected all extracted answers</label>}<Button disabled={busy || assessment.questions.some(question => !answers[question.id]?.trim()) || !!attempt.extraction && !confirmed} onClick={() => void submit()}>{busy ? 'Submitting…' : attempt.extraction ? 'Confirm text & submit' : 'Submit answers'}</Button></>}
+    {editable && <>{attempt.extraction && <Toggle label="I reviewed and corrected all extracted answers" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}<Button disabled={busy || assessment.questions.some(question => !answers[question.id]?.trim()) || !!attempt.extraction && !confirmed} onClick={() => void submit()}>{busy ? 'Submitting…' : attempt.extraction ? 'Confirm text & submit' : 'Submit answers'}</Button></>}
     {['submitted','grading'].includes(attempt.state) && <p role="status" className="text-sm text-muted">Grading your answers…</p>}
     {attempt.error && <p role="alert" className="text-sm text-danger">{attempt.error} The durable worker retries eligible jobs automatically.</p>}
     {attempt.state==='graded' && <><p role="status" className="text-sm text-muted">{attempt.evidence_status==='applied' ? 'Feedback saved and learner evidence applied.' : 'Feedback saved. The grade was too uncertain to update learner evidence.'}</p>{!correcting && <Button variant="secondary" onClick={() => { setCorrecting(true); setAnswers(attempt.answers); setConfirmed(false); operation.current=crypto.randomUUID(); }}>Correct answers or transcription</Button>}</>}

@@ -11,3 +11,6 @@ export type { SpinnerProps } from './Spinner';
 export { Textarea } from './Textarea';
 export type { TextareaProps } from './Textarea';
 export { Select } from './Select';
+
+export { FileInput } from './FileInput';
+export { Popover } from './Popover';

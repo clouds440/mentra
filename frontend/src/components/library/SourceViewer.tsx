@@ -79,7 +79,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     } catch (e) { if (!controllerRef.current?.signal.aborted) setError(materialError(e)); }
     finally { if (!controllerRef.current?.signal.aborted) setDownloadBusy(false); }
   }
-  return createPortal(<dialog ref={dialog} onClose={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-card text-foreground shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm">
+  return createPortal(<dialog ref={dialog} onClose={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-2xl">
     <header className="source-header">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent"><FileText size={13} aria-hidden="true" />Library source</p><h2 className="truncate text-xl font-semibold tracking-tight text-heading">{source.title}</h2><p className="mt-1 truncate text-xs text-muted" title={displayFilename}>{displayFilename ?? sourceLocation(source) ?? 'Study material'}</p></div>

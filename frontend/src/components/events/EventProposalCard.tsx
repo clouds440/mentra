@@ -36,7 +36,7 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
     <p className="text-sm text-muted">{value.uncertainty}</p><blockquote className="border-l border-border pl-3 text-sm">{value.quote}</blockquote>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {!pending && <p role="status" className="text-sm">{value.state === 'approved' ? 'Event saved.' : `Proposal ${value.state}.`}</p>}
-    {value.event_id && <Link className="text-sm text-accent underline" to={`/events?event=${value.event_id}`}>View event</Link>}
+    {value.event_id && <Link className="text-sm text-accent underline" to={`/progress?tab=events&event=${value.event_id}`}>View event</Link>}
     {pending && !editing && <div className="flex flex-wrap gap-2">
       <Button size="sm" disabled={busy} onClick={() => { if (value.action === 'status') void decide('approve').catch(() => {}); else setEditing(true); }}>{value.action === 'create' ? 'Add event' : 'Review update'}</Button>
       {value.action !== 'status' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(true)}>Edit details</Button>}

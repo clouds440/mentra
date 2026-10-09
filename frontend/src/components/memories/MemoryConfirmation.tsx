@@ -12,7 +12,7 @@ export function MemoryConfirmation({ title, busy, error, onCancel, children }: {
   }, []);
   return <dialog ref={dialog} role="alertdialog" aria-labelledby={titleId} aria-busy={busy}
     onCancel={event => { event.preventDefault(); if (!busy) onCancel(); }}
-    className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl backdrop:bg-black/40">
+    className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-border bg-popover p-5 text-foreground shadow-xl">
     <h3 id={titleId} className="mb-3 font-medium text-heading">{title}</h3>
     {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
     {children}

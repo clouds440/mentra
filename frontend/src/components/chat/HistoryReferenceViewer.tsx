@@ -22,7 +22,7 @@ export function HistoryReferenceViewer({ reference, onClose }: { reference: Hist
     }
     return () => controller.abort();
   }, [reference]);
-  return <dialog ref={dialog} onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose(); }} aria-labelledby="history-reference-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl backdrop:bg-black/40">
+  return <dialog ref={dialog} onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose(); }} aria-labelledby="history-reference-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border bg-popover p-5 text-foreground shadow-xl">
     <div className="mb-5 flex items-center justify-between gap-4"><h2 id="history-reference-title" className="font-medium">{'memory_id' in reference ? 'Saved memory' : history?.title ?? 'Past conversation'}</h2><Button variant="ghost" size="sm" onClick={onClose}>Close reference</Button></div>
     {error ? <p role="alert">This reference is unavailable. It may have been deleted. {error}</p> : !memory && !history ? <div role="status"><Spinner />Loading reference…</div> : null}
     {memory && <><p className="mb-4 whitespace-pre-wrap text-body">{memory.content}</p>{'revision' in reference && reference.revision !== memory.revision && <p className="mb-4 text-sm text-muted">This memory has changed since the answer. Showing the current version.</p>}<MemoryDetails memory={memory} /><Link className="mt-5 inline-block text-accent underline" to={`/settings?tab=memories&memory=${memory.id}`} onClick={onClose}>Manage this memory</Link></>}

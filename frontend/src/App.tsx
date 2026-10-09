@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { AuthProvider } from './components/auth/AuthProvider';
@@ -13,9 +13,13 @@ import { MaterialDetailPage } from './pages/MaterialDetailPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { EventsPage } from './pages/EventsPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfileReady, RequireOnboardingComplete } from './components/student-profile/ProfileRoutes';
+
+function EventsRedirect() {
+  const location = useLocation(); const params = new URLSearchParams(location.search); params.set('tab', 'events');
+  return <Navigate replace to={{ pathname: '/progress', search: params.toString() }} />;
+}
 
 function App() {
   return (
@@ -43,7 +47,7 @@ function App() {
                   <Route path="assessments" element={<AssessmentsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
-                  <Route path="events" element={<EventsPage />} />
+                  <Route path="events" element={<EventsRedirect />} />
                   <Route path="*" element={<Navigate replace to="/" />} />
                 </Route>
               </Route>

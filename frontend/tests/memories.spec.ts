@@ -1,3 +1,4 @@
+import { chooseOption } from './select-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -82,11 +83,11 @@ test('actual memory/history tool calls, references, chat deletion retention and 
   await send(page, 'Maybe I prefer visual puzzles.');
   await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toContainText('pending');
   await page.goto('/settings?tab=memories');
-  await page.getByLabel('Memory status').selectOption('pending');
+  await chooseOption(page.getByLabel('Memory status'), 'pending');
   await expect(page.getByRole('region', { name: 'Memories', exact: true }).getByText('Maybe I prefer visual puzzles.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm current', exact: true }).click();
   await expect(page.getByText('No matching memories')).toBeVisible();
-  await page.getByLabel('Memory status').selectOption('active');
+  await chooseOption(page.getByLabel('Memory status'), 'active');
   await expect(page.getByRole('region', { name: 'Memories', exact: true }).getByText('Maybe I prefer visual puzzles.', { exact: true })).toBeVisible();
 });
 
@@ -170,11 +171,11 @@ test('a delayed pagination response cannot leak rows into a changed status filte
   await expect(page.getByText(row.content, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Load more memories', exact: true }).click();
   await started;
-  await page.getByLabel('Memory status').selectOption('pending');
+  await chooseOption(page.getByLabel('Memory status'), 'pending');
   await expect(page.getByText('No matching memories')).toBeVisible();
   release();
   await expect(page.getByText(row.content, { exact: true })).toHaveCount(0);
-  await page.getByLabel('Memory status').selectOption('active');
+  await chooseOption(page.getByLabel('Memory status'), 'active');
   await expect(page.getByText(row.content, { exact: true })).toBeVisible();
 });
 
@@ -204,7 +205,7 @@ test('conflicting memories require review and exclude the predecessor from recal
   await send(page, 'Remember my favorite color is amber.');
   await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toContainText('conflict');
   await page.goto('/settings?tab=memories');
-  await page.getByLabel('Memory status').selectOption('conflict');
+  await chooseOption(page.getByLabel('Memory status'), 'conflict');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('textbox', { name: 'Memory', exact: true }).fill('My favorite color is amber, especially for diagrams.');
   await page.getByRole('button', { name: 'Save memory', exact: true }).click();
@@ -212,7 +213,7 @@ test('conflicting memories require review and exclude the predecessor from recal
   await expect(page.getByRole('alertdialog', { name: 'Resolve memory conflict' })).toContainText('My favorite color is amber, especially for diagrams.');
   await page.getByRole('button', { name: 'Keep this statement', exact: true }).click();
   await expect(page.getByRole('alertdialog', { name: 'Resolve memory conflict' })).toHaveCount(0);
-  await page.getByLabel('Memory status').selectOption('active');
+  await chooseOption(page.getByLabel('Memory status'), 'active');
   const memories = page.getByRole('region', { name: 'Memories', exact: true });
   await expect(memories.getByText('My favorite color is amber, especially for diagrams.', { exact: true })).toBeVisible();
   await expect(memories.getByText('Remember my favorite color is violet.', { exact: true })).toHaveCount(0);
