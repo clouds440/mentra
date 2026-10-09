@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  CalendarDays,
   Brain,
   ChevronDown,
   CircleHelp,
@@ -22,6 +23,7 @@ import { ConversationList } from '../chat/ConversationList';
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
   { label: 'Library', to: '/library', icon: BookOpen },
+  { label: 'Events', to: '/events', icon: CalendarDays },
   { label: 'Progress', to: '/progress', icon: LayoutGrid },
   { label: 'Assessments', to: '/assessments', icon: CircleHelp },
 ];

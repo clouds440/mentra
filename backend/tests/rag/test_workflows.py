@@ -40,6 +40,22 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_preextracted_chat_file_never_parses_again(self):
+        extracted = dict(blocks=[dict(text='Python decorators wrap functions.', page=3, method='ocr')],
+                         warnings=['OCR may contain errors.'], reader_revision='verified-reader', media_type='text/plain')
+        with patch.object(self.service.parser, 'parse', side_effect=AssertionError('must reuse extraction')), \
+             patch.object(self.service.parser, 'detect', side_effect=AssertionError('already detected')):
+            result = self.service.accept_extracted(self.owner, source=io.BytesIO(b'original image bytes'),
+                filename='notes.png', title='Notes', context_ids=[self.context.context_id], key='chat:one', extracted=extracted)
+            self.assertTrue(self.worker.run_once())
+            self.assertEqual(self.repo.get_job(self.owner, result['job_id'])['state'], 'SUCCEEDED')
+            found = self.search()
+            self.assertEqual(found.chunks[0].source.spans[0].page, 3)
+            self.assertIn('OCR may contain errors.', found.chunks[0].source.warnings)
+            replay = self.service.accept_extracted(self.owner, source=io.BytesIO(b'original image bytes'),
+                filename='notes.png', title='Notes', context_ids=[self.context.context_id], key='chat:one', extracted=extracted)
+            self.assertEqual(result['document_id'], replay['document_id'])
+
     def test_shared_reader_html_scripts_and_code_survive_rag_ingestion(self):
         cases = [('source.py', b'def decorators():\n    return "wrapper"\n', '    return "wrapper"'),
             ('notes.html', b'<h1>Decorators</h1><script>const decorators = "wrappers";</script><style>.decorators {color: red;}</style>', 'const decorators')]

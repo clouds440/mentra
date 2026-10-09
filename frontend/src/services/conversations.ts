@@ -10,7 +10,7 @@ export const syncChats = (cursor: number | null, active?: string, signal?: Abort
 };
 export const listChats = (cursor: string, signal?: AbortSignal) => apiRequest<{ items: Conversation[]; next_cursor: string | null }>(`${base}?cursor=${encodeURIComponent(cursor)}`, { signal });
 export const getMessages = (id: string, before?: number, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/messages${before ? `?before=${before}` : ''}`, { signal });
-export const getTurn = (id: string, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/status`, { signal });
-export const sendTurn = (body: PendingTurn, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/turns`, { method: 'POST', body: JSON.stringify(body), signal });
+export const getTurn = (id: string, signal?: AbortSignal, incremental = false) => apiRequest<MessagePage>(`${base}/${id}/status${incremental ? '?incremental=true' : ''}`, { signal });
+export const sendTurn = (body: PendingTurn, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/turns`, { method: 'POST', headers: { Prefer: 'respond-async' }, body: JSON.stringify(body), signal });
 export const renameChat = (chat: Conversation, title: string, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}`, { method: 'PATCH', body: JSON.stringify({ expected_revision: chat.revision, title }), signal });
 export const deleteChat = (chat: Conversation, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}?expected_revision=${chat.revision}`, { method: 'DELETE', signal });

@@ -400,7 +400,7 @@ class RAGRepository:
             session.execute(delete(chunks).where(chunks.c.learner_id == job['learner_id'], chunks.c.document_id == job['document_id']))
             session.execute(delete(document_concepts).where(document_concepts.c.document_id == job['document_id']))
             session.execute(update(versions).where(versions.c.learner_id == job['learner_id'],
-                versions.c.document_id == job['document_id']).values(filename='Deleted material', file_hash='purged'))
+                versions.c.document_id == job['document_id']).values(filename='Deleted material', file_hash='purged', extracted_content=None))
             session.execute(update(documents).where(documents.c.id == job['document_id']).values(purged_at=now(),
                 title='Deleted material', filename='Deleted material', concept_ids=[]))
             session.execute(update(jobs).where(jobs.c.id == job['id']).values(state='SUCCEEDED', stage='purged', lease_token=None, updated_at=now()))

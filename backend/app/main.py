@@ -47,6 +47,22 @@ def create_app() -> FastAPI:
             application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
             application.state.history_management = create_history_management(get_session_factory(), application.state.llm,
                 application.state.student_profile_service, application.state.learner_service)
+            from app.notifications.factory import create_notifications
+            application.state.notifications_service = create_notifications(get_session_factory())
+            application.state.history_management.events.repository.notifications = application.state.notifications_service
+            from app.history_management.events.proposal_service import create_event_proposals
+            application.state.event_proposal_service = create_event_proposals(get_session_factory(), application.state.history_management.events,application.state.llm)
+            from app.assessments.service import create_assessments
+            application.state.assessment_service = create_assessments(get_session_factory(), application.state.llm,
+                application.state.learner_service, application.state.rag_service)
+            from app.langchain.orchestration_service import OrchestrationService
+            from app.chat.attachments import AttachmentService
+            from app.chat.repositories.attachments import AttachmentRepository
+            application.state.attachment_service = AttachmentService(AttachmentRepository(get_session_factory()))
+            application.state.orchestration_service = OrchestrationService(application.state.chat_service,
+                rag=application.state.rag_service, learner=application.state.learner_service,
+                history=application.state.history_management, attachments=application.state.attachment_service,
+                event_proposals=application.state.event_proposal_service, assessments=application.state.assessment_service)
             logger.info("Mentra backend started successfully.")
             yield
         finally:

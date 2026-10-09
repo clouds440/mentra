@@ -12,6 +12,7 @@ class SendTurn(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
     retrieval: ChatSelection = Field(default_factory=ChatSelection)
     retry: bool = False
+    attachment_ids: list[UUID] = Field(default_factory=list, max_length=4)
 
 
 class EditConversation(BaseModel):

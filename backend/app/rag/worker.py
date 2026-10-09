@@ -40,8 +40,12 @@ class IngestionWorker:
             if items:
                 self.stage(job, 'resuming')
             else:
-                parsed = self.service.parser.parse(self.service.storage.path(version['storage_key']), version['media_type'],
-                    self.service.settings.rag_max_pages, self.service.settings.rag_parser_timeout)
+                parsed = version.get('extracted_content')
+                if parsed is None:
+                    parsed = self.service.parser.parse(self.service.storage.path(version['storage_key']), version['media_type'],
+                        self.service.settings.rag_max_pages, self.service.settings.rag_parser_timeout)
+                else:
+                    self.stage(job, 'reusing_extraction')
                 self.stage(job, 'chunking')
                 items = chunk_blocks(parsed['blocks'], self.service.embedding, job['learner_id'], job['document_id'],
                                      job['generation_id'], self.service.settings.rag_max_chunks, self.service.settings.rag_parser_timeout)

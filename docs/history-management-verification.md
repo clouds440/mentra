@@ -4,6 +4,13 @@ Verified on 2026-10-08. All implementation phases are complete in the [tracker](
 
 ## Application checks
 
+Later regression evidence: the 2026-10-09 Events re-pass passed all **333 backend
+tests** in the final rebuilt Python 3.12 verification image, including memory and
+chat regressions after extracting their shared owner-lock boundary and adding
+transactional event evidence detachment. See [Events verification](events.md#verification-and-deployment-boundary).
+This does not replace the original browser/runtime evidence below or claim a new
+application deployment; the dedicated test database was disposable.
+
 - Full backend regression suite: **292 tests passed**. Subsequent focused verification after the final corrected-save retry fix: **68 tests passed**, including **42 history-management tests**. These counts overlap and should not be added together.
 - Full Playwright regression suite against production-built frontend assets: **44 tests passed**, including seven memory scenarios, auth/profile, persistent chat, RAG and Markdown/Prism regressions.
 - Frontend TypeScript/Vite build, semantic theme checks, backend compilation and whitespace validation passed. Vite retains an existing main-bundle size warning; memory settings and reference viewers load as separate lazy bundles.

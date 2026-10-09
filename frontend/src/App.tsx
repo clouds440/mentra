@@ -12,6 +12,8 @@ import { LibraryPage } from './pages/LibraryPage';
 import { MaterialDetailPage } from './pages/MaterialDetailPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { EventsPage } from './pages/EventsPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfileReady, RequireOnboardingComplete } from './components/student-profile/ProfileRoutes';
 
@@ -40,6 +42,8 @@ function App() {
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="assessments" element={<AssessmentsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="events" element={<EventsPage />} />
                   <Route path="*" element={<Navigate replace to="/" />} />
                 </Route>
               </Route>

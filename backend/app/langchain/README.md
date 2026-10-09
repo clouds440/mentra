@@ -13,3 +13,17 @@ DeepSeek uses the same OpenAI-compatible adapter. Add another adapter only when 
 Model configuration is checked when the model is requested and reported separately by readiness. Missing AI credentials do not prevent the backend from starting, so chat requests can return an actionable configuration error. Validation does not make a paid model request; an explicit caller must invoke the model to do that.
 
 Embeddings are a separate RAG component and are not selected by or sent through the chat provider.
+
+Persistent clients use `/api/v1/conversations/turns`; the older `/api/v1/chat`
+endpoint is deprecated and stateless. Canonical transcripts and durable attempts
+belong to `app.chat`. On-demand history/memory tools use `app.history_management`
+with server-bound ownership and shared execution budgets; they do not replace the
+stored transcript. See [persistent chat](../../../docs/persistent-chat.md) and
+[history management](../../../docs/history-management.md).
+
+Manual Events persistence does not yet expose AI event tools or graph proposals.
+LangGraph/checkpoint adoption remains gated by compatibility with current
+LangChain/provider pins, serializer hardening and durable resume/cleanup rehearsal.
+No graph candidate was added to production dependencies. The disposable probe
+must not run in startup or mutate an application environment; see
+[Events dependency evidence](../../../docs/events.md#dependency-gate-discovered-during-rehearsal).

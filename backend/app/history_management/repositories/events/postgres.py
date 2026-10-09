@@ -27,11 +27,12 @@ def conflict():
 
 
 class EventRepository:
-    def __init__(self, sessions, *, clock=None, capacity=1000):
+    def __init__(self, sessions, *, clock=None, capacity=1000, notifications=None):
         self.sessions = sessions
         self.transactions = OwnerTransactions(sessions)
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.capacity = capacity
+        self.notifications = notifications
 
     def _state(self, session, owner):
         row = session.execute(select(ss).where(ss.c.learner_id == owner)).mappings().first()
@@ -181,74 +182,84 @@ class EventRepository:
 
     @database_errors
     def create(self, owner, body):
+        with self.transactions.write(owner) as uow:
+            return self.create_in_transaction(uow, body)
+
+    def create_in_transaction(self, uow, body):
+        owner = uow.owner
         operation = str(body.client_request_id)
         fingerprint = request_hash(['create', body.model_dump(mode='json', exclude={'client_request_id'})])
-        with self.transactions.write(owner) as uow:
-            session = uow._session
-            receipt = self._receipt(session, owner, operation, fingerprint)
-            if receipt:
-                return self._outcome(session, owner, receipt)
-            if session.scalar(select(func.count()).select_from(e).where(e.c.learner_id == owner)) >= self.capacity:
-                raise AppError('CAPACITY', 'Your event limit has been reached. Delete unused events before adding another.', 409)
-            identifier, now = str(uuid4()), self.clock()
-            values = dict(id=identifier, learner_id=owner, **self._values(body), status='scheduled', origin='manual',
-                          revision=1, created_at=now, updated_at=now, completed_at=None)
-            due, state = reminder_due(body, self._preferences(session, owner), now)
-            session.execute(e.insert().values(**values))
-            session.execute(rm.insert().values(learner_id=owner, event_id=identifier, due_at=due,
-                            state=state, schedule_version=1, delivered_at=None, receipt_id=None))
-            self._audit(session, owner, identifier, 1, ['created'])
-            revision = self._change(session, owner, 'event', identifier)
-            return self._record_receipt(session, owner, operation, fingerprint, identifier, 'saved', revision)
+        session = uow._session
+        receipt = self._receipt(session, owner, operation, fingerprint)
+        if receipt:
+            return self._outcome(session, owner, receipt)
+        if session.scalar(select(func.count()).select_from(e).where(e.c.learner_id == owner)) >= self.capacity:
+            raise AppError('CAPACITY', 'Your event limit has been reached. Delete unused events before adding another.', 409)
+        identifier, now = str(uuid4()), self.clock()
+        values = dict(id=identifier, learner_id=owner, **self._values(body), status='scheduled', origin='manual',
+                      revision=1, created_at=now, updated_at=now, completed_at=None)
+        due, state = reminder_due(body, self._preferences(session, owner), now)
+        session.execute(e.insert().values(**values))
+        session.execute(rm.insert().values(learner_id=owner, event_id=identifier, due_at=due,
+                        state=state, schedule_version=1, delivered_at=None, receipt_id=None))
+        self._audit(session, owner, identifier, 1, ['created'])
+        revision = self._change(session, owner, 'event', identifier)
+        return self._record_receipt(session, owner, operation, fingerprint, identifier, 'saved', revision)
+
 
     @database_errors
     def edit(self, owner, identifier, body):
+        with self.transactions.write(owner) as uow:
+            return self.edit_in_transaction(uow, identifier, body)
+
+    def edit_in_transaction(self, uow, identifier, body):
+        owner = uow.owner
         operation = str(body.client_request_id)
         fingerprint = request_hash(['edit', identifier, body.model_dump(mode='json', exclude={'client_request_id'})])
-        with self.transactions.write(owner) as uow:
-            session = uow._session
-            receipt = self._receipt(session, owner, operation, fingerprint)
-            if receipt:
-                return self._outcome(session, owner, receipt)
-            row = self._get(session, owner, identifier)
-            if row['revision'] != body.expected_revision:
-                raise conflict()
-            ledger = session.execute(select(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier)).mappings().one()
-            details = body.details or EventDraft(**{key: row[key] for key in ('title', 'description', 'kind', 'context_id', 'timezone', 'local_date', 'starts_at', 'ends_at')}, reminder=row['reminder_rule'])
-            values = self._values(details)
-            status = body.status or row['status']
-            now = self.clock()
-            changed_fields = [key for key, value in values.items() if row[key] != value]
-            reminder_changed = ReminderRule.model_validate(row['reminder_rule']) != details.reminder
-            if not reminder_changed and 'reminder_rule' in changed_fields:
-                changed_fields.remove('reminder_rule')
-            if status != row['status']:
-                changed_fields.append('status')
-            if ledger['state'] == 'delivered' and reminder_changed:
-                raise AppError('REMINDER_ALREADY_SENT', 'This event has already received its one reminder.', 409)
-            values.update(status=status, revision=row['revision']+1, updated_at=now,
-                          completed_at=(row['completed_at'] or now) if status == 'completed' else None)
-            session.execute(update(e).where(e.c.learner_id == owner, e.c.id == identifier).values(**values))
-            if ledger['state'] != 'delivered':
-                schedule_changed = any(key in changed_fields for key in ('local_date', 'starts_at', 'reminder_rule')) or (
-                    details.local_date is not None and 'timezone' in changed_fields)
-                if status != 'scheduled':
-                    due = reminder_due(details, self._preferences(session, owner), now)[0] if schedule_changed else ledger['due_at']
-                    state = 'cancelled'
-                elif schedule_changed:
-                    due, state = reminder_due(details, self._preferences(session, owner), now)
-                elif row['status'] != 'scheduled':
-                    due = ledger['due_at']
-                    state = 'cancelled' if details.reminder.mode == 'disabled' else (
-                        'pending' if due is not None and due > now else 'skipped')
-                else:
-                    due, state = ledger['due_at'], ledger['state']
-                if due != ledger['due_at'] or state != ledger['state']:
-                    session.execute(update(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier)
-                                    .values(due_at=due, state=state, schedule_version=ledger['schedule_version']+1))
-            self._audit(session, owner, identifier, values['revision'], changed_fields)
-            revision = self._change(session, owner, 'event', identifier)
-            return self._record_receipt(session, owner, operation, fingerprint, identifier, 'updated', revision)
+        session = uow._session
+        receipt = self._receipt(session, owner, operation, fingerprint)
+        if receipt:
+            return self._outcome(session, owner, receipt)
+        row = self._get(session, owner, identifier)
+        if row['revision'] != body.expected_revision:
+            raise conflict()
+        ledger = session.execute(select(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier)).mappings().one()
+        details = body.details or EventDraft(**{key: row[key] for key in ('title', 'description', 'kind', 'context_id', 'timezone', 'local_date', 'starts_at', 'ends_at')}, reminder=row['reminder_rule'])
+        values = self._values(details)
+        status = body.status or row['status']
+        now = self.clock()
+        changed_fields = [key for key, value in values.items() if row[key] != value]
+        reminder_changed = ReminderRule.model_validate(row['reminder_rule']) != details.reminder
+        if not reminder_changed and 'reminder_rule' in changed_fields:
+            changed_fields.remove('reminder_rule')
+        if status != row['status']:
+            changed_fields.append('status')
+        if ledger['state'] == 'delivered' and reminder_changed:
+            raise AppError('REMINDER_ALREADY_SENT', 'This event has already received its one reminder.', 409)
+        values.update(status=status, revision=row['revision']+1, updated_at=now,
+                      completed_at=(row['completed_at'] or now) if status == 'completed' else None)
+        session.execute(update(e).where(e.c.learner_id == owner, e.c.id == identifier).values(**values))
+        if ledger['state'] != 'delivered':
+            schedule_changed = any(key in changed_fields for key in ('local_date', 'starts_at', 'reminder_rule')) or (
+                details.local_date is not None and 'timezone' in changed_fields)
+            if status != 'scheduled':
+                due = reminder_due(details, self._preferences(session, owner), now)[0] if schedule_changed else ledger['due_at']
+                state = 'cancelled'
+            elif schedule_changed:
+                due, state = reminder_due(details, self._preferences(session, owner), now)
+            elif row['status'] != 'scheduled':
+                due = ledger['due_at']
+                state = 'cancelled' if details.reminder.mode == 'disabled' else (
+                    'pending' if due is not None and due > now else 'skipped')
+            else:
+                due, state = ledger['due_at'], ledger['state']
+            if due != ledger['due_at'] or state != ledger['state']:
+                session.execute(update(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier)
+                                .values(due_at=due, state=state, schedule_version=ledger['schedule_version']+1))
+        self._audit(session, owner, identifier, values['revision'], changed_fields)
+        revision = self._change(session, owner, 'event', identifier)
+        return self._record_receipt(session, owner, operation, fingerprint, identifier, 'updated', revision)
+
 
     @database_errors
     def remove(self, owner, identifier, revision, operation):
@@ -267,6 +278,8 @@ class EventRepository:
             for digest in hashes:
                 session.execute(insert(sp).values(learner_id=owner, fingerprint=digest, created_at=self.clock()).on_conflict_do_nothing())
             session.execute(delete(e).where(e.c.learner_id == owner, e.c.id == identifier))
+            if self.notifications is not None:
+                self.notifications.remove_target(uow, 'event', identifier)
             watermark = self._change(session, owner, 'event', identifier, True)
             return self._record_receipt(session, owner, operation, fingerprint, identifier, 'deleted', watermark)
 
@@ -275,6 +288,41 @@ class EventRepository:
         # A page and its watermark must see the same committed snapshot.
         session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'))
         session.execute(text("SET LOCAL statement_timeout = '5s'"))
+
+    def deliver_reminders(self, limit=50):
+        """Short owner-locked transactions atomically publish inbox + lifetime ledger."""
+        if self.notifications is None:
+            raise RuntimeError('Notifications must be composed before reminder delivery.')
+        from app.notifications.schemas import NotificationDraft
+        now = self.clock()
+        with self.sessions() as session:
+            due = session.execute(select(rm.c.learner_id, rm.c.event_id).where(
+                rm.c.state == 'pending', rm.c.due_at <= now).order_by(rm.c.due_at, rm.c.event_id)
+                .limit(max(1, min(100, limit)))).all()
+        processed = 0
+        for owner, identifier in due:
+            try:
+                with self.transactions.write(owner) as uow:
+                    session = uow._session
+                    row = session.execute(select(e).where(e.c.learner_id == owner, e.c.id == identifier)).mappings().first()
+                    ledger = session.execute(select(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier).with_for_update()).mappings().first()
+                    if not row or not ledger or ledger['state'] != 'pending' or ledger['due_at'] > self.clock():
+                        continue
+                    if row['status'] != 'scheduled' or row['cutoff_at'] <= self.clock() or not self._preferences(session, owner)['reminders_enabled']:
+                        values = dict(state='skipped')
+                    else:
+                        result = self.notifications.publish(uow, NotificationDraft(producer='events', delivery_key=identifier,
+                            kind='event_reminder', title=row['title'], body='An upcoming event is ready to review.',
+                            target_kind='event', target_id=identifier, due_at=ledger['due_at']))
+                        values = dict(state='skipped') if result['outcome'] == 'disabled' else dict(state='delivered',
+                            delivered_at=self.clock(), receipt_id=result['notification_id'])
+                    session.execute(update(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier).values(**values))
+                    self._change(session, owner, 'event', identifier)
+                    processed += 1
+            except AppError as error:
+                if error.code != 'NOTIFICATION_CAPACITY': raise
+                # Preserve the pending ledger for retry after inbox capacity recovers.
+        return processed
 
     def _rows(self, session, owner, identifiers, stamp=None):
         if not identifiers:

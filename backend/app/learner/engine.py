@@ -123,6 +123,19 @@ class LearnerEngine:
         """Trusted confirmed-transcription path; no agent tool exposes this method."""
         return self.evidence.confirm(request)
 
+    def submit_evidence_batch_in_transaction(self, requests, unit_of_work, *, transcription_confirmation=None):
+        """Trusted composed persistence boundary; never exposed as an AI tool."""
+        if not 1 <= len(requests) <= 100:
+            raise LearnerError('Composed evidence batches require 1 to 100 observations')
+        with self.repository.bound_transaction(unit_of_work, learner_ids={request.learner_id for request in requests}) as repository:
+            results = [self.evidence.submit(request, repository) for request in requests]
+            if transcription_confirmation is not None:
+                results = [self.evidence.confirm(ConfirmEvidenceRequest(learner_id=request.learner_id,
+                    evidence_id=result.evidence_id, confirmation_source=transcription_confirmation), repository)
+                    if result.status == 'pending' and request.source_type == 'HANDWRITTEN_ASSESSMENT' else result
+                    for request, result in zip(requests, results)]
+            return results
+
     def get_concept_state(self, request: ConceptStateRequest) -> ConceptStateResponse | None:
         key = self.get_concept(request.concept_id).id
         state = self.states.load(request.learner_id, [key]).get(key)

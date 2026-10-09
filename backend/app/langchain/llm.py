@@ -54,7 +54,7 @@ class MentraLLM:
                                output_schema: type[BaseModel] | None = None,
                                additional_sources: Sequence[PromptSource] = (),
                                system_context: str | None = None,
-                               tools: Sequence | None = None):
+                               tools: Sequence | None = None, on_delta=None):
         """Use a registered source prompt with ordered chat turns and optional data."""
         system_messages = [message for message in messages if isinstance(message, SystemMessage)]
         if system_messages:
@@ -74,5 +74,26 @@ class MentraLLM:
         model = self._model(source, output_schema)
         if tools:
             model = model.bind_tools(tools)
-        result = await model.ainvoke(prepared)
+        if on_delta is not None and output_schema is None and hasattr(model, 'astream'):
+            from langchain_core.messages import AIMessageChunk
+            from langchain_core.messages.utils import message_chunk_to_message
+            aggregate, pending = None, ''
+            import time
+            emitted = time.monotonic()
+            async for chunk in model.astream(prepared):
+                if not isinstance(chunk, AIMessageChunk): continue
+                aggregate = chunk if aggregate is None else aggregate + chunk
+                if isinstance(chunk.content, str): pending += chunk.content
+                # Only public assistant text is streamed; tool arguments and
+                # provider reasoning/content blocks never enter the transport.
+                if pending and (len(pending) >= 512 or time.monotonic()-emitted >= .2):
+                    for start in range(0,len(pending),1000): await on_delta(pending[start:start+1000])
+                    pending, emitted = '', time.monotonic()
+            if aggregate is None: raise ValueError('Provider returned no response chunks')
+            result = message_chunk_to_message(aggregate)
+            if getattr(result,'tool_calls',None): await on_delta(None)
+            elif pending:
+                for start in range(0,len(pending),1000): await on_delta(pending[start:start+1000])
+        else:
+            result = await model.ainvoke(prepared)
         return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result

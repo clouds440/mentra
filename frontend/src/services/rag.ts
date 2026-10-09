@@ -15,7 +15,7 @@ export async function listContexts(signal?: AbortSignal): Promise<LearningContex
   } while (page.length === 100);
   return contexts;
 }
-export const createContext = (name: string, activate: boolean) => apiRequest<LearningContext>('/api/v1/learning-contexts', { method: 'POST', body: JSON.stringify({ name, activate }) });
+export const createContext = (name: string, activate: boolean, signal?: AbortSignal) => apiRequest<LearningContext>('/api/v1/learning-contexts', { method: 'POST', body: JSON.stringify({ name, activate }), signal });
 export const transitionContext = (id: string, status: string) => apiRequest<LearningContext>(`/api/v1/learning-contexts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) });
 export function uploadMaterial(file: File, title: string, contextIds: string[], key: string, signal?: AbortSignal, replacement?: MaterialDocument) {
   const body = new FormData();

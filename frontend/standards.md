@@ -13,6 +13,7 @@ These standards describe the current React, TypeScript, Vite, and Tailwind CSS c
 - `layouts/`: shared page structure and outlet boundaries used by multiple routes.
 - `hooks/`: reusable React hooks, named with the `use` prefix.
 - `services/`: communication with external systems, including the centralized backend API client.
+- `stores/`: existing owner-scoped external stores such as persistent chat. Add a feature store only when multiple consumers need shared server state; keep caches bounded.
 - `types/`: shared frontend types that have more than one meaningful consumer.
 - `utils/`: small, domain-independent helpers used by unrelated areas.
 - `styles/`: global CSS and Tailwind base directives; component styling otherwise uses Tailwind classes.
@@ -38,7 +39,8 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Keep feature UI such as chat messages and composers outside `components/ui/`; reserve that directory for primitives.
 - Use the established icon library (`lucide-react`) consistently. Give icon-only controls accessible names and titles where useful; do not use emoji as application icons.
 - Empty states should explain the current state honestly and offer only actions that work. Do not present mock data as saved learner activity or invent analytics.
-- Render chat Markdown with `react-markdown` and `remark-gfm`; keep richer rendering behavior with the chat feature rather than creating a global rich-text abstraction.
+- Reuse existing UI primitives, including Spinner/loading states and the accessible `Toggle` for binary preferences. Keep theme selection in the existing account drawer and use semantic Light/Dark/System tokens.
+- Render Markdown with the existing `components/content/MarkdownContent` and shared Prism `CodeBlock`, used by chat and Library. Keep feature reference resolution in its feature adapter; never enable arbitrary HTML or duplicate the formatting stack.
 
 ## TypeScript
 
@@ -53,6 +55,8 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Do not add a global state library until there is a demonstrated need.
 - Treat server state (backend data and request lifecycle) separately from local UI state.
 - `AuthProvider` owns authenticated identity and session restoration. Tokens live only in backend-issued HTTP-only cookies, never local/session storage or JavaScript state. Tab messages signal a session change; each tab verifies identity with `/auth/me`.
+- Scope requests and caches to the authenticated owner and active query. Abort stale requests, fence late responses after account/filter changes, and clear personal drafts/caches on account transitions. BroadcastChannel is optional; blocked storage or missing tab messaging must degrade safely.
+- Preserve drafts across related tab changes, with query-driven navigation and back/forward behavior where supported. Load personal collections on demand, merge affected rows and use server revisions/tombstones to prevent stale responses from restoring deleted data.
 
 ## API access
 
@@ -60,6 +64,17 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Use the environment-configured `VITE_API_URL`. A browser must be able to resolve this URL; do not use a Docker-only service name in the browser bundle.
 - The shared client owns JSON headers/parsing and converts standard backend errors into useful typed errors. Keep it small; add retries, caching, auth, or streaming only when required by a real feature.
 - Requests include cookie credentials. `services/auth.ts` requests cookie transport, enforces a request timeout, and uses actual backend contracts. Clear client identity only after successful logout; keep retryable network errors distinct from an unauthenticated response.
+- Pass AbortSignals through the shared client, which owns credentialed requests, timeout cleanup and typed `ApiError` details. Do not automatically retry a mutation with a new operation UUID after an unknown outcome; use the feature's recovery contract and retain the UUID only for the same payload.
+
+## Events and Progress integration requirements
+
+The manual Events backend exists; `ProgressPage` remains a placeholder. These rules apply when implementing the planned UI and do not imply that an Events client/store, Notifications inbox or Learning dashboard already exists. Follow the [Events delivery plan](../Mentra_Events_Implementation_Plan.md) and [current backend contracts](../docs/events.md).
+
+- Keep event DTOs/client calls in feature types/services. Send no owner field; respect expected revisions, operation recovery, bounded pages, query-bound cursors and `PAGE_CHANGED` reloads. Present conflict, unavailable context and retryable `EVENTS_UNAVAILABLE` states distinctly.
+- Preserve date-only values as civil dates with their event IANA zone. Render aware timestamps deliberately in the selected zone; never parse a date-only string as an instant and shift its calendar day. Use server temporal preview for gap/fold choices and single-reminder validation.
+- Completing an event is a lifecycle action, not learner evidence. Learning views need genuine bounded public learner reads; unknown estimates remain unknown and empty views must not fabricate progress charts or percentages.
+- Capture, event reminders and memory preferences are independent. A pending/skipped/cancelled/delivered ledger describes scheduling history; never present a pending ledger as a delivered inbox notification. Generic Notifications and its shared polling coordinator remain planned work.
+- Reuse shared editor/detail forms and primitives when the feature ships. Keep loaded pages/detail projections bounded, reconcile by server revision, and pause hidden/offline polling. Browser acceptance must cover account changes, lost responses, timezone/date boundaries, accessibility, narrow screens and Light/Dark/System.
 
 ## Utilities
 

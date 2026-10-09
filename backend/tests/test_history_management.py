@@ -446,7 +446,8 @@ class HistoryManagementTests(unittest.TestCase):
                 data = json.loads(system[system.rfind('\n\n{')+2:])
                 question = next(x.content for x in reversed(messages) if x.type == 'human')
                 return AIMessage(content='', tool_calls=[dict(name='user_memory', args=dict(action='remember', content=question,
-                    category='preference', evidence_message_id=data['history_scope']['current_user_message_id'], evidence_quote=question), id='call_1', type='tool_call')])
+                    category='preference', evidence_message_id=data['history_scope']['current_user_message_id'], evidence_quote=question,
+                    tool_name='user_memory', user_message='Checking your saved memories'), id='call_1', type='tool_call')])
         class Factory:
             def get_model(self): return model
         model = Model(); chat_service = ChatService(Factory())

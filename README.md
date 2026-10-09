@@ -1,6 +1,6 @@
 # Mentra
 
-Mentra is an adaptive AI learning assistant with a FastAPI backend, React + TypeScript frontend, PostgreSQL persistence, standalone/platform identity, a granular Learner Engine, and a separate high-level Student Profile. Docker Compose runs the backend, frontend, and local PostgreSQL database.
+Mentra is an adaptive AI learning assistant with a FastAPI backend, React + TypeScript frontend, PostgreSQL persistence, standalone/platform identity, a granular Learner Engine, and a separate high-level Student Profile. Docker Compose runs the backend, frontend, RAG ingestion worker, and local PostgreSQL database.
 
 ## What Mentra currently contains
 
@@ -8,7 +8,9 @@ Mentra is an adaptive AI learning assistant with a FastAPI backend, React + Type
 - Centralized FastAPI error responses for application, HTTP, validation, and unexpected errors
 - React + TypeScript + Vite + Tailwind CSS frontend with a responsive, routed learning workspace
 - Local-first workspace shell with Chat, Library, Progress, Assessments, and Settings routes
-- Server-backed AI chat with in-memory conversation context and Markdown responses
+- Account-owned persistent conversations with bounded model context, recoverable turns, incremental browser caching and Markdown responses
+- On-demand history retrieval and evidence-backed user memories with manual Settings management and independent AI-write preferences
+- Manual Events backend with authenticated CRUD, lifecycle, temporal preview, operation recovery and bounded agenda/sync APIs
 - Multi-stage frontend image serving the built app with Nginx
 - PostgreSQL repositories using SQLAlchemy 2.x and Alembic
 - Modular Learner Engine with concept resolution, immutable evidence, versioned estimates, relevance, and recommendation contracts
@@ -31,7 +33,9 @@ Mentra is an adaptive AI learning assistant with a FastAPI backend, React + Type
 mentra/
 |-- backend/
 |   |-- app/
-|   |   |-- api/routes/         # Auth, profile/calibration, EduVerse, chat, health
+|   |   |-- api/routes/         # Auth, profile, EduVerse, conversations, memory, Events, Library, health
+|   |   |-- chat/               # Canonical conversations, durable turns, bounded model history
+|   |   |-- history_management/ # On-demand history, user memory, separate Events domain/repositories
 |   |   |-- auth/               # Accounts, sessions, generic signed external identity
 |   |   |-- student_profile/    # User details, broad estimates, controlled calibration
 |   |   |-- learner/            # Granular concept knowledge and immutable evidence
@@ -39,7 +43,7 @@ mentra/
 |   |   |-- langchain/          # Shared LLM, source-specific prompts, chat, profile evaluator, learner tools
 |   |   |-- rag/                # Source storage, durable ingestion, parsers, retrieval, vector adapters, evaluation
 |   |   |-- vision/             # Shared stateless OCR and PDF-page rasterization with capability providers
-|   |   |-- db/                 # Connection lifecycle and migration entry point
+|   |   |-- db/                 # Connections, migrations, shared owner transactions
 |   |   |-- core/               # Settings, logging, errors, identifiers
 |   |   |-- main.py
 |   |-- alembic/versions/       # Reviewed PostgreSQL migrations
@@ -98,15 +102,15 @@ The UI opens at `/login` for guests. Registration signs you in immediately, then
 
 ## Workspace routes
 
-- `/login` and `/register` â€” username/password authentication
-- `/onboarding` â€” mandatory profile information and optional calibration
-- `/calibration` â€” later calibration from Settings
-- `/` â€” Chat
-- `/chat/:conversationId` ? saved conversations, paged history, and recoverable responses
-- `/library` â€” study material placeholder
-- `/progress` â€” granular learning progress placeholder
-- `/assessments` â€” practice and assessment placeholder
-- `/settings` â€” editable Student Profile, calibration/retry, theme, and account data information
+- `/login` and `/register` - username/password authentication
+- `/onboarding` - mandatory profile information and optional calibration
+- `/calibration` - later calibration from Settings
+- `/` - Chat
+- `/chat/:conversationId` - saved conversations, paged history, and recoverable responses
+- `/library` - owned study materials, uploads, source views and retrieval settings
+- `/progress` - placeholder; planned Events/Learning interface is not implemented
+- `/assessments` - practice and assessment placeholder
+- `/settings` - editable Student Profile, calibration/retry, theme, and account data information; `?tab=memories` opens memory management
 
 ## Backend URL
 
@@ -154,6 +158,16 @@ GitHub Actions can apply Alembic revisions to Supabase PostgreSQL on `main` push
 
 Read [Student Profile and calibration](./docs/student-profile.md) for the separate high-level profile, API contracts, conservative adaptation, and the EduVerse provisioning request. Neither onboarding nor its AI evaluator writes granular concept mastery.
 
+## History, memory and Events
+
+[History management](docs/history-management.md) provides bounded conversation lookup and evidence-backed user memory. Memory admission and manual management use separate contracts from Events; their preferences do not control each other.
+
+The [Events backend foundation](docs/events.md) is composed as `HistoryManagement.events`. It stores one-off date-only or timed events, enforces owner/context isolation and revisioned writes, and retains one reminder ledger per event. A ledger records scheduling state; it does not deliver a notification. Event completion does not change learner mastery.
+
+AI event tools/admission, durable proposals, standalone Notifications, reminder delivery, and the Progress Events/Learning UI remain unimplemented. The LangGraph dependency/security gate is unresolved and production dependencies are unchanged. Follow the [Events implementation tracker](Mentra_Events_Implementation_Plan.md) for verified increments and remaining acceptance gates.
+
+The repository migration head is `20261009_0008`: Events foundation (`0007`) and additive reminder-ledger retention (`0008`) follow Library, persistent chat and memory revisions. Repository head does not prove that a deployed database has been upgraded.
+
 ## Engineering standards
 
 - [Backend contributor standards](./backend/standards.md)
@@ -163,5 +177,7 @@ Read [Student Profile and calibration](./docs/student-profile.md) for the separa
 The frontend shared API client is in `frontend/src/services/api.ts`. Backend errors use a consistent `{ "error": { "code": "...", "message": "..." } }` structure; validation errors may include field details.
 
 ## Verification
+
+The 2026-10-09 Events re-pass passed all **333 backend tests** in the rebuilt Python 3.12 image, **40 focused local tests**, and frontend build/theme checks. See [Events verification](docs/events.md#verification-and-deployment-boundary). These runs used disposable PostgreSQL resources and did not migrate or deploy the application; earlier browser/runtime reports retain their original scope and dates.
 
 See the [full-stack verification report](./docs/student-profile-verification.md) for PostgreSQL tests, browser checks, Docker image/runtime checks, and external-provider limits. Build/start commands and migration diagnostics are in the [setup guide](./docs/SETUP.md).

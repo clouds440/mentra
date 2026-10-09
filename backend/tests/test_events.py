@@ -432,18 +432,26 @@ class EventPersistenceTests(unittest.TestCase):
         chat = ChatRepository(self.db.sessions)
         job = chat.begin_turn(self.owner, SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='Existing chat survives migration'))
         chat.finish(self.owner, job, dict(content='Existing answer'))
+        # Compare the pre-Events schema only: later migrations intentionally add
+        # tables/columns that do not exist at revision 0006.
+        later_tables = {'chat_activity', 'chat_attachment', 'chat_evidence_job'}
+        later_columns = {('chat_turn', 'attachment_ids'), ('rag_document_version', 'extracted_content')}
         def snapshots():
             with self.db.sessions() as session:
-                return {table.name: sorted(json.dumps(dict(row), sort_keys=True, default=str) for row in session.execute(select(table)).mappings())
-                        for table in metadata.sorted_tables if not table.name.startswith('hm_event')}
+                return {table.name: sorted(json.dumps(dict(row), sort_keys=True, default=str) for row in
+                        session.execute(select(*(column for column in table.c if (table.name, column.name) not in later_columns))).mappings())
+                        for table in metadata.sorted_tables
+                        if not table.name.startswith(('hm_event', 'notification_', 'checkpoint', 'assessment')) and table.name not in later_tables}
         baseline = snapshots()
         with self.db.engine.connect() as connection:
             self.assertEqual(compare_metadata(MigrationContext.configure(connection), metadata), [])
             command.downgrade(migration_config(connection), '20261008_0006')
             connection.commit()
-        self.assertEqual(MemoryRepository(self.db.sessions).detail(self.owner, memory['id'])['content'], memory['content'])
-        self.assertEqual(snapshots(), baseline)
-        upgrade(self.db.engine)
+        try:
+            self.assertEqual(MemoryRepository(self.db.sessions).detail(self.owner, memory['id'])['content'], memory['content'])
+            self.assertEqual(snapshots(), baseline)
+        finally:
+            upgrade(self.db.engine)
         self.assertEqual(snapshots(), baseline)
         with self.db.engine.connect() as connection:
             self.assertEqual(compare_metadata(MigrationContext.configure(connection), metadata), [])

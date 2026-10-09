@@ -142,8 +142,9 @@ class EvidenceService:
                                              'evidence_count': state.evidence_count}, learner_id, concept_id)
         return state
 
-    def confirm(self, request: ConfirmEvidenceRequest) -> EvidenceSubmissionResult:
-        with self.repository.transaction(learner_ids=[request.learner_id]) as repository:
+    def confirm(self, request: ConfirmEvidenceRequest, repository=None) -> EvidenceSubmissionResult:
+        context = nullcontext(repository) if repository is not None else self.repository.transaction(learner_ids=[request.learner_id])
+        with context as repository:
             evidence = repository.get_evidence(request.evidence_id, request.learner_id)
             if evidence is None or evidence.learner_id != request.learner_id:
                 raise InvalidEvidenceError('Pending observation not found')

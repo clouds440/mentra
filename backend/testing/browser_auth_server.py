@@ -56,16 +56,36 @@ async def lifespan(application):
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
     application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
         embedding, vector, FileStorage(storage.name), settings)
+    application.state.learner_service = LearnerEngine(database.repository)
     llm = MentraLLM(HistoryChatFactory())
     application.state.chat_service = ChatService(llm)
     application.state.conversation_service = ConversationService(ChatRepository(database.sessions))
     application.state.history_management = create_history_management(database.sessions, llm, application.state.student_profile_service)
+    from app.notifications.factory import create_notifications
+    application.state.notifications_service = create_notifications(database.sessions)
+    application.state.history_management.events.repository.notifications = application.state.notifications_service
+    from app.history_management.events.proposal_service import create_event_proposals
+    application.state.event_proposal_service = create_event_proposals(database.sessions, application.state.history_management.events)
+    from app.assessments.service import create_assessments
+    application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service)
+    from app.assessments.worker import AssessmentWorker
+    grading_worker = AssessmentWorker(application.state.assessment_service)
+    from app.chat.attachments import AttachmentService
+    from app.chat.repositories.attachments import AttachmentRepository
+    from app.langchain.orchestration_service import OrchestrationService
+    application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions))
+    application.state.orchestration_service = OrchestrationService(application.state.chat_service,
+        rag=application.state.rag_service, history=application.state.history_management,
+        attachments=application.state.attachment_service, event_proposals=application.state.event_proposal_service,
+        assessments=application.state.assessment_service)
     worker = IngestionWorker(application.state.rag_service)
     stopping = asyncio.Event()
 
     async def process_jobs():
         while not stopping.is_set():
             await asyncio.to_thread(worker.run_once)
+            await asyncio.to_thread(application.state.history_management.events.repository.deliver_reminders)
+            await grading_worker.run_once()
             await asyncio.sleep(0.2)
 
     task = asyncio.create_task(process_jobs())
@@ -93,6 +113,18 @@ app.include_router(rag_router, prefix='/api/v1')
 app.include_router(chat_router, prefix='/api/v1')
 app.include_router(conversations_router, prefix='/api/v1')
 app.include_router(memories_router, prefix='/api/v1')
+from app.api.routes.chat_attachments import router as attachments_router
+app.include_router(attachments_router, prefix='/api/v1')
+from app.api.routes.events import router as events_router
+from app.api.routes.notifications import router as notifications_router
+app.include_router(events_router, prefix='/api/v1')
+app.include_router(notifications_router, prefix='/api/v1')
+from app.api.routes.event_proposals import router as event_proposals_router
+app.include_router(event_proposals_router, prefix='/api/v1')
+from app.api.routes.learning import router as learning_router
+app.include_router(learning_router, prefix='/api/v1')
+from app.api.routes.assessments import router as assessments_router
+app.include_router(assessments_router, prefix='/api/v1')
 
 
 def cleanup_database():

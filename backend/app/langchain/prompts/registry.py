@@ -11,6 +11,11 @@ class PromptSource(StrEnum):
     RAG_CONTEXT = "rag_context"
     HISTORY_MANAGEMENT = "history_management"
     MEMORY_VALIDATION = "memory_validation"
+    CHAT_ATTACHMENTS = "chat_attachments"
+    ASSESSMENT_GENERATION = 'assessment_generation'
+    ASSESSMENT_GRADING = 'assessment_grading'
+    CHAT_EVIDENCE = 'chat_evidence'
+    EVENT_ADMISSION = 'event_admission'
 
 
 @lru_cache(maxsize=len(PromptSource))
@@ -29,6 +34,16 @@ def get_system_prompt(source: PromptSource) -> str:
         from .history_management import SYSTEM_PROMPT
     elif source is PromptSource.MEMORY_VALIDATION:
         from .memory_validation import SYSTEM_PROMPT
+    elif source is PromptSource.CHAT_ATTACHMENTS:
+        from .chat_attachments import SYSTEM_PROMPT
+    elif source is PromptSource.ASSESSMENT_GENERATION:
+        from .assessment_generation import SYSTEM_PROMPT
+    elif source is PromptSource.ASSESSMENT_GRADING:
+        from .assessment_grading import SYSTEM_PROMPT
+    elif source is PromptSource.CHAT_EVIDENCE:
+        from .evidence import SYSTEM_PROMPT
+    elif source is PromptSource.EVENT_ADMISSION:
+        from .event_admission import SYSTEM_PROMPT
     else:  # Defensive if the enum grows without a registered prompt module.
         raise ValueError(f"No system prompt is registered for {source!r}")
     return SYSTEM_PROMPT
@@ -50,6 +65,16 @@ def get_prompt_version(source: PromptSource) -> str:
         from .history_management import VERSION
     elif source is PromptSource.MEMORY_VALIDATION:
         from .memory_validation import VERSION
+    elif source is PromptSource.CHAT_ATTACHMENTS:
+        from .chat_attachments import VERSION
+    elif source is PromptSource.ASSESSMENT_GENERATION:
+        from .assessment_generation import VERSION
+    elif source is PromptSource.ASSESSMENT_GRADING:
+        from .assessment_grading import VERSION
+    elif source is PromptSource.CHAT_EVIDENCE:
+        from .evidence import VERSION
+    elif source is PromptSource.EVENT_ADMISSION:
+        from .event_admission import VERSION
     else:
         raise ValueError(f"No prompt version is registered for {source!r}")
     return VERSION

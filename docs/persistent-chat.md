@@ -22,6 +22,13 @@ Owner-scoped locks serialize short writes and synchronization snapshots, never m
 
 ## API
 
+The shared owner lock is exposed by `app.db.owner_transactions.lock_owner` and
+still locks the existing `chat_sync_state` row. Memory and Events join this boundary
+without importing private chat methods or introducing an unrelated lock. Deleting
+a conversation detaches both modules' evidence in the same transaction; saved
+events remain available and receive their own sync revisions. See
+[Events source-retention policy](events.md#structure-and-integration).
+
 All paths are under `/api/v1/conversations`.
 
 | Operation | Endpoint |

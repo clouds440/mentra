@@ -1,5 +1,4 @@
 import { ArrowUp, Paperclip } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useLayoutEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Button, Textarea } from '../ui';
@@ -9,6 +8,8 @@ interface ChatComposerProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   isThinking: boolean;
+  onFiles: (files: File[]) => void;
+  hasAttachments?: boolean;
 }
 
 export function ChatComposer({
@@ -16,8 +17,11 @@ export function ChatComposer({
   onChange,
   onSubmit,
   isThinking,
+  onFiles,
+  hasAttachments,
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -54,15 +58,19 @@ export function ChatComposer({
         value={value}
       />
       <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
-        <Link
-          to="/library"
-          aria-label="Add study material in Library"
+        <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
+          onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+        <button
+          type="button"
+          disabled={isThinking}
+          onClick={() => fileRef.current?.click()}
+          aria-label="Attach files to chat"
           className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle"
-          title="Add study material in Library"
+          title="Read files in chat; choose later whether to add them to Library"
         >
           <Paperclip aria-hidden="true" size={16} />
-          <span className="hidden sm:inline">Add material</span>
-        </Link>
+          <span className="hidden sm:inline">Attach files</span>
+        </button>
         <div className="flex items-center gap-3">
           <span className="hidden text-[11px] text-subtle sm:inline">
             Enter to send · Shift + Enter for a new line
@@ -70,7 +78,7 @@ export function ChatComposer({
           <Button
             aria-label="Send message"
             className="h-9 min-h-9 w-9 rounded-xl p-0"
-            disabled={!value.trim() || isThinking}
+            disabled={(!value.trim() && !hasAttachments) || isThinking}
             size="sm"
             type="submit"
           >

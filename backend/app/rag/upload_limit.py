@@ -13,7 +13,8 @@ class MaterialUploadLimit:
     async def __call__(self, scope, receive, send):
         path = scope.get('path', '')
         guarded = scope['type'] == 'http' and scope.get('method') == 'POST' and (
-            path == '/api/v1/documents' or path.startswith('/api/v1/documents/') and path.endswith('/versions'))
+            path in ('/api/v1/documents', '/api/v1/chat-attachments') or path.startswith('/api/v1/documents/') and path.endswith('/versions')
+            or path.startswith('/api/v1/assessments/attempts/') and path.endswith('/source'))
         if not guarded:
             return await self.app(scope, receive, send)
         headers = dict(scope['headers'])

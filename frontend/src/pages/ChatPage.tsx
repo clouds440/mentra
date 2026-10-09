@@ -5,9 +5,11 @@ import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
-import { ChatMessage, ThinkingIndicator } from '../components/chat/ChatMessage';
+import { ChatMessage } from '../components/chat/ChatMessage';
+import { ChatActivity } from '../components/chat/ChatActivity';
 import { chatStore, useChatList, useConversation } from '../stores/chatStore';
 import { Spinner } from '../components/ui';
+import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from '../services/chatAttachments';
 
 interface ChatOutletContext { newChatKey: number; setChatTitle: (title: string) => void }
 
@@ -17,6 +19,7 @@ export function ChatPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const selectedDocument = params.get('document');
+  const practice = params.get('practice');
   const { newChatKey, setChatTitle } = useOutletContext<ChatOutletContext>();
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const id = conversationId ?? draftId;
@@ -25,7 +28,30 @@ export function ChatPage() {
   const conversation = list.items.find(chat => chat.id === id);
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
   const [draft, setDraft] = useState('');
+  useEffect(() => { if (practice) setDraft(`Help me practice ${practice.slice(0, 200)}. Ask one question at a time.`); }, [practice]);
   const [validation, setValidation] = useState<string | null>(null);
+  const [files, setFiles] = useState<ChatAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const uploadController = useRef(new AbortController());
+  useEffect(() => {
+    uploadController.current = new AbortController(); setFiles([]); setUploading(false);
+    return () => uploadController.current.abort();
+  }, [id, identity?.learner_id]);
+
+  async function attach(selected: File[]) {
+    if (uploading || view.busy) return;
+    if (selected.length + files.length > 4) { setValidation('Attach up to four files per message.'); return; }
+    const signal = uploadController.current.signal;
+    setUploading(true); setValidation(null);
+    try {
+      for (const file of selected) {
+        const saved = await uploadChatAttachment(file, signal);
+        if (signal.aborted) return;
+        setFiles(previous => [...previous, saved]);
+      }
+    } catch (error) { if (!signal.aborted) setValidation(error instanceof Error ? error.message : 'Could not upload this file.'); }
+    finally { if (!signal.aborted) setUploading(false); }
+  }
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prependRef = useRef<number | null>(null);
   const bottomRef = useRef(true);
@@ -51,12 +77,12 @@ export function ChatPage() {
   }, [view.messages, view.busy]);
 
   function sendMessage() {
-    const content = draft.trim(); if (!content || view.busy) return;
+    const content = draft.trim() || (files.length ? 'Please read the attached files.' : ''); if (!content || view.busy || uploading) return;
     if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
     setDraft(''); setValidation(null); bottomRef.current = true;
-    void chatStore.send(id, content, selection);
+    void chatStore.send(id, content, selection, false, files); setFiles([]);
     if (!conversationId) navigate(`/chat/${id}`, { replace: true });
   }
 
@@ -74,7 +100,7 @@ export function ChatPage() {
               {view.loading ? 'Loading earlier messages…' : 'Load earlier messages'}
             </button>}
             {view.messages.map(message => <ChatMessage key={message.id} message={message} />)}
-            {view.busy && <ThinkingIndicator />}
+            {view.busy && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
             {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { bottomRef.current = true; void chatStore.open(id, true); }}>Back to latest messages</button>}
           </div>
@@ -90,7 +116,13 @@ export function ChatPage() {
             {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          <ChatComposer isThinking={view.busy || view.loading} onChange={setDraft} onSubmit={sendMessage} value={draft} />
+          {!!files.length && <ul className="mb-2 flex flex-wrap gap-2" aria-label="Attached files">{files.map(file => <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-xs text-muted">
+            {file.filename} <button type="button" className="ml-2 underline" aria-label={`Remove ${file.filename}`} onClick={() => {
+              setFiles(previous => previous.filter(value => value.id !== file.id)); void removeChatAttachment(file.id).catch(() => {});
+            }}>Remove</button>
+          </li>)}</ul>}
+          {uploading && <p role="status" className="mb-2 text-xs text-muted">Uploading files…</p>}
+          <ChatComposer isThinking={view.busy || view.loading || uploading} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>

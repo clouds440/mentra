@@ -12,6 +12,21 @@ from app.history_management.tools import create_history_tools
 async def tool_reply(llm, conversation, service, owner, scope, additional_sources, context):
     budget = ToolBudget()
     tools = create_history_tools(service, owner, scope, budget)
+    if scope.get('event_proposal_service') is not None and service.events is not None:
+        from .event_tools import create_event_tools
+        tools.extend(create_event_tools(service.events, scope['event_proposal_service'], owner, scope, budget))
+    if scope.get('learner_service') is not None:
+        from .learner_tools import create_learner_tools
+        from langchain_core.tools import StructuredTool
+        for tool in create_learner_tools(scope['learner_service'], owner):
+            async def read(_tool=tool, **arguments):
+                budget.call()
+                return await _tool.ainvoke(arguments)
+            tools.append(StructuredTool.from_function(name=tool.name, description=tool.description,
+                args_schema=tool.args_schema, coroutine=read))
+    if scope.get('activity') is not None:
+        from .tool_activity import announced_tool
+        tools = [announced_tool(tool, scope['activity']) for tool in tools]
     dispatch = {tool.name: tool for tool in tools}
     instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *additional_sources, PromptSource.HISTORY_MANAGEMENT))
     tool_schema = json.dumps([tool.args_schema.model_json_schema() for tool in tools])
@@ -43,7 +58,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         final = iteration == 4 or budget.calls >= 6
         try:
             response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
-                additional_sources=sources, system_context=system_context, tools=None if final else tools)
+                additional_sources=sources, system_context=system_context, tools=None if final else tools,
+                on_delta=scope.get('on_delta'))
         except Exception as error:
             from openai import BadRequestError
             unsupported = isinstance(error, (NotImplementedError, AttributeError)) or (isinstance(error, BadRequestError)
@@ -75,7 +91,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     budget.call()
                     result = dict(outcome='rejected', reason='Unknown tool.')
                 else:
-                    result = await tool.ainvoke(call['args'])
+                    from .activity import current_tool_call
+                    token = current_tool_call.set(call.get('id'))
+                    try:
+                        result = await tool.ainvoke(call['args'])
+                    finally:
+                        current_tool_call.reset(token)
                 content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))
                 budget.consume(content)
             except Exception as error:

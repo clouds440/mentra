@@ -2,6 +2,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
+import { NotificationBell } from '../components/notifications/NotificationBell';
 
 const pageTitles: Record<string, string> = {
   '/': 'New Chat',
@@ -9,6 +10,8 @@ const pageTitles: Record<string, string> = {
   '/progress': 'Progress',
   '/assessments': 'Assessments',
   '/settings': 'Settings',
+  '/notifications': 'Notifications',
+  '/events': 'Events',
 };
 
 export function AppLayout() {
@@ -63,6 +66,7 @@ export function AppLayout() {
             </button>
             <span className="text-sm font-medium text-heading">{title}</span>
           </div>
+          <NotificationBell />
         </header>
         <main className="min-h-0 flex-1">
           <Outlet context={{ newChatKey, setChatTitle }} />

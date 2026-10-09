@@ -11,10 +11,13 @@ export interface StoredMessage extends ChatMessageData {
 export interface PendingTurn {
   conversation_id: string; client_turn_id: string; expected_revision: number;
   content: string; retrieval: ChatSelection; retry?: boolean;
+  attachment_ids?: string[];
 }
 export interface Turn {
+  attempt: number;
   id: string; state: 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error: string | null;
   selection: ChatSelection; user_sequence: number;
+  attachment_ids?: string[];
 }
 export interface MessagePage {
   conversation: Conversation; items: StoredMessage[]; has_more: boolean; next_cursor: number | null;

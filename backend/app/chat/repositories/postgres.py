@@ -116,7 +116,9 @@ class ChatRepository:
         conversation_id, turn_id = str(request.conversation_id), str(request.client_turn_id)
         content = request.content
         selection = request.retrieval.model_dump(mode='json')
-        fingerprint = sha256(json.dumps([conversation_id, content, selection], sort_keys=True).encode()).hexdigest()
+        attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))
+        # Retain fingerprints for existing clients/turns without attachments.
+        fingerprint = sha256(json.dumps([conversation_id, content, selection] + ([attachment_ids] if attachment_ids else []), sort_keys=True).encode()).hexdigest()
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             existing = session.execute(select(t).where(t.c.id == turn_id)).mappings().first()
@@ -140,7 +142,7 @@ class ChatRepository:
                 session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3)))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
-                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, user_sequence=existing['user_sequence'])
+                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'])
             row = session.execute(select(c).where(c.c.id == conversation_id)).mappings().first()
             if row is None:
                 if request.expected_revision != 0:
@@ -161,13 +163,15 @@ class ChatRepository:
                     raise AppError('CHAT_BUSY', 'Wait for the current response before sending another message.', 409)
                 session.execute(update(t).where(t.c.id == pending['id']).values(state='FAILED', error='Generation interrupted.'))
             sequence = conversation['message_count'] + 1
+            from .attachments import AttachmentRepository
+            attachment_metadata = AttachmentRepository.bind(session, owner, attachment_ids, conversation_id)
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
-                role='user', content=content, metadata={}, created_at=now()))
+                role='user', content=content, metadata={'attachments': attachment_metadata} if attachment_metadata else {}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
-                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, lease_until=now()+timedelta(minutes=3), created_at=now()))
+                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now()))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))
             self._change(session, owner, conversation_id, state)
-            return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, user_sequence=sequence)
+            return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence)
 
     def finish(self, owner, job, response=None, error=None):
         with self.sessions.begin() as session:
@@ -192,6 +196,9 @@ class ChatRepository:
                     role='assistant', content=content, metadata=payload, created_at=now()))
                 values['assistant_sequence'] = sequence
             session.execute(update(t).where(t.c.id == job['turn_id']).values(**values))
+            if response is not None:
+                from app.langchain.repositories.evidence import ChatEvidenceRepository
+                ChatEvidenceRepository.queue(session, owner, job)
             session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now()))
             self._change(session, owner, row['id'], state)
 
@@ -231,7 +238,11 @@ class ChatRepository:
                 MemoryRepository.detach_chat(session, owner, conversation_id)
                 from app.history_management.repositories.events.postgres import EventRepository
                 EventRepository.detach_chat(session, owner, conversation_id)
+                from app.history_management.repositories.events.proposals import EventProposalRepository
+                EventProposalRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
+                from .tables import attachments
+                session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
                 session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
                 session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))
                 values['message_count'] = 0

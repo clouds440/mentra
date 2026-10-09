@@ -23,6 +23,8 @@ class ChatService:
         learner_context: LearnerContextPacket | None = None,
         source_packet: dict | None = None,
         history_runtime: tuple | None = None,
+        document_context: list[dict] | None = None,
+        profile_context: dict | None = None,
     ) -> str:
         conversation = [
             HumanMessage(content=content)
@@ -44,6 +46,11 @@ class ChatService:
         try:
             sources = []
             context = {}
+            if profile_context is not None:
+                context['student_profile'] = profile_context
+            if document_context:
+                sources.append(PromptSource.CHAT_ATTACHMENTS)
+                context['chat_attachments'] = document_context
             if learner_context is not None:
                 sources.append(PromptSource.LEARNER_CONTEXT)
                 context['learner'] = learner_context.model_dump(mode='json', exclude_none=True)

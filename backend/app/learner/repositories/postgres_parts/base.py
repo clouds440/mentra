@@ -63,6 +63,25 @@ class PostgresRepositoryBase:
                 repository._context_links.clear()
                 repository._locked_learners.clear()
 
+    @contextmanager
+    def bound_transaction(self, unit_of_work, *, learner_ids=()):
+        if self._active_session is not None:
+            raise RuntimeError('Nested learner transactions are unsupported')
+        owners = {canonical_learner_id(value) for value in learner_ids}
+        if owners != {unit_of_work.owner}:
+            raise RuntimeError('Composed evidence must belong to the locked owner')
+        session = unit_of_work._session
+        session.execute(text('SELECT pg_advisory_xact_lock_shared(17483, 2)'))
+        repository = type(self)(self._session_factory, session)
+        repository.lock_learners(owners)
+        try:
+            yield repository
+        finally:
+            repository._active_session = None
+            repository._read_cache.clear()
+            repository._context_links.clear()
+            repository._locked_learners.clear()
+
     def lock_learners(self, learner_ids):
         if self._active_session is None:
             raise RuntimeError('Learner locks require a repository transaction')

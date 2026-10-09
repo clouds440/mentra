@@ -9,6 +9,11 @@ from app.rag.repositories import tables as rag_tables
 from app.chat.repositories import tables as chat_tables
 from app.history_management.repositories import tables as memory_tables
 from app.history_management.repositories.events import tables as event_tables
+from app.notifications.repositories import tables as notification_tables
+from app.history_management.repositories.events import proposal_tables
+from app.langchain.repositories import checkpoint_tables
+from app.assessments.repositories import tables as assessment_tables
+from app.langchain.repositories import evidence_tables
 
 config = context.config
 

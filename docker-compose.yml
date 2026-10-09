@@ -114,6 +114,33 @@ services:
       backend:
         condition: service_healthy
 
+  events-worker:
+    image: mentra-backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.history_management.events.worker"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  assessment-worker:
+    image: mentra-backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.assessments.worker"]
+    stop_grace_period: 100s
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+      AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_TIMEOUT: ${AI_TIMEOUT:-30}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+    depends_on:
+      backend:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

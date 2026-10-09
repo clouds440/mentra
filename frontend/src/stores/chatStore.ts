@@ -146,7 +146,7 @@ class ChatStore {
           const cached = await cache.messages(id).catch(() => []);
           if (this.alive(signal) && cached.length) this.setView(id, { messages: cached, before: cached[0].sequence > 1 ? cached[0].sequence : null });
         }
-        const page = await api.getTurn(id, signal); if (!this.alive(signal)) return;
+        const page = await api.getTurn(id, signal, view.busy && view.messages.length > 0 && !view.olderWindow); if (!this.alive(signal)) return;
         await this.applyPage(page);
         if (this.alive(signal) && page.turn?.state === 'RUNNING' && !refresh) this.poll(id);
       } catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, busy: false, error: this.error(error) }); }
@@ -185,7 +185,7 @@ class ChatStore {
     try { const page = await api.getMessages(id, view.before, signal); if (this.alive(signal)) await this.applyPage({ ...page, turn: view.turn }, true); }
     catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, error: this.error(error) }); }
   }
-  async send(id: string, content: string, retrieval: ChatSelection, retry = false) {
+  async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = []) {
     if (!this.owner || this.view(id).busy) return;
     if (this.view(id).olderWindow) {
       const signal = this.controller.signal;
@@ -197,16 +197,16 @@ class ChatStore {
     if (retry && !body && view.turn?.state === 'FAILED') {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
-      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, retrieval: view.turn.selection };
+      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
-    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval };
+    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, attachment_ids: attachments.map(file => file.id) };
     body = { ...body, retry };
     this.pending.set(id, body);
     this.setView(id, { busy: true, error: null, unsent: null });
     await this.persist(() => cache.pending(body!, id));
     if (!this.alive(signal)) return;
     const optimistic: StoredMessage = { id: body.client_turn_id, conversation_id: id, sequence: (this.chats.get(id)?.message_count ?? 0) + 1,
-      role: 'user', content: body.content, created_at: new Date().toISOString() };
+      role: 'user', content: body.content, attachments, created_at: new Date().toISOString() };
     this.setView(id, { busy: true, error: null, olderWindow: false, messages: retry ? view.messages : [...view.messages, optimistic].slice(-200) });
     try {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;

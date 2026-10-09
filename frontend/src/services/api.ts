@@ -1,6 +1,31 @@
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
+export async function apiEvents(path: string, signal: AbortSignal, onEvent: (name: string, data: unknown) => void): Promise<void> {
+  const url = `${apiBaseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+  return withResponse(url, { signal, headers: { Accept: 'text/event-stream' } }, async response => {
+    if (!response.ok || !response.body) throw new ApiError('Activity connection unavailable.', response.status, 'ACTIVITY_UNAVAILABLE');
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, '\n');
+        if (buffer.length > 1_000_000) throw new ApiError('Activity response is too large.', 502, 'INVALID_RESPONSE');
+        let boundary: number;
+        while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
+          const lines = block.split('\n');
+          const name = lines.find(line => line.startsWith('event:'))?.slice(6).trim();
+          const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+          if (name && data) onEvent(name, JSON.parse(data) as unknown);
+        }
+        if (done) return;
+      }
+    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+  });
+}
+
 async function withResponse<T>(url: string, init: RequestInit, consume: (response: Response) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   const parent = init.signal;

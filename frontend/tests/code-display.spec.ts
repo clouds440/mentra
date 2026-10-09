@@ -19,7 +19,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.setViewportSize({ width: 1440, height: 1100 });
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await register(page);
-    await page.route('**/api/v1/conversations/turns', async route => { const response = await route.fetch(); const body = await response.json(); body.items.at(-1).content = assistant; await route.fulfill({ json: body }); });
+    await page.route('**/api/v1/conversations/turns', async route => { const response = await route.fetch({ headers: { ...route.request().headers(), prefer: '' } }); const body = await response.json(); body.items.at(-1).content = assistant; await route.fulfill({ json: body }); });
     await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill('Can you explain this component?\n\n```tsx\n' + userCode + '\n```');
     await page.getByRole('button', { name: 'Send message' }).click();
     const user = page.getByRole('article', { name: 'Your message' });
@@ -44,7 +44,7 @@ test('mobile code keeps long lines contained and unknown grammars remain safe', 
   await register(page);
   await page.setViewportSize({ width: 320, height: 720 });
   const code = 'const example = "' + 'long source line '.repeat(20) + '";\nconst unsafe = "<img src=x onerror=alert(1)>";';
-  await page.route('**/api/v1/conversations/turns', async route => { const response = await route.fetch(); const body = await response.json(); body.items.at(-1).content = '```javascript\n' + code + '\n```\n\n```future-language\n<script>window.unsafeExecuted = true</script>\n```'; await route.fulfill({ json: body }); });
+  await page.route('**/api/v1/conversations/turns', async route => { const response = await route.fetch({ headers: { ...route.request().headers(), prefer: '' } }); const body = await response.json(); body.items.at(-1).content = '```javascript\n' + code + '\n```\n\n```future-language\n<script>window.unsafeExecuted = true</script>\n```'; await route.fulfill({ json: body }); });
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill('Show me a code example.');
   await page.getByRole('button', { name: 'Send message' }).click();
   const reply = page.getByRole('article', { name: 'Mentra response' });

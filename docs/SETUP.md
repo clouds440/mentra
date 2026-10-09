@@ -70,7 +70,7 @@ From the repository root:
 docker compose up --build -d --wait --wait-timeout 180
 ```
 
-Compose starts `postgres`, `backend`, and `frontend`. PostgreSQL must become healthy before backend migrations run; startup checks the migrated revision. The backend container is `mentra-backend`; the frontend container is `mentra-frontend`. The frontend waits for the backend health check before starting.
+Compose starts `postgres`, `backend`, `rag-worker`, and `frontend`. PostgreSQL must become healthy before backend migrations run; startup checks the migrated revision. The RAG worker uses the backend image and shares its private materials volume. The backend container is `mentra-backend`; the frontend container is `mentra-frontend`. The frontend waits for the backend health check before starting.
 
 ## 5. Verify the app
 
@@ -87,9 +87,16 @@ Guests are redirected to `/login`. Create an account at `/register` using only a
 
 Chat requests use the configured AI endpoint. Account-owned conversations and messages are persisted in PostgreSQL by migration `20261008_0005`; the browser caches individual records in IndexedDB and synchronizes changes. RAG material uploads, document readers, and Vision are available. See [persistent chat](persistent-chat.md), [RAG](rag.md), [Student Profile setup](student-profile.md), and [frontend authentication](frontend-auth.md).
 
+Manual Events APIs are available under `/api/v1/events` after upgrading the backend.
+Memory management is available in `/settings?tab=memories`. Progress remains a
+placeholder; AI event tools, proposals, Notifications and reminder delivery are
+unimplemented. See [history/memory](history-management.md), [Events contracts and
+verification](events.md) and the [remaining delivery plan](../Mentra_Events_Implementation_Plan.md).
+
 ## 6. Update Docker images
 
-Stop the containers while preserving the PostgreSQL volume:
+Routine updates can rebuild and recreate containers directly. If you need to stop
+the stack first, preserve the PostgreSQL volume:
 
 ```sh
 docker compose down
@@ -100,7 +107,7 @@ Pull the latest project changes and rebuild/restart:
 ```sh
 git pull --ff-only
 docker compose build backend frontend
-docker compose up -d --wait --wait-timeout 180
+docker compose up -d --force-recreate --wait --wait-timeout 180
 docker compose ps
 ```
 
@@ -120,13 +127,26 @@ docker compose exec backend python -m alembic -c /app/alembic.ini check
 docker compose exec backend python -m pip check
 ```
 
-The current migration head is `20261007_0003`. API liveness and AI configuration checks
+The repository migration head is `20261009_0008`: Library (`0004`), persistent chat
+(`0005`), memory (`0006`), Events foundation (`0007`) and reminder-ledger retention
+(`0008`) follow the identity/profile revisions. Check `current` against repository
+head; documentation alone does not establish the deployed revision. Migrations
+must preserve existing non-feature records; rehearse upgrade/downgrade on a
+dedicated test database before release. API liveness and AI configuration checks
 do not prove the paid provider can generate a response. Insufficient provider balance
 leaves completed calibration answers saved, estimates unknown, and evaluation retry
 available in Settings. See the [verification report](student-profile-verification.md)
 and [profile contracts](student-profile.md) for testing and supported integration behavior.
 
 ## Troubleshooting
+
+The migration entrypoint uses committed nonblocking probes for its session advisory
+lock and waits at most 300 seconds. A timeout means another migration runner may
+still own the lock; inspect its status before retrying. Use a session-capable
+PostgreSQL connection, not a transaction pooler. Never print connection URLs or
+credentials into shared logs. Tests require a separate explicit `TEST_DATABASE_URL`
+and temporary schemas, never the application's database. The latest Events tests
+verified an isolated image/database; no application migration was applied by that run.
 
 - **Docker connection error:** Start Docker Desktop or the Docker Engine, then retry `docker compose up --build`.
 - **Port already in use:** Free ports `5173` and `8000`. If changing the backend port, update `BACKEND_PORT`, `VITE_API_URL`, and the CORS origins in `.env`, then rebuild.

@@ -35,6 +35,7 @@ versions = Table('rag_document_version', metadata,
     Column('file_hash', Text, nullable=False), Column('media_type', Text, nullable=False),
     Column('size_bytes', Integer, nullable=False), Column('storage_key', Text, nullable=False),
     Column('filename', Text, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('extracted_content', JSONB),
     owned_parent('rag_document', ['document_id'], ['id']), UniqueConstraint('learner_id', 'document_id', 'id'),
     CheckConstraint('size_bytes > 0', name='size'))
 

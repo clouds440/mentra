@@ -85,6 +85,31 @@ class RAGService:
                     max_pages=self.settings.rag_max_pages, hybrid=self.settings.rag_hybrid_enabled,
                     reranking=self.reranker is not None, languages=['en'])
 
+    def accept_extracted(self, owner, *, source, filename, title, context_ids, key, extracted):
+        """Trusted service-only entry: reuse Documents output; never parse/OCR again.
+
+        Original bytes remain the downloadable source. The immutable extraction
+        snapshot travels with its version through ordinary chunk/embed/publication.
+        HTTP/model callers cannot submit their own extraction payloads.
+        """
+        contexts = self.validate_contexts(owner, context_ids)
+        if not extracted.get('blocks') or not extracted.get('reader_revision'):
+            raise AppError('RAG_EMPTY_EXTRACTION', 'This file has no extracted content to save.', 422)
+        blob = self.storage.store(source, self.settings.rag_max_upload_bytes)
+        retained = False
+        try:
+            blob['media_type'] = extracted['media_type']
+            blob['extracted_content'] = {name: extracted[name] for name in ('blocks', 'warnings', 'reader_revision')}
+            fingerprint = hashlib.sha256(json.dumps(dict(hash=blob['file_hash'], contexts=contexts,
+                title=title, extraction=blob['extracted_content']), sort_keys=True).encode()).hexdigest()
+            result = self.repository.accept(owner, title=title[:200], filename=filename[:200], context_ids=contexts,
+                blob=blob, key=key, request_hash=fingerprint, config=self.config(), quota=self.settings.rag_storage_quota_bytes)
+            retained = not result['duplicate']
+            return result
+        finally:
+            if not retained:
+                self.storage.remove(blob['storage_key'])
+
     def get_document(self, owner, document_id):
         return self.repository.get_document(owner, document_id)
 

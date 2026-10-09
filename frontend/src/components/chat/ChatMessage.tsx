@@ -6,6 +6,9 @@ import { SourceViewer, sourceLocation } from '../library/SourceViewer';
 import type { SourceReference } from '../../types/rag';
 import type { HistoryReference, MemoryReference } from '../../types/memories';
 import { Spinner } from '../ui/Spinner';
+import { ChatAttachmentCard } from './ChatAttachmentCard';
+import { EventProposalCard } from '../events/EventProposalCard';
+import { Link } from 'react-router-dom';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 
@@ -72,6 +75,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {isAssistant ? (
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
+            {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
+            {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/events?event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}
             {message.retrieval_status && ['unavailable', 'no_matches', 'no_eligible_sources'].includes(message.retrieval_status) && <p className="mt-3 text-xs text-subtle">{message.retrieval_status === 'unavailable' ? 'Study material retrieval was unavailable for this answer.' : 'No supporting Library passages were found for this answer.'}</p>}
@@ -80,7 +85,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="text-accent hover:underline" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
           </div>
         ) : (
-          <MarkdownContent content={message.content} />
+          <><MarkdownContent content={message.content} />
+          {message.conversation_id && message.attachments?.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</>
         )}
       </div>
     </article>
@@ -93,16 +99,16 @@ interface ThinkingIndicatorProps {
 
 export function ThinkingIndicator({ label = '' }: ThinkingIndicatorProps) {
   return (
-    <div aria-live="polite" className="flex items-center gap-3.5 text-sm text-subtle">
+    <div role="status" aria-live="polite" className="flex items-center gap-3.5 text-sm text-subtle">
       <span className="grid h-7 w-7 place-items-center">
         <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={mentraLogo} />
       </span>
       <span className="flex items-center gap-2">
         {label}
         <span aria-hidden="true" className="flex gap-1">
-          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle" />
-          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle [animation-delay:150ms]" />
-          <i className="h-1 w-1 animate-pulse rounded-full bg-subtle [animation-delay:300ms]" />
+          <i className="h-1 w-1 motion-safe:animate-pulse rounded-full bg-subtle" />
+          <i className="h-1 w-1 motion-safe:animate-pulse rounded-full bg-subtle [animation-delay:150ms]" />
+          <i className="h-1 w-1 motion-safe:animate-pulse rounded-full bg-subtle [animation-delay:300ms]" />
         </span>
       </span>
     </div>

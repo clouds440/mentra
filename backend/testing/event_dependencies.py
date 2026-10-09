@@ -10,9 +10,9 @@ import sys
 from uuid import uuid4
 from typing import TypedDict
 
-CANDIDATES = ('langgraph==0.6.11', 'langgraph-checkpoint==3.0.1',
-              'langgraph-checkpoint-postgres==3.0.4', 'langchain-core==0.3.86',
-              'langchain-openai==0.3.35')
+CANDIDATES = ('langgraph==1.2.14', 'langgraph-checkpoint==4.2.0',
+              'langgraph-checkpoint-postgres==3.1.2', 'langchain-core==1.6.9',
+              'langchain-openai==1.7.0')
 
 
 def main():
@@ -67,6 +67,8 @@ def main():
             print('PASS: interrupt/restart/resume and all saver payload tables cleaned')
         finally:
             admin.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
+    if os.environ.get('MENTRA_GRAPH_REGRESSIONS') == '1':
+        subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-q'], check=True)
 
 
 if __name__ == '__main__':

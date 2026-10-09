@@ -44,11 +44,17 @@ $env:PYTHONPATH = 'backend'
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-`app.db.migrate` serializes migration runners with a PostgreSQL advisory lock. Startup
+`app.db.migrate` serializes migration runners with a PostgreSQL session advisory
+lock. It commits nonblocking acquisition probes before waiting, avoiding snapshot
+deadlocks with concurrent index builds, and bounds acquisition to 300 seconds. Startup
 checks the Alembic revision and fails clearly if migrations are missing; it never creates
 tables. For subsequent changes, generate and review an Alembic revision, then upgrade.
-The current head is `20261007_0003`: baseline learner/identity tables (`0001`), persistent
-standalone browser sessions (`0002`), and separate high-level profile/calibration (`0003`).
+The repository head is `20261009_0008`: baseline learner/identity tables (`0001`),
+persistent standalone browser sessions (`0002`), separate profile/calibration
+(`0003`), Library/ingestion (`0004`), persistent conversations (`0005`), memory
+(`0006`), Events foundation (`0007`) and additive reminder-ledger retention (`0008`).
+Compare the actual database revision with this head before starting the API;
+repository migration files do not imply a database was already upgraded.
 The initial revision includes native UUIDs, UTC timestamps, JSONB, unique/check/foreign-key
 constraints, lookup indexes, and database triggers prohibiting evidence update/delete/truncate.
 
@@ -60,6 +66,14 @@ changes take an exclusive lock. State writes also compare the persisted version 
 accepting the next version. Raw observations remain immutable, including across grading corrections.
 Locked batches reuse concept, context, and state lookups inside that transaction only;
 writes refresh cached values, and commit/rollback discards them.
+
+Chat, memory and Events use a separate shared owner-row coordination boundary in
+`app.db.owner_transactions`, backed by the existing `chat_sync_state` row. It
+preserves their current serialization; it does not replace the learner engine's
+ontology/evidence locks. Acquire owner coordination before feature row locks and
+keep model calls outside transactions. Events context lookup uses the public
+learner facade plus composite ownership FKs. Completion/reminders do not submit
+learner evidence. See [Events contracts](events.md).
 
 ## Identity and API contracts
 
@@ -102,7 +116,9 @@ Global concept registry/curation operations remain trusted administrative operat
 
 The frontend provides `/login` and `/register`, restores cookie sessions, guards existing
 workspace routes, and revokes sessions on sidebar sign-out. Mandatory high-level profile
-onboarding is enforced separately; calibration is optional. Chat remains in memory;
+onboarding is enforced separately; calibration is optional. Conversations and turns
+are now persisted per account; see [persistent chat](persistent-chat.md). Manual
+Events APIs are implemented while the Progress UI remains a placeholder;
 granular learner API wiring and EduVerse's embedding/login UI are separate work. See
 [Student Profile](student-profile.md) for signed EduVerse provisioning with an initial
 profile, which can satisfy the required information step directly.

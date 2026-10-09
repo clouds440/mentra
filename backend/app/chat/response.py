@@ -13,5 +13,7 @@ class ChatResponse(BaseModel):
     retrieval_scope: ChatSelection | None = None
     history_references: list[dict] = Field(default_factory=list)
     memory_references: list[dict] = Field(default_factory=list)
+    event_proposals: list[dict] = Field(default_factory=list)
+    event_references: list[dict] = Field(default_factory=list)
 
 

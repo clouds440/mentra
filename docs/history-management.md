@@ -2,6 +2,11 @@
 
 The standalone `app.history_management` module provides on-demand conversation retrieval and evidence-backed persistent user memory. Canonical transcripts remain in `app.chat`; there is no second transcript or growing injected user summary.
 
+It also composes the separate manual Events service as `HistoryManagement.events`.
+Events owns its contracts, preferences and PostgreSQL adapter; memory tools do not
+write events. See [Events foundation and rollout boundary](events.md). The current
+Progress page remains a placeholder and no reminder-delivery worker is implemented.
+
 ## User interface
 
 The sidebar's bottom account drawer contains Settings and a Memories shortcut. `/settings?tab=memories` opens the dedicated Settings tab. The profile panel and memory editor remain mounted when switching tabs, preserving drafts. Memory management and reference viewers load as separate JavaScript chunks; memory records are fetched only when the tab opens, not on login.
@@ -22,7 +27,7 @@ Admission first checks provenance and credential patterns, then performs a bound
 
 Related-memory admission uses ranked OR keywords and previously recalled IDs, so a changed value need not match the old value literally. The verifier identifies actual conflicting IDs from that bounded set. Search remains lexical: arbitrary paraphrases are not guaranteed to match. Tool instructions ask the model to recall stable related keywords before proposing corrections. AI revision attempts require user review instead of silently overwriting independently saved records.
 
-The public contracts import without SQLAlchemy or LangChain. The factory composes the canonical chat read facade, owned PostgreSQL memory repository, validator and optional profile facade. SQL lives under repositories. Learner mastery and evidence are not modified by this module.
+The public contracts import without SQLAlchemy or LangChain. The factory composes the canonical chat read facade, owned PostgreSQL memory repository, validator, optional profile facade and independent Events service with optional public learner context lookup. SQL lives under repositories. Learner mastery and evidence are not modified by this module.
 
 ## Durable execution and budgets
 
@@ -33,6 +38,12 @@ History is trimmed once after system instructions, tool schemas, current Library
 Writes hold no locks during model verification. Database mutations share chat's owner lock, fence running turn attempts and leases, and record content-free operation receipts. The receipt key derives from turn ID and normalized proposal, not provider call ID. A retry cannot duplicate a saved operation or re-run its verifier unnecessarily. Manual saves have a separate request UUID and payload fingerprint. Expected revisions fence manual edits and conflict resolution. Final assistant publication rechecks owned memory revisions and source-chat existence under the same lock; changed/deleted references produce a retry message instead of publishing obsolete tool-backed claims.
 
 ## Storage, deletion and maintenance
+
+Chat, memory and Events now use the public `app.db.owner_transactions.lock_owner`
+boundary backed by the existing `chat_sync_state` row. Memory adapters no longer
+import the private chat lock method. Chat deletion detaches both memory and event
+evidence in the same owner-locked transaction; saved events survive source deletion.
+Memory maintenance retention does not apply to Events reminder ledgers or receipts.
 
 Migration `20261008_0006` adds memory, evidence, revision metadata, preferences, suppression and operation-receipt tables. Composite owner FKs protect evidence and revisions. Source message/turn IDs are snapshots without FKs into destructible chat records. `pg_trgm` is installed in `public`; this requires the deployment database to permit that extension. Existing chat indexes build concurrently before the new tables transaction; cancelled invalid indexes are safely rebuilt on retry. Downgrade preserves canonical chat data and leaves shared extensions installed.
 
