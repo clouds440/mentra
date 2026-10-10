@@ -91,6 +91,25 @@ class LearnerEngine:
     def review_candidate(self, candidate_id: str, concept_id: str | None = None, *, discard: bool = False) -> Concept | None:
         return self.concepts.resolve_candidate(candidate_id, concept_id, discard=discard)
 
+    def get_pending_concepts(self, learner_id):
+        return [dict(id=row['id'], label=row['proposed_name'], context_id=row['context_id'])
+                for row in self.repository.list_owned_candidates(learner_id)]
+
+    def review_owned_candidate(self, learner_id, candidate_id, *, discard=False):
+        candidate = self.repository.get_candidate(candidate_id, learner_id=learner_id)
+        if not candidate:
+            from app.core.exceptions import AppError
+            raise AppError('CONCEPT_CANDIDATE_NOT_FOUND', 'Concept candidate unavailable.', 404)
+        if candidate['context_id']:
+            self.contexts.require(learner_id, candidate['context_id'])
+        if candidate['resolution_status'] != 'UNRESOLVED':
+            if discard and candidate['resolution_status'] == 'DISCARDED': return None
+            if not discard and candidate['resolution_status'] in ('PROMOTED','MERGED'):
+                return self.get_concept(candidate['resolved_concept_id'])
+            from app.core.exceptions import AppError
+            raise AppError('CONCEPT_REVIEW_CONFLICT', 'This concept was already reviewed differently.', 409)
+        return self.review_candidate(candidate_id, discard=discard)
+
     def resolve_learning_context(self, request: ResolveLearningContextRequest) -> LearningContextSummary:
         return self.contexts.resolve(request)
 
@@ -142,6 +161,22 @@ class LearnerEngine:
                     for request, result in zip(requests, results)]
             return results
 
+    def withdraw_assessment_evidence_in_transaction(self, learner_id, evidence_ids, session_id, unit_of_work):
+        """Invalidate a corrected grade without deleting its immutable observations."""
+        with self.repository.bound_transaction(unit_of_work, learner_ids={learner_id}) as repository:
+            concepts = set()
+            for identifier in dict.fromkeys(evidence_ids):
+                evidence = repository.get_evidence(identifier, learner_id)
+                if not evidence or evidence.session_id != session_id or not evidence.source_id.startswith('assessment:'):
+                    raise LearnerError('Assessment evidence does not belong to this attempt')
+                decision = repository.get_decision(identifier, learner_id)
+                if decision and decision['status'] == 'ACCEPTED':
+                    repository.supersede_decision(identifier, learner_id)
+                    concepts.add(repository.canonical_id(evidence.concept_id))
+                    repository.audit('assessment_evidence_withdrawn', {'evidence_id': identifier}, learner_id, evidence.concept_id)
+            for concept in sorted(concepts):
+                self.evidence.recompute(learner_id, concept, repository)
+
     def get_concept_state(self, request: ConceptStateRequest) -> ConceptStateResponse | None:
         key = self.get_concept(request.concept_id).id
         state = self.states.load(request.learner_id, [key]).get(key)
@@ -172,6 +207,13 @@ class LearnerEngine:
 
     def get_study_recommendations(self, request: StudyRecommendationsRequest) -> list[StudyRecommendation]:
         return self.retrieval.recommend(request)
+
+    def get_study_targets(self, learner_id, context_ids=None, limit=5):
+        """One consistent ranking input set for recommendations and verification."""
+        request = StudyRecommendationsRequest(learner_id=learner_id, context_ids=context_ids, limit=limit)
+        data = self.retrieval.ranking_data(request)
+        return dict(recommendations=self.retrieval.recommend(request, data=data),
+                    verification=self.retrieval.recommend(request, verification=True, data=data))
 
     def get_verification_candidates(self, request: VerificationCandidatesRequest) -> list[VerificationCandidate]:
         return self.retrieval.recommend(request, verification=True)

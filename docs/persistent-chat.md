@@ -47,6 +47,23 @@ The user question is committed before inference. Assistant messages are appended
 
 Provider execution is not exactly-once across process failure. Persistence is deduplicated and attempt-fenced; the model provider may still charge for an interrupted attempt.
 
+The first user turn starts with a provisional title derived from its first line.
+The AI is also asked to return a short, descriptive title in the learner's language
+alongside its answer, using the Pydantic `NewChatReply` schema and the registered
+`chat_title` prompt. Domain tools remain available before the final structured reply;
+there is no separate title-generation model request. First-turn answer text is buffered
+until validated and then sent through the activity stream; titles and output JSON never
+appear as answer text. Later turns use the existing text-streaming path and do not
+request another title. Providers without function calling are asked for equivalent JSON;
+unstructured replies and invalid/missing titles retain the provisional title.
+
+The generated title is persisted atomically with the first successful assistant answer,
+under the existing owner/attempt locks and revision change feed. A manual rename while
+generation is running, or a custom title before retry, is preserved. Retries can name
+the first turn, while stale attempts and subsequent turns cannot rename the chat.
+The frontend's normal mutation/recovery/sync responses update its sidebar and cache;
+no database migration or separate frontend request is needed.
+
 The old `/api/v1/chat` endpoint remains **deprecated and stateless** for existing integrations/tests. The frontend no longer uses or exports its full-transcript sender. Persistent clients must use `/conversations/turns`.
 
 ## Loading, caching and synchronization

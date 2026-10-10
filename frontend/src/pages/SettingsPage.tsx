@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Spinner } from '../components/ui/Spinner';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
+import { AssessmentSettings } from '../components/assessments/AssessmentSettings';
 
 const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
 
@@ -63,6 +64,7 @@ export function SettingsPage() {
         </div>
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
         <ProfileSettings />
+        <AssessmentSettings />
         <div className="mt-6 divide-y divide-border border-y border-border">
           {settingSections.map(({ title, description, detail, icon: Icon }) => (
             <section className="flex gap-4 py-6 sm:gap-6" key={title}>

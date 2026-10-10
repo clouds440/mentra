@@ -434,7 +434,7 @@ class EventPersistenceTests(unittest.TestCase):
         chat.finish(self.owner, job, dict(content='Existing answer'))
         # Compare the pre-Events schema only: later migrations intentionally add
         # tables/columns that do not exist at revision 0006.
-        later_tables = {'chat_activity', 'chat_attachment', 'chat_evidence_job'}
+        later_tables = {'chat_activity', 'chat_attachment', 'chat_evidence_job', 'chat_assessment_draft'}
         later_columns = {('chat_turn', 'attachment_ids'), ('rag_document_version', 'extracted_content'),
                          ('chat_turn', 'log_context'), ('rag_job', 'log_context')}
         def snapshots():

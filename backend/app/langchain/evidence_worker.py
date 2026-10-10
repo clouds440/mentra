@@ -27,8 +27,13 @@ class ChatEvidenceWorker:
                             source_type='CHAT',source_id=f"chat:{job['turn_id']}:{job['attempt']}:{item.concept_id}",item_id=job['user']['id'],session_id=job['turn']['conversation_id'],
                             result='CORRECT' if item.score==item.max_score else 'INCORRECT' if item.score==0 else 'PARTIAL',score=item.score,max_score=item.max_score,difficulty=item.difficulty,
                             independence=item.independence,hint_count=item.hint_count,attempt_number=1,evidence_confidence=item.confidence,occurred_at=job['user']['created_at'],
-                            metadata=dict(message_id=job['user']['id'],turn_id=job['turn_id'],prompt_version='chat-demonstration-v1')))
-                def apply(tx):return [result.model_dump(mode='json') for result in self.learner.submit_evidence_batch_in_transaction(requests,tx)] if requests else None
+                            metadata=dict(message_id=job['user']['id'],turn_id=job['turn_id'],prompt_version='chat-demonstration-v1',profile_context_version=job.get('profile_context_version'))))
+                def apply(tx):
+                    if not requests: return None
+                    results = self.learner.submit_evidence_batch_in_transaction(requests,tx)
+                    from .profile_bridge import project_learning_profile
+                    project_learning_profile(tx, job['owner'])
+                    return [result.model_dump(mode='json') for result in results]
                 await run_in_threadpool(self.repository.complete,job,apply)
                 execution.outcome = 'success'
             except Exception as error:

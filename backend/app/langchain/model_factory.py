@@ -19,6 +19,7 @@ from app.core.logging import workflow_logger
 class ModelFactory:
     def __init__(self, app_settings: Settings) -> None:
         self._settings = app_settings
+        self._models = {}
 
     def validate_configuration(self) -> None:
         if self._settings.ai_provider != "openai_compatible":
@@ -50,8 +51,12 @@ class ModelFactory:
                 "OpenAI-compatible chat endpoint."
             )
 
-    def get_model(self) -> BaseChatModel:
+    def get_model(self, *, output_tokens=None, model_name=None) -> BaseChatModel:
         self.validate_configuration()
+        output_tokens = output_tokens or self._settings.chat_output_token_reserve
+        key = (output_tokens, model_name or self._settings.ai_model)
+        if key in self._models:
+            return self._models[key]
         try:
             from langchain_openai import ChatOpenAI
         except ImportError as exc:
@@ -59,15 +64,17 @@ class ModelFactory:
                 "The langchain-openai package is required to create chat models."
             ) from exc
 
-        return ChatOpenAI(
-            model=self._settings.ai_model,
+        model = ChatOpenAI(
+            model=model_name or self._settings.ai_model,
             base_url=self._settings.ai_base_url,
             api_key=self._settings.ai_api_key,
             temperature=self._settings.ai_temperature,
             timeout=self._settings.ai_timeout,
             max_retries=self._settings.ai_max_retries,
-            max_tokens=self._settings.chat_output_token_reserve,
+            max_tokens=output_tokens,
         )
+        self._models[key] = model
+        return model
 
 
 model_factory = ModelFactory(settings)

@@ -19,12 +19,12 @@ from app.learner.schemas import (
 class ContextToolInput(LearnerSchema):
     query: str = Field(min_length=1, max_length=4000)
     context_ids: list[str] | None = Field(default=None, max_length=20)
-    max_concepts: int = Field(default=8, ge=1, le=50)
+    max_concepts: int = Field(default=8, ge=1, le=8)
 
 
 class RankingToolInput(LearnerSchema):
     context_ids: list[str] | None = Field(default=None, max_length=20)
-    limit: int = Field(default=5, ge=1, le=50)
+    limit: int = Field(default=5, ge=1, le=5)
 
 
 class ResolutionToolInput(LearnerSchema):
@@ -75,6 +75,10 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
             VerificationCandidatesRequest(learner_id=learner_id, **kwargs))]
 
     def resolve(**kwargs):
+        if not kwargs.get('context_id'):
+            active_contexts = learner.get_active_contexts(ActiveContextsRequest(learner_id=learner_id)).contexts
+            if len(active_contexts) == 1:
+                kwargs['context_id'] = active_contexts[0].context_id
         if kwargs.get('context_id'):
             # Validate scope through the public read contract before resolution.
             learner.get_relevant_context(LearnerContextRequest(learner_id=learner_id, query=kwargs['label'],

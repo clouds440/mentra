@@ -19,6 +19,13 @@ LABELS = {
     'resolve_student_concept': 'Identifying the learning concept',
     'search_study_material': 'Reading documents',
     'get_study_source_chunk': 'Reading the source passage',
+    'assessment_generate': 'Creating your practice assessment',
+    'assessment_revise': 'Revising your practice assessment',
+    'assessment_question': 'Reading your assessment question',
+    'assessment_status': 'Checking your assessment progress',
+    'assessment_answer': 'Preparing your answers for evaluation',
+    'assessment_lookup': 'Finding your assessment',
+    'enable_workflow_tools': 'Preparing the tools for your request',
 }
 
 

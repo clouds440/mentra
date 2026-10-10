@@ -18,6 +18,9 @@ async function send(page: Page, content: string) {
   await page.getByRole('button', { name: 'Send message' }).click();
   expect((await response).status()).toBe(200);
   await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toBeVisible();
+  // Streaming can render an assistant article before the durable turn finishes.
+  // Cache-navigation assertions must not count the preceding turn's final poll.
+  await expect(page.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEnabled();
 }
 
 test('durable history, incremental requests, cached navigation, rename and deletion', async ({ page }, testInfo) => {
@@ -184,6 +187,8 @@ test('a delayed completion cannot resurrect a chat deleted in another tab', asyn
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill('Delayed completion question');
   await page.getByRole('button', { name: 'Send message' }).click(); await ready;
   const other = await context.newPage(); await other.goto(url);
+  await expect(other.getByRole('article', { name: 'Mentra response' })).toHaveCount(2);
+  await expect(other.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEnabled();
   await other.getByRole('button', { name: 'Delete Deletion race conversation', exact: true }).click();
   await other.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Deletion race conversation', exact: true })).toHaveCount(0);

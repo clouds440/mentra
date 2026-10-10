@@ -59,11 +59,20 @@ class ChatService:
                 context['learner'] = learner_context.model_dump(mode='json', exclude_none=True)
             if source_packet is not None:
                 sources.append(PromptSource.RAG_CONTEXT)
-                context['study_sources'] = source_packet
+                context['study_sources'] = dict(source_packet, sources=[
+                    {key:source[key] for key in ('token','title','excerpt','warnings') if key in source}
+                    for source in source_packet.get('sources', [])])
             if history_runtime:
                 from .history_orchestration import tool_reply
+                from app.chat.titles import NewChatReply
                 service, owner, scope = history_runtime
-                response = await tool_reply(self._llm, conversation, service, owner, scope, tuple(sources), context)
+                first_turn = scope.get('user_sequence') == 1
+                if first_turn:
+                    sources.append(PromptSource.CHAT_TITLE)
+                response = await tool_reply(self._llm, conversation, service, owner, scope, tuple(sources), context,
+                                            output_schema=NewChatReply if first_turn else None)
+                if isinstance(response, NewChatReply):
+                    scope['conversation_title'] = response.conversation_title
             else:
                 response = await self._llm.ainvoke_messages(
                     PromptSource.CHAT, conversation,

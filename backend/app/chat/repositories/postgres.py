@@ -2,12 +2,13 @@
 from datetime import datetime, timezone, timedelta
 from hashlib import sha256
 import json
-import re
 from uuid import uuid4, UUID
 from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from app.core.exceptions import AppError
 from .tables import conversations as c, messages as m, turns as t, sync_state as ss, changes as ch
+from app.chat.titles import NewChatReply, provisional_title
+from pydantic import ValidationError
 
 
 def now():
@@ -145,13 +146,12 @@ class ChatRepository:
                 session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),log_context=workflow_logger.envelope()))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
-                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'])
+                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'], title_revision=conversation['revision']+1)
             row = session.execute(select(c).where(c.c.id == conversation_id)).mappings().first()
             if row is None:
                 if request.expected_revision != 0:
                     raise conflict()
-                first = next((line.strip() for line in content.splitlines() if line.strip()), 'New chat')
-                title = 'Code discussion' if first.startswith(('```', '~~~')) else re.sub(r'^#{1,6}\s+|\*\*|__|`', '', first)[:80]
+                title = provisional_title(content)
                 stamp = now()
                 conversation = dict(id=conversation_id, learner_id=owner, title=title or 'New chat', selection=selection,
                     revision=1, message_count=0, created_at=stamp, updated_at=stamp)
@@ -174,7 +174,7 @@ class ChatRepository:
                 user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=workflow_logger.envelope()))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))
             self._change(session, owner, conversation_id, state)
-            return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence)
+            return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence, title_revision=conversation['revision']+1)
 
     def finish(self, owner, job, response=None, error=None):
         with self.sessions.begin() as session:
@@ -192,13 +192,23 @@ class ChatRepository:
                 current.get().outcome = 'skipped'
                 return
             values = dict(state='FAILED' if error else 'SUCCEEDED', error=error, lease_until=None)
+            conversation_values = dict()
             sequence = row['message_count']
             if not error:
                 sequence += 1
                 payload = dict(response)
+                generated_title = payload.pop('conversation_title', None)
                 from app.history_management.repositories.postgres import MemoryRepository
                 if not MemoryRepository.references_current(session, owner, payload):
                     payload = dict(content='The referenced memory or conversation changed while I was answering. Please send your question again so I can use the current information.', history_references=[], memory_references=[])
+                    generated_title = None
+                if generated_title is not None and turn['user_sequence'] == 1 and row['revision'] == job.get('title_revision'):
+                    first_content = session.execute(select(m.c.content).where(m.c.conversation_id == row['id'], m.c.learner_id == owner, m.c.sequence == 1)).scalar_one()
+                    if row['title'] == provisional_title(first_content):
+                        try:
+                            conversation_values['title'] = NewChatReply(content=payload['content'], conversation_title=generated_title).conversation_title
+                        except ValidationError:
+                            pass
                 content = payload.pop('content')
                 payload.pop('role', None)
                 session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=row['id'], sequence=sequence,
@@ -208,7 +218,7 @@ class ChatRepository:
             if response is not None:
                 from app.langchain.repositories.evidence import ChatEvidenceRepository
                 ChatEvidenceRepository.queue(session, owner, job)
-            session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now()))
+            session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now(), **conversation_values))
             self._change(session, owner, row['id'], state)
 
     def status(self, owner, conversation_id, turn_id=None, incremental=False):
@@ -251,6 +261,8 @@ class ChatRepository:
                 EventProposalRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
                 from .tables import attachments
+                from app.assessments.repositories.tables import chat_drafts
+                session.execute(delete(chat_drafts).where(chat_drafts.c.conversation_id == conversation_id, chat_drafts.c.learner_id == owner))
                 session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
                 session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
                 session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))

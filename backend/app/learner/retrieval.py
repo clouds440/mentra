@@ -19,7 +19,7 @@ class RetrievalService:
         self.retention, self.ranking, self.clock = retention, ranking, clock
         self.states = states
 
-    def recommend(self, request, verification=False):
+    def ranking_data(self, request):
         contexts = self.contexts.select(request.learner_id, request.context_ids)
         concepts = self.repository.context_concepts(request.learner_id, [c.id for c in contexts])
         ids = [c.id for c in concepts]
@@ -27,6 +27,10 @@ class RetrievalService:
         prerequisites = self.repository.prerequisite_counts(ids, [c.id for c in contexts], request.learner_id)
         factors = self.repository.context_factors(request.learner_id, contexts)
         now = self.clock()
+        return concepts, states, prerequisites, factors, now
+
+    def recommend(self, request, verification=False, *, data=None):
+        concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request)
 
         def ranked():
             for concept in concepts:

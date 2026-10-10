@@ -41,9 +41,13 @@ class MentraLLM:
         return [SystemMessage(content=system), HumanMessage(content=payload)]
 
     def _model(self, source: PromptSource, output_schema: type[BaseModel] | None):
-        model = self.model_factory.get_model()
+        from .token_policy import output_budget
+        model = (self.model_factory.get_model(output_tokens=output_budget(source, self.model_factory._settings),
+                    model_name=self.model_factory._settings.ai_vision_model if source is PromptSource.ASSESSMENT_TRANSCRIPTION else None)
+                 if isinstance(self.model_factory, ModelFactory) else self.model_factory.get_model())
         if output_schema is not None:
-            return model.with_structured_output(output_schema, method="function_calling")
+            return model.with_structured_output(output_schema, method="function_calling",
+                **({'include_raw': True} if isinstance(self.model_factory, ModelFactory) else {}))
         return model
 
     async def ainvoke(self, source: PromptSource, inputs: str | Mapping[str, Any], *,
@@ -51,16 +55,28 @@ class MentraLLM:
                       additional_sources: Sequence[PromptSource] = (),
                       output_schema: type[BaseModel] | None = None):
         """Invoke the shared provider component with source-specific instructions."""
+        from .token_policy import check_input, log_usage, reserve_workflow
+        prepared = self.messages(source, inputs, system_context=system_context, additional_sources=additional_sources)
+        config = getattr(self.model_factory, '_settings', None)
+        cost = check_input(prepared, source, tools=[output_schema] if output_schema else None,
+                           **({'config': config} if config else {}))
+        reserve_workflow(source, cost, **({'config': config} if config else {}))
         model = self._model(source, output_schema)
-        result = await model.ainvoke(self.messages(source, inputs, system_context=system_context,
-                                                    additional_sources=additional_sources))
+        result = await model.ainvoke(prepared)
+        if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
+            log_usage(result['raw'], source, cost)
+            if result.get('parsing_error'):
+                raise result['parsing_error']
+            result = result['parsed']
+        else:
+            log_usage(result, source, cost)
         return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result
 
     async def ainvoke_messages(self, source: PromptSource, messages: Sequence[BaseMessage], *,
                                output_schema: type[BaseModel] | None = None,
                                additional_sources: Sequence[PromptSource] = (),
                                system_context: str | None = None,
-                               tools: Sequence | None = None, on_delta=None):
+                               tools: Sequence | None = None, tool_choice=None, on_delta=None):
         """Use a registered source prompt with ordered chat turns and optional data."""
         system_messages = [message for message in messages if isinstance(message, SystemMessage)]
         if system_messages:
@@ -77,9 +93,14 @@ class MentraLLM:
             if system_context:
                 system = f"{system}\n\n{system_context}"
             prepared = [SystemMessage(content=system), *messages]
+        from .token_policy import check_input, log_usage, reserve_workflow
+        config = getattr(self.model_factory, '_settings', None)
+        cost = check_input(prepared, source, tools=[*(tools or []), *([output_schema] if output_schema else [])],
+                           **({'config': config} if config else {}))
+        reserve_workflow(source, cost, **({'config': config} if config else {}))
         model = self._model(source, output_schema)
         if tools:
-            model = model.bind_tools(tools)
+            model = model.bind_tools(tools, **({'tool_choice': tool_choice} if tool_choice is not None else {}))
         if on_delta is not None and output_schema is None and hasattr(model, 'astream'):
             from langchain_core.messages import AIMessageChunk
             from langchain_core.messages.utils import message_chunk_to_message
@@ -102,4 +123,11 @@ class MentraLLM:
                 for start in range(0,len(pending),1000): await on_delta(pending[start:start+1000])
         else:
             result = await model.ainvoke(prepared)
+        if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
+            log_usage(result['raw'], source, cost)
+            if result.get('parsing_error'):
+                raise result['parsing_error']
+            result = result['parsed']
+        else:
+            log_usage(result, source, cost)
         return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result

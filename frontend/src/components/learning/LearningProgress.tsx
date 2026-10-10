@@ -1,4 +1,5 @@
 import { EventAgenda } from '../events/EventAgenda';
+import { ConceptReview } from './ConceptReview';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -35,6 +36,7 @@ function Progress() {
     }}>{(['learning', 'events'] as const).map(value => <button id={`progress-${value}`} key={value} role="tab" aria-selected={value === tab} aria-controls={`progress-panel-${value}`} tabIndex={value === tab ? 0 : -1} className={`border-b-2 px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-accent ${value === tab ? 'border-accent' : 'border-transparent text-muted'}`} onClick={() => setParams({ tab: value })}>{value === 'learning' ? 'Learning' : 'Events'}</button>)}</div>
     {error && <p role="alert" className="text-sm text-danger">{error} <Button variant="ghost" size="sm" onClick={() => setReload(value => value + 1)}>Retry</Button></p>}
     <section role="tabpanel" id="progress-panel-learning" aria-labelledby="progress-learning" hidden={tab !== 'learning'} className="space-y-6">
+      {tab==='learning' && <ConceptReview onReviewed={() => setReload(value => value+1)} />}
       <Select aria-label="Learning context" value={context} onChange={event => setContext(event.target.value)}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select>
       {!learning && !error && <p role="status">Loading learning progress…</p>}
       {learning && <><h2 className="text-lg font-medium">Concepts</h2>{!learning.learner.concepts.length && <p className="text-sm text-muted">No concept evidence yet. Practice or complete an assessment to build your learning profile.</p>}

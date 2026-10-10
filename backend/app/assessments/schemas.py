@@ -16,6 +16,22 @@ class GenerationRequest(Contract):
     purpose: Literal['practice', 'verification', 'calibration'] = 'practice'
     grounded: bool = False
     document_ids: list[str] = Field(default_factory=list, max_length=20)
+    revision_draft_id: UUID | None = None
+    revision_assessment_id: UUID | None = None
+    revision_instructions: str = Field(default='', max_length=2000)
+
+    @model_validator(mode='after')
+    def revision_target(self):
+        targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
+        if targets > 1 or bool(targets) != bool(self.revision_instructions):
+            raise ValueError('Revisions require exactly one source assessment and instructions.')
+        return self
+
+    def fingerprint_payload(self):
+        # Preserve replay hashes for generation requests created before revisions
+        # were supported. New optional defaults must not invalidate old retries.
+        exclude = {'revision_draft_id','revision_assessment_id','revision_instructions'} if not self.revision_instructions else set()
+        return self.model_dump(mode='json', exclude=exclude)
 
 class GeneratedQuestion(Contract):
     prompt: str = Field(min_length=1, max_length=3000)
@@ -58,6 +74,7 @@ class SubmitAnswers(Contract):
     client_request_id: UUID
     answers: dict[str, str]
     transcription_confirmed: bool = False
+    assistance: Literal['unknown', 'independent', 'assisted'] = 'unknown'
 
 class PublicQuestion(Contract):
     id: UUID
@@ -87,7 +104,9 @@ class Attempt(Contract):
     grades: list[QuestionGrade] | None
     extraction: dict | None
     error: str | None
-    evidence_status: Literal['pending', 'applied', 'unavailable', 'none']
+    evidence_status: Literal['pending', 'applied', 'partial', 'unavailable', 'none']
     created_at: datetime
     grade_revision: int = 1
     grade_history: list[dict] = Field(default_factory=list)
+    assistance: Literal['unknown', 'independent', 'assisted'] = 'unknown'
+    retry_pending: bool = False

@@ -26,6 +26,10 @@ ENV RAG_RERANKER_MODEL=${RAG_RERANKER_MODEL}
 COPY bake_reranker_model.py ./
 RUN python bake_reranker_model.py
 
+# Token budgeting stays offline during requests; bake the verified vocabulary.
+ENV TIKTOKEN_CACHE_DIR=/opt/mentra/tokenizers
+RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+
 ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 

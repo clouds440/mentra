@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
+    assessment_generation_output_tokens: int = Field(default=8192, ge=512, le=32768)
+    assessment_grading_output_tokens: int = Field(default=4096, ge=512, le=32768)
+    assessment_vision_enabled: bool = True
+    ai_vision_model: str = ''
     memory_active_limit: int = Field(default=200, ge=1, le=1000)
     memory_pending_limit: int = Field(default=50, ge=1, le=1000)
     memory_goal_days: int = Field(default=30, ge=1, le=3650)

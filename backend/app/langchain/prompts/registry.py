@@ -6,6 +6,7 @@ from functools import lru_cache
 
 class PromptSource(StrEnum):
     CHAT = "chat"
+    CHAT_TITLE = 'chat_title'
     LEARNER_CONTEXT = "learner_context"
     STUDENT_PROFILE_EVALUATION = "student_profile_evaluation"
     RAG_CONTEXT = "rag_context"
@@ -14,6 +15,7 @@ class PromptSource(StrEnum):
     CHAT_ATTACHMENTS = "chat_attachments"
     ASSESSMENT_GENERATION = 'assessment_generation'
     ASSESSMENT_GRADING = 'assessment_grading'
+    ASSESSMENT_TRANSCRIPTION = 'assessment_transcription'
     CHAT_EVIDENCE = 'chat_evidence'
     EVENT_ADMISSION = 'event_admission'
 
@@ -24,6 +26,8 @@ def get_system_prompt(source: PromptSource) -> str:
     source = PromptSource(source)
     if source is PromptSource.CHAT:
         from .chat import SYSTEM_PROMPT
+    elif source is PromptSource.CHAT_TITLE:
+        from .chat_title import SYSTEM_PROMPT
     elif source is PromptSource.LEARNER_CONTEXT:
         from .learner_context import SYSTEM_PROMPT
     elif source is PromptSource.STUDENT_PROFILE_EVALUATION:
@@ -40,6 +44,8 @@ def get_system_prompt(source: PromptSource) -> str:
         from .assessment_generation import SYSTEM_PROMPT
     elif source is PromptSource.ASSESSMENT_GRADING:
         from .assessment_grading import SYSTEM_PROMPT
+    elif source is PromptSource.ASSESSMENT_TRANSCRIPTION:
+        from .assessment_transcription import SYSTEM_PROMPT
     elif source is PromptSource.CHAT_EVIDENCE:
         from .evidence import SYSTEM_PROMPT
     elif source is PromptSource.EVENT_ADMISSION:
@@ -55,6 +61,8 @@ def get_prompt_version(source: PromptSource) -> str:
     source = PromptSource(source)
     if source is PromptSource.CHAT:
         from .chat import VERSION
+    elif source is PromptSource.CHAT_TITLE:
+        from .chat_title import VERSION
     elif source is PromptSource.LEARNER_CONTEXT:
         from .learner_context import VERSION
     elif source is PromptSource.STUDENT_PROFILE_EVALUATION:
@@ -71,6 +79,8 @@ def get_prompt_version(source: PromptSource) -> str:
         from .assessment_generation import VERSION
     elif source is PromptSource.ASSESSMENT_GRADING:
         from .assessment_grading import VERSION
+    elif source is PromptSource.ASSESSMENT_TRANSCRIPTION:
+        from .assessment_transcription import VERSION
     elif source is PromptSource.CHAT_EVIDENCE:
         from .evidence import VERSION
     elif source is PromptSource.EVENT_ADMISSION:

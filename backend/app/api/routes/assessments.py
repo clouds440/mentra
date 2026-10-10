@@ -3,9 +3,32 @@ from fastapi import APIRouter, Depends, Request, Response, Query, UploadFile, Fi
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, Assessment, Attempt
+from pydantic import BaseModel, ConfigDict, Field
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
+
+class AssessmentPreferences(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    auto_add: bool
+    expected_revision: int = Field(ge=0)
+
+@router.get('/preferences')
+async def preferences(request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.chat.settings, identity.learner_id)
+
+@router.patch('/preferences')
+async def update_preferences(body: AssessmentPreferences, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.chat.update_settings,
+        identity.learner_id, body.auto_add, body.expected_revision)
+
+@router.get('/chat-drafts/{identifier}')
+async def chat_draft(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.chat.detail, identity.learner_id, str(identifier))
+
+@router.post('/chat-drafts/{identifier}/publish')
+async def publish_chat_draft(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.chat.publish, identity.learner_id, str(identifier))
 
 @router.post('', response_model=Assessment)
 async def generate(body: GenerationRequest, request: Request, identity=Depends(require_onboarded_identity)):
@@ -26,7 +49,7 @@ async def submit(identifier: UUID, body: SubmitAnswers, request: Request, identi
 @router.post('/attempts/{identifier}/source', response_model=Attempt)
 async def source(identifier: UUID, request: Request, expected_revision: int = Form(ge=1), file: UploadFile = File(...), identity=Depends(require_onboarded_identity)):
     try:
-        return await run_in_threadpool(request.app.state.assessment_service.upload_paper, identity.learner_id, str(identifier), expected_revision, file.file, file.filename)
+        return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), expected_revision, file.file, file.filename)
     finally: await file.close()
 
 @router.post('/attempts/{identifier}/corrections', response_model=Attempt)

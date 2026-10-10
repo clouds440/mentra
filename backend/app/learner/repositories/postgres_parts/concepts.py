@@ -110,6 +110,12 @@ class ConceptsStore(PostgresRepositoryBase):
             return [dict(row) for row in session.execute(select(candidate_concept).where(candidate_concept.c.resolution_status == 'UNRESOLVED').order_by(
                 candidate_concept.c.occurrence_count.desc(), candidate_concept.c.last_seen_at.desc()).limit(limit)).mappings()]
 
+    def list_owned_candidates(self, learner_id, limit=20):
+        with self._session() as session:
+            return [dict(row) for row in session.execute(select(candidate_concept).where(
+                candidate_concept.c.learner_id == learner_id, candidate_concept.c.resolution_status == 'UNRESOLVED')
+                .order_by(candidate_concept.c.last_seen_at.desc(), candidate_concept.c.id).limit(limit)).mappings()]
+
     def resolve_candidate(self, candidate_id, resolution_status, concept_id=None):
         with self._session() as session:
             result = session.execute(update(candidate_concept).where(candidate_concept.c.id == candidate_id,

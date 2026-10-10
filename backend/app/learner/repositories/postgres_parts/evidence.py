@@ -2,7 +2,7 @@ from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 
 from app.learner.normalization import normalize
-from app.learner.repositories.tables import learning_evidence as evidence, misconception as misconceptions
+from app.learner.repositories.tables import learning_evidence as evidence, misconception as misconceptions, evidence_decision as decisions, concept_redirect as redirects
 from .base import PostgresRepositoryBase, utcnow
 
 
@@ -52,4 +52,20 @@ class EvidenceStore(PostgresRepositoryBase):
         with self._session() as session:
             for row in session.execute(select(ranked).where(ranked.c.position <= 3)).mappings():
                 result.setdefault(row['concept_id'], []).append(row['description'])
+            # Grade misconceptions follow accepted evidence, so corrections and
+            # uncertain regrades automatically remove obsolete observations.
+            canonical = func.coalesce(redirects.c.target_id, evidence.c.concept_id)
+            observed = select(canonical.label('concept_id'), evidence.c.metadata_json,
+                func.row_number().over(partition_by=canonical, order_by=decisions.c.sequence.desc()).label('position'))\
+                .join(decisions, decisions.c.evidence_id == evidence.c.id)\
+                .outerjoin(redirects, redirects.c.source_id == evidence.c.concept_id)\
+                .where(evidence.c.learner_id == learner_id, decisions.c.learner_id == learner_id,
+                    decisions.c.status == 'ACCEPTED', evidence.c.evidence_confidence >= .8,
+                    canonical.in_(concept_ids), evidence.c.result != 'CORRECT',
+                    evidence.c.metadata_json.has_key('misconceptions')).subquery()
+            for row in session.execute(select(observed).where(observed.c.position <= 3)).mappings():
+                descriptions = result.setdefault(row['concept_id'], [])
+                for description in row['metadata_json'].get('misconceptions', [])[:3]:
+                    if isinstance(description, str) and description.strip() and description not in descriptions and len(descriptions) < 3:
+                        descriptions.append(description[:1000])
         return result

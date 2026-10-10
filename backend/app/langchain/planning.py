@@ -27,8 +27,9 @@ def plan_request(query: str, *, attachments=False, selected_sources=False):
     greeting = bool(re.fullmatch(r'(hi|hello|hey|thanks|thank you)[.! ]*', text))
     personal = bool(re.search(r'\b(remember|preference|previous chat|earlier conversation|my profile|saved memory)\b', text))
     event = bool(re.search(r'\b(my|our|i have|schedule|add|upcoming|remind)\b.*\b(exam|quiz|deadline|assignment|event|session)\b|\b(my events|my agenda)\b', text))
-    assessment = bool(re.search(r'\b(generate|create|start|grade|take)\b.*\b(assessment|test|practice quiz)\b', text))
-    learning = not greeting and not (personal or event) or assessment
+    assessment = bool(re.search(r'\b(assessment|quiz|mock paper|mock exam|answer sheet)\b|\b(grade|evaluate|mark)\b.*\b(answers?|test|paper)\b', text))
+    study = bool(re.search(r'\b(explain|learn|study|understand|solve|revise|practice|concept|algebra|calculus)\b', text))
+    learning = (not greeting and not (personal or event)) or assessment or study
     modules = ['chat']
     if personal: modules.extend(['history', 'memory', 'profile'])
     if event: modules.append('events')

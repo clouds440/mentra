@@ -4,8 +4,18 @@ export interface QuestionGrade { question_id: string; score: number; confidence:
 export interface AssessmentAttempt {
   id: string; assessment_id: string; revision: number; state: 'draft' | 'pending_transcription' | 'submitted' | 'grading' | 'graded' | 'failed';
   attempt_number: number; answers: Record<string, string>; grades: QuestionGrade[] | null;
-  extraction: { answers: Record<string, string>; text: string; warnings: string[]; extraction_confidence: number | null; mapping_confidence: number | null; reader_revision: string; truncated: boolean } | null;
-  error: string | null; evidence_status: 'pending' | 'applied' | 'unavailable' | 'none'; created_at: string;
+  extraction: { answers: Record<string, string>; text: string; warnings: string[]; extraction_confidence: number | null; mapping_confidence: number | null; reader_revision: string; truncated: boolean; handwriting_support?: string } | null;
+  error: string | null; evidence_status: 'pending' | 'applied' | 'partial' | 'unavailable' | 'none'; created_at: string;
+  retry_pending?: boolean;
+  assistance?: 'unknown' | 'independent' | 'assisted';
   grade_revision: number; grade_history: { grade_revision: number; grades: QuestionGrade[]; answers: Record<string,string>; corrected_at: string }[];
 }
 export interface AssessmentGeneration { client_request_id: string; context_id: string; topic: string; concept_names: string[]; confirm_new_concepts: boolean; count: number; purpose: string; grounded: boolean; document_ids: string[] }
+export interface ChatAssessmentCardData {
+  id: string | null;
+  conversation_id: string;
+  assessment_id: string | null;
+  assessment: Assessment;
+  attempt_id?: string;
+  deleted?: boolean;
+}

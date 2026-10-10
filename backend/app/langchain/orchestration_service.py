@@ -33,6 +33,10 @@ class OrchestrationService:
         plan = plan_request(query, attachments=bool(history_scope and history_scope.get('attachment_ids')),
                             selected_sources=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)))
         modules = {step.module for step in plan.steps}
+        chat_assessments = []
+        if self.assessments is not None and history_scope:
+            chat_assessments = await run_in_threadpool(self.assessments.chat.recent, owner, history_scope['conversation_id'])
+            if chat_assessments: modules.add('assessment')
         await activity.emit('planning', 'completed', 'Your request is ready to process')
         result, warning = None, None
         if self.rag is not None and 'rag' in modules:
@@ -41,7 +45,7 @@ class OrchestrationService:
                 async with activity.step('Reading documents'):
                     result = await run_in_threadpool(self.rag.search, owner, SearchRequest(query=query, **selection))
             except AppError as exc:
-                if exc.code != 'RAG_UNAVAILABLE':
+                if exc.code not in ('RAG_UNAVAILABLE', 'RAG_QUERY_TOO_LONG'):
                     raise
                 warning = exc.message
                 workflow_logger.set_outcome('degraded', code='RAG_UNAVAILABLE')
@@ -60,7 +64,9 @@ class OrchestrationService:
                         ids = [item['id'] for item in row['metadata']['attachments']][:4]
                         break
             documents = []
-            for identifier in ids:
+            history_scope['assessment_attachment_ids'] = ids
+            answer_upload = 'assessment' in modules and bool(re.search(r'\b(grade|evaluate|mark|answers?|solutions?|answer sheet)\b', query, re.I))
+            for identifier in ([] if answer_upload else ids):
                 async with activity.step('Reading documents and extracting image text'):
                     extracted = await run_in_threadpool(self.attachments.extract, owner, identifier, history_scope['conversation_id'])
                     documents.append(self.attachments.context(extracted, query, maximum=8000 // max(1, len(ids))))
@@ -79,6 +85,15 @@ class OrchestrationService:
             history_scope['activity'] = activity
             history_scope['learner_service'] = self.learner
             history_scope['event_proposal_service'] = self.event_proposals
+            history_scope['workflow_modules'] = modules
+            history_scope['rag_service'] = self.rag
+            history_scope['assessment_service'] = self.assessments
+            history_scope['attachment_service'] = self.attachments
+            history_scope['current_answer_text'] = query
+            history_scope['chat_assessments'] = [dict(draft_id=card['id'], assessment_id=card['assessment_id'],
+                title=card['assessment']['title'], question_count=len(card['assessment']['questions'])) for card in chat_assessments]
+            history_scope['retrieval_selection'] = retrieval or ChatSelection()
+            history_scope['study_sources'] = [chunk.source for chunk in result.chunks] if result else []
             async def delta(value):
                 await activity.emit('response-stream', 'running', 'Writing your response', token_delta=value, token_reset=value is None)
             history_scope['on_delta'] = delta
@@ -95,16 +110,21 @@ class OrchestrationService:
             messages = policy.for_prompt(messages, system_text)
         async with activity.step('Preparing your answer'):
             reply = await self.chat.reply(messages, **kwargs)
+        title = history_scope.get('conversation_title') if history_scope else None
+        title_fields = dict(conversation_title=title) if title is not None else {}
         if self.rag is None:
             references = dict(history_references=history_scope['history_references'], memory_references=history_scope['memory_references']) if history_scope else {}
             if history_scope:
-                references.update(event_proposals=history_scope.get('event_proposals', []), event_references=history_scope.get('event_references', []))
-            return ChatResponse(role='assistant', content=reply, **references)
-        sources = [chunk.source for chunk in result.chunks] if result else []
+                references.update(event_proposals=history_scope.get('event_proposals', []), event_references=history_scope.get('event_references', []), assessment_cards=history_scope.get('assessment_cards', []))
+            return ChatResponse(role='assistant', content=reply, **title_fields, **references)
+        sources = history_scope.get('study_sources', []) if history_scope else [chunk.source for chunk in result.chunks] if result else []
+        if history_scope and history_scope.get('retrieval_status'):
+            packet['status'] = history_scope['retrieval_status']
         valid = {s.token for s in sources}
         cited = list(dict.fromkeys(token for token in re.findall(r'\[\[(S\d+)\]\]', reply) if token in valid))
         # Unknown markers never become links. The UI only resolves the allowlisted tokens.
-        return ChatResponse(role='assistant', content=reply, sources=sources, citations=cited,
+        return ChatResponse(role='assistant', content=reply, **title_fields, sources=sources, citations=cited,
+                            assessment_cards=history_scope.get('assessment_cards', []) if history_scope else [],
                             event_proposals=history_scope.get('event_proposals', []) if history_scope else [],
                             event_references=history_scope.get('event_references', []) if history_scope else [],
                             history_references=history_scope['history_references'] if history_scope else [],

@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, LargeBinary
+from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, LargeBinary, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 
@@ -27,9 +27,36 @@ attempts = Table('assessment_attempt', metadata,
     Column('evidence_status', Text, nullable=False), Column('evidence_receipt', JSONB),
     Column('grade_revision', Integer, nullable=False, server_default='1'),
     Column('grade_history', JSONB, nullable=False, server_default='[]'),
+    Column('assistance', Text, nullable=False, server_default='unknown'),
+    Column('profile_context_version', BigInteger),
+    Column('start_fingerprint', Text),
+    Column('chat_inputs', JSONB, nullable=False, server_default='{}'),
     ForeignKeyConstraint(['learner_id', 'assessment_id'], ['assessment.learner_id', 'assessment.id'], ondelete='CASCADE'),
     UniqueConstraint('learner_id', 'operation_id'),
     CheckConstraint("revision >= 1 AND attempt_number >= 1 AND worker_attempts BETWEEN 0 AND 3 AND state IN ('draft','pending_transcription','submitted','grading','graded','failed')", name='assessment_attempt_state'),
-    CheckConstraint("evidence_status IN ('pending','applied','unavailable','none')", name='assessment_evidence_state'),
+    CheckConstraint("evidence_status IN ('pending','applied','partial','unavailable','none')", name='assessment_evidence_state'),
+    CheckConstraint("assistance IN ('unknown','independent','assisted')", name='assessment_assistance'),
     Index('idx_assessment_grading_queue', 'state', 'retry_at', 'claim_until'),
     Index('idx_assessment_attempt_owner', 'learner_id', 'assessment_id'))
+
+generation_claims = Table('assessment_generation_claim', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
+    Column('operation_id', Uuid(as_uuid=False), primary_key=True),
+    Column('claim_id', Uuid(as_uuid=False), nullable=False),
+    Column('fingerprint', Text, nullable=False),
+    Column('claim_until', DateTime(timezone=True), nullable=False))
+
+chat_drafts = Table('chat_assessment_draft', metadata,
+    Column('id', Uuid(as_uuid=False), primary_key=True),
+    Column('learner_id', Uuid(as_uuid=False), nullable=False),
+    Column('conversation_id', Uuid(as_uuid=False), nullable=False),
+    Column('operation_id', Uuid(as_uuid=False), nullable=False),
+    Column('assessment_id', Uuid(as_uuid=False)),
+    Column('payload', JSONB, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
+    UniqueConstraint('learner_id', 'operation_id'), Index('idx_chat_assessment_recent', 'learner_id', 'conversation_id', 'created_at'))
+
+preferences = Table('assessment_preferences', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
+    Column('auto_add', Boolean, nullable=False, server_default='false'),
+    Column('revision', BigInteger, nullable=False), CheckConstraint('revision >= 1', name='assessment_preferences_revision'))

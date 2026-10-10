@@ -11,6 +11,7 @@ import { EventProposalCard } from '../events/EventProposalCard';
 import { Link } from 'react-router-dom';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
+const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
 
 interface MarkdownNode { type: string; value?: string; url?: string; children?: MarkdownNode[] }
 function citationPlugin(tokens: string[]) {
@@ -76,6 +77,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
+            {!!message.assessment_cards?.length && <Suspense fallback={<span role="status"><Spinner />Loading assessment…</span>}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}

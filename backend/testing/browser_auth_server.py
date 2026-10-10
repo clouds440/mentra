@@ -67,7 +67,7 @@ async def lifespan(application):
     from app.history_management.events.proposal_service import create_event_proposals
     application.state.event_proposal_service = create_event_proposals(database.sessions, application.state.history_management.events)
     from app.assessments.service import create_assessments
-    application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service)
+    application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service, application.state.student_profile_service)
     from app.assessments.worker import AssessmentWorker
     grading_worker = AssessmentWorker(application.state.assessment_service)
     from app.chat.attachments import AttachmentService
@@ -75,6 +75,7 @@ async def lifespan(application):
     from app.langchain.orchestration_service import OrchestrationService
     application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions))
     application.state.orchestration_service = OrchestrationService(application.state.chat_service,
+        learner=application.state.learner_service,
         rag=application.state.rag_service, history=application.state.history_management,
         attachments=application.state.attachment_service, event_proposals=application.state.event_proposal_service,
         assessments=application.state.assessment_service)

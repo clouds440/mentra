@@ -15,12 +15,20 @@ class ChatEvidenceRepository:
 
     @staticmethod
     def queue(session,owner,job):
+        # Formal assessment answers are admitted by the grading worker once.
+        # Never also treat their review-card exchange as informal chat evidence.
+        cards = session.execute(select(messages.c.metadata).where(messages.c.learner_id==owner,
+            messages.c.conversation_id==job['conversation_id'], messages.c.sequence.in_([job['user_sequence']-1,job['user_sequence']+1]),
+            messages.c.role=='assistant')).scalars()
+        if any(value.get('assessment_cards') for value in cards): return
         user=session.execute(select(messages).where(messages.c.learner_id==owner,messages.c.conversation_id==job['conversation_id'],messages.c.sequence==job['user_sequence'])).mappings().first()
         if not user or len(user['content'])>12000 or user['metadata'].get('attachments'): return
         previous=session.execute(select(messages.c.content).where(messages.c.learner_id==owner,messages.c.conversation_id==job['conversation_id'],messages.c.sequence==job['user_sequence']-1,messages.c.role=='assistant')).scalar_one_or_none()
         text=user['content'].strip().casefold()
         if not previous or '?' not in previous or re.match(r'^(please|help|explain|what|how|why|can you|could you|i don.t know|my exam|remember)\b',text): return
-        session.execute(jobs.insert().values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc),log_context=workflow_logger.envelope()))
+        from app.student_profile.repositories.tables import student_profile
+        version = session.scalar(select(student_profile.c.context_version).where(student_profile.c.learner_id == owner))
+        session.execute(jobs.insert().values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc),log_context=workflow_logger.envelope(),profile_context_version=version))
 
     def source(self,session,owner,turn_id,attempt):
         turn=session.execute(select(turns).join(conversations,(turns.c.conversation_id==conversations.c.id)&(turns.c.learner_id==conversations.c.learner_id)).where(turns.c.learner_id==owner,turns.c.id==turn_id,conversations.c.deleted_at.is_(None))).mappings().first()
@@ -41,7 +49,7 @@ class ChatEvidenceRepository:
             source=self.source(tx._session,owner,turn_id,row['attempt'])
             claim=str(uuid4())
             tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id).values(state='running',claim_id=claim,claim_until=now+timedelta(seconds=90),attempts=row['attempts']+1))
-            return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],**source)
+            return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],profile_context_version=row['profile_context_version'],**source)
 
     def complete(self,job,apply):
         with self.transactions.write(job['owner']) as tx:

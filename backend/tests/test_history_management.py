@@ -404,7 +404,7 @@ class HistoryManagementTests(unittest.TestCase):
         budget = ToolBudget()
         budget.call(True); budget.call(True)
         with self.assertRaises(AppError): budget.call(True)
-        with self.assertRaises(AppError): ToolBudget().consume('😀'*1000)
+        with self.assertRaises(AppError): ToolBudget().consume('😀'*4000)
     def test_maintenance_preserves_confirmed_and_pinned_records(self):
         from sqlalchemy import update
         row, scope = self.question()
@@ -437,11 +437,13 @@ class HistoryManagementTests(unittest.TestCase):
         management = HistoryManagement(self.repo, self.reader, MemoryValidator(verifier))
         class Model:
             seen = []
-            def bind_tools(self, tools): return self
+            def bind_tools(self, tools, **kwargs): return self
             async def ainvoke(self, messages):
                 self.seen = messages
                 results = [x for x in messages if isinstance(x, ToolMessage)]
-                if results: return AIMessage(content='Saved this preference.')
+                if results: return AIMessage(content='', tool_calls=[dict(name='NewChatReply',
+                    args=dict(content='Saved this preference.', conversation_title='Learning with Flowcharts'),
+                    id='final_answer', type='tool_call')])
                 system = str(messages[0].content)
                 data = json.loads(system[system.rfind('\n\n{')+2:])
                 question = next(x.content for x in reversed(messages) if x.type == 'human')

@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
                 application.state.event_proposal_service = create_event_proposals(get_session_factory(), application.state.history_management.events,application.state.llm)
                 from app.assessments.service import create_assessments
                 application.state.assessment_service = create_assessments(get_session_factory(), application.state.llm,
-                    application.state.learner_service, application.state.rag_service)
+                    application.state.learner_service, application.state.rag_service, application.state.student_profile_service)
                 from app.langchain.orchestration_service import OrchestrationService
                 from app.chat.attachments import AttachmentService
                 from app.chat.repositories.attachments import AttachmentRepository
