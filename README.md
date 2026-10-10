@@ -90,6 +90,9 @@ The values configure the OpenAI-compatible chat endpoint, local embedding model,
 
 ## Run with Docker
 
+Set `DATABASE_URL` in `.env` to your complete Supabase PostgreSQL connection URL. Local
+PostgreSQL is opt-in through the `local-db` profile; normal startup uses the hosted database.
+
 ```bash
 docker compose up --build -d --wait --wait-timeout 180
 ```
@@ -133,7 +136,7 @@ docker compose up -d --wait --wait-timeout 180
 docker compose ps
 ```
 
-Routine rebuilds preserve the PostgreSQL volume and recreate containers using the new images. The backend upgrades Alembic to head before startup. To rebuild without cache:
+Routine rebuilds recreate containers using the new images. Supabase data remains in the hosted database; if the optional local database is used, its named volume is preserved. The backend upgrades Alembic to head before startup. To rebuild without cache:
 
 ```bash
 docker compose build --no-cache
@@ -169,6 +172,8 @@ AI event tools/admission, durable proposals, standalone Notifications, reminder 
 The repository migration head is `20261009_0008`: Events foundation (`0007`) and additive reminder-ledger retention (`0008`) follow Library, persistent chat and memory revisions. Repository head does not prove that a deployed database has been upgraded.
 
 ## Engineering standards
+
+Backend workflow tracing, terminal output, settings, and the one-connection recipe for new modules are documented in [backend logging](docs/backend-logging.md). Upgrade to migration `20261010_0014` before running the updated API or workers.
 
 - [Backend contributor standards](./backend/standards.md)
 - [Frontend contributor standards](./frontend/standards.md)

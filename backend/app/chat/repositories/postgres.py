@@ -18,6 +18,9 @@ def conflict():
     return AppError('CHAT_CONFLICT', 'This conversation changed. Synchronize it and try again.', 409)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ChatRepository:
     def __init__(self, sessions):
         self.sessions = sessions
@@ -139,7 +142,7 @@ class ChatRepository:
                 if conversation['message_count'] != existing['user_sequence']:
                     raise conflict()
                 attempt = existing['attempt'] + 1
-                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3)))
+                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),log_context=workflow_logger.envelope()))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
                 return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'])
@@ -168,7 +171,7 @@ class ChatRepository:
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
                 role='user', content=content, metadata={'attachments': attachment_metadata} if attachment_metadata else {}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
-                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now()))
+                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=workflow_logger.envelope()))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))
             self._change(session, owner, conversation_id, state)
             return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence)
@@ -178,9 +181,15 @@ class ChatRepository:
             state = self._sync_lock(session, owner)
             turn = session.execute(select(t).where(t.c.id == job['turn_id'], t.c.learner_id == owner).with_for_update()).mappings().first()
             if not turn or turn['state'] != 'RUNNING' or turn['attempt'] != job['attempt']:
+                workflow_logger.set_outcome('skipped', code='CHAT_STALE_ATTEMPT')
+                from app.core.observability.context import current
+                current.get().outcome = 'skipped'
                 return
             row = session.execute(select(c).where(c.c.id == job['conversation_id'], c.c.learner_id == owner).with_for_update()).mappings().one()
             if row['deleted_at'] is not None:
+                workflow_logger.set_outcome('skipped', code='CHAT_DELETED')
+                from app.core.observability.context import current
+                current.get().outcome = 'skipped'
                 return
             values = dict(state='FAILED' if error else 'SUCCEEDED', error=error, lease_until=None)
             sequence = row['message_count']
@@ -223,7 +232,7 @@ class ChatRepository:
                 page = dict(items=[self._public_message(item) for item in rows], has_more=False, next_cursor=None)
             else:
                 page = self._page(session, owner, conversation_id)
-            return dict(conversation=row, turn=dict(turn) if turn else None, incremental=incremental, **page)
+            return dict(conversation=row, turn={k:v for k,v in turn.items() if k != 'log_context'} if turn else None, incremental=incremental, **page)
 
     def edit(self, owner, conversation_id, revision, title=None, remove=False):
         with self.sessions.begin() as session:

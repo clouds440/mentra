@@ -88,13 +88,20 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             try:
                 tool = dispatch.get(call['name'])
                 if tool is None:
+                    from app.core.logging import workflow_logger
+                    workflow_logger.event('tool.rejected', code='UNKNOWN_TOOL')
                     budget.call()
                     result = dict(outcome='rejected', reason='Unknown tool.')
                 else:
                     from .activity import current_tool_call
                     token = current_tool_call.set(call.get('id'))
                     try:
-                        result = await tool.ainvoke(call['args'])
+                        from app.core.logging import workflow_logger
+                        async with workflow_logger.step('app.langchain.history_orchestration', 'tool.dispatch', input=dict(tool_name=tool.name)) as execution:
+                            result = await tool.ainvoke(call['args'])
+                            status = result.get('outcome') if isinstance(result, dict) else None
+                            execution.result(dict(domain_status=status if status in ('applied','rejected','unavailable','disabled','confirmed','pending','created','updated') else 'returned'),
+                                             'rejected' if status == 'rejected' else 'degraded' if status == 'unavailable' else 'success')
                     finally:
                         current_tool_call.reset(token)
                 content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))

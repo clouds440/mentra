@@ -26,6 +26,9 @@ def conflict():
     return AppError('REVISION_CONFLICT', 'This event or preference changed. Reload it before saving your draft.', 409)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EventRepository:
     def __init__(self, sessions, *, clock=None, capacity=1000, notifications=None):
         self.sessions = sessions
@@ -300,6 +303,11 @@ class EventRepository:
                 rm.c.state == 'pending', rm.c.due_at <= now).order_by(rm.c.due_at, rm.c.event_id)
                 .limit(max(1, min(100, limit)))).all()
         processed = 0
+        if due:
+            from app.core.observability.context import current
+            if current.get() and current.get().workflow == 'events.reminder_batch':
+                current.get().quiet = False
+            workflow_logger.event('reminder.batch.started', due_count=len(due))
         for owner, identifier in due:
             try:
                 with self.transactions.write(owner) as uow:
@@ -321,6 +329,10 @@ class EventRepository:
                     processed += 1
             except AppError as error:
                 if error.code != 'NOTIFICATION_CAPACITY': raise
+                workflow_logger.set_outcome('degraded', code='NOTIFICATION_CAPACITY')
+                from app.core.observability.context import current
+                if current.get():
+                    current.get().outcome = 'degraded'
                 # Preserve the pending ledger for retry after inbox capacity recovers.
         return processed
 

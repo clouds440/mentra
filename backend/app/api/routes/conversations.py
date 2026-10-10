@@ -32,7 +32,12 @@ async def send(body: SendTurn, request: Request, stream: bool = False, identity=
     async def generate(messages, selection, scope):
         response = await generate_reply(messages, ChatSelection(**selection), request, identity, service(request).policy, scope)
         return response.model_dump(mode='json')
-    return await service(request).send(identity.learner_id, body, generate, with_scope=True, wait=not stream)
+    result = await service(request).send(identity.learner_id, body, generate, with_scope=True, wait=not stream)
+    trace = getattr(request.state, 'log_trace', None)
+    if trace is not None:
+        state = result.get('turn', {}).get('state') if isinstance(result, dict) else getattr(result, 'state', None)
+        trace['outcome'] = {'FAILED':'failed', 'RUNNING':'deferred', 'SUCCEEDED':'success'}.get(state, 'unknown')
+    return result
 
 
 @router.get('/{conversation_id}/turns/{turn_id}/events')

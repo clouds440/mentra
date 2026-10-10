@@ -5,6 +5,9 @@ from app.core.exceptions import AppError
 from app.documents import create_document_reader, DocumentReadError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class AttachmentService:
     def __init__(self, repository, reader=None, maximum=25 * 1024 * 1024):
         self.repository, self.reader, self.maximum = repository, reader or create_document_reader(), maximum

@@ -8,6 +8,9 @@ from app.auth.errors import AuthenticationError
 from app.auth.models import VerifiedExternalIdentity
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ExternalTokenVerifier:
     def __init__(self, providers, *, clock=lambda: datetime.now(timezone.utc)):
         self.providers = providers

@@ -29,6 +29,9 @@ class IncompatibleCollectionError(VectorStoreError):
     """Raised when an existing collection cannot safely store active embeddings."""
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class QdrantVectorStore(VectorStore):
     def __init__(
         self,

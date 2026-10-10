@@ -7,6 +7,9 @@ from app.auth.models import Account, AuthenticatedIdentity
 from .tables import learner, mentra_account, external_identity, auth_session
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class PostgresIdentityRepository:
     def __init__(self, session_factory):
         self.sessions = session_factory

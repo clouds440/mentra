@@ -7,6 +7,9 @@ from app.rag.errors import ExtractionError
 CHUNKER_VERSION = 'block-token-v2'
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunks, max_seconds=120):
     items = []
     deadline = time.monotonic() + max_seconds

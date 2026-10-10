@@ -11,6 +11,12 @@ from .model_factory import ModelFactory
 from .prompts import PromptSource, get_system_prompt
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'ainvoke': {'input': lambda args: dict(prompt_source=args['source'].value)},
+    'ainvoke_messages': {'input': lambda args: dict(prompt_source=args['source'].value, tool_count=len(args.get('tools') or []))},
+})
 class MentraLLM:
     """Build and invoke every model request under an explicit internal workflow.
 

@@ -13,6 +13,9 @@ class ModelConfigurationError(RuntimeError):
     """Raised when the configured chat model cannot be constructed."""
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ModelFactory:
     def __init__(self, app_settings: Settings) -> None:
         self._settings = app_settings

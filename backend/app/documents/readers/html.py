@@ -110,6 +110,9 @@ class _HTMLContent:
         self.flush()
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class HTMLReader:
     formats = ('html',)
     def __init__(self, vision):

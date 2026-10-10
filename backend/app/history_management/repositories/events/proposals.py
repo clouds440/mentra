@@ -16,6 +16,9 @@ def thread_id(owner, identifier):
     return f'event-confirmation-v1:{owner}:{identifier}'
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EventProposalRepository:
     def __init__(self, sessions, events_repository, clock=None):
         self.sessions, self.events = sessions, events_repository

@@ -7,6 +7,11 @@ from app.db.owner_transactions import OwnerTransactions
 from .tables import inbox as n, receipts as r, preferences as p, state as s, changes as c
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'publish': {'result': lambda value: dict(domain_status=value['outcome']), 'outcome': lambda value: 'skipped' if value['outcome'] == 'disabled' else 'success'},
+})
 class NotificationRepository:
     def __init__(self, sessions, clock=None):
         self.sessions, self.transactions = sessions, OwnerTransactions(sessions)

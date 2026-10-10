@@ -21,6 +21,13 @@ from app.rag.vector_store import VectorStoreError, VectorStore
 from app.rag.embeddings import EmbeddingModelError, EmbeddingService
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'search': {'input': lambda args: dict(mode=args['request'].mode, selected_document_count=len(args['request'].document_ids or []), limit=args['request'].limit),
+               'result': lambda value: dict(domain_status=value.status, chunk_count=len(value.chunks)),
+               'outcome': lambda value: 'degraded' if value.status == 'degraded' else 'success'},
+})
 class RAGService:
     def __init__(self, repository, learner: LearnerService, embedding: EmbeddingService, vector_store: VectorStore,
                  storage: PrivateSourceStorage, settings: Settings, *, parser: DocumentParser | None = None):
@@ -302,6 +309,6 @@ class RAGService:
         self.repository.record_usage(owner, list({r.source.document_id for r in result}))
         mark('selection_and_reauthorization')
         diagnostics.timings_ms['total'] = round((time.monotonic() - started) * 1000, 2)
-        logging.getLogger('mentra').info('RAG retrieval diagnostics: %s', diagnostics.model_dump())
+        workflow_logger.event('rag.retrieval', chunk_count=len(result), retrieval_status='degraded' if warnings else 'ok' if result else 'no_matches')
         return RetrievalResult(chunks=result, status=('degraded' if warnings else 'ok') if result else 'no_matches', context_ids=contexts,
             warnings=warnings, token_use=sum(rows[r.source.chunk_id]['token_count'] for r in result), diagnostics=diagnostics, mode=request.mode)

@@ -28,6 +28,9 @@ def conflict():
     return AppError('MEMORY_CONFLICT', 'This memory changed. Reload it before saving your draft.', 409)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class MemoryRepository:
     def __init__(self, sessions, active_limit=200, pending_limit=50):
         self.sessions = sessions

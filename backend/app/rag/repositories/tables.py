@@ -75,6 +75,7 @@ document_concepts = Table('rag_document_concept', metadata,
     Column('concept_id', Text, ForeignKey('concept.id'), primary_key=True))
 
 jobs = Table('rag_job', metadata,
+    Column('log_context', JSONB, nullable=True),
     Column('id', Text, primary_key=True), owner(), Column('document_id', Text, nullable=False),
     Column('generation_id', Text), Column('operation', Text, nullable=False), Column('state', Text, nullable=False),
     Column('idempotency_key', Text, nullable=False), Column('request_hash', Text, nullable=False),

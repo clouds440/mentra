@@ -11,10 +11,16 @@ class EventConfirmationState(TypedDict):
     decision: str
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='deferred')
 def review(state: EventConfirmationState):
     return {'decision': interrupt({'proposal_id': state['proposal_id'], 'workflow_version': state['workflow_version']})}
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EventConfirmationGraph:
     def __init__(self, engine, workflow_version='event-confirmation-v1'):
         self.engine = engine

@@ -5,8 +5,12 @@ import math
 from pathlib import Path
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from contextvars import copy_context
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class LocalReranker:
     def __init__(self, path, timeout):
         self.path, self.timeout = Path(path), timeout
@@ -52,13 +56,15 @@ class LocalReranker:
                 return []
             if self._future is not None and not self._future.done():
                 return None
-            self._future = self._executor.submit(self._rank, query, passages)
+            self._future = self._executor.submit(copy_context().run, self._rank, query, passages)
             future = self._future
         try:
             return future.result(timeout=self.timeout)
         except (TimeoutError, ValueError, OSError, RuntimeError, ImportError):
+            workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
             return None
         except Exception:
+            workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
             logging.getLogger('mentra').exception('Optional RAG reranker failed.')
             return None
 

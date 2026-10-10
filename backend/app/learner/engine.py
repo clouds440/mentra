@@ -28,6 +28,12 @@ from app.learner.schemas import (
 )
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'get_relevant_context': {'input': lambda args: dict(max_concepts=args['request'].max_concepts),
+                            'result': lambda value: dict(concept_count=len(value.concepts), context_count=len(value.context_ids))},
+})
 class LearnerEngine:
     def __init__(self, repository: LearnerRepository, *, mastery_policy: MasteryPolicy | None = None,
                  retention_policy: RetentionPolicy | None = None, ranking_policy: RankingPolicy | None = None,

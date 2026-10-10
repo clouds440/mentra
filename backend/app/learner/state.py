@@ -6,6 +6,9 @@ from app.learner.schemas import ConceptStateResponse, PerformancePrediction
 from app.learner.scoring.signals import diagnostics, performance_estimate
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class StateService:
     def __init__(self, repository, evidence, mastery, retention, clock):
         self.repository, self.evidence = repository, evidence

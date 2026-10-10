@@ -25,6 +25,9 @@ class Admission(BaseModel):
     conflicting_memory_ids: list[UUID] = Field(default_factory=list, max_length=5)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class MemoryValidator:
     def __init__(self, llm):
         self.llm = llm

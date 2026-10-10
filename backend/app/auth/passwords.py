@@ -4,6 +4,9 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, InvalidHashError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class Passwords:
     def __init__(self):
         self.hasher = PasswordHasher()

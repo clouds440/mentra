@@ -38,6 +38,9 @@ class EmbeddingService(Protocol):
     def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class SentenceTransformerEmbeddingService:
     def __init__(
         self,

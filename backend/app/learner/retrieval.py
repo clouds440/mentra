@@ -10,6 +10,9 @@ from app.learner.schemas import (
 )
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class RetrievalService:
     def __init__(self, repository, contexts, retention, ranking, clock, states):
         self.repository, self.contexts = repository, contexts

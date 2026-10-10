@@ -8,6 +8,9 @@ from app.documents.readers.html import HTMLReader
 from app.vision import create_vision_service
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def create_document_reader(*, vision=None, engines=None, isolated=True) -> DocumentReader:
     if isolated and (vision is not None or engines is not None):
         raise ValueError('Injected providers require isolated=False; subprocesses use the default composition.')

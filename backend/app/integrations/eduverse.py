@@ -28,6 +28,9 @@ class EduVerseStudentTokenResponse(TokenResponse):
     profile_initialized: bool
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def provision_eduverse_student(request: EduVerseStudentRequest, auth_service, profile_service):
     # Verify subject equality before identity/session provisioning. Existing issuer,
     # audience, algorithm, keys and expiry rules are reused, not platform SDKs.

@@ -11,6 +11,9 @@ from .activity import ActivityPublisher
 from app.learner.schemas import LearnerContextRequest
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class OrchestrationService:
     """Shared AI coordination boundary; domain services retain validation and writes."""
     def __init__(self, chat, *, rag=None, learner=None, history=None, attachments=None, event_proposals=None, assessments=None):
@@ -41,9 +44,11 @@ class OrchestrationService:
                 if exc.code != 'RAG_UNAVAILABLE':
                     raise
                 warning = exc.message
+                workflow_logger.set_outcome('degraded', code='RAG_UNAVAILABLE')
         packet = dict(status=result.status if result else 'unavailable' if warning else 'no_eligible_sources',
                       sources=[chunk.source.model_dump() for chunk in result.chunks] if result else [])
         if result and result.warnings:
+            workflow_logger.set_outcome('degraded', code='RETRIEVAL_DEGRADED')
             warning = ' '.join(result.warnings)
         kwargs = {'source_packet': packet} if self.rag is not None else {}
         if self.attachments is not None and history_scope:

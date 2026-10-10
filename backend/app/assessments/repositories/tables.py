@@ -14,6 +14,7 @@ assessments = Table('assessment', metadata,
     Index('idx_assessment_owner', 'learner_id', 'created_at'))
 
 attempts = Table('assessment_attempt', metadata,
+    Column('log_context', JSONB, nullable=True),
     Column('id', Uuid(as_uuid=False), primary_key=True), Column('learner_id', Uuid(as_uuid=False), nullable=False),
     Column('assessment_id', Uuid(as_uuid=False), nullable=False), Column('operation_id', Uuid(as_uuid=False), nullable=False),
     Column('attempt_number', Integer, nullable=False), Column('revision', BigInteger, nullable=False),

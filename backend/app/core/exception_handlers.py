@@ -4,7 +4,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import AppError
-from app.core.logging import logger
+from app.core.logging import logger, workflow_logger
+from app.core.observability.sanitization import error_metadata
 from app.schemas.errors import ErrorDetail, ErrorResponse, ValidationIssue
 
 
@@ -26,12 +27,18 @@ def _error_response(
 
 
 async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+    trace = getattr(_.state, 'log_trace', None)
+    if trace is not None:
+        trace['code'] = exc.code
     return _error_response(exc.code, exc.message, exc.status_code)
 
 
 async def handle_http_error(
     _: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
+    trace = getattr(_.state, 'log_trace', None)
+    if trace is not None:
+        trace['code'] = 'HTTP_ERROR'
     message = exc.detail if isinstance(exc.detail, str) else "Request failed."
     return _error_response(
         "HTTP_ERROR",
@@ -44,6 +51,9 @@ async def handle_http_error(
 async def handle_validation_error(
     _: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    trace = getattr(_.state, 'log_trace', None)
+    if trace is not None:
+        trace['code'] = 'VALIDATION_ERROR'
     details = [
         ValidationIssue(
             location=list(issue["loc"]),
@@ -61,12 +71,13 @@ async def handle_validation_error(
 
 
 async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception(
-        "Unhandled exception while handling %s %s",
-        request.method,
-        request.url.path,
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
+    import logging
+    from app.core.observability.errors import mark_reported
+    mark_reported(exc)
+    workflow_logger.event('request.error', level=logging.ERROR, error=error_metadata(exc))
+    trace = getattr(request.state, 'log_trace', None)
+    if trace is not None:
+        trace.update(reported=True, code='INTERNAL_SERVER_ERROR')
     return _error_response(
         "INTERNAL_SERVER_ERROR",
         "An unexpected error occurred.",

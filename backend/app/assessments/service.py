@@ -7,6 +7,12 @@ from app.documents.errors import DocumentReadError
 from app.langchain.graphs.event_confirmation import EventConfirmationGraph
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'submit': {'request_outcome': True, 'result': lambda value: dict(domain_status=value.state),
+               'outcome': lambda value: 'deferred' if value.state in ('submitted','grading') else 'success'},
+})
 class AssessmentService:
     def __init__(self, repository, workflows, reader=None):
         self.repository, self.workflows = repository, workflows
@@ -57,6 +63,7 @@ class AssessmentService:
         return self.repository.store_extraction(owner, identifier, expected_revision, extracted, data, filename)
 
 
+@workflow_logger.operation(outcome='success')
 def create_assessments(sessions, llm, learner, rag=None):
     from .repositories.postgres import AssessmentRepository
     from app.langchain.assessment_workflows import AssessmentWorkflows

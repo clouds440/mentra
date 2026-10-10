@@ -7,6 +7,9 @@ def get_student_profile_service(request: Request):
     return request.app.state.student_profile_service
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def require_onboarded_identity(identity=Depends(require_identity), service=Depends(get_student_profile_service)):
     if service.get(identity.learner_id).onboarding_phase != 'complete':
         raise AppError('ONBOARDING_REQUIRED', 'Complete your profile onboarding before entering Mentra.', 409)

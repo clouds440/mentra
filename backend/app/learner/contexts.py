@@ -18,6 +18,9 @@ def summary(context: LearningContext) -> LearningContextSummary:
                                   status=context.status, relevance_score=context.relevance_score)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ContextService:
     def __init__(self, repository, clock, dormancy_days: int = 60):
         self.repository, self.clock = repository, clock

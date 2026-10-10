@@ -6,6 +6,9 @@ from .calibration.service import CalibrationService
 from .policy import context_packet
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class StudentProfileService:
     def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc)):
         self.repository, self.clock = repository, clock

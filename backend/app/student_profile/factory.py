@@ -1,3 +1,6 @@
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def create_student_profile_service(model_factory, llm=None):
     from app.db.database import get_session_factory
     from app.langchain.llm import MentraLLM

@@ -27,6 +27,9 @@ def evaluation_payload(evidence, context):
     }
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class LangChainProfileEvaluator:
     def __init__(self, llm):
         self.llm = llm if isinstance(llm, MentraLLM) else MentraLLM(llm)

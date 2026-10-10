@@ -24,6 +24,9 @@ def get_session_factory():
     return sessionmaker(get_engine(), expire_on_commit=False)
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def init_db() -> None:
     """Check migration readiness; never create or alter tables during app startup."""
     from app.db.migrate import migration_config

@@ -19,6 +19,9 @@ class ExecutionPlan(BaseModel):
     evidence_eligible: bool = False
     confirmation_required: bool = False
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def plan_request(query: str, *, attachments=False, selected_sources=False):
     text = query.strip().casefold()
     greeting = bool(re.fullmatch(r'(hi|hello|hey|thanks|thank you)[.! ]*', text))

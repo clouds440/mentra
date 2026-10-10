@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:17
+    profiles: ["local-db"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mentra}
@@ -28,6 +29,15 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+      LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+      LOG_DIRECTORY: /var/log/mentra
+      LOG_WORKFLOW_SUMMARIES: ${LOG_WORKFLOW_SUMMARIES:-true}
+      LOG_SUMMARY_MAX_STEPS: ${LOG_SUMMARY_MAX_STEPS:-500}
+      LOG_EVENT_MAX_BYTES: ${LOG_EVENT_MAX_BYTES:-32768}
+      LOG_HEALTH_REQUESTS: ${LOG_HEALTH_REQUESTS:-false}
+      LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       APP_ENV: ${APP_ENV:-development}
       BACKEND_HOST: ${BACKEND_HOST:-0.0.0.0}
       BACKEND_PORT: ${BACKEND_PORT:-8000}
@@ -76,9 +86,7 @@ services:
       MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
     volumes:
       - mentra_materials:/var/lib/mentra/materials
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - ./logs/backend:/var/log/mentra
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${BACKEND_PORT:-8000}/api/v1/health').read()"]
       interval: 10s
@@ -92,6 +100,15 @@ services:
     command: ["python", "-m", "app.rag.worker"]
     stop_grace_period: 150s
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+      LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+      LOG_DIRECTORY: /var/log/mentra
+      LOG_WORKFLOW_SUMMARIES: ${LOG_WORKFLOW_SUMMARIES:-true}
+      LOG_SUMMARY_MAX_STEPS: ${LOG_SUMMARY_MAX_STEPS:-500}
+      LOG_EVENT_MAX_BYTES: ${LOG_EVENT_MAX_BYTES:-32768}
+      LOG_HEALTH_REQUESTS: ${LOG_HEALTH_REQUESTS:-false}
+      LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
       EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
@@ -110,6 +127,7 @@ services:
       MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
     volumes:
       - mentra_materials:/var/lib/mentra/materials
+      - ./logs/backend:/var/log/mentra
     depends_on:
       backend:
         condition: service_healthy
@@ -119,7 +137,18 @@ services:
     restart: unless-stopped
     command: ["python", "-m", "app.history_management.events.worker"]
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+      LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+      LOG_DIRECTORY: /var/log/mentra
+      LOG_WORKFLOW_SUMMARIES: ${LOG_WORKFLOW_SUMMARIES:-true}
+      LOG_SUMMARY_MAX_STEPS: ${LOG_SUMMARY_MAX_STEPS:-500}
+      LOG_EVENT_MAX_BYTES: ${LOG_EVENT_MAX_BYTES:-32768}
+      LOG_HEALTH_REQUESTS: ${LOG_HEALTH_REQUESTS:-false}
+      LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+    volumes:
+      - ./logs/backend:/var/log/mentra
     depends_on:
       backend:
         condition: service_healthy
@@ -130,6 +159,15 @@ services:
     command: ["python", "-m", "app.assessments.worker"]
     stop_grace_period: 100s
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+      LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+      LOG_DIRECTORY: /var/log/mentra
+      LOG_WORKFLOW_SUMMARIES: ${LOG_WORKFLOW_SUMMARIES:-true}
+      LOG_SUMMARY_MAX_STEPS: ${LOG_SUMMARY_MAX_STEPS:-500}
+      LOG_EVENT_MAX_BYTES: ${LOG_EVENT_MAX_BYTES:-32768}
+      LOG_HEALTH_REQUESTS: ${LOG_HEALTH_REQUESTS:-false}
+      LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
       AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
       AI_MODEL: ${AI_MODEL:-}
@@ -137,6 +175,8 @@ services:
       AI_API_KEY: ${AI_API_KEY:-}
       AI_TIMEOUT: ${AI_TIMEOUT:-30}
       AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+    volumes:
+      - ./logs/backend:/var/log/mentra
     depends_on:
       backend:
         condition: service_healthy

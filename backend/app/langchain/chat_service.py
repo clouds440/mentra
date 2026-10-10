@@ -12,6 +12,9 @@ from app.learner.schemas import LearnerContextPacket
 
 logger = logging.getLogger("mentra")
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ChatService:
     def __init__(self, llm: MentraLLM | ModelFactory) -> None:
         self._llm = llm if isinstance(llm, MentraLLM) else MentraLLM(llm)

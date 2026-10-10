@@ -5,6 +5,9 @@ from app.core.config import settings
 from app.core.exceptions import AppError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class HistoryContextPolicy:
     def __init__(self, max_tokens=None):
         # Independently configurable; this is an input safety budget, not a product history-count decision.

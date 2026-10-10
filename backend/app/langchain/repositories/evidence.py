@@ -7,6 +7,9 @@ from app.chat.repositories.tables import messages,turns,conversations
 from app.core.exceptions import AppError
 from .evidence_tables import jobs
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={'claim': {'quiet':True}})
 class ChatEvidenceRepository:
     def __init__(self,sessions): self.sessions,self.transactions=sessions,OwnerTransactions(sessions)
 
@@ -17,7 +20,7 @@ class ChatEvidenceRepository:
         previous=session.execute(select(messages.c.content).where(messages.c.learner_id==owner,messages.c.conversation_id==job['conversation_id'],messages.c.sequence==job['user_sequence']-1,messages.c.role=='assistant')).scalar_one_or_none()
         text=user['content'].strip().casefold()
         if not previous or '?' not in previous or re.match(r'^(please|help|explain|what|how|why|can you|could you|i don.t know|my exam|remember)\b',text): return
-        session.execute(jobs.insert().values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc)))
+        session.execute(jobs.insert().values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc),log_context=workflow_logger.envelope()))
 
     def source(self,session,owner,turn_id,attempt):
         turn=session.execute(select(turns).join(conversations,(turns.c.conversation_id==conversations.c.id)&(turns.c.learner_id==conversations.c.learner_id)).where(turns.c.learner_id==owner,turns.c.id==turn_id,conversations.c.deleted_at.is_(None))).mappings().first()
@@ -38,7 +41,7 @@ class ChatEvidenceRepository:
             source=self.source(tx._session,owner,turn_id,row['attempt'])
             claim=str(uuid4())
             tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id).values(state='running',claim_id=claim,claim_until=now+timedelta(seconds=90),attempts=row['attempts']+1))
-            return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,**source)
+            return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],**source)
 
     def complete(self,job,apply):
         with self.transactions.write(job['owner']) as tx:
@@ -54,3 +57,4 @@ class ChatEvidenceRepository:
             row=tx._session.execute(select(jobs).where(jobs.c.turn_id==job['turn_id'],jobs.c.learner_id==job['owner'])).mappings().first()
             if not row or row['claim_id']!=job['claim_id']:return
             tx._session.execute(update(jobs).where(jobs.c.turn_id==job['turn_id']).values(state='failed',claim_id=None,claim_until=None,retry_at=datetime.now(timezone.utc)+timedelta(seconds=5*2**row['attempts'])))
+        workflow_logger.event('job.retry_scheduled' if row['attempts'] < 3 else 'job.failed', turn_id=job['turn_id'], attempt=row['attempts'])

@@ -6,10 +6,14 @@ no provider-specific APIs. This is a fresh schema; no SQLite data-transfer tooli
 
 ## Setup and migrations
 
-Copy `.env.example` to `.env`. Docker Compose supplies PostgreSQL 17 and persists it in
-the `mentra_postgres` named volume. Its backend runs migrations before serving requests.
-For hosted PostgreSQL, set `DATABASE_URL` to its connection URL. The application has no
-dependency on the Compose database service or its credentials.
+Copy `.env.example` to `.env` and set `DATABASE_URL` to your complete Supabase (or other
+hosted PostgreSQL) connection URL. The backend runs migrations before serving requests.
+Default Compose startup does not launch or wait for a local database.
+
+For optional local development, run `docker compose --profile local-db up -d --wait postgres`
+first. PostgreSQL 17 persists in the `mentra_postgres` named volume. Set `DATABASE_URL` to
+`postgresql://mentra:mentra_local@postgres:5432/mentra` for Docker services, then start the
+remaining services. Local credentials are never merged into a hosted connection URL.
 
 ## Deploying schema updates from GitHub
 

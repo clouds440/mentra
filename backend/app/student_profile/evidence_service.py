@@ -8,6 +8,9 @@ from .schemas import EvidenceInput, ProfileEvidence, AIEvaluation
 from .policy import context_packet, apply_estimates, POLICY_VERSION
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ProfileEvidenceService:
     def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc)):
         self.repository, self.evaluator, self.clock = repository, evaluator, clock
@@ -62,6 +65,7 @@ class ProfileEvidenceService:
             from .policy import validate_evaluation
             validate_evaluation(evaluation, evidence)
         except (EvaluationUnavailable, asyncio.TimeoutError, ValidationError):
+            workflow_logger.set_outcome('degraded', code='PROFILE_EVALUATION_UNAVAILABLE')
             with self.repository.transaction(learner_id) as store:
                 profile, saved = store.profile(), store.evidence(evidence_id)
                 if saved.evaluation_token == token and saved.status == 'evaluating':

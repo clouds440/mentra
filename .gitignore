@@ -49,6 +49,7 @@ data/*
 !data/.gitkeep
 
 # Logs and OS/editor files
+logs/
 *.log
 .DS_Store
 Thumbs.db

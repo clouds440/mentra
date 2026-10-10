@@ -6,6 +6,9 @@ from app.core.identifiers import canonical_learner_id
 from .store import PostgresProfileStore
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={'transaction': {'kind':'contextmanager'}})
 class PostgresStudentProfileRepository:
     def __init__(self, session_factory):
         self.sessions = session_factory

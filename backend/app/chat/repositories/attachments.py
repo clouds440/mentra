@@ -6,6 +6,9 @@ from app.db.owner_transactions import lock_owner
 from .tables import attachments, conversations
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class AttachmentRepository:
     def __init__(self, sessions):
         self.sessions = sessions

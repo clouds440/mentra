@@ -36,4 +36,4 @@ COPY alembic ./alembic
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]
+CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --no-access-log --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]

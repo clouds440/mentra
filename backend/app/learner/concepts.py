@@ -15,6 +15,9 @@ class SemanticResolver(Protocol):
     def choose(self, label: str, candidates: list[Concept], context: str | None) -> tuple[str | None, float]: ...
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ConceptService:
     def __init__(self, repository, semantic_resolver: SemanticResolver | None = None):
         self.repository = repository

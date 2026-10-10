@@ -17,6 +17,9 @@ def _tool_revision(command: list[str]) -> str:
         return 'unknown'
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class TesseractImageOCR:
     def available(self) -> bool:
         return bool(shutil.which('tesseract'))
@@ -41,6 +44,7 @@ class TesseractImageOCR:
         return (('Pillow', pillow), ('tesseract', _tool_revision(['tesseract', '--version'])))
 
 
+@workflow_logger.connect_module(default_outcome='success')
 class PopplerPDFPageRasterizer:
     def available(self) -> bool:
         return bool(shutil.which('pdftoppm'))

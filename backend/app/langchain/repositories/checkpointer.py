@@ -4,6 +4,9 @@ from psycopg.rows import dict_row
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(kind='scope')
 @contextmanager
 def postgres_saver(engine):
     raw = engine.raw_connection()

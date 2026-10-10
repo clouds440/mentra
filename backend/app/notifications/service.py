@@ -3,6 +3,11 @@ from app.core.exceptions import AppError
 from .schemas import NotificationDraft
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'publish': {'result': lambda value: dict(domain_status=value['outcome']), 'outcome': lambda value: 'skipped' if value['outcome'] == 'disabled' else 'success'},
+})
 class NotificationsService:
     def __init__(self, repository, producers=('events',)):
         self.repository, self.producers = repository, frozenset(producers)

@@ -1,3 +1,6 @@
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def create_history_management(sessions, llm, profile=None, learner=None):
     from app.chat.repositories.postgres import ChatRepository
     from app.chat.repositories.history_reader import ChatReadFacade

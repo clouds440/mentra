@@ -3,6 +3,9 @@ from app.documents import DocumentReadError, create_document_reader
 from app.rag.errors import ExtractionError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class NativeDocumentParser:
     def __init__(self, reader=None):
         self.reader = reader if reader is not None else create_document_reader()

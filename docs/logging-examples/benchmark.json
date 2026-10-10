@@ -1,0 +1,13 @@
+{
+  "iterations": 250,
+  "baseline": {
+    "median_ms": 0.295450000294295,
+    "p95_ms": 0.46760000032008975
+  },
+  "json_to_memory": {
+    "median_ms": 0.5244500000571861,
+    "p95_ms": 1.1878000000251632
+  },
+  "conditions": "Nested mock workflow; real terminal, database and provider latency excluded",
+  "budget_pass": true
+}

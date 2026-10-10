@@ -7,6 +7,9 @@ import sys
 from app.documents.errors import DocumentReadError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def read_isolated(path, kind, max_pages, timeout):
     process = subprocess.Popen([sys.executable, '-m', 'app.documents.worker', str(path), kind, str(max_pages)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=os.name != 'nt')

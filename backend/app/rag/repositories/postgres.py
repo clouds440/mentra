@@ -17,6 +17,14 @@ def new_id():
     return str(uuid4())
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'claim': {'quiet': True},
+    'publish': {'transaction': True, 'outcome': lambda value: 'success' if value else 'cancelled'},
+    'complete_delete': {'transaction': True},
+    'accept': {'transaction': True, 'result': lambda value: dict(duplicate=value.get('duplicate',False), job_id=value.get('job_id')), 'outcome': 'deferred'},
+})
 class RAGRepository:
     def __init__(self, sessions):
         self.sessions = sessions
@@ -36,7 +44,7 @@ class RAGRepository:
         return dict(id=new_id(), learner_id=owner, document_id=document_id, generation_id=generation_id,
                     operation=operation, state='QUEUED', idempotency_key=key, request_hash=request_hash,
                     expected_revision=revision, attempts=0, stage='queued', next_attempt_at=now(),
-                    created_at=now(), updated_at=now())
+                    created_at=now(), updated_at=now(), log_context=workflow_logger.envelope())
 
     def _associations(self, session, owner, document_id, context_ids):
         session.execute(delete(associations).where(associations.c.learner_id == owner, associations.c.document_id == document_id))
@@ -388,6 +396,7 @@ class RAGRepository:
                 error=error, lease_token=None, lease_until=None, next_attempt_at=now() + timedelta(seconds=10 * job['attempts']), updated_at=now()))
             if job['generation_id']:
                 session.execute(update(generations).where(generations.c.id == job['generation_id']).values(state='PENDING' if retry else 'FAILED'))
+        workflow_logger.event('job.retry_scheduled' if retry else 'job.failed', job_id=job['id'], attempt=job['attempts'])
 
     def deletion_sources(self, job):
         with self.sessions() as session:

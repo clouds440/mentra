@@ -21,6 +21,9 @@ def pdf_page_text(vision, path, page):
         raise DocumentReadError(str(exc)) from exc
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EmbeddedImages:
     def __init__(self, vision, *, capabilities=None):
         self.vision = vision
@@ -52,6 +55,7 @@ class EmbeddedImages:
         return text
 
 
+@workflow_logger.connect_module(default_outcome='success')
 class ImageReader:
     formats = ('png', 'jpg')
     def __init__(self, vision):

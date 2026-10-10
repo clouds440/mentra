@@ -4,6 +4,9 @@ from .contracts import EventsRepository
 from .temporal import preview
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EventsService:
     def __init__(self, repository: EventsRepository, learner=None, *, clock=None):
         self.repository = repository

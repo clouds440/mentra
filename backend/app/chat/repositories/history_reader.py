@@ -5,6 +5,9 @@ from .tables import conversations as c, messages as m, turns as t
 from .postgres import ChatRepository
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class ChatReadFacade:
     def __init__(self, repository):
         self.repository = repository

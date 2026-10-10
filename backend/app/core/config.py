@@ -7,6 +7,15 @@ from app.auth.config import ExternalProviderSettings
 
 
 class Settings(BaseSettings):
+    log_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR'] = 'INFO'
+    log_format: Literal['console', 'json'] | None = None
+    log_file_enabled: bool = True
+    log_directory: str = 'logs/backend'
+    log_workflow_summaries: bool = True
+    log_summary_max_steps: int = Field(default=500, ge=1, le=5000)
+    log_event_max_bytes: int = Field(default=32768, ge=8192, le=1048576)
+    log_health_requests: bool = False
+    log_poll_requests: bool = False
     app_env: str = "development"
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

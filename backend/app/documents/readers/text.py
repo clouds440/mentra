@@ -3,6 +3,9 @@ from app.documents.errors import DocumentReadError
 from app.documents.formats import CODE_FORMATS
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class TextReader:
     formats = ('txt',)
     def available(self):
@@ -15,6 +18,7 @@ class TextReader:
         return dict(blocks=[dict(text=p) for p in text.split('\n\n') if p.strip()], warnings=[])
 
 
+@workflow_logger.connect_module(default_outcome='success')
 class CodeReader:
     formats = CODE_FORMATS
     def available(self):

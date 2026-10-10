@@ -15,6 +15,9 @@ def token_digest(token):
     return sha256(token.encode()).hexdigest()
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class AuthService:
     def __init__(self, repository: IdentityRepository, verifier, *, session_seconds=3600,
                  clock=lambda: datetime.now(timezone.utc), passwords=None):

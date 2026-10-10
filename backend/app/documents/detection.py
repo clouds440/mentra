@@ -17,6 +17,9 @@ def validate_utf8(path: Path) -> None:
         raise DocumentReadError('Text files must use UTF-8 encoding.') from exc
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.operation(outcome='success')
 def detect_format(path: Path, filename: str, available: list[str]) -> str:
     with path.open('rb') as source:
         prefix = source.read(16)

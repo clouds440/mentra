@@ -22,6 +22,9 @@ class OwnedUnitOfWork:
     _session: object
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={'write': {'kind':'contextmanager'}})
 class OwnerTransactions:
     def __init__(self, sessions, *, timeout_ms=5000):
         if not 1 <= timeout_ms <= 300000:

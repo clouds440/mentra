@@ -3,6 +3,9 @@ from app.core.exceptions import AppError
 from .schemas import EventDraft
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class EventProposalService:
     def __init__(self, repository, events, graph, llm=None):
         self.repository, self.events, self.graph = repository, events, graph
@@ -64,6 +67,7 @@ class EventProposalService:
         return self.repository.commit(owner, identifier, claim['claim_id'])
 
 
+@workflow_logger.operation(outcome='success')
 def create_event_proposals(sessions, events, llm=None):
     from app.history_management.repositories.events.proposals import EventProposalRepository
     from app.langchain.graphs.event_confirmation import EventConfirmationGraph

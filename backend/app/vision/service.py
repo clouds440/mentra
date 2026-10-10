@@ -6,6 +6,9 @@ from app.vision.schemas import VisionCapabilities
 from app.vision.errors import VisionError
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class VisionService:
     def __init__(self, image_ocr: ImageOCR, pdf_rasterizer: PDFPageRasterizer):
         self._image_ocr = image_ocr

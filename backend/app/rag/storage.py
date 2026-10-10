@@ -10,6 +10,9 @@ from app.rag.ports import StoredBlob
 from typing import BinaryIO
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class FileStorage:
     def __init__(self, root: str | Path):
         self.root = Path(root).resolve()

@@ -6,6 +6,9 @@ from ..errors import conflict
 from .tables import student_profile, calibration_attempt, profile_evidence
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class PostgresProfileStore:
     def __init__(self, session, learner_id, now):
         self.session, self.learner_id = session, learner_id

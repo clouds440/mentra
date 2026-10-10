@@ -6,6 +6,9 @@ from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class AssessmentWorkflows:
     def __init__(self, llm, learner, rag=None): self.llm, self.learner, self.rag = llm, learner, rag
 

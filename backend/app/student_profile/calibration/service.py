@@ -7,6 +7,12 @@ from .blueprints import blueprint
 from .scoring import public_attempt, score
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'complete': {'request_outcome': True, 'result': lambda value: dict(evaluation_status=value.profile.evaluation_status),
+                 'outcome': lambda value: 'degraded' if value.profile.evaluation_status == 'failed' else 'success'},
+})
 class CalibrationService:
     def __init__(self, repository, evidence_service, *, clock=lambda: datetime.now(timezone.utc)):
         self.repository, self.evidence_service, self.clock = repository, evidence_service, clock

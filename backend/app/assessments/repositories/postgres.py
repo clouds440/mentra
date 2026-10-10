@@ -8,6 +8,12 @@ from app.assessments.schemas import Assessment, Attempt, PublicQuestion
 from .tables import assessments as a, attempts as t
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={'claim': {'quiet':True},
+    'correct': {'request_outcome': True, 'result': lambda value: dict(domain_status=value.state),
+                'outcome': lambda value: 'deferred' if value.state in ('submitted','grading') else 'success'},
+})
 class AssessmentRepository:
     def __init__(self, sessions, clock=None):
         self.sessions, self.transactions = sessions, OwnerTransactions(sessions)
@@ -102,7 +108,7 @@ class AssessmentRepository:
             if set(body.answers) != {q['id'] for q in questions} or any(not answer.strip() or len(answer)>8000 for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE', 'Answer every question with at most 8000 characters each.', 422)
             values = dict(answers=body.answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
-                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', error=None)
+                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', error=None, log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id == identifier).values(**values))
             from app.langchain.repositories.checkpoint_tables import delete_thread
             delete_thread(session, f'assessment-transcription-v1:{owner}:{identifier}')
@@ -135,7 +141,7 @@ class AssessmentRepository:
             if len(history)>10:raise AppError('CORRECTION_LIMIT','This attempt has reached its correction limit.',409)
             values=dict(grade_history=history,grade_revision=row['grade_revision']+1,answers=body.answers,grades=None,
                 revision=row['revision']+1,state='submitted',submitted_at=self.clock(),worker_attempts=0,retry_at=None,
-                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',error=None)
+                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',error=None,log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id==identifier).values(**values))
             return self.attempt_public(dict(row,**values))
 
@@ -176,6 +182,7 @@ class AssessmentRepository:
             if row['claim_id'] != job['claim_id']: return
             tx._session.execute(update(t).where(t.c.id == job['id']).values(state='failed', error='Grading is temporarily unavailable.',
                 retry_at=self.clock()+timedelta(seconds=5*2**row['worker_attempts']), claim_id=None, claim_until=None, revision=row['revision']+1))
+        workflow_logger.event('job.retry_scheduled' if row['worker_attempts'] < 3 else 'job.failed', job_id=job['id'], attempt=row['worker_attempts'])
 
     def remove(self, owner, identifier):
         with self.transactions.write(owner) as tx:

@@ -46,4 +46,8 @@ def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
 
 
 if __name__ == '__main__':
-    upgrade()
+    from app.core.logging import configure_logging, workflow_logger
+    configure_logging('migration')
+    with workflow_logger.workflow('db.migrate') as execution:
+        upgrade()
+        execution.outcome = 'success'

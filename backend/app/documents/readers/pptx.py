@@ -3,6 +3,9 @@ from app.documents.errors import DocumentReadError
 from app.documents.readers.images import EmbeddedImages
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class PPTXReader:
     formats = ('pptx',)
     def __init__(self, vision):

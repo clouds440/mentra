@@ -7,6 +7,12 @@ from app.core.exceptions import AppError
 from .repositories.postgres import fingerprint, now
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success', policies={
+    'memory': {'result': lambda value: dict(domain_status=value.get('outcome', 'returned')),
+               'outcome': lambda value: 'rejected' if value.get('outcome') == 'rejected' else 'degraded' if value.get('outcome') == 'unavailable' else 'success'},
+})
 class HistoryManagement:
     def __init__(self, repository, reader, validator, profile=None, freshness_days=None, events=None):
         self.repository, self.reader, self.validator = repository, reader, validator

@@ -12,6 +12,9 @@ from app.documents.schemas import DocumentContent, DocumentPayload
 READER_VERSION = 'documents-native-vision-v3'
 
 
+from app.core.logging import workflow_logger
+
+@workflow_logger.connect_module(default_outcome='success')
 class DocumentReader:
     def __init__(self, engines: list[FormatReader], vision, *, isolated: bool = False):
         self._engines = {}
@@ -63,7 +66,10 @@ class DocumentReader:
         if kind not in self._engines:
             raise DocumentReadError('This media type is unsupported by the document parser.')
         if self._isolated:
-            return read_isolated(Path(path), kind, max_pages, timeout)
+            with workflow_logger.step('app.documents.readers.' + kind, 'isolated.parse', input=dict(format=kind, max_pages=max_pages)) as step:
+                result = read_isolated(Path(path), kind, max_pages, timeout)
+                step.result(dict(block_count=len(result['blocks']), warning_count=len(result['warnings'])), 'success')
+                return result
         return self.read_in_process(Path(path), kind, max_pages)
 
     def read_in_process(self, path: Path, kind: str, max_pages: int = 200) -> DocumentPayload:
