@@ -170,7 +170,7 @@ class ChatStore {
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
     const messages = older ? items.slice(0, 200) : items.slice(-200);
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
-      error: page.turn?.state === 'FAILED' ? chatErrorMessage(page.turn.error) : null, turn: page.turn ?? view.turn,
+      error: page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn: page.turn ?? view.turn,
       before: page.incremental ? (messages[0]?.sequence > 1 ? messages[0].sequence : null) : page.has_more ? messages[0]?.sequence ?? null : null,
       olderWindow: older && items.length > 200 || older && view.olderWindow,
       revision: page.conversation.revision });
@@ -181,6 +181,15 @@ class ChatStore {
       this.pending.delete(id); await this.persist(() => cache.pending(null, id));
     }
   }
+  async stopResponse(id: string) {
+    const turn = this.view(id).turn, signal = this.controller.signal;
+    if (!this.owner || !turn || turn.state !== 'RUNNING') return;
+    try {
+      const page = await api.stopTurn(id, turn.id, turn.attempt, signal);
+      if (this.alive(signal)) { await this.applyPage(page); this.channel?.postMessage({ changed:true }); }
+    } catch (error) { if (this.alive(signal)) this.setView(id, {error:this.error(error)}); }
+  }
+
   async older(id: string) {
     const view = this.view(id); if (!view.before || view.loading) return;
     const signal = this.controller.signal;

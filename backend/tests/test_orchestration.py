@@ -57,6 +57,58 @@ class DurableOrchestrationTests(unittest.TestCase):
             content='Explain the attached page', attachment_ids=list(ids))
         return body, self.chat.begin_turn(self.owner, body)
 
+    def test_original_files_survive_reload_and_keep_owner_and_chat_authorization(self):
+        data = b'\x89PNG\r\n\x1a\n' + b'original file bytes'
+        saved = self.files.create(self.owner, 'study.png', data)
+        body, job = self.turn([saved['id']])
+        service = AttachmentService(AttachmentRepository(self.db.sessions))
+        original = service.original(self.owner, saved['id'], job['conversation_id'])
+        self.assertEqual(original['data'], data)
+        self.assertEqual(original['media_type'], 'image/png')
+        with self.assertRaises(AppError): service.original(self.other, saved['id'], job['conversation_id'])
+        with self.assertRaises(AppError): service.original(self.owner, saved['id'], str(uuid4()))
+        self.chat.finish(self.owner, job, dict(content='Read the file'))
+        page = self.chat.history(self.owner, job['conversation_id'])
+        self.assertEqual(page['items'][0]['attachments'][0]['filename'], 'study.png')
+        self.chat.edit(self.owner, job['conversation_id'], page['conversation']['revision'], remove=True)
+        with self.assertRaises(AppError): service.original(self.owner, saved['id'], job['conversation_id'])
+
+    def test_active_content_disguised_as_image_is_download_only(self):
+        saved = self.files.create(self.owner, 'fake.png', b'<html><script>private()</script></html>')
+        body, job = self.turn([saved['id']])
+        self.assertEqual(AttachmentService(self.files).original(self.owner, saved['id'], job['conversation_id'])['media_type'], 'application/octet-stream')
+
+    def test_stop_and_original_http_contracts(self):
+        from types import SimpleNamespace
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from app.api.routes.conversations import router as chats
+        from app.api.routes.chat_attachments import router as files
+        from app.core.exception_handlers import register_exception_handlers
+        from app.student_profile.dependencies import require_onboarded_identity
+        from app.chat.service import ConversationService
+        app = FastAPI()
+        app.include_router(chats)
+        app.include_router(files)
+        register_exception_handlers(app)
+        app.state.conversation_service = ConversationService(self.chat)
+        app.state.attachment_service = AttachmentService(self.files)
+        app.dependency_overrides[require_onboarded_identity] = lambda: SimpleNamespace(learner_id=self.owner)
+        saved = self.files.create(self.owner, 'study file.png', b'\x89PNG\r\n\x1a\noriginal')
+        body, job = self.turn([saved['id']])
+        path = f"/chat-attachments/{saved['id']}/source?conversation_id={job['conversation_id']}"
+        with TestClient(app) as client:
+            original = client.get(path)
+            self.assertEqual(original.status_code, 200)
+            self.assertEqual(original.headers['cache-control'], 'no-store')
+            self.assertEqual(original.headers['x-content-type-options'], 'nosniff')
+            self.assertIn('study%20file.png', original.headers['content-disposition'])
+            stopped = client.post(f"/conversations/{job['conversation_id']}/turns/{job['turn_id']}/stop", json={'attempt':1})
+            self.assertEqual(stopped.status_code, 200)
+            self.assertEqual(stopped.json()['items'][-1]['content'], 'Response stopped. Ready when you are.')
+            app.dependency_overrides[require_onboarded_identity] = lambda: SimpleNamespace(learner_id=self.other)
+            self.assertEqual(client.get(path).status_code, 404)
+
     def test_activity_is_durable_owned_attempt_fenced_and_deleted(self):
         body, job = self.turn()
         update = ActivityUpdate(step_id='reading', status='running', user_message='Reading documents')

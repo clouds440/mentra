@@ -239,6 +239,30 @@ class ChatRepository:
             session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now(), **conversation_values))
             self._change(session, owner, row['id'], state)
 
+    def stop_turn(self, owner, conversation_id, turn_id, attempt):
+        """Fence publication first; cancellation must never overwrite a finished turn."""
+        with self.sessions.begin() as session:
+            state = self._sync_lock(session, owner)
+            row = self._conversation(session, owner, conversation_id, True)
+            turn = session.execute(select(t).where(t.c.id == turn_id, t.c.learner_id == owner,
+                t.c.conversation_id == conversation_id).with_for_update()).mappings().first()
+            if not turn:
+                raise AppError('CHAT_NOT_FOUND', 'This response is unavailable.', 404)
+            if turn['attempt'] != attempt:
+                raise AppError('CHAT_STALE_ATTEMPT', 'This response has changed. Check the conversation.', 409)
+            if turn['state'] != 'RUNNING':
+                return False
+            sequence = row['message_count'] + 1
+            session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id,
+                sequence=sequence, role='assistant', content='Response stopped. Ready when you are.',
+                metadata={'response_stopped': True}, created_at=now()))
+            session.execute(update(t).where(t.c.id == turn_id).values(state='FAILED', error='Response stopped.',
+                assistant_sequence=sequence, lease_until=None))
+            session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence,
+                revision=row['revision'] + 1, updated_at=now()))
+            self._change(session, owner, conversation_id, state)
+            return True
+
     def status(self, owner, conversation_id, turn_id=None, incremental=False):
         with self.sessions.begin() as session:
             # Consistent locking order across every writer.
@@ -299,6 +323,7 @@ class ChatRepository:
             # Completed exchanges only, plus the current question. Failed questions remain visible in UI history.
             completed = select(t.c.user_sequence).where(t.c.learner_id == owner, t.c.conversation_id == conversation_id, t.c.state == 'SUCCEEDED')
             query = select(m).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
+                m.c.metadata['response_stopped'].as_boolean().is_not(True),
                 or_(m.c.role != 'user', m.c.sequence.in_(completed), m.c.sequence == through if through is not None else False))
             if through is not None:
                 query = query.where(m.c.sequence <= through)

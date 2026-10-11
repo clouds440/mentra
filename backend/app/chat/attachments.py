@@ -57,6 +57,18 @@ class AttachmentService:
         self.repository.link_library(owner, identifier, result)
         return result
 
+    def original(self, owner, identifier, conversation_id):
+        row = self.repository.read(owner, identifier, conversation_id)
+        data = row['data']
+        # Only recognized raster bytes may render inline. Documents/HTML/SVG
+        # remain downloads, independent of the untrusted filename extension.
+        media = 'application/octet-stream'
+        if data.startswith(b'\x89PNG\r\n\x1a\n'): media = 'image/png'
+        elif data.startswith(b'\xff\xd8\xff'): media = 'image/jpeg'
+        elif data.startswith((b'GIF87a', b'GIF89a')): media = 'image/gif'
+        elif data[:4] == b'RIFF' and data[8:12] == b'WEBP': media = 'image/webp'
+        return dict(data=data, media_type=media, filename=row['filename'])
+
     @staticmethod
     def context(extracted, query, maximum=8000):
         """Bound model input; preserve source locations and explicitly disclose selection."""

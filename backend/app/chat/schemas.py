@@ -24,5 +24,10 @@ class EditConversation(BaseModel):
     title: str = Field(min_length=1, max_length=120)
 
 
+class StopTurn(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    attempt: int = Field(ge=1)
+
+
 class TurnStatus(BaseModel):
     state: Literal['RUNNING', 'SUCCEEDED', 'FAILED']

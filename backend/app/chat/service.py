@@ -19,6 +19,7 @@ class ConversationService:
         self.repository = repository
         self.policy = policy or HistoryContextPolicy()
         self.tasks = set()
+        self.turn_tasks = {}
 
     async def send(self, owner, request, generate, *, with_scope=False, wait=True):
         if not request.content.strip():
@@ -28,9 +29,40 @@ class ConversationService:
             task = workflow_logger.start_task(self._generate(owner, job, generate, with_scope), name='chat.generate')
             self.tasks.add(task)
             task.add_done_callback(self.tasks.discard)
+            key = (owner, job['conversation_id'], job['turn_id'], job['attempt'])
+            self.turn_tasks[key] = task
+            task.add_done_callback(lambda done: self.turn_tasks.pop(key, None) if self.turn_tasks.get(key) is done else None)
             if wait:
-                await asyncio.shield(task)
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    if not task.cancelled():
+                        raise  # Disconnecting the caller must not stop generation.
         return await run_in_threadpool(self.repository.status, owner, job['conversation_id'], job['turn_id'], True)
+
+    async def stop(self, owner, conversation_id, turn_id, attempt):
+        stopped = await run_in_threadpool(self.repository.stop_turn, owner, conversation_id, turn_id, attempt)
+        if stopped:
+            task = self.turn_tasks.get((owner, conversation_id, turn_id, attempt))
+            if task:
+                task.cancel()
+        # A newer turn may already exist on another tab. Return the latest
+        # canonical page rather than making that new turn appear finished.
+        return await run_in_threadpool(self.repository.status, owner, conversation_id)
+
+    async def _watch_active(self, owner, job, generation):
+        # Durable fencing also cancels work when another process handles Stop.
+        from .repositories.activity import ActivityRepository
+        repository = ActivityRepository(self.repository.sessions)
+        while not generation.done():
+            await asyncio.sleep(.5)
+            try:
+                await run_in_threadpool(repository.ensure_active, owner, job)
+            except AppError as error:
+                if error.code != 'CHAT_ATTEMPT_EXPIRED':
+                    raise
+                generation.cancel()
+                return
 
     async def _generate(self, owner, job, generate, with_scope=False):
         from time import monotonic
@@ -52,7 +84,14 @@ class ConversationService:
                 invocation = generate(history, job['selection'], scope)
             else:
                 invocation = generate(history, job['selection'])
-            response = await asyncio.wait_for(invocation, timeout=max(.001, deadline - monotonic()))
+            generation = asyncio.ensure_future(invocation)
+            watcher = asyncio.create_task(self._watch_active(owner, job, generation))
+            try:
+                response = await asyncio.wait_for(generation, timeout=max(.001, deadline - monotonic()))
+            finally:
+                generation.cancel()
+                watcher.cancel()
+                await asyncio.gather(generation, watcher, return_exceptions=True)
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':

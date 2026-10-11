@@ -222,7 +222,6 @@ export function AppSidebar({
               />
             </button>
           </div>
-          {!collapsed && <p className="px-2 pb-1 pt-3 text-[11px] text-subtle">A quieter way to learn.</p>}
         </div>
       </aside>
     </>

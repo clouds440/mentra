@@ -1,3 +1,5 @@
+import { ClipboardCheck, Plus, ArrowUpRight, Sparkles } from 'lucide-react';
+import { WorkspaceHeader, WorkspaceEmpty } from '../workspace/WorkspaceHeader';
 import { materialWarningMessage } from '../../services/userError';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
@@ -69,9 +71,8 @@ function Workspace() {
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load more assessments.'); }
   }
   return <div className="h-full overflow-y-auto"><div className="page-container">
-    <h1 className="page-title">Assessments</h1>
-    <p className="text-sm text-muted">Practice, verify understanding or calibrate specific concepts. Broad onboarding calibration remains separate.</p>
-    <div role="tablist" aria-label="Assessment sections" className="flex gap-2 border-b border-border" onKeyDown={event => {
+    <WorkspaceHeader title={tab === 'create' ? 'Create assessment' : 'Assessments'} description={tab === 'create' ? 'Build a practice session around what you want to understand. Choose a topic, question count and your study sources.' : 'Turn what you’re learning into practice. Explore your questions, continue an attempt or start something new.'} icon={ClipboardCheck} actions={tab !== 'create' && <Button disabled={busy} onClick={() => changeTab('create')}><Plus size={16} aria-hidden="true" />New assessment</Button>} />
+    <div role="tablist" aria-label="Assessment sections" className="workspace-tabs" onKeyDown={event => {
       if (busy || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
       const next = event.key === 'Home' ? 'assessments' : event.key === 'End' ? 'create' : tab === 'create' ? 'assessments' : 'create';
@@ -84,7 +85,7 @@ function Workspace() {
     </div>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => setReload(value => value + 1))}>Refresh</button></p>}
     <section role="tabpanel" id="assessment-panel-create" aria-labelledby="assessment-tab-create" hidden={tab !== 'create'}>
-    {loading && !error ? <Skeleton variant="form" rows={5} /> : <form aria-label="Create assessment" className="space-y-4 rounded-xl border border-border p-5" onSubmit={event => { event.preventDefault(); void generate(); }} onChange={() => setDraft(value => ({ ...value, client_request_id: crypto.randomUUID() }))}>
+    {loading && !error ? <Skeleton variant="form" rows={5} /> : <form aria-label="Create assessment" className="workspace-panel space-y-5 max-w-3xl" onSubmit={event => { event.preventDefault(); void generate(); }} onChange={() => setDraft(value => ({ ...value, client_request_id: crypto.randomUUID() }))}>
       <label className="block text-sm">Learning context<Select aria-label="Assessment learning context" required disabled={busy} value={draft.context_id} onChange={event => setDraft({ ...draft, context_id: event.target.value })}><option value="">Choose context</option>{contexts.filter(item => item.status !== 'ARCHIVED').map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></label>
       <label className="block text-sm">Topic<Input required disabled={busy} maxLength={200} value={draft.topic} onChange={event => setDraft({ ...draft, topic: event.target.value })} /></label>
       <label className="block text-sm">Concept names (comma separated, optional)<Input disabled={busy} value={labels} maxLength={1000} onChange={event => setLabels(event.target.value)} /></label>
@@ -97,11 +98,11 @@ function Workspace() {
     </section>
     <section role="tabpanel" id="assessment-panel-assessments" aria-labelledby="assessment-tab-assessments" hidden={tab !== 'assessments'} className="space-y-5">
     {loading && !error && <Skeleton variant="card" />}
-    {current && <section className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium">{current.title}</h2><Button variant="secondary" disabled={busy} loading={busy} onClick={() => void start()}>Start new attempt</Button></div>
+    {current && <section className="workspace-panel space-y-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium text-heading">{current.title}</h2><Button variant="secondary" disabled={busy} loading={busy} onClick={() => void start()}>Start new attempt</Button></div>
       {attempt ? <AnswerSheet key={attempt.id} assessment={current} initial={attempt} onChange={result => { setAttempt(result); setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]); }} /> : <ol className="space-y-5">{current.questions.map((question, index) => <li key={question.id}><p className="text-sm text-muted">Question {index+1} · {question.marks} marks</p><MarkdownContent content={question.prompt} /></li>)}</ol>}
       <h3 className="font-medium">Attempt history</h3>{attempts.length === 0 && <p className="text-sm text-muted">No attempts yet.</p>}<ul className="space-y-2">{attempts.map(value => <li key={value.id}><button className="text-sm text-accent underline" onClick={() => setAttempt(value)}>Attempt {value.attempt_number} · {value.state} · {new Date(value.created_at).toLocaleString()}</button></li>)}</ul>
     </section>}
-    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <p className="text-sm text-muted">Create your first assessment to begin.</p>}<ul className="divide-y divide-border">{items.map(item => <li key={item.id}><button className="w-full py-4 text-left text-heading hover:text-accent focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}>{item.title}<span className="ml-2 text-xs text-muted">{item.questions.length} questions · {item.purpose}</span></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
+    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.questions.length} questions</span><span className="workspace-status mt-3 capitalize">{item.purpose}</span></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
     </section>
   </div></div>;
 }

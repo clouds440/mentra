@@ -383,8 +383,20 @@ html[data-theme-ready] aside {
 @layer components {
   .field-control { @apply min-h-11 rounded-xl border border-border-strong bg-input px-3 py-2.5 text-sm text-foreground outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50; }
   .overlay-panel { @apply border border-border-strong bg-popover text-foreground shadow-xl shadow-shadow/15; }
-  .page-container { @apply mx-auto w-full max-w-4xl space-y-6 px-5 py-10; }
+  .page-container { @apply mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8; }
   .page-title { @apply text-3xl font-medium tracking-tight text-heading; }
+  .workspace-header { @apply flex flex-wrap items-start justify-between gap-5 border-b border-border pb-6; }
+  .workspace-panel { @apply min-w-0 rounded-2xl border border-border bg-surface p-5 sm:p-6; }
+  .workspace-toolbar { @apply flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-border bg-surface p-4; }
+  .workspace-grid { @apply grid gap-4 sm:grid-cols-2; }
+  .workspace-item { @apply min-w-0 rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-border-hover; }
+  .workspace-empty { @apply flex flex-col items-center rounded-2xl border border-dashed border-border bg-surface px-5 py-12 text-center; }
+  .workspace-tabs { @apply flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1; }
+  .workspace-tabs [role=tab] { @apply rounded-lg border-0 px-4 py-2.5 text-sm text-muted; }
+  .workspace-tabs [role=tab][aria-selected=true] { @apply bg-active font-medium text-heading; }
+  .workspace-status { @apply inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted; }
+  .select-options { width: max-content; max-width: calc(100vw - 24px); }
+  .select-options [role=option] > span { flex: none; width: max-content; max-width: calc(100vw - 96px); }
   .page-description { @apply text-sm leading-6 text-muted; }
   .overlay-backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 }

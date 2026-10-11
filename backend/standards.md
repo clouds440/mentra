@@ -4,6 +4,8 @@
 
 These standards describe the current Python and FastAPI codebase. Update them when an important backend convention changes.
 
+- Chat Stop is owner/conversation/attempt-scoped and atomic: fence final publication before cancelling generation, append one stopped notice without evidence, preserve completed work, and cancel across processes using durable attempt checks. Bound original attachment access to a live owned conversation; allow only recognized raster bytes inline, force other files to download, and send no-store/nosniff headers.
+
 ## Project structure
 
 - `api/`: HTTP concerns only—request validation, dependency injection, calling application logic, and mapping results to HTTP responses. Keep handlers thin; organize endpoints in route modules and register them through the central router.

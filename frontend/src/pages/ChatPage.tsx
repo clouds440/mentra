@@ -33,6 +33,7 @@ export function ChatPage() {
   const [validation, setValidation] = useState<string | null>(null);
   const [files, setFiles] = useState<ChatAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const uploadController = useRef(new AbortController());
   useEffect(() => {
     uploadController.current = new AbortController(); setFiles([]); setUploading(false);
@@ -56,12 +57,17 @@ export function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prependRef = useRef<number | null>(null);
   const bottomRef = useRef(true);
+  // Image/Markdown resizing can emit scroll events without user scrolling.
+  // Only actual scroll gestures should turn off following the latest message.
+  const userScrollUntil = useRef(0);
 
   // Reset before the new workspace becomes interactive, so the first keystroke
   // cannot be erased by a deferred navigation/account effect.
   useLayoutEffect(() => { setDraftId(crypto.randomUUID()); setDraft(''); setValidation(null); setSelection({ mode: 'STANDARD' }); }, [newChatKey, identity?.learner_id]);
   useLayoutEffect(() => {
-    setDraft(''); setValidation(null); bottomRef.current = true;
+    setDraft(''); setValidation(null); setStopping(false); bottomRef.current = true;
+    prependRef.current = null;
+    userScrollUntil.current = 0;
     if (conversationId) void chatStore.open(conversationId);
     else setSelection({ mode: 'STANDARD' });
   }, [conversationId]);
@@ -75,7 +81,17 @@ export function ChatPage() {
     const container = scrollContainerRef.current; if (!container) return;
     if (prependRef.current !== null) { container.scrollTop += container.scrollHeight - prependRef.current; prependRef.current = null; }
     else if (bottomRef.current) container.scrollTop = container.scrollHeight;
-  }, [view.messages, view.busy]);
+  }, [id, view.messages, view.busy, view.loading]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      if (bottomRef.current && prependRef.current === null) container.scrollTop = container.scrollHeight;
+    });
+    if (container.firstElementChild) observer.observe(container.firstElementChild);
+    return () => observer.disconnect();
+  }, [id, view.loading, !!view.messages.length]);
 
   function sendMessage() {
     const content = draft.trim() || (files.length ? 'Please read the attached files.' : ''); if (!content || view.busy || uploading) return;
@@ -92,9 +108,13 @@ export function ChatPage() {
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
       ) : view.messages.length === 0 ? <ChatEmptyState onChooseSuggestion={setDraft} /> : (
-        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-6"
-          ref={scrollContainerRef} role="log" aria-live="polite"
-          onScroll={() => { const el = scrollContainerRef.current; if (el) bottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
+        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto px-4 py-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6"
+          ref={scrollContainerRef} role="log" aria-live="polite" tabIndex={0}
+          onWheel={() => { userScrollUntil.current = performance.now() + 1500; }}
+          onTouchMove={() => { userScrollUntil.current = performance.now() + 1500; }}
+          onPointerDown={event => { if (event.target === event.currentTarget) userScrollUntil.current = performance.now() + 1500; }}
+          onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) userScrollUntil.current = performance.now() + 1500; }}
+          onScroll={() => { const el = scrollContainerRef.current; if (el && performance.now() < userScrollUntil.current) bottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-6">
             {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { prependRef.current = scrollContainerRef.current?.scrollHeight ?? null; bottomRef.current = false; void chatStore.older(id); }}>
@@ -112,7 +132,7 @@ export function ChatPage() {
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
             {view.unsent && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
-            {view.turn?.state === 'FAILED' && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry response</button>}
+            {view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.' && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry response</button>}
             {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
@@ -122,7 +142,7 @@ export function ChatPage() {
             }}>Remove</button>
           </li>)}</ul>}
           {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
+          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>

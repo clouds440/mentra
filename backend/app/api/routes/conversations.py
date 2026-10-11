@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, Query
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.auth.dependencies import require_identity
-from app.chat.schemas import SendTurn, EditConversation
+from app.chat.schemas import SendTurn, EditConversation, StopTurn
 from app.rag.schemas import ChatSelection
 from .chat import generate_reply
 
@@ -38,6 +38,12 @@ async def send(body: SendTurn, request: Request, stream: bool = False, identity=
         state = result.get('turn', {}).get('state') if isinstance(result, dict) else getattr(result, 'state', None)
         trace['outcome'] = {'FAILED':'failed', 'RUNNING':'deferred', 'SUCCEEDED':'success'}.get(state, 'unknown')
     return result
+
+
+@router.post('/{conversation_id}/turns/{turn_id}/stop')
+async def stop(conversation_id: UUID, turn_id: UUID, body: StopTurn, request: Request,
+               identity=Depends(require_onboarded_identity)):
+    return await service(request).stop(identity.learner_id, str(conversation_id), str(turn_id), body.attempt)
 
 
 @router.get('/{conversation_id}/turns/{turn_id}/events')

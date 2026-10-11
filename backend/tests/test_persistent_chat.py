@@ -52,6 +52,70 @@ class PersistentChatTests(unittest.TestCase):
         self.assertFalse(self.repo.begin_turn(self.owner, request)['run'])
         self.assertEqual(self.repo.history(self.owner, str(request.conversation_id))['conversation']['message_count'], 2)
 
+    def test_stop_is_owner_scoped_idempotent_and_fences_late_completion(self):
+        request = self.request()
+        job = self.repo.begin_turn(self.owner, request)
+        cid, tid = str(request.conversation_id), str(request.client_turn_id)
+        with self.assertRaises(AppError): self.repo.stop_turn(self.other, cid, tid, 1)
+        with self.assertRaises(AppError): self.repo.stop_turn(self.owner, cid, tid, 2)
+        self.assertTrue(self.repo.stop_turn(self.owner, cid, tid, 1))
+        self.assertFalse(self.repo.stop_turn(self.owner, cid, tid, 1))
+        self.repo.finish(self.owner, job, dict(content='Late answer'))
+        page = self.repo.status(self.owner, cid)
+        self.assertEqual(page['turn']['error'], 'Response stopped.')
+        self.assertEqual([row['content'] for row in page['items']], [request.content, 'Response stopped. Ready when you are.'])
+        self.assertEqual(self.repo.context_rows(self.owner, cid), [])
+        next_request = request.model_copy(update={'client_turn_id':uuid4(), 'expected_revision':page['conversation']['revision'], 'content':'A new question'})
+        self.assertTrue(self.repo.begin_turn(self.owner, next_request)['run'])
+
+    def test_stop_after_success_preserves_completed_answer(self):
+        request, page = self.complete()
+        self.assertFalse(self.repo.stop_turn(self.owner, str(request.conversation_id), str(request.client_turn_id), 1))
+        self.assertEqual(self.repo.status(self.owner, str(request.conversation_id))['turn']['state'], 'SUCCEEDED')
+
+    def test_stale_stop_returns_the_new_turn_without_cancelling_it(self):
+        request, page = self.complete()
+        next_request = request.model_copy(update={'client_turn_id':uuid4(), 'expected_revision':page['conversation']['revision'], 'content':'Newer request'})
+        self.repo.begin_turn(self.owner, next_request)
+        result = asyncio.run(ConversationService(self.repo).stop(self.owner, str(request.conversation_id), str(request.client_turn_id), 1))
+        self.assertEqual(result['turn']['id'], str(next_request.client_turn_id))
+        self.assertEqual(result['turn']['state'], 'RUNNING')
+
+    def test_stop_cancels_work_even_from_another_service_process(self):
+        async def scenario():
+            service = ConversationService(self.repo)
+            request = self.request()
+            started, cancelled = asyncio.Event(), asyncio.Event()
+            async def generate(history, selection):
+                started.set()
+                try: await asyncio.sleep(30)
+                finally: cancelled.set()
+            await service.send(self.owner, request, generate, wait=False)
+            await started.wait()
+            other_service = ConversationService(self.repo)
+            await other_service.stop(self.owner, str(request.conversation_id), str(request.client_turn_id), 1)
+            await asyncio.wait_for(cancelled.wait(), 3)
+            await service.close()
+            self.assertEqual(self.repo.status(self.owner, str(request.conversation_id))['turn']['error'], 'Response stopped.')
+        asyncio.run(scenario())
+
+    def test_stop_returns_saved_status_to_a_waiting_caller(self):
+        async def scenario():
+            service = ConversationService(self.repo)
+            request = self.request()
+            started = asyncio.Event()
+            async def generate(history, selection):
+                started.set()
+                await asyncio.sleep(30)
+            sending = asyncio.create_task(service.send(self.owner, request, generate))
+            await started.wait()
+            await service.stop(self.owner, str(request.conversation_id), str(request.client_turn_id), 1)
+            result = await asyncio.wait_for(sending, 3)
+            self.assertEqual(result['turn']['error'], 'Response stopped.')
+            self.assertEqual(service.turn_tasks, {})
+            await service.close()
+        asyncio.run(scenario())
+
     def test_duplicate_key_with_different_content_rejected(self):
         request, page = self.complete()
         with self.assertRaises(AppError) as caught:

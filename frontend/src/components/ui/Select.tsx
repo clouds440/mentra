@@ -75,7 +75,7 @@ export function Select({ className, children, value, defaultValue, multiple, dis
       }}><span className="min-w-0 truncate">{display}</span><ChevronDown size={16} aria-hidden="true" className={cn('shrink-0 text-subtle transition-transform', open && 'rotate-180')} /></button>
     <select {...props} ref={native} hidden aria-hidden="true" aria-label={undefined} aria-labelledby={undefined} tabIndex={-1} disabled={disabled} multiple={multiple} value={current} onChange={onChange}
       onInvalid={event => { event.preventDefault(); trigger.current?.focus(); }}>{children}</select>
-    <Popover anchor={trigger} open={open} onClose={() => setOpen(false)} id={listId} role="listbox" label={name ? `${name} options` : 'Options'} multiselectable={multiple} matchWidth>
+    <Popover anchor={trigger} open={open} onClose={() => setOpen(false)} id={listId} role="listbox" label={name ? `${name} options` : 'Options'} multiselectable={multiple} contentWidth className="select-options">
       {items.length === 0 && <p className="px-3 py-3 text-sm text-muted">No options available</p>}
       {items.map((item, index) => <div key={`${item.value}-${index}`}>
         {item.group && item.group !== items[index-1]?.group && <p className="px-3 py-2 text-xs font-medium text-subtle">{item.group}</p>}

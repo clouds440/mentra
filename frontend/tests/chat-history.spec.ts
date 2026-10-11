@@ -49,6 +49,7 @@ test('durable history, incremental requests, cached navigation, rename and delet
   await page.getByRole('link', { name: 'First saved question', exact: true }).click();
   await expect(page.getByRole('article', { name: 'Your message' })).toHaveCount(2);
   expect(loads).toBe(0);
+  await page.getByRole('link', { name: 'First saved question', exact: true }).hover();
   await page.getByRole('button', { name: 'Rename First saved question', exact: true }).click();
   await page.getByLabel('Conversation title', { exact: true }).fill('Renamed persistent chat');
   await page.getByRole('button', { name: 'Save conversation title' }).click();
@@ -62,6 +63,7 @@ test('durable history, incremental requests, cached navigation, rename and delet
   });
   expect(cached).toBe(1);
   await page.getByRole('link', { name: 'Renamed persistent chat', exact: true }).click();
+  await page.getByRole('link', { name: 'Renamed persistent chat', exact: true }).hover();
   await page.getByRole('button', { name: 'Delete Renamed persistent chat', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -87,6 +89,7 @@ test('cross-tab synchronization and logout isolate persistent caches', async ({ 
   const other = await context.newPage();
   await other.goto('/');
   await expect(other.getByRole('link', { name: 'Shared tab conversation', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Shared tab conversation', exact: true }).hover();
   await page.getByRole('button', { name: 'Rename Shared tab conversation', exact: true }).click();
   await page.getByLabel('Conversation title', { exact: true }).fill('Updated in another tab');
   await page.getByRole('button', { name: 'Save conversation title' }).click();
@@ -189,6 +192,7 @@ test('a delayed completion cannot resurrect a chat deleted in another tab', asyn
   const other = await context.newPage(); await other.goto(url);
   await expect(other.getByRole('article', { name: 'Mentra response' })).toHaveCount(2);
   await expect(other.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEnabled();
+  await other.getByRole('link', { name: 'Deletion race conversation', exact: true }).hover();
   await other.getByRole('button', { name: 'Delete Deletion race conversation', exact: true }).click();
   await other.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Deletion race conversation', exact: true })).toHaveCount(0);

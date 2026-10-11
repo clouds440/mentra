@@ -1,5 +1,6 @@
 import { Skeleton } from '../components/ui/Skeleton';
-import { Database, Sparkles } from 'lucide-react';
+import { Database, Settings2 } from 'lucide-react';
+import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { ProfileSettings } from '../components/student-profile/ProfileSettings';
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
@@ -9,12 +10,6 @@ import { AssessmentSettings } from '../components/assessments/AssessmentSettings
 const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
 
 const settingSections = [
-  {
-    title: 'AI',
-    description: 'Your learning preferences are saved in your profile above.',
-    detail: 'Provider settings are not available yet.',
-    icon: Sparkles,
-  },
   {
     title: 'Your data',
     description: 'Your learner profile is linked to your Mentra account.',
@@ -40,19 +35,9 @@ export function SettingsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="page-container">
-        <div className="max-w-2xl">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent/80">
-            Your workspace
-          </p>
-          <h1 className="mt-3 page-title">
-            Settings
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            Manage your profile and workspace preferences. Your conversations are saved to your Mentra account.
-          </p>
-        </div>
+        <WorkspaceHeader title="Settings" description="Make Mentra feel right for you. Manage your learning profile, saved memories and reminders." icon={Settings2} />
 
-        <div role="tablist" aria-label="Settings sections" className="mt-7 flex gap-2 border-b border-border" onKeyDown={event => {
+        <div role="tablist" aria-label="Settings sections" className="workspace-tabs" onKeyDown={event => {
           if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
             event.preventDefault();
             const current = sections.findIndex(value => `settings-tab-${value}` === (event.target as HTMLElement).id);
@@ -65,9 +50,9 @@ export function SettingsPage() {
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
         <ProfileSettings />
         <AssessmentSettings />
-        <div className="mt-6 divide-y divide-border border-y border-border">
+        <div className="workspace-panel mt-6 divide-y divide-border">
           {settingSections.map(({ title, description, detail, icon: Icon }) => (
-            <section className="flex gap-4 py-6 sm:gap-6" key={title}>
+            <section className="flex gap-4 sm:gap-6" key={title}>
               <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted">
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
               </span>

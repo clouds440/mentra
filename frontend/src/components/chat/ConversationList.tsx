@@ -12,19 +12,19 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
   const [title, setTitle] = useState(chat.title);
   const { conversationId } = useParams(); const navigate = useNavigate();
   const control = 'grid h-7 w-7 shrink-0 place-items-center rounded-md text-subtle hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent';
-  const rowControl = cn(control, 'lg:opacity-0 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:pointer-events-auto lg:group-focus-within:opacity-100 lg:group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto motion-safe:transition-opacity');
+  const rowControls = 'lg:opacity-0 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:pointer-events-auto lg:group-focus-within:opacity-100 lg:group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto motion-safe:transition-opacity';
   return <div className="group my-1 rounded-lg">
     {editing ? <form className="flex items-center gap-1 px-2 py-1" onSubmit={event => { event.preventDefault(); void chatStore.rename(chat.id, title); setEditing(false); }}>
       <input autoFocus aria-label="Conversation title" value={title} onChange={event => setTitle(event.target.value)} maxLength={120} required
         className="min-w-0 flex-1 rounded border border-border bg-background p-1.5 text-xs text-foreground" />
       <button type="submit" aria-label="Save conversation title" className={control}><Check size={14} /></button>
       <button type="button" aria-label="Cancel rename" className={control} onClick={() => setEditing(false)}><X size={14} /></button>
-    </form> : <div className="flex min-w-0 items-center gap-0.5">
-      <NavLink to={`/chat/${chat.id}`} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-xs text-muted hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
+    </form> : <div className="relative min-w-0">
+      <NavLink to={`/chat/${chat.id}`} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('block w-full min-w-0 truncate rounded-lg pl-3 pr-16 py-2 lg:pr-3 lg:group-hover:pr-16 lg:group-focus-within:pr-16 [@media(hover:none)]:pr-16 text-xs text-muted hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
         {chat.title}
       </NavLink>
-      <button type="button" aria-label={`Rename ${chat.title}`} className={rowControl} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
-      <button type="button" aria-label={`Delete ${chat.title}`} className={rowControl} onClick={() => setDeleting(value => !value)}><Trash2 size={13} /></button>
+      <div className={cn("absolute right-1 top-1 flex items-center rounded-md bg-background", rowControls, conversationId === chat.id && "bg-active")}><button type="button" aria-label={`Rename ${chat.title}`} className={control} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
+      <button type="button" aria-label={`Delete ${chat.title}`} className={control} onClick={() => setDeleting(value => !value)}><Trash2 size={13} /></button></div>
     </div>}
     {deleting && <div className="mx-2 mb-2 rounded-lg border border-danger/20 bg-danger/[0.06] p-2 text-xs">
       <p className="text-muted">Delete this conversation and its messages?</p>

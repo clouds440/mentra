@@ -40,3 +40,17 @@ async def detail(identifier: UUID, conversation_id: UUID, request: Request, iden
 async def library(identifier: UUID, body: LibraryAdmission, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.attachment_service.add_to_library,
         identity.learner_id, str(identifier), str(body.conversation_id), body.context_ids, request.app.state.rag_service)
+
+
+@router.get('/{identifier}/source')
+async def source(identifier: UUID, conversation_id: UUID, request: Request,
+                 identity=Depends(require_onboarded_identity)):
+    from urllib.parse import quote
+    original = await run_in_threadpool(request.app.state.attachment_service.original,
+        identity.learner_id, str(identifier), str(conversation_id))
+    disposition = 'inline' if original['media_type'].startswith('image/') else 'attachment'
+    return Response(original['data'], media_type=original['media_type'], headers={
+        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+        'Content-Disposition': f"{disposition}; filename*=UTF-8''{quote(original['filename'], safe='')}",
+        'Content-Security-Policy': "default-src 'none'; sandbox",
+    })

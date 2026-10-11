@@ -4,6 +4,9 @@
 
 These standards describe the current React, TypeScript, Vite, and Tailwind CSS codebase. Update them when an important frontend convention changes.
 
+- Workspace pages share `WorkspaceHeader`/`WorkspaceEmpty` and semantic `workspace-*` surfaces for responsive panels, filter bars, tabs and cards. Counts must come from loaded data. Select listboxes fit their option content while remaining viewport-bounded. Chat actions overlay a full-width title, reserve title space only on hover/focus (always on touch/mobile), and remain keyboard accessible.
+- Chat Stop calls the attempt-fenced server action, retains the saved stopped notice and reconciles server status; never treat aborting an HTTP request as cancellation. Attachment cards restore from message metadata, lazily load authorized raster previews, revoke object URLs and provide original downloads. Restored chats open at the latest message and follow late content resizing only while at the bottom.
+
 ## Project structure
 
 - `components/`: shared application components grouped by responsibility. Keep feature-specific components in a named feature folder such as `components/chat/`.

@@ -23,7 +23,7 @@ export function AssessmentSettings() {
     catch (reason) { setValue(previous); setError(reason instanceof ApiError ? reason.message : 'Unable to save assessment settings.'); }
     finally { setBusy(false); }
   }
-  return <section className="mt-6 space-y-3 border-t border-border pt-6">
+  return <section className="workspace-panel mt-6 space-y-3">
     <h2 className="text-sm font-medium text-heading">Assessments in chat</h2>
     {!value && !error ? <Skeleton variant="form" rows={1} /> : <Toggle label="Always auto add assessments" checked={value?.auto_add ?? false} disabled={!value || busy} onChange={event => void change(event.target.checked)} />}
     <p className="text-sm text-muted">Save every quiz or mock paper generated in chat to your Assessments library. With this off, practice stays in its chat until you add it or ask to evaluate your answers.</p>

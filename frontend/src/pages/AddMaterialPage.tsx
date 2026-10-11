@@ -1,3 +1,5 @@
+import { FilePlus2 } from 'lucide-react';
+import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,10 +30,10 @@ export function AddMaterialPage() {
 
   return <div className="h-full overflow-y-auto"><section className="page-container">
     <Link to="/library" className="text-sm text-accent hover:underline">Back to Library</Link>
-    <div><h1 className="page-title">Add material</h1><p className="mt-2 text-sm text-muted">Upload a source and choose its learning context.</p></div>
+    <WorkspaceHeader title="Add material" description="Give your study sources a home. Upload a file and connect it to what you’re learning." icon={FilePlus2} />
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
     {!capabilities && !error && <Skeleton variant="form" />}
-    {capabilities && <MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
-      onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} />}
+    {capabilities && <div className="workspace-panel max-w-3xl"><MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
+      onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} /></div>}
   </section></div>;
 }

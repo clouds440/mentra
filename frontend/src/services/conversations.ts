@@ -12,5 +12,6 @@ export const listChats = (cursor: string, signal?: AbortSignal) => apiRequest<{ 
 export const getMessages = (id: string, before?: number, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/messages${before ? `?before=${before}` : ''}`, { signal });
 export const getTurn = (id: string, signal?: AbortSignal, incremental = false) => apiRequest<MessagePage>(`${base}/${id}/status${incremental ? '?incremental=true' : ''}`, { signal });
 export const sendTurn = (body: PendingTurn, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/turns`, { method: 'POST', headers: { Prefer: 'respond-async' }, body: JSON.stringify(body), signal });
+export const stopTurn = (id: string, turnId: string, attempt: number, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/turns/${turnId}/stop`, { method:'POST', body:JSON.stringify({attempt}), signal });
 export const renameChat = (chat: Conversation, title: string, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}`, { method: 'PATCH', body: JSON.stringify({ expected_revision: chat.revision, title }), signal });
 export const deleteChat = (chat: Conversation, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}?expected_revision=${chat.revision}`, { method: 'DELETE', signal });

@@ -35,7 +35,7 @@ function Preferences() {
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to save settings.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
-  return <section className="space-y-5 py-7"><h2 className="text-lg font-medium">Notifications</h2><p className="text-sm text-muted">Each event can send one reminder. Reminders missed while notifications are disabled are not sent later.</p>
+  return <section className="workspace-panel space-y-5"><h2 className="text-lg font-medium">Notifications</h2><p className="text-sm text-muted">Each event can send one reminder. Reminders missed while notifications are disabled are not sent later.</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => { void load(); })}>Reload settings</button></p>}
     {!value && busy && <Skeleton variant="form" />}
     {value && <><Toggle label="Enable notifications" checked={value.enabled} disabled={busy} onChange={event => { setDirty(true); setSaved(false); setValue({ ...value, enabled: event.target.checked }); }} />

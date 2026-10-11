@@ -14,6 +14,9 @@ interface ChatComposerProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   isThinking: boolean;
+  canStop?: boolean;
+  stopping?: boolean;
+  onStop?: () => void;
   onFiles: (files: File[]) => void;
   hasAttachments?: boolean;
 }
@@ -25,6 +28,7 @@ export function ChatComposer({
   onChange,
   onSubmit,
   isThinking,
+  canStop, stopping, onStop,
   onFiles,
   hasAttachments,
 }: ChatComposerProps) {
@@ -150,13 +154,14 @@ export function ChatComposer({
               : <Mic size={17} aria-hidden="true" />}
           </Button>
           <Button
-            aria-label="Send message"
+            aria-label={canStop ? 'Stop response' : 'Send message'}
             className="h-9 min-h-9 w-9 rounded-xl p-0"
-            disabled={(!value.trim() && !hasAttachments) || isThinking || voice.busy}
+            disabled={canStop ? stopping : (!value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
-            type="submit"
+            type={canStop ? 'button' : 'submit'}
+            onClick={canStop ? onStop : undefined}
           >
-            <ArrowUp aria-hidden="true" size={17} strokeWidth={2.2} />
+            {canStop ? <Square aria-hidden="true" size={15} fill="currentColor" /> : <ArrowUp aria-hidden="true" size={17} strokeWidth={2.2} />}
           </Button>
         </div>
       </div>

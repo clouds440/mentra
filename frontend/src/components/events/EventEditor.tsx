@@ -46,7 +46,7 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to save event.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
-  return <form className="space-y-4 rounded-xl border border-border p-5" onSubmit={event => { event.preventDefault(); void (preview ? save() : check()); }} onChange={invalidate}>
+  return <form className="workspace-panel space-y-5" onSubmit={event => { event.preventDefault(); void (preview ? save() : check()); }} onChange={invalidate}>
     <h2 className="text-lg font-medium">{current ? 'Edit event' : 'New event'}</h2>
     <label className="block space-y-1 text-sm">Title<Input required maxLength={200} disabled={busy} value={draft.title} onChange={event => setDraft({ ...draft, title: event.target.value })} /></label>
     <label className="block space-y-1 text-sm">Description<Input maxLength={1000} disabled={busy} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} /></label>

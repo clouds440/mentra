@@ -11,14 +11,14 @@ export function ProfileSettings() {
   const [editing, setEditing] = useState(false);
   if (!profile?.details) return null;
   const details = profile.details;
-  const entries = [
+  const entries: [string, string | undefined][] = [
     ['What Mentra calls you', details.preferred_name || 'Not set'],
     ['Education level', educationLevels.find((option) => option.value === details.education_level)?.label],
     ['Field or area of study', details.field_of_study], ['Primary learning goal', details.learning_goal],
     ['Learning preference', preferences.find((option) => option.value === details.learning_preference)?.label],
     ['Explanation depth', depths.find((option) => option.value === details.explanation_depth)?.label],
   ];
-  return <section className="mt-10 border-y border-border py-6" aria-label="Student profile settings">
+  return <section className="workspace-panel space-y-5" aria-label="Student profile settings">
     <div className="mb-6 flex items-start justify-between gap-4">
       <div><h2 className="text-lg font-medium tracking-tight text-heading">Your learning profile</h2>
         <p className="mt-2 text-sm leading-6 text-muted">{profile.details_source === 'eduverse' ? 'Provided by EduVerse. You can view and edit these details here.' : 'Your background, goals, and preferences. These details stay in your control.'}</p></div>
@@ -26,7 +26,7 @@ export function ProfileSettings() {
     </div>
     {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
     {editing ? <ProfileForm onSaved={() => setEditing(false)} onCancel={() => setEditing(false)} />
-      : <dl className="grid gap-5 sm:grid-cols-2">{entries.map(([label, value]) => <div key={label} className={label === 'Primary learning goal' ? 'sm:col-span-2' : undefined}>
+      : <dl className="grid gap-3 sm:grid-cols-2">{entries.map(([label, value]) => <div key={label} className={`rounded-xl border border-border bg-background p-4 ${['Primary learning goal', 'Field or area of study'].includes(label) ? 'sm:col-span-2' : ''}`}>
         <dt className="text-xs text-subtle">{label}</dt><dd className="mt-1 text-sm leading-6 text-body break-words">{value}</dd></div>)}</dl>}
     <div className="mt-8 border-t border-border pt-6"><ProfileEstimates profile={profile} /></div>
     {profile.calibration_status !== 'completed' && <div className="mt-6 flex flex-col items-start gap-3 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">

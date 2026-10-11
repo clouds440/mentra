@@ -99,3 +99,9 @@ These are adjustable engineering defaults, not a final product decision about me
 - Backend and frontend Docker images rebuilt. [Runtime report](chat-runtime-verification.json) records isolated production-image startup, provider calls, idempotency, restart persistence, owner isolation, deletion, and Nginx route/bundle checks.
 
 Tests use explicitly configured disposable PostgreSQL schemas/databases and deterministic providers. The application database and deployed services are not modified by these checks. Docker startup applies the new migration through the existing `python -m app.db.migrate` entrypoint when the rebuilt backend is started.
+
+## Stopping and saved files
+
+The composer replaces Send with Stop during a running turn. Stop fences the current attempt in an owner transaction before cancelling local work; a durable watcher cancels work owned by another backend process. Completed actions are not rolled back. A stopped notice remains in history, without creating learning evidence or entering later model context. Late completions cannot replace it.
+
+Chat attachments retain their original bytes and extracted content in owner-scoped PostgreSQL records linked to the conversation. Reloaded message metadata restores the attachment cards. Raster previews load lazily through the authenticated original-source endpoint; document originals download without rendering active content. Deleting the conversation removes its chat attachments; a separate Library copy remains independently owned by Library. Unsent uploads expire after one day and storage remains capped at 100 MiB per owner and 25 MiB per file.
