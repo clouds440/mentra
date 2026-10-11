@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiEvents } from '../../services/api';
 import { chatStore } from '../../stores/chatStore';
 import { ThinkingIndicator } from './ChatMessage';
+import { WebsiteIcon, safeWebsite } from '../webSearch/WebsiteIcon';
+import type { WebsiteIdentity } from '../../types/webSearch';
 
 interface Activity {
   schema_version: 1; conversation_id: string; turn_id: string; attempt: number;
@@ -9,6 +11,7 @@ interface Activity {
   status: 'planned' | 'running' | 'completed' | 'failed' | 'waiting' | 'retry_wait' | 'degraded' | 'cancelled';
   token_delta?: string | null; token_reset?: boolean;
   tool_attempt?: number | null; max_attempts?: number | null; error_code?: string | null;
+  websites?: WebsiteIdentity[];
 }
 
 function valid(value: unknown): value is Activity {
@@ -21,6 +24,8 @@ function valid(value: unknown): value is Activity {
     && (v.tool_attempt == null || Number.isInteger(v.tool_attempt) && v.tool_attempt >= 1 && v.tool_attempt <= 3)
     && (v.max_attempts == null || Number.isInteger(v.max_attempts) && v.max_attempts >= 1 && v.max_attempts <= 3)
     && (v.error_code == null || typeof v.error_code === 'string' && v.error_code.length <= 100)
+    && (v.websites == null || Array.isArray(v.websites) && v.websites.length <= 5 && v.websites.every(site =>
+      site && typeof site.domain === 'string' && typeof site.favicon_url === 'string' && safeWebsite(site)))
     && (v.token_delta === undefined || v.token_delta === null || typeof v.token_delta === 'string' && v.token_delta.length <= 2000);
 }
 
@@ -55,14 +60,23 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
     return () => { controller.abort(); if (timer) clearTimeout(timer); };
   }, [conversationId, turnId, attempt]);
   const current = steps[steps.length - 1];
+  const search = [...steps].reverse().find(step => step.tool_name === 'web_search' && step.step_id.endsWith('-web'));
+  const sites = (step: Activity) => !!step.websites?.length && <span className="mt-1 flex flex-wrap gap-2">{step.websites.map(site =>
+    <span key={site.domain} className="inline-flex min-w-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted">
+      <WebsiteIcon website={site} /><span className="break-all">{site.domain}</span>
+    </span>)}</span>;
   return <div>
     <ThinkingIndicator label={current?.user_message ?? 'Planning your request'} />
+    {search && <div className="ml-11 mt-2 text-xs text-muted" role="status" aria-live="polite">
+      {search.user_message}{sites(search)}
+    </div>}
     {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
     {!!steps.length && <details className="ml-11 mt-2 text-xs text-muted">
       <summary className="cursor-pointer">Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</summary>
       <ol className="mt-2 space-y-1">{steps.map(step => <li key={step.step_id}>
         {step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
         <span className="text-subtle"> — {step.status}</span>
+        {sites(step)}
       </li>)}</ol>
     </details>}
   </div>;

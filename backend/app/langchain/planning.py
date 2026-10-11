@@ -38,7 +38,7 @@ def general_query(query):
 def direct_content_safe(content):
     # A no-tool answer cannot promise an action, invent a citation, or claim a
     # retrieved personal/current fact. This is an additional guard, not certainty.
-    return not bool(re.search(r'\[\[(?:S|H|M)\d+\]\]|\b(?:your (?:mastery|assessment|exam|event|profile|notes)|I (?:saved|created|scheduled|retrieved|checked|graded)|currently available|as of today)\b', content, re.I))
+    return not bool(re.search(r'\[\[(?:S|H|M|W)\d+\]\]|\b(?:your (?:mastery|assessment|exam|event|profile|notes)|I (?:saved|created|scheduled|retrieved|checked|graded|searched|browsed)|currently available|as of today)\b', content, re.I))
 
 from app.core.logging import workflow_logger
 

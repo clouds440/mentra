@@ -33,6 +33,8 @@ class ConversationService:
         return await run_in_threadpool(self.repository.status, owner, job['conversation_id'], job['turn_id'], True)
 
     async def _generate(self, owner, job, generate, with_scope=False):
+        from time import monotonic
+        deadline = monotonic() + 150
         try:
             rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
@@ -45,11 +47,12 @@ class ConversationService:
                 from app.langchain.activity import ActivityPublisher
                 from .repositories.activity import ActivityRepository, DurableActivitySink
                 scope['activity'] = ActivityPublisher(DurableActivitySink(ActivityRepository(self.repository.sessions), owner, job))
+                scope['_generation_deadline'] = deadline
                 await scope['activity'].emit('planning', 'running', 'Planning your request')
                 invocation = generate(history, job['selection'], scope)
             else:
                 invocation = generate(history, job['selection'])
-            response = await asyncio.wait_for(invocation, timeout=150)
+            response = await asyncio.wait_for(invocation, timeout=max(.001, deadline - monotonic()))
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':

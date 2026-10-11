@@ -25,6 +25,7 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Use React Router routes in `App.tsx`; `AppLayout` owns the persistent application shell and renders active pages through an outlet.
 - Route paths are lowercase and resource-oriented: `/` for Chat, `/library`, `/progress`, `/assessments`, and `/settings`.
 - Navigation belongs in the application shell, not repeated inside individual pages. Keep desktop collapse and mobile drawer behavior accessible and operable.
+- The account popover retains full labels and its normal width outside a collapsed desktop sidebar. Expanded desktop and mobile sidebars match the account capsule width; the shared Popover bounds the surface to the viewport.
 - Keep page-specific behavior and UI with the relevant page/feature. Do not add routes, guards, onboarding, or account flows without a product requirement.
 - `/login` and `/register` use `AuthLayout` and a shared username/password form. `RequireGuest` redirects signed-in users; `RequireAuth` guards the workspace and preserves the requested destination.
 - The authenticated `StudentProfileProvider` owns profile restoration. `ProfileReady` handles loading/retry; `RequireOnboardingComplete` gates the workspace. `/onboarding` collects required information and optional calibration; `/calibration` resumes later from Settings.
@@ -41,6 +42,7 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Empty states should explain the current state honestly and offer only actions that work. Do not present mock data as saved learner activity or invent analytics.
 - Reuse existing UI primitives, including Spinner/loading states and the accessible `Toggle` for binary preferences. Keep theme selection in the existing account drawer and use semantic Light/Dark/System tokens.
 - Render Markdown with the existing `components/content/MarkdownContent` and shared Prism `CodeBlock`, used by chat and Library. Keep feature reference resolution in its feature adapter; never enable arbitrary HTML or duplicate the formatting stack.
+- Web citations resolve only message-local validated W references. Reuse `WebCitation`, `WebCitations` and `WebsiteIcon` for external links and origin identity. Favicons use anonymous HTTPS origin requests without referrers; blocked/unavailable icons render a stable fallback. Never send search terms to a favicon service. Website activity badges use the existing attempt-fenced stream, not a new polling store.
 
 ## TypeScript
 

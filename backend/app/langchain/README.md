@@ -21,9 +21,15 @@ with server-bound ownership and shared execution budgets; they do not replace th
 stored transcript. See [persistent chat](../../../docs/persistent-chat.md) and
 [history management](../../../docs/history-management.md).
 
-Manual Events persistence does not yet expose AI event tools or graph proposals.
-LangGraph/checkpoint adoption remains gated by compatibility with current
-LangChain/provider pins, serializer hardening and durable resume/cleanup rehearsal.
-No graph candidate was added to production dependencies. The disposable probe
-must not run in startup or mutate an application environment; see
-[Events dependency evidence](../../../docs/events.md#dependency-gate-discovered-during-rehearsal).
+The bounded LangGraph coordinator selects domain tools, shares a parent model
+deadline, and uses `ToolExecutor` for public activity updates and recovery. Event
+proposals and assessment tools retain domain-owned validation and persistence.
+
+Optional `web_search(query, website?)` is available independently of history and
+RAG when enabled. The domain facade owns provider I/O and shared operational quota;
+the LangChain adapter stages W references until the coordinator admits the exact
+bounded result packet. Web calls never retry automatically. Cached results retain
+their retrieval time and receive a fresh current clock. Historical W markers are
+renamed only in prompt projections. `web_search` is a versioned prompt fragment.
+Validated website origins supply activity badges and optional favicons. See
+[web search](../../../docs/web-search.md).

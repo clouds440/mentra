@@ -34,11 +34,11 @@ current_budget = ContextVar('mentra_model_budget', default=None)
 
 
 @contextmanager
-def model_budget():
+def model_budget(*, deadline=None):
     if current_budget.get() is not None:
         yield current_budget.get()
         return
-    token = current_budget.set(ModelBudget())
+    token = current_budget.set(ModelBudget(deadline=deadline) if deadline is not None else ModelBudget())
     try:
         yield current_budget.get()
     finally:

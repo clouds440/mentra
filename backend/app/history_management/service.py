@@ -30,6 +30,9 @@ class HistoryManagement:
                 if remaining < 100:
                     break
                 content = message['content'][:min(500, remaining)]
+                if message['role'] == 'assistant':
+                    from app.web_search.citations import historical_web_markers
+                    content = historical_web_markers(content)
                 remaining -= len(content)
                 item = dict(message, content=content, truncated=len(content) < len(message['content']))
                 messages.append(item)

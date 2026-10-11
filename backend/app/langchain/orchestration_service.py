@@ -16,11 +16,12 @@ from app.core.logging import workflow_logger
 @workflow_logger.connect_module(default_outcome='success')
 class OrchestrationService:
     """Shared AI coordination boundary; domain services retain validation and writes."""
-    def __init__(self, chat, *, rag=None, learner=None, history=None, attachments=None, event_proposals=None, assessments=None):
+    def __init__(self, chat, *, rag=None, learner=None, history=None, attachments=None, event_proposals=None, assessments=None, web_search=None):
         self.chat, self.rag, self.learner, self.history = chat, rag, learner, history
         self.attachments = attachments
         self.event_proposals = event_proposals
         self.assessments = assessments
+        self.web_search = web_search
 
     async def generate_assessment(self, owner, request):
         if self.assessments is None: raise AppError('ASSESSMENT_UNAVAILABLE', 'Assessments are unavailable.', 503)
@@ -30,10 +31,15 @@ class OrchestrationService:
         from .workflow_budget import model_budget
         from .activity import publish_activity
         publisher = history_scope.get('activity', ActivityPublisher()) if history_scope else ActivityPublisher()
-        with model_budget(), publish_activity(publisher):
+        with model_budget(deadline=history_scope.get('_generation_deadline') if history_scope else None), publish_activity(publisher):
             return await self._chat_reply(messages, retrieval, owner, history_policy, history_scope)
 
     async def _chat_reply(self, messages, retrieval, owner, history_policy=None, history_scope=None):
+        if history_scope is None and self.web_search is not None and self.web_search.enabled and owner:
+            from uuid import uuid4
+            rows = [dict(id=str(uuid4()), role=role, content=content) for role, content in messages]
+            history_scope = dict(context_rows=rows, current_user_message_id=next((row['id'] for row in reversed(rows) if row['role'] == 'user'), str(uuid4())),
+                visible_ids=[], evidence_ids=set(), history_references=[], memory_references=[], user_sequence=0, stateless=True)
         activity = history_scope.get('activity', ActivityPublisher()) if history_scope else ActivityPublisher()
         recovery_scope = history_scope if history_scope is not None else {}
         from app.history_management.budgets import ToolBudget
@@ -73,7 +79,7 @@ class OrchestrationService:
         required = {step.module for step in plan.steps if step.required}
         recovery_scope['execution_plan'] = plan
         chat_assessments = []
-        if self.assessments is not None and history_scope and 'assessment' in modules:
+        if self.assessments is not None and history_scope and not history_scope.get('stateless') and 'assessment' in modules:
             chat_assessments = await read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']) or []
         await activity.emit('planning', 'completed', 'Your request is ready to process')
         result, warning = None, None
@@ -91,7 +97,7 @@ class OrchestrationService:
             workflow_logger.set_outcome('degraded', code='RETRIEVAL_DEGRADED')
             warning = ' '.join(result.warnings)
         kwargs = {'source_packet': packet} if self.rag is not None else {}
-        if self.attachments is not None and history_scope:
+        if self.attachments is not None and history_scope and not history_scope.get('stateless'):
             ids = history_scope.get('attachment_ids', [])
             if not ids:
                 # Follow-up questions can refer to the latest attached user message.
@@ -117,14 +123,15 @@ class OrchestrationService:
             if kwargs['learner_context'] is not None:
                 recovery_scope['_initial_learner_context'] = kwargs['learner_context'].model_dump(mode='json')
         policy = history_policy or HistoryContextPolicy()
-        if history_scope is not None and self.history is not None:
+        if history_scope is not None and (self.history is not None or self.web_search is not None and self.web_search.enabled):
             history_scope['activity'] = activity
             history_scope['learner_service'] = self.learner
-            history_scope['event_proposal_service'] = self.event_proposals
+            history_scope['web_search_service'] = self.web_search
+            history_scope['event_proposal_service'] = None if history_scope.get('stateless') else self.event_proposals
             history_scope['workflow_modules'] = modules
             history_scope['rag_service'] = self.rag
-            history_scope['assessment_service'] = self.assessments
-            history_scope['attachment_service'] = self.attachments
+            history_scope['assessment_service'] = None if history_scope.get('stateless') else self.assessments
+            history_scope['attachment_service'] = None if history_scope.get('stateless') else self.attachments
             history_scope['current_answer_text'] = query
             history_scope['chat_assessments'] = [dict(draft_id=card['id'], assessment_id=card['assessment_id'],
                 title=card['assessment']['title'], question_count=len(card['assessment']['questions'])) for card in chat_assessments]
@@ -134,7 +141,7 @@ class OrchestrationService:
                 await activity.emit('response-stream', 'running', 'Writing your response', token_delta=value, token_reset=value is None)
             history_scope['on_delta'] = delta
             history_scope['history_token_budget'] = policy.max_tokens
-            kwargs['history_runtime'] = (self.history, owner, history_scope)
+            kwargs['history_runtime'] = (None if history_scope.get('stateless') else self.history, owner, history_scope)
         else:
             system_text = get_system_prompt(PromptSource.CHAT)
             if self.rag is not None:
@@ -153,6 +160,11 @@ class OrchestrationService:
         title = history_scope.get('conversation_title') if history_scope else None
         title_fields = dict(conversation_title=title) if title is not None else {}
         warning_fields = dict(tool_warnings=recovery_scope['tool_warnings']) if recovery_scope.get('tool_warnings') else {}
+        from app.web_search.citations import web_citations
+        web_sources = history_scope.get('web_sources', []) if history_scope else []
+        if history_scope and history_scope.get('web_searches'):
+            warning_fields.update(web_sources=web_sources, web_citations=web_citations(reply, {source.token for source in web_sources}),
+                                  web_searches=history_scope['web_searches'])
         if self.rag is None:
             references = dict(history_references=history_scope['history_references'], memory_references=history_scope['memory_references']) if history_scope else {}
             if history_scope:

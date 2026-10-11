@@ -7,6 +7,7 @@ from .activity import current_tool_call
 
 
 LABELS = {
+    'web_search': 'Searching the web',
     'present_choices': 'Preparing choices for you',
     'event_lookup': 'Checking your events',
     'event_manage': 'Preparing an event for your review',

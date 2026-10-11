@@ -20,7 +20,15 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     from .planning import general_query, direct_content_safe
     publisher = scope.get('activity', ActivityPublisher())
     executor = ToolExecutor(budget, scope, publisher)
-    tools = create_history_tools(service, owner, scope, budget)
+    tools = create_history_tools(service, owner, scope, budget) if service is not None else []
+    web = scope.get('web_search_service')
+    if web is not None and web.enabled and owner:
+        from .web_tools import create_web_tools
+        tools.extend(create_web_tools(web, owner, scope, budget))
+        additional_sources = (*additional_sources, PromptSource.WEB_SEARCH)
+        now = web.envelope('ok')
+        context = dict(context, web_clock=dict(current_date=now.current_date.isoformat(),
+            current_datetime=now.current_datetime.isoformat(), reference_timezone=now.reference_timezone))
     domains = {tool.name: DOMAINS.get(tool.name, 'history') for tool in tools}
     parallel_reads = set()
     if scope.get('event_proposal_service') is not None and getattr(service, 'events', None) is not None:
@@ -157,7 +165,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         # Tool results are never trimmed into orphan messages.
         from .workflow_budget import current_budget
         envelope = current_budget.get()
-        final = iteration == 4 or budget.calls >= 6 or scope.get('_repair_exhausted', False) or scope.get('_exhausted_repeat', False) or bool(envelope and envelope.remaining <= envelope.answer_reserve)
+        final = iteration == 4 or budget.calls >= 6 or scope.get('_repair_exhausted', False) or scope.get('_exhausted_repeat', False) or bool(envelope and envelope.remaining <= envelope.answer_reserve) or bool(web and web.enabled and (budget.result_tokens > 2600 or budget.result_characters > 11000))
         if direct_candidate and scope.get('_domain_tool_used'):
             answer_schema = output_schema
         available_tools = [] if final else selected()
@@ -311,6 +319,14 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         # Batch adjacent reads so dependencies on earlier writes stay intact.
         pending = {}
         for position, call in enumerate(response.tool_calls):
+            reserved_bytes = reserved_tokens = 0
+            if web is not None and web.enabled:
+                from .web_tools import compact_receipt, packet_cost
+                minimum = web.envelope('budget_exhausted', searched_at=web.clock())
+                size, tokens = packet_cost(compact_receipt(minimum))
+                remaining_web = sum(item['name'] == 'web_search' for item in response.tool_calls[position+1:])
+                reserved_bytes, reserved_tokens = (size + 128) * remaining_web, (tokens + 32) * remaining_web
+            scope['_web_reserved_bytes'], scope['_web_reserved_tokens'] = reserved_bytes, reserved_tokens
             history_count, memory_count = len(scope['history_references']), len(scope['memory_references'])
             evidence_before = set(scope['evidence_ids'])
             visible_before = list(scope['visible_ids'])
@@ -346,11 +362,14 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         repairs += 1
                 content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))
                 full_content = content
-                if content in budget.delivered:
+                if content in budget.delivered and call['name'] != 'web_search':
                     content = json.dumps(dict(same_result_as=budget.delivered[content]), separators=(',', ':'))
                 try:
-                    budget.consume(content)
+                    budget.consume(content, reserve_tokens=reserved_tokens, reserve_bytes=reserved_bytes)
                     accounted = True
+                    if call['name'] == 'web_search':
+                        from .web_tools import commit_web_result
+                        commit_web_result(scope, result)
                 except AppError:
                     write = is_write(call['name'], call['args'])
                     if not write:
@@ -393,15 +412,22 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     if key.startswith(('history:', 'recall:', 'study:')):
                         budget.cache.pop(key)
                 receipt = failure(error, write=is_write(call['name'], call['args'])).model_dump()
+                if call['name'] == 'web_search':
+                    scope.pop('_web_pending', None)
+                    from .web_tools import dated_failure
+                    receipt = dated_failure(scope, receipt)
                 remember_failure(scope, call['name'], receipt)
                 content = json.dumps(receipt)
             # Error receipts are bounded too. Keep the minimum truthful result if
             # the optional details exhausted the ordinary result packet.
             if not accounted:
                 try:
-                    budget.consume(content)
+                    budget.consume(content, reserve_tokens=reserved_tokens, reserve_bytes=reserved_bytes)
                 except AppError:
                     content = json.dumps(dict(outcome='unavailable', code='TOOL_BUDGET', reason='Result space exhausted. Use available evidence.', effect_certainty='unknown' if is_write(call['name'], call['args']) else 'read_only'))
+                    if call['name'] == 'web_search':
+                        from .web_tools import dated_failure
+                        content = json.dumps(dated_failure(scope, dict(code='TOOL_BUDGET')))
             conversation.append(ToolMessage(content=content, tool_call_id=call['id'], name=call['name']))
         return dict(iteration=state['iteration']+1)
 

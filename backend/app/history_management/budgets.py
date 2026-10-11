@@ -35,12 +35,12 @@ class ToolBudget:
         finally:
             _admitted.reset(token)
 
-    def consume(self, content):
+    def consume(self, content, *, reserve_tokens=0, reserve_bytes=0):
         # UTF-8 bytes bound byte-tokenized content even for CJK/emoji/code.
         size = len(content.encode('utf-8'))
         from app.langchain.token_policy import count_messages
         tokens = count_messages([HumanMessage(content=content)])
-        if self.result_characters + size > 12800 or self.result_tokens + tokens > 3200:
+        if self.result_characters + size + reserve_bytes > 12800 or self.result_tokens + tokens + reserve_tokens > 3200:
             raise AppError('TOOL_BUDGET', 'Tool result budget reached.', 422)
         self.result_characters += size
         self.result_tokens += tokens

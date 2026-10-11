@@ -56,6 +56,8 @@ def create_app() -> FastAPI:
                 application.state.rag_service = create_rag_service(application.state.learner_service, embedding_service, vector_store)
                 application.state.model_factory = model_factory
                 application.state.chat_service = ChatService(application.state.llm)
+                from app.web_search.factory import create_web_search
+                application.state.web_search_service = create_web_search(get_session_factory(), settings)
                 application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
                 application.state.history_management = create_history_management(get_session_factory(), application.state.llm,
                     application.state.student_profile_service, application.state.learner_service)
@@ -74,7 +76,8 @@ def create_app() -> FastAPI:
                 application.state.orchestration_service = OrchestrationService(application.state.chat_service,
                     rag=application.state.rag_service, learner=application.state.learner_service,
                     history=application.state.history_management, attachments=application.state.attachment_service,
-                    event_proposals=application.state.event_proposal_service, assessments=application.state.assessment_service)
+                    event_proposals=application.state.event_proposal_service, assessments=application.state.assessment_service,
+                    web_search=application.state.web_search_service)
                 logger.info("Mentra backend started successfully.")
                 startup.outcome = 'success'
             yield
@@ -83,6 +86,8 @@ def create_app() -> FastAPI:
                 await run_in_threadpool(application.state.speech_service.close)
             if hasattr(application.state, 'conversation_service'):
                 await application.state.conversation_service.close()
+            if hasattr(application.state, 'web_search_service'):
+                await application.state.web_search_service.close()
             if hasattr(application.state, 'rag_service'):
                 application.state.rag_service.close()
             if vector_store is not None:

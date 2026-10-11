@@ -5,6 +5,9 @@ export interface ToolWarning {
   task_impact: string; effect_certainty: string;
 }
 export interface ChatMessageData {
+  web_sources?: import('./webSearch').WebSource[];
+  web_citations?: string[];
+  web_searches?: import('./webSearch').WebSearchRecord[];
   tool_warnings?: ToolWarning[];
   interactions?: import('./interactions').ChoiceCardData[];
   interaction_response?: import('./interactions').InteractionResponse;
@@ -28,6 +31,9 @@ export interface ChatMessageData {
 export type ChatTurn = Pick<ChatMessageData, 'role' | 'content'>;
 
 export interface ChatResponse {
+  web_sources?: import('./webSearch').WebSource[];
+  web_citations?: string[];
+  web_searches?: import('./webSearch').WebSearchRecord[];
   tool_warnings?: ToolWarning[];
   role: 'assistant';
   assessment_cards?: import('./assessments').ChatAssessmentCardData[];

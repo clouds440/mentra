@@ -4,6 +4,7 @@ from app.chat.titles import NewChatReply
 
 
 DOMAINS = {
+    'web_search': 'web',
     'history_lookup': 'history', 'user_memory': 'memory',
     'event_lookup': 'events', 'event_manage': 'events',
     'get_active_learning_contexts': 'learner', 'get_relevant_learner_context': 'learner',
@@ -17,6 +18,7 @@ DOMAINS = {
 WRITES = {'event_manage', 'resolve_student_concept', 'present_choices',
           'assessment_generate', 'assessment_revise', 'assessment_answer'}
 CAPABILITIES = {
+    'web': 'Search current or additional external knowledge when needed; optional website restriction and dated citations.',
     'history': 'Retrieve earlier conversations.', 'memory': 'Recall or propose saved preferences; consent and evidence checks apply.',
     'events': 'Read your agenda or prepare authorized event changes; review may be required.',
     'learner': 'Read learning contexts and ranked practice targets; new concepts require review.',

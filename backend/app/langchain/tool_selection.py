@@ -7,7 +7,7 @@ from .tool_policy import catalog
 
 class EnableModules(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    modules: list[Literal['history', 'memory', 'learner', 'events', 'rag', 'assessment', 'chat']] = Field(default_factory=list, max_length=3)
+    modules: list[Literal['history', 'memory', 'learner', 'events', 'rag', 'assessment', 'chat', 'web']] = Field(default_factory=list, max_length=3)
     tool_names: list[str] = Field(default_factory=list, max_length=6)
     catalog_only: bool = False
     all_tools: bool = False
@@ -24,6 +24,8 @@ class ToolSelection:
         else:
             enabled = scope.get('workflow_modules')
             self.active = {tool.name for tool in tools if enabled is None or domains.get(tool.name) in enabled}
+        if 'web_search' in self.by_name:
+            self.active.add('web_search')
         self.pending = set(self.active)
         self.full_requested = False
 

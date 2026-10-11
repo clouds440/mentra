@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 import logging
 from app.core.exceptions import AppError
 
@@ -34,6 +34,20 @@ class ActivityUpdate(BaseModel):
     tool_attempt: int | None = Field(default=None, ge=1, le=3)
     max_attempts: int | None = Field(default=None, ge=1, le=3)
     error_code: str | None = Field(default=None, max_length=100)
+    websites: list['ActivityWebsite'] = Field(default_factory=list, max_length=5)
+
+
+class ActivityWebsite(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    domain: str = Field(max_length=253)
+    favicon_url: str = Field(max_length=2048)
+
+    @model_validator(mode='after')
+    def validate_website(self):
+        from app.web_search.urls import normalize_host, favicon_url
+        if normalize_host(self.domain) != self.domain or favicon_url(self.domain) != self.favicon_url:
+            raise ValueError('Activity website must be a normalized public origin.')
+        return self
 
 
 class ActivityEvent(ActivityUpdate):
@@ -55,10 +69,10 @@ class ActivityPublisher:
         self.sink = sink
         self.reporting_unavailable = False
 
-    async def emit(self, step_id, status, message, *, tool_name=None, tool_call_id=None, token_delta=None, token_reset=False, tool_attempt=None, max_attempts=None, error_code=None):
+    async def emit(self, step_id, status, message, *, tool_name=None, tool_call_id=None, token_delta=None, token_reset=False, tool_attempt=None, max_attempts=None, error_code=None, websites=None):
         update = ActivityUpdate(step_id=step_id, status=status, user_message=message,
                                 tool_name=tool_name, tool_call_id=tool_call_id, token_delta=token_delta, token_reset=token_reset,
-                                tool_attempt=tool_attempt, max_attempts=max_attempts, error_code=error_code)
+                                tool_attempt=tool_attempt, max_attempts=max_attempts, error_code=error_code, websites=websites or [])
         if self.sink is not None and not self.reporting_unavailable:
             try:
                 await self.sink.publish(update)

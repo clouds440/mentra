@@ -74,11 +74,15 @@ async def lifespan(application):
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
     application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions))
+    from app.web_search import WebSearchService
+    from app.web_search.repositories.postgres import UsageRepository
+    from testing.web_search_provider import BrowserSearchProvider
+    application.state.web_search_service = WebSearchService(BrowserSearchProvider(), UsageRepository(database.sessions), enabled=True, reference_timezone='Asia/Karachi')
     application.state.orchestration_service = OrchestrationService(application.state.chat_service,
         learner=application.state.learner_service,
         rag=application.state.rag_service, history=application.state.history_management,
         attachments=application.state.attachment_service, event_proposals=application.state.event_proposal_service,
-        assessments=application.state.assessment_service)
+        assessments=application.state.assessment_service, web_search=application.state.web_search_service)
     worker = IngestionWorker(application.state.rag_service)
     stopping = asyncio.Event()
 
@@ -96,6 +100,7 @@ async def lifespan(application):
         yield
     finally:
         await application.state.conversation_service.close()
+        await application.state.web_search_service.close()
         stopping.set()
         await task
         vector.close()

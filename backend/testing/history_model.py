@@ -55,6 +55,11 @@ class HistoryChatFactory(TestChatFactory):
         results = [x for x in messages if isinstance(x, ToolMessage) and x.name != 'enable_workflow_tools']
         if results:
             result = json.loads(results[-1].content)
+            if results[-1].name == 'web_search':
+                if not result.get('sources'):
+                    return AIMessage(content='Current facts remain unverified. ' + result.get('reason', 'No sources found.'))
+                token = result['sources'][0]['token']
+                return AIMessage(content='Python release information. [[' + token + ']]\n\nLiteral \\[[' + token + ']] and `' + '[[' + token + ']]` are not citations.')
             if results[-1].name == 'get_active_learning_contexts':
                 context = next(item for item in result['contexts'] if item['name']=='Algebra')
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',
@@ -72,6 +77,8 @@ class HistoryChatFactory(TestChatFactory):
             return AIMessage(content='Memory saved.' if result.get('outcome') in ('saved','already_known') else 'Memory '+result.get('outcome','unavailable')+'. Review it in Settings.')
         question = next((str(x.content) for x in reversed(messages) if x.type == 'human'), '')
         lowered = question.lower()
+        if lowered.startswith('search python.org for'):
+            return AIMessage(content='', tool_calls=[self.tool_call('web_search', dict(query='Python latest release', website='python.org'), 'web-search-call')])
         if lowered.startswith('my algebra exam is on october 20'):
             user = next(message for message in reversed(messages) if message.type == 'human')
             return AIMessage(content='', tool_calls=[self.tool_call('event_manage', dict(message_id=user.id,

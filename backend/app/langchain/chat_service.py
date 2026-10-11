@@ -47,6 +47,10 @@ class ChatService:
                         message.id = str(row['id'])
                         offset = index + 1
                         break
+        from app.web_search.citations import historical_web_markers
+        for message in conversation:
+            if message.type == 'ai':
+                message.content = historical_web_markers(message.content)
         try:
             sources = []
             context = {}

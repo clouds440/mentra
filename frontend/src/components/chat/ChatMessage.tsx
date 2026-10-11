@@ -10,19 +10,28 @@ import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
 import { ChoiceCard } from './ChoiceCard';
 import { Link } from 'react-router-dom';
+import { WebCitation } from '../webSearch/WebCitation';
+import { WebCitations } from '../webSearch/WebCitations';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
 
-interface MarkdownNode { type: string; value?: string; url?: string; children?: MarkdownNode[] }
-function citationPlugin(tokens: string[]) {
+interface MarkdownNode { type: string; value?: string; url?: string; children?: MarkdownNode[]; position?: { start: { offset?: number }; end: { offset?: number } } }
+function citationPlugin(tokens: string[], content: string) {
   return () => (tree: MarkdownNode) => {
     function visit(node: MarkdownNode) {
       if (['code', 'inlineCode', 'link'].includes(node.type) || !node.children) return;
       node.children = node.children.flatMap(child => {
         if (child.type !== 'text' || !child.value) { visit(child); return [child]; }
         const parts: MarkdownNode[] = []; let start = 0;
-        for (const match of child.value.matchAll(/\[\[([SHM]\d+)\]\]/g)) {
+        const raw = content.slice(child.position?.start.offset ?? 0, child.position?.end.offset ?? 0);
+        const originals = [...raw.matchAll(/\[\[([SHMW]\d+)\]\]/g)];
+        let occurrence = 0;
+        for (const match of child.value.matchAll(/\[\[([SHMW]\d+)\]\]/g)) {
+          const original = originals[occurrence++];
+          const before = original ? raw.slice(0, original.index) : '';
+          const slashCount = /\\+$/.exec(before)?.[0].length ?? 0;
+          if (!original || slashCount % 2 === 1) continue;
           if (!tokens.includes(match[1])) continue;
           const index = match.index ?? 0;
           parts.push({ type: 'text', value: child.value.slice(start, index) }, { type: 'link', url: `#mentra-source-${match[1]}`, children: [{ type: 'text', value: `[${match[1]}]` }] });
@@ -43,16 +52,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const [source, setSource] = useState<SourceReference>();
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
-  const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)]), [message.citations, message.history_references, message.memory_references]);
+  const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.web_citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)], message.content), [message.content, message.citations, message.web_citations, message.history_references, message.memory_references]);
   // Keep the renderer identity stable so opening the dialog retains its trigger
   // node and native dialog focus restoration works for keyboard users.
   const markdownComponents = useMemo(() => ({ a: ({ href, children }: { href?: string; children?: ReactNode }) => {
     const token = href?.startsWith('#mentra-source-') ? href.slice('#mentra-source-'.length) : undefined;
     const found = message.sources?.find(s => s.token === token && message.citations?.includes(s.token));
     const history = [...(message.history_references ?? []), ...(message.memory_references ?? [])].find(item => item.token === token);
+    const web = message.web_sources?.find(item => item.token === token && message.web_citations?.includes(item.token));
+    if (web) return <WebCitation source={web}>{children}</WebCitation>;
     if (history) return <button className="text-accent underline" onClick={() => setHistoryReference(history)} aria-label={`Open ${history.token.startsWith('H') ? 'history' : 'memory'} reference ${history.token}`}>{children}</button>;
     return found ? <button className="text-accent underline" onClick={() => setSource(found)} aria-label={`Open cited source ${found.title}`}>{children}</button> : <a href={href} rel="noopener noreferrer">{children}</a>;
-  } }), [message.sources, message.citations, message.history_references, message.memory_references]);
+  } }), [message.sources, message.citations, message.web_sources, message.web_citations, message.history_references, message.memory_references]);
 
   return (
     <article
@@ -77,6 +88,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {isAssistant ? (
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
+            <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
             {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}

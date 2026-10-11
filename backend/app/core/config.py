@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.auth.config import ExternalProviderSettings
 
@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     ai_max_retries: int = Field(default=2, ge=0)
     tool_read_timeout_seconds: float = Field(default=10, gt=0, le=60)
     tool_read_max_attempts: int = Field(default=3, ge=1, le=3)
+    web_search_enabled: bool = False
+    web_search_timezone: str = 'UTC'
+    web_search_daily_limit: int = Field(default=90, ge=1, le=100)
+    web_search_user_daily_limit: int = Field(default=10, ge=1, le=100)
+    web_search_user_minute_limit: int = Field(default=3, ge=1, le=10)
+    web_search_cache_seconds: int = Field(default=120, ge=0, le=300)
     chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
@@ -95,6 +101,16 @@ class Settings(BaseSettings):
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @field_validator('web_search_timezone')
+    @classmethod
+    def validate_search_timezone(cls, value):
+        from zoneinfo import ZoneInfo
+        try:
+            ZoneInfo(value)
+        except (ValueError, KeyError) as error:
+            raise ValueError('WEB_SEARCH_TIMEZONE must be an IANA timezone.') from error
+        return value
 
 
 @lru_cache

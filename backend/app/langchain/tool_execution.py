@@ -85,8 +85,8 @@ def retry_delay(error, attempt):
 
 def outcome_status(result):
     value = result.get('outcome', result.get('status')) if isinstance(result, dict) else None
-    if value in ('unavailable', 'answer_preparation_failed', 'failed', 'rejected', 'conflict'):
-        return 'failed', 'degraded' if value in ('unavailable', 'answer_preparation_failed') else 'rejected'
+    if value in ('unavailable', 'answer_preparation_failed', 'failed', 'rejected', 'conflict', 'quota_exhausted', 'rate_limited', 'timeout', 'invalid_input', 'budget_exhausted', 'disabled'):
+        return 'failed', 'rejected' if value in ('rejected', 'conflict', 'invalid_input', 'failed') else 'degraded'
     if value in ('pending', 'awaiting_confirmation', 'confirmation_required', 'candidate', 'ambiguous'):
         return 'waiting', 'deferred'
     if value in ('partial', 'degraded'):
@@ -131,22 +131,30 @@ class ToolExecutor:
         max_attempts = max_attempts or settings.tool_read_max_attempts
         timeout = timeout or settings.tool_read_timeout_seconds
         name = tool.name
+        web = name == 'web_search'
+        if web:
+            max_attempts, timeout = 1, 21
+        def project(value):
+            if web:
+                from .web_tools import dated_failure
+                return dated_failure(self.scope, value)
+            return value
         write = is_write(name, arguments)
         key = name + ':' + json.dumps(arguments, sort_keys=True, default=str)
         if not write and name != 'assessment_status' and key in self.results:
             workflow_logger.event('tool.cache_hit', tool_name=name)
-            return self.results[key]
+            return project(self.results[key])
         if key in self.failed:
             workflow_logger.event('tool.exhausted_skip', tool_name=name, error_code=self.failed[key].get('code', 'TOOL_UNAVAILABLE'))
             receipt = dict(self.failed[key], repeated_failure=True, task_impact='required_for_part' if required else 'optional')
             remember_failure(self.scope, name, receipt)
-            return receipt
+            return project(receipt)
         domain = (tool.metadata or {}).get('domain', name)
         if not write and domain in self.outages:
             workflow_logger.event('tool.exhausted_skip', tool_name=name, domain=domain, error_code=self.outages[domain].get('code', 'TOOL_UNAVAILABLE'))
             receipt = dict(self.outages[domain], repeated_failure=True, task_impact='required_for_part' if required else 'optional')
             remember_failure(self.scope, name, receipt)
-            return receipt
+            return project(receipt)
         step = uuid4().hex
         label = LABELS.get(name, 'Processing your request')
         call_id = current_tool_call.get()
@@ -176,7 +184,7 @@ class ToolExecutor:
                 message = label
                 if status == 'failed':
                     message = 'The assessment is saved, but answer preparation failed.' if isinstance(result, dict) and result.get('assessment_saved') else 'This action could not be completed.'
-                    if isinstance(result, dict):
+                    if isinstance(result, dict) and not web:
                         result = dict(result, task_impact='required_for_part' if required else 'optional',
                                       effect_certainty='committed' if result.get('assessment_saved') else 'unknown' if write else 'read_only')
                     remember_failure(self.scope, name, result if isinstance(result, dict) else {})
@@ -219,5 +227,5 @@ class ToolExecutor:
                 await self.publisher.emit(step, 'failed', receipt['reason'], tool_name=name, tool_call_id=call_id,
                     tool_attempt=attempt, max_attempts=1 if write else max_attempts, error_code=receipt['code'])
                 await self.publisher.emit(step + '-recovery', 'degraded', 'Continuing with available information; this action remains unverified.' if receipt['effect_certainty'] == 'unknown' else 'Continuing with available information; missing information will be identified.', tool_name=name)
-                return receipt
+                return project(receipt)
         raise AssertionError(f'No terminal result after {attempts} attempts')

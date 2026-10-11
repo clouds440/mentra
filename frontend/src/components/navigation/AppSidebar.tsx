@@ -77,11 +77,11 @@ export function AppSidebar({
             />
             <span
               className={cn(
-                'text-[15px] font-semibold tracking-tight text-foreground',
+                'text-[15px] font-semibold tracking-tight text-accent/90',
                 collapsed && 'lg:hidden',
               )}
             >
-              mentra
+              Mentra
             </span>
           </div>
           <button
@@ -152,9 +152,9 @@ export function AppSidebar({
 
         <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
           <div className="relative">
-            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" matchWidth viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
-                <div className={cn('border-b border-border px-4 py-3', collapsed && 'lg:px-1 lg:text-center')}>
-                  <p className={cn('text-[11px] font-medium uppercase tracking-[0.12em] text-subtle', collapsed && 'lg:hidden')}>Signed in as</p>
+            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" matchWidth={!collapsed || mobileOpen} viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
+                <div className="border-b border-border px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
                   <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
                 </div>
                 <div className="p-2">
@@ -164,7 +164,6 @@ export function AppSidebar({
                     className={
                       cn(
                         'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                        collapsed && 'lg:justify-center lg:px-0',
                         location.pathname === '/settings' && !memoryActive
                           ? 'bg-active font-medium text-foreground'
                           : 'text-muted hover:bg-hover hover:text-foreground',
@@ -177,17 +176,17 @@ export function AppSidebar({
                     to="/settings"
                   >
                     <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
-                    <span className={cn(collapsed && 'lg:hidden')}>Settings</span>
+                    <span>Settings</span>
                   </Link>
-                  <Link to="/settings?tab=memories" aria-label="Memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', collapsed && 'lg:justify-center lg:px-0', memoryActive ? 'bg-active font-medium text-foreground' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
-                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span className={cn(collapsed && 'lg:hidden')}>Memories</span>
+                  <Link to="/settings?tab=memories" aria-label="Memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', memoryActive ? 'bg-active font-medium text-foreground' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
+                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span>Memories</span>
                   </Link>
                 </div>
                 <div className="border-t border-border px-2 pb-2">
-                  <ThemeSelector collapsed={collapsed} vertical />
+                  <ThemeSelector collapsed={false} vertical />
                 </div>
                 <div className="border-t border-border p-2">
-                  <LogoutButton collapsed={collapsed} />
+                  <LogoutButton />
                 </div>
             </Popover>
 
