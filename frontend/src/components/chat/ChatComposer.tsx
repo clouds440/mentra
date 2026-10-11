@@ -1,9 +1,11 @@
-import { ArrowUp, Paperclip } from 'lucide-react';
+import { ArrowUp, Paperclip, Mic, Square, LoaderCircle } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
 import type { ChatSelection } from '../../types/rag';
 import { Button, Textarea } from '../ui';
+import { useVoiceInput } from './useVoiceInput';
+import { VoiceInput } from './VoiceInput';
 
 interface ChatComposerProps {
   selection: ChatSelection;
@@ -34,6 +36,10 @@ export function ChatComposer({
   const dismissedMention = useRef<number | null>(null);
   const mentionRef = useRef<{ start: number; end: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const voice = useVoiceInput(text => {
+    onChange(value + (value && !/\s$/.test(value) ? ' ' : '') + text);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, isThinking);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -46,7 +52,7 @@ export function ChatComposer({
     if (pickerRef.current?.handleKeyDown(event)) return;
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      onSubmit();
+      if (!voice.busy) onSubmit();
     }
   }
 
@@ -85,10 +91,12 @@ export function ChatComposer({
       className="rounded-2xl border border-border-strong bg-surface p-2 shadow-lg shadow-shadow/10 focus-within:border-border-hover"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit();
+        if (!voice.busy) onSubmit();
       }}
     >
       <Textarea
+        dir="auto"
+        hidden={voice.busy}
         aria-label="Ask Mentra anything"
         aria-haspopup="listbox"
         aria-expanded={pickerOpen}
@@ -110,6 +118,7 @@ export function ChatComposer({
         rows={1}
         value={value}
       />
+      <VoiceInput voice={voice} />
       <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
         <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
           onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
@@ -129,9 +138,21 @@ export function ChatComposer({
             Enter to send · Shift + Enter for a new line
           </span>
           <Button
+            aria-label={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
+            title={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
+            className="h-9 min-h-9 w-9 rounded-xl p-0"
+            disabled={isThinking || voice.phase === 'permission' || voice.phase === 'processing'}
+            size="sm" variant="ghost" type="button"
+            onClick={() => voice.phase === 'recording' ? voice.stop() : void voice.start()}
+          >
+            {voice.phase === 'recording' ? <Square size={17} aria-hidden="true" />
+              : voice.phase === 'processing' || voice.phase === 'permission' ? <LoaderCircle size={17} className="animate-spin" aria-hidden="true" />
+              : <Mic size={17} aria-hidden="true" />}
+          </Button>
+          <Button
             aria-label="Send message"
             className="h-9 min-h-9 w-9 rounded-xl p-0"
-            disabled={(!value.trim() && !hasAttachments) || isThinking}
+            disabled={(!value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
             type="submit"
           >

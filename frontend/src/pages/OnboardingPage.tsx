@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
@@ -69,7 +70,7 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
             <p className="mt-2 text-sm leading-6 text-muted">{results.evaluation_status === 'applied' ? 'Mentra will refine these early signals as it gathers evidence.' : 'Your answers are saved. You can enter Mentra while AI evaluation is unavailable.'}</p>
             <div className="mt-7"><ProfileEstimates profile={results} /></div>
             <Button className="mt-7 w-full" onClick={() => navigate(target, { replace: true })}>{calibrationOnly ? 'Back to settings' : 'Enter Mentra'}<ArrowRight aria-hidden="true" size={16} /></Button></>
-            : loading ? <div className="py-12 text-center"><Spinner className="mx-auto text-accent" label="Restoring your calibration" /><p className="mt-4 text-sm text-muted">Restoring your progress…</p></div>
+            : loading ? <Skeleton variant="form" />
               : attempt?.status === 'in_progress' ? <CalibrationAssessment key={attempt.id} initialAttempt={attempt} onComplete={complete} skipping={pending} onSkip={() => { void skip(); }} />
                 : <><p className="text-xs font-medium uppercase tracking-wider text-accent">{calibrationOnly ? 'Personalization' : 'Step 2 of 2'} · Recommended</p>
                   <span className="mt-6 grid h-10 w-10 place-items-center rounded-xl bg-active text-accent"><Sparkles aria-hidden="true" size={20} /></span>

@@ -41,9 +41,9 @@ export function logout(): Promise<void> {
 export function authErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
-    if (error.status === 422) return 'Check your username and password and try again.';
-    if (error.status >= 500) return 'Mentra is temporarily unavailable. Please try again shortly.';
+    if (error.status === 422) return 'These account details could not be accepted.';
+    if (error.status >= 500) return 'Mentra is temporarily unavailable.';
     return error.message;
   }
-  return 'Couldn’t reach Mentra. Check your connection and try again.';
+  return 'Mentra could not be reached.';
 }

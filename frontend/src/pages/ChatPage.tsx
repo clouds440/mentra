@@ -1,3 +1,5 @@
+import { Skeleton } from '../components/ui/Skeleton';
+import { ApiError } from '../services/api';
 ﻿import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
@@ -48,7 +50,7 @@ export function ChatPage() {
         if (signal.aborted) return;
         setFiles(previous => [...previous, saved]);
       }
-    } catch (error) { if (!signal.aborted) setValidation(error instanceof Error ? error.message : 'Could not upload this file.'); }
+    } catch (error) { if (!signal.aborted) setValidation(error instanceof ApiError ? error.message : 'Could not upload this file.'); }
     finally { if (!signal.aborted) setUploading(false); }
   }
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -88,7 +90,7 @@ export function ChatPage() {
   return (
     <section aria-label="Chat workspace" className="flex h-full min-h-0 flex-col">
       {view.loading && !view.messages.length ? (
-        <div className="grid flex-1 place-items-center" role="status" aria-label="Loading conversation"><Spinner /></div>
+        <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
       ) : view.messages.length === 0 ? <ChatEmptyState onChooseSuggestion={setDraft} /> : (
         <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-6"
           ref={scrollContainerRef} role="log" aria-live="polite"
@@ -96,7 +98,7 @@ export function ChatPage() {
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-6">
             {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { prependRef.current = scrollContainerRef.current?.scrollHeight ?? null; bottomRef.current = false; void chatStore.older(id); }}>
-              {view.loading ? 'Loading earlier messages…' : 'Load earlier messages'}
+              {view.loading ? <Spinner className="h-4 w-4" /> : 'Load earlier messages'}
             </button>}
             {view.messages.map(message => <ChatMessage key={message.id} message={message} />)}
             {view.busy && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
@@ -119,7 +121,7 @@ export function ChatPage() {
               setFiles(previous => previous.filter(value => value.id !== file.id)); void removeChatAttachment(file.id).catch(() => {});
             }}>Remove</button>
           </li>)}</ul>}
-          {uploading && <p role="status" className="mb-2 text-xs text-muted">Uploading files…</p>}
+          {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
           <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>

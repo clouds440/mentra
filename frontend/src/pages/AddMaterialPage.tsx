@@ -1,7 +1,8 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MaterialUpload } from '../components/library/MaterialUpload';
-import { Button, Spinner } from '../components/ui';
+import { Button } from '../components/ui';
 import { getCapabilities, listContexts, materialError } from '../services/rag';
 import type { LearningContext, RAGCapabilities } from '../types/rag';
 
@@ -29,7 +30,7 @@ export function AddMaterialPage() {
     <Link to="/library" className="text-sm text-accent hover:underline">Back to Library</Link>
     <div><h1 className="page-title">Add material</h1><p className="mt-2 text-sm text-muted">Upload a source and choose its learning context.</p></div>
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
-    {!capabilities && !error && <div role="status" aria-label="Loading upload form"><Spinner /></div>}
+    {!capabilities && !error && <Skeleton variant="form" />}
     {capabilities && <MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
       onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} />}
   </section></div>;

@@ -1,3 +1,6 @@
+import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
+import { Skeleton } from '../ui/Skeleton';
+import { ApiError } from '../../services/api';
 import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
@@ -13,28 +16,30 @@ function Preferences() {
   const [value, setValue] = useState<NotificationPreferences | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const active = useRef<AbortController | null>(null);
   async function load() {
     active.current?.abort(); const controller = new AbortController(); active.current = controller;
     setBusy(true); setError('');
     try { const result = await notifications.preferences(controller.signal); if (!controller.signal.aborted) setValue(result); }
-    catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to load settings.'); }
+    catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load settings.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
+  usePageRefresh(() => { void load(); }, !busy && !dirty);
   useEffect(() => { void load(); return () => active.current?.abort(); }, []);
   async function save() {
     if (!value || busy) return;
     const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
-    try { const result = await notifications.savePreferences(value, controller.signal); if (!controller.signal.aborted) { setValue(result); setSaved(true); notificationChanged(); } }
-    catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to save settings.'); }
+    try { const result = await notifications.savePreferences(value, controller.signal); if (!controller.signal.aborted) { setValue(result); setDirty(false); setSaved(true); notificationChanged(); } }
+    catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to save settings.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   return <section className="space-y-5 py-7"><h2 className="text-lg font-medium">Notifications</h2><p className="text-sm text-muted">Each event can send one reminder. Reminders missed while notifications are disabled are not sent later.</p>
-    {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => void load()}>Reload settings</button></p>}
-    {!value && busy && <p role="status">Loading notification settings…</p>}
-    {value && <><Toggle label="Enable notifications" checked={value.enabled} disabled={busy} onChange={event => { setSaved(false); setValue({ ...value, enabled: event.target.checked }); }} />
-      <Toggle label="Event reminders" checked={!value.disabled_kinds.includes('event_reminder')} disabled={busy} onChange={event => { setSaved(false); setValue({ ...value, disabled_kinds: event.target.checked ? value.disabled_kinds.filter(kind => kind !== 'event_reminder') : [...value.disabled_kinds, 'event_reminder'] }); }} />
-      <Button disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save settings'}</Button>{saved && <p role="status" className="text-sm text-muted">Settings saved.</p>}</>}
+    {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => { void load(); })}>Reload settings</button></p>}
+    {!value && busy && <Skeleton variant="form" />}
+    {value && <><Toggle label="Enable notifications" checked={value.enabled} disabled={busy} onChange={event => { setDirty(true); setSaved(false); setValue({ ...value, enabled: event.target.checked }); }} />
+      <Toggle label="Event reminders" checked={!value.disabled_kinds.includes('event_reminder')} disabled={busy} onChange={event => { setDirty(true); setSaved(false); setValue({ ...value, disabled_kinds: event.target.checked ? value.disabled_kinds.filter(kind => kind !== 'event_reminder') : [...value.disabled_kinds, 'event_reminder'] }); }} />
+      <Button disabled={busy} loading={busy} onClick={() => void save()}>{'Save settings'}</Button>{saved && <p role="status" className="text-sm text-muted">Settings saved.</p>}</>}
   </section>;
 }

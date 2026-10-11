@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     rag_hybrid_enabled: bool = True
     rag_reranker_path: str = ''
     rag_reranker_timeout: float = Field(default=5, gt=0, le=30)
+    speech_model: Literal['tiny', 'base', 'small'] = 'base'
+    speech_model_path: str = ''
+    speech_cpu_threads: int = Field(default=2, ge=1, le=16)
+    speech_beam_size: int = Field(default=3, ge=1, le=5)
+    speech_max_seconds: int = Field(default=30, ge=1, le=30)
+    speech_max_upload_bytes: int = Field(default=4 * 1024 * 1024, ge=1024, le=8 * 1024 * 1024)
+    speech_timeout_seconds: float = Field(default=20, gt=0, le=60)
+    speech_warm_on_startup: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

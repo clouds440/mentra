@@ -33,7 +33,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
       if (!controller.signal.aborted) { setAttempt(result); onChange(result); if (!finish) setIndex(value => Math.min(value+1, assessment.questions.length-1)); }
     } catch (reason) {
       if (!controller.signal.aborted) {
-        setError(reason instanceof Error ? reason.message : 'Unable to save answer. Retry or reload.');
+        setError(reason instanceof ApiError ? reason.message : 'Unable to save answer. Retry or reload.');
         // Recover the authoritative revision after an interrupted write.
         try { if (working) { const result = await assessments.attempt(working.id, controller.signal); if (!controller.signal.aborted) { setAttempt(result); if (reason instanceof ApiError && reason.status === 409) { setAnswers(result.answers); setError('Answers changed elsewhere. The saved answers have been restored; review them before continuing.'); } if (result.state !== 'draft') onChange(result); } } } catch { /* Keep choices for retry. */ }
       }
@@ -50,7 +50,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
       selected={answers[question.id] ? [answers[question.id]] : []} disabled={disabled || busy}
       onChange={selected => { setAnswers(previous => ({ ...previous, [question.id]: selected[0] })); operation.current=crypto.randomUUID(); }} />
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    <div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={disabled || busy || index===0} onClick={() => setIndex(value => value-1)}>Back</Button><Button disabled={disabled || busy || !answers[question.id]} onClick={() => void save(false)}>{busy ? 'Saving…' : index < assessment.questions.length-1 ? 'Save & next' : 'Save answer'}</Button></div>
-    {index===assessment.questions.length-1 && <><p className="text-sm text-muted">Review your answers with Back. Feedback appears after final submission.</p><Select aria-label="Quiz assistance used" disabled={disabled || busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select><Button disabled={disabled || busy || assessment.questions.some(q => !answers[q.id])} onClick={() => void save(true)}>Finish quiz</Button></>}
+    <div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={disabled || busy || index===0} onClick={() => setIndex(value => value-1)}>Back</Button><Button disabled={disabled || busy || !answers[question.id]} loading={busy} onClick={() => void save(false)}>{index < assessment.questions.length-1 ? 'Save & next' : 'Save answer'}</Button></div>
+    {index===assessment.questions.length-1 && <><p className="text-sm text-muted">Review your answers with Back. Feedback appears after final submission.</p><Select aria-label="Quiz assistance used" disabled={disabled || busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select><Button disabled={disabled || busy || assessment.questions.some(q => !answers[q.id])} loading={busy} onClick={() => void save(true)}>Finish quiz</Button></>}
   </section>;
 }

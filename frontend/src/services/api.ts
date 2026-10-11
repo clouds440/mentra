@@ -1,3 +1,5 @@
+import { cachedPage, cacheablePage, invalidatePageCache } from './pageCache';
+import { errorMessage } from './userError';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -73,12 +75,13 @@ export class ApiError extends Error {
     public readonly code: string,
     public readonly details: ValidationIssue[] = [],
   ) {
-    super(message);
+    super(errorMessage(status, code));
+    void message;
     this.name = 'ApiError';
   }
 }
 
-export async function apiRequest<T>(
+async function request<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
@@ -122,6 +125,16 @@ export async function apiRequest<T>(
 
     return body as T;
   });
+}
+
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (cacheablePage(path, init)) {
+    const headers = JSON.stringify(Array.from(new Headers(init.headers).entries()).sort());
+    return cachedPage(path + headers, signal => request<T>(path, { ...init, signal }), init.signal);
+  }
+  const value = await request<T>(path, init);
+  if (init.method && init.method !== 'GET' && init.method !== 'HEAD') invalidatePageCache();
+  return value;
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

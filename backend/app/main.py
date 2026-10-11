@@ -25,6 +25,9 @@ from app.rag.vector_store import VectorStore
 from app.rag.factory import create_rag_service
 from app.rag.upload_limit import MaterialUploadLimit
 from app.history_management.factory import create_history_management
+from app.speech.service import SpeechService
+from starlette.concurrency import run_in_threadpool
+from app.core.exceptions import AppError
 
 
 def create_app() -> FastAPI:
@@ -36,6 +39,12 @@ def create_app() -> FastAPI:
         try:
             with workflow_logger.workflow('backend.startup') as startup:
                 init_db()
+                application.state.speech_service = SpeechService(settings)
+                if settings.speech_warm_on_startup:
+                    try:
+                        await run_in_threadpool(application.state.speech_service.warm)
+                    except AppError:
+                        logger.warning('Speech model warmup unavailable; voice requests may retry initialization.')
                 embedding_service = SentenceTransformerEmbeddingService(settings)
                 vector_store: VectorStore = QdrantVectorStore(settings, embedding_service)
                 application.state.learner_service = create_learner_engine()
@@ -70,6 +79,8 @@ def create_app() -> FastAPI:
                 startup.outcome = 'success'
             yield
         finally:
+            if hasattr(application.state, 'speech_service'):
+                await run_in_threadpool(application.state.speech_service.close)
             if hasattr(application.state, 'conversation_service'):
                 await application.state.conversation_service.close()
             if hasattr(application.state, 'rag_service'):
@@ -87,6 +98,8 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.add_middleware(MaterialUploadLimit, maximum=settings.rag_max_upload_bytes)
+    from app.speech.upload_limit import SpeechUploadLimit
+    app.add_middleware(SpeechUploadLimit, maximum=settings.speech_max_upload_bytes)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins + [settings.frontend_origin],

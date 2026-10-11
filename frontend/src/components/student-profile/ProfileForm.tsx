@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Button, Input, Select, Spinner, Textarea } from '../ui';
+import { Button, Input, Select, Textarea } from '../ui';
 import { ApiError } from '../../services/api';
 import { profileError, updateDetails } from '../../services/studentProfile';
 import { useStudentProfile } from './StudentProfileProvider';
@@ -39,7 +39,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     } catch (failure) {
       if (failure instanceof ApiError && failure.status === 422) {
         const validation: Record<string, string> = {};
-        for (const issue of failure.details) validation[String(issue.location[issue.location.length - 1])] = issue.message.replace(/^Value error, /, '');
+        for (const issue of failure.details) validation[String(issue.location[issue.location.length - 1])] = 'This value could not be accepted.';
         setFields(validation);
       }
       setError(profileError(failure));
@@ -89,8 +89,8 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     <p className="text-xs leading-5 text-subtle">Only you can change these details. Mentra adapts its estimates, not your education level or preferences.</p>
     {onCancel && <p className="text-xs leading-5 text-subtle">Changing your education level resets broad estimates. Changing your field resets domain familiarity.</p>}
     <div className="flex flex-wrap gap-3 pt-1">
-      <Button type="submit" disabled={pending}>{pending && <Spinner className="h-4 w-4" label="Saving profile" />}
-        {pending ? 'Saving…' : onCancel ? 'Save profile' : 'Continue'}</Button>
+      <Button type="submit" disabled={pending} loading={pending}>
+        {onCancel ? 'Save profile' : 'Continue'}</Button>
       {onCancel && <Button disabled={pending} variant="ghost" onClick={onCancel}>Cancel</Button>}
     </div>
   </form>;

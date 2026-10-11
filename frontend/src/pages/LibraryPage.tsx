@@ -1,6 +1,8 @@
+import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
+import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Select, Spinner } from '../components/ui';
+import { Button, Select } from '../components/ui';
 import { listContexts, listMaterials, pendingJob, materialError, transitionContext } from '../services/rag';
 import type { LearningContext, MaterialList } from '../types/rag';
 
@@ -17,6 +19,7 @@ export function LibraryPage() {
     : params.get('uploaded') === 'accepted' ? 'Upload accepted. Your material is now processing.' : '';
   const [reload, setReload] = useState(0);
   const refresh = useCallback(() => setReload(v => v + 1), []);
+  usePageRefresh(refresh, true);
   useEffect(() => {
     const abort = new AbortController(); let timer: ReturnType<typeof setTimeout>; let running = false;
     async function load() {
@@ -38,8 +41,8 @@ export function LibraryPage() {
   return <div className="h-full overflow-y-auto"><section className="page-container">
     <div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="page-title">Library</h1><p className="mt-2 text-sm text-muted">Your study material, ready to use in chat.</p></div><Button onClick={() => navigate('/library/new')}>Add material</Button></div>
     {notice && <p role="status" className="text-sm text-muted">{notice}</p>}
-    {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
-    {!list && !error && <Spinner />}
+    {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={() => refreshPage(refresh)}>Try again</Button></div>}
+    {!list && !error && <Skeleton variant="card" />}
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h2 className="font-medium">Study materials {list ? `(${list.total})` : ''}</h2>
       <div className="flex flex-wrap gap-3">
@@ -48,7 +51,7 @@ export function LibraryPage() {
       </div>
     </div>
     {list?.items.length === 0 && <p className="rounded-xl border border-border p-5 text-sm text-muted">{archive === 'archived' ? 'No archived material.' : 'Add material to start studying from your sources.'}</p>}
-    <ul className="space-y-3">{list?.items.map(doc => { const job = pendingJob(doc); return <li key={doc.id} className="rounded-xl border border-border bg-surface p-4"><div className="flex flex-wrap justify-between gap-3"><Link className="font-medium text-foreground underline-offset-4 hover:underline" to={`/library/${doc.id}`}>{doc.title}</Link><span className="text-xs text-muted">{job ? job.stage : doc.active_generation_id ? 'Ready' : doc.jobs[0]?.state.toLowerCase() ?? 'Pending'}{doc.archived ? ' · Archived' : ''}</span></div><p className="mt-2 text-xs text-subtle">{doc.context_ids.map(id => contexts.find(c => c.context_id === id)?.name ?? 'Context').join(', ')} · {doc.filename}</p>{doc.jobs[0]?.error && <p className="mt-2 text-sm text-danger">{doc.jobs[0].error}</p>}<div className="mt-3 flex gap-4 text-sm"><Link to={`/library/${doc.id}`} className="text-accent">View material</Link>{doc.active_generation_id && !doc.archived && <Link to={`/?document=${doc.id}`} className="text-accent">Study in chat</Link>}</div></li>; })}</ul>
+    <ul className="space-y-3">{list?.items.map(doc => { const job = pendingJob(doc); return <li key={doc.id} className="rounded-xl border border-border bg-surface p-4"><div className="flex flex-wrap justify-between gap-3"><Link className="font-medium text-foreground underline-offset-4 hover:underline" to={`/library/${doc.id}`}>{doc.title}</Link><span className="text-xs text-muted">{job ? job.stage : doc.active_generation_id ? 'Ready' : doc.jobs[0]?.state.toLowerCase() ?? 'Pending'}{doc.archived ? ' · Archived' : ''}</span></div><p className="mt-2 text-xs text-subtle">{doc.context_ids.map(id => contexts.find(c => c.context_id === id)?.name ?? 'Context').join(', ')} · {doc.filename}</p>{doc.jobs[0]?.error && <p className="mt-2 text-sm text-danger">This material could not be processed.</p>}<div className="mt-3 flex gap-4 text-sm"><Link to={`/library/${doc.id}`} className="text-accent">View material</Link>{doc.active_generation_id && !doc.archived && <Link to={`/?document=${doc.id}`} className="text-accent">Study in chat</Link>}</div></li>; })}</ul>
     {list && list.total > list.limit && <div className="flex items-center justify-between"><Button variant="secondary" disabled={offset === 0} onClick={() => filterParams({ offset: String(Math.max(0, offset - list.limit)) })}>Previous</Button><span className="text-sm text-muted">{offset + 1}–{Math.min(offset + list.limit, list.total)} of {list.total}</span><Button variant="secondary" disabled={offset + list.limit >= list.total} onClick={() => filterParams({ offset: String(offset + list.limit) })}>Next</Button></div>}
     {contexts.length > 0 && <section className="border-t border-border pt-5"><h2 className="font-medium">Learning contexts</h2><p className="mt-1 text-sm text-muted">Current and related contexts guide automatic retrieval. Dormant contexts can be selected deliberately. Archived contexts require explicit inclusion.</p><ul className="mt-3 space-y-2">{contexts.map(c => <li key={c.context_id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{c.name}</span><label>State for {c.name}<Select className="ml-2 inline-block w-auto" value={c.status} onChange={e => void changeContext(c.context_id, e.target.value)}><option value="ACTIVE">Current</option><option value="RELATED">Related</option><option value="DORMANT">Dormant</option><option value="ARCHIVED">Archived</option></Select></label></li>)}</ul></section>}
   </section></div>;

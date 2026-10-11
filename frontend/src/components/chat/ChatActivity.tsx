@@ -51,12 +51,12 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
   }, [conversationId, turnId, attempt]);
   const current = steps[steps.length - 1];
   return <div>
-    <ThinkingIndicator label={current?.user_message ?? 'Planning your request'} />
+    <ThinkingIndicator label={current?.status === 'failed' ? 'This step could not be completed.' : current?.user_message ?? 'Planning your request'} />
     {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
     {!!steps.length && <details className="ml-11 mt-2 text-xs text-muted">
       <summary className="cursor-pointer">Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</summary>
       <ol className="mt-2 space-y-1">{steps.map(step => <li key={step.step_id}>
-        {step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
+        {step.status === 'failed' ? 'This step could not be completed.' : step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
         <span className="text-subtle"> — {step.status}</span>
       </li>)}</ol>
     </details>}

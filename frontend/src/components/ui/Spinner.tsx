@@ -9,7 +9,7 @@ export function Spinner({ className, label = 'Loading', ...props }: SpinnerProps
   return (
     <svg
       aria-label={label}
-      className={cn('h-5 w-5 animate-spin text-current', className)}
+      className={cn('h-5 w-5 animate-spin motion-reduce:animate-none text-current', className)}
       fill="none"
       role="status"
       viewBox="0 0 24 24"

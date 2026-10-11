@@ -14,6 +14,7 @@ const empty: ChatView = { messages: [], loading: false, busy: false, error: null
 interface ListView { items: Conversation[]; loading: boolean; error: string | null; more: boolean }
 
 class ChatStore {
+  private opened = new Set<string>();
   owner: string | null = null;
   private cache: ChatCache | null = null;
   private controller = new AbortController();
@@ -47,7 +48,7 @@ class ChatStore {
     this.views.set(id, { ...previous, ...patch }); this.chatListeners.get(id)?.forEach(fn => fn());
     if (this.views.size > 12) for (const [key, value] of this.views) {
       if (this.views.size <= 12) break;
-      if (!this.chatListeners.get(key)?.size && !value.busy && !this.pending.has(key)) this.views.delete(key);
+      if (!this.chatListeners.get(key)?.size && !value.busy && !this.pending.has(key)) { this.views.delete(key); this.opened.delete(key); }
     }
   }
   private mergeChats(rows: Conversation[]) {
@@ -80,7 +81,7 @@ class ChatStore {
     this.pollers.forEach(timer => clearTimeout(timer)); this.pollers.clear();
     if (this.cache) void this.cache.close(clear).catch(() => {});
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
-    this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear();
+    this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear();
     this.list = { items: [], loading: true, error: null, more: false }; this.publish();
     this.chatListeners.forEach(values => values.forEach(fn => fn()));
   }
@@ -95,7 +96,7 @@ class ChatStore {
           const page = await api.syncChats(this.cursor, undefined, signal);
           if (!this.alive(signal)) return;
           if (page.reset) {
-            this.chats.clear(); this.listCursor = page.list_cursor ?? null;
+            this.opened.clear(); this.chats.clear(); this.listCursor = page.list_cursor ?? null;
           }
           this.mergeChats(page.conversations);
           for (const id of page.deleted_ids) {
@@ -137,7 +138,7 @@ class ChatStore {
     const existing = this.loads.get(id); if (existing) return existing;
     const view = this.view(id), chat = this.chats.get(id);
     if (view.busy && this.pending.has(id) && !refresh) return Promise.resolve();
-    if (!refresh && view.messages.length && view.revision === chat?.revision && !view.busy) return Promise.resolve();
+    if (!refresh && this.opened.has(id) && view.revision === chat?.revision && !view.busy) return Promise.resolve();
     const signal = this.controller.signal, cache = this.cache!;
     this.setView(id, { loading: true });
     const operation = (async () => {
@@ -148,6 +149,7 @@ class ChatStore {
         }
         const page = await api.getTurn(id, signal, view.busy && view.messages.length > 0 && !view.olderWindow); if (!this.alive(signal)) return;
         await this.applyPage(page);
+        this.opened.add(id);
         if (this.alive(signal) && page.turn?.state === 'RUNNING' && !refresh) this.poll(id);
       } catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, busy: false, error: this.error(error) }); }
     })();
@@ -167,7 +169,7 @@ class ChatStore {
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
     const messages = older ? items.slice(0, 200) : items.slice(-200);
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
-      error: page.turn?.state === 'FAILED' ? page.turn.error : null, turn: page.turn ?? view.turn,
+      error: page.turn?.state === 'FAILED' ? 'Mentra could not complete your response.' : null, turn: page.turn ?? view.turn,
       before: page.incremental ? (messages[0]?.sequence > 1 ? messages[0].sequence : null) : page.has_more ? messages[0]?.sequence ?? null : null,
       olderWindow: older && items.length > 200 || older && view.olderWindow,
       revision: page.conversation.revision });
@@ -229,7 +231,7 @@ class ChatStore {
         this.setView(id, { busy: false, error: this.error(error), messages: view.messages, unsent: body.content });
         void this.sync();
       } else {
-        this.setView(id, { busy: false, error: 'Connection interrupted. Check the saved turn before retrying.' });
+        this.setView(id, { busy: false, error: 'The connection was interrupted.' });
         void this.open(id, true);
       }
     }
@@ -261,7 +263,7 @@ class ChatStore {
       await this.persist(() => cache.apply([], [], [id])); this.channel?.postMessage('changed'); void this.sync(); return true;
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, error: this.error(error) }; this.publish(); void this.sync(); } return false; }
   }
-  private error(error: unknown) { return error instanceof Error ? error.message : 'Could not synchronize chats.'; }
+  private error(error: unknown) { return error instanceof ApiError ? error.message : 'Your chats could not be loaded.'; }
   hasPending(id: string) { return this.pending.has(id); }
   clearUnsent(id: string) { this.setView(id, { unsent: null, error: null }); }
 }

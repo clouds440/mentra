@@ -26,6 +26,11 @@ ENV RAG_RERANKER_MODEL=${RAG_RERANKER_MODEL}
 COPY bake_reranker_model.py ./
 RUN python bake_reranker_model.py
 
+ARG SPEECH_MODEL=base
+ENV SPEECH_MODEL=${SPEECH_MODEL} SPEECH_MODEL_PATH=/opt/mentra/models/speech
+COPY bake_speech_model.py ./
+RUN python bake_speech_model.py
+
 # Token budgeting stays offline during requests; bake the verified vocabulary.
 ENV TIKTOKEN_CACHE_DIR=/opt/mentra/tokenizers
 RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"

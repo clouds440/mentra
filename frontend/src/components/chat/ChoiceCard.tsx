@@ -19,7 +19,7 @@ export function ChoiceCard({ card, messageId, conversationId }: { card: ChoiceCa
   return <section className="my-4 space-y-3 rounded-xl border border-border p-4" aria-label="Interactive question">
     <ChoiceOptions kind={stored.kind} question={stored.question} options={stored.options}
       selected={done ? stored.selected : selected} disabled={done || view.busy} onChange={setSelected} />
-    {done ? <p role="status" className="text-sm text-muted">Selection submitted.</p> : <Button disabled={view.busy || !selected.length} onClick={() => void submit()}>{view.busy ? 'Sending…' : 'Submit selection'}</Button>}
+    {done ? <p role="status" className="text-sm text-muted">Selection submitted.</p> : <Button disabled={view.busy || !selected.length} loading={view.busy} onClick={() => void submit()}>{view.busy ? 'Sending…' : 'Submit selection'}</Button>}
     {view.error && <p role="alert" className="text-sm text-danger">{view.error}</p>}
   </section>;
 }

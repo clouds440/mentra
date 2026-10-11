@@ -1,3 +1,4 @@
+import { ApiError } from '../../services/api';
 import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Input, Select } from '../ui';
@@ -29,7 +30,7 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
     try {
       const result = await events.preview({ timezone: draft.timezone, reminder: draft.reminder, ...(timed ? { local_start: start, local_end: end || null } : { local_date: draft.local_date }) }, controller.signal);
       if (!controller.signal.aborted) { setPreview(result); setChoice(result.requires_choice ? '' : '0'); }
-    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to check dates.'); }
+    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to check dates.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   async function save() {
@@ -42,7 +43,7 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
       if (onConfirmed) { await onConfirmed(confirmed); return; }
       const result = await events.save(confirmed, operation.current, controller.signal, current);
       if (!controller.signal.aborted && result.event) onSaved(result.event);
-    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to save event.'); }
+    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to save event.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   return <form className="space-y-4 rounded-xl border border-border p-5" onSubmit={event => { event.preventDefault(); void (preview ? save() : check()); }} onChange={invalidate}>
@@ -55,11 +56,11 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
     {timed ? <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Start<Input type="datetime-local" required disabled={busy} value={start} onChange={event => setStart(event.target.value)} /></label><label className="text-sm">End (optional)<Input type="datetime-local" disabled={busy} value={end} onChange={event => setEnd(event.target.value)} /></label></div> : <label className="block text-sm">Date<Input type="date" required disabled={busy} value={draft.local_date ?? ''} onChange={event => setDraft({ ...draft, local_date: event.target.value })} /></label>}
     <label className="block text-sm">Reminder<Select aria-label="Reminder" disabled={busy} value={draft.reminder.mode} onChange={event => setDraft({ ...draft, reminder: { mode: event.target.value as 'default' | 'disabled' } })}><option value="default">Use default reminder</option><option value="disabled">No reminder</option>{draft.reminder.mode === 'at' && <option value="at">Keep existing explicit reminder</option>}</Select></label>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    {preview?.field_errors.map(issue => <p key={issue.field} role="alert" className="text-sm text-danger">{issue.message}</p>)}
+    {preview?.field_errors.map(issue => <p key={issue.field} role="alert" className="text-sm text-danger">This date could not be accepted.</p>)}
     {preview && preview.choices.length > 0 && <div onChange={event => event.stopPropagation()} className="space-y-2 text-sm">
       {preview.requires_choice && <p>This local time occurs twice. Choose the intended instant.</p>}
       {preview.choices.map((value, index) => <label key={index} className="flex gap-2"><input type="radio" name="instant" value={index} checked={choice === String(index)} onChange={() => setChoice(String(index))} />{value.starts_at ? new Date(value.starts_at).toUTCString() : `${draft.local_date} in ${draft.timezone}`} · {value.reminder_due_at ? `Reminder ${new Date(value.reminder_due_at).toLocaleString()}` : 'No pending reminder'} ({value.reminder_state})</label>)}
     </div>}
-    <div className="flex gap-2"><Button type="submit" disabled={busy || !!preview && (choice === '' || preview.field_errors.length > 0)}>{busy ? 'Please wait…' : preview ? 'Save event' : 'Check dates & reminder'}</Button><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button></div>
+    <div className="flex gap-2"><Button type="submit" disabled={busy || !!preview && (choice === '' || preview.field_errors.length > 0)}>{preview ? 'Save event' : 'Check dates & reminder'}</Button><Button variant="ghost" disabled={busy} loading={busy} onClick={onCancel}>Cancel</Button></div>
   </form>;
 }

@@ -33,6 +33,6 @@ export function MaterialUpload({ contexts, capabilities, replacement, onAccepted
     <label className="block text-sm">Learning context<Select className="mt-2" value={contextId} disabled={busy} onChange={e => { setContextId(e.target.value); key.current = crypto.randomUUID(); }}><option value="">Create a context</option>{contexts.filter(c => c.status !== 'ARCHIVED').map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>
     {!contextId && <><label className="block text-sm">New context name<Input className="mt-2" value={newName} maxLength={200} disabled={busy} onChange={e => setNewName(e.target.value)} /></label><Toggle label="Make this my current learning context" checked={activate} disabled={busy} onChange={e => setActivate(e.target.checked)} /></>}</>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    <Button type="submit" disabled={!file || busy}>{busy ? 'Uploading…' : replacement ? 'Submit replacement' : 'Upload material'}</Button>
+    <Button type="submit" disabled={!file || busy} loading={busy}>{busy ? 'Uploading…' : replacement ? 'Submit replacement' : 'Upload material'}</Button>
   </form>;
 }

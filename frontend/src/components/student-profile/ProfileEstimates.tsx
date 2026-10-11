@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Spinner } from '../ui';
+import { Button } from '../ui';
 import { profileError, retryEvaluation } from '../../services/studentProfile';
 import type { Dimension, StudentProfile } from '../../types/studentProfile';
 import { useStudentProfile } from './StudentProfileProvider';
@@ -21,8 +21,8 @@ export function ProfileEstimates({ profile }: { profile: StudentProfile }) {
     <p className="mt-2 text-xs leading-5 text-muted">Provisional signals at your stated education level, not a grade or a measure of intelligence. They can develop with evidence.</p>
     {waiting && <div className="mt-4 rounded-xl border border-border bg-surface px-4 py-3">
       <p className="text-sm leading-6 text-muted">Your answers are saved. {profile.evaluation_status === 'failed' ? 'AI evaluation is temporarily unavailable.' : 'AI evaluation has not finished yet.'}</p>
-      <Button className="mt-3" variant="secondary" size="sm" disabled={pending} onClick={() => { void retry(); }}>
-        {pending && <Spinner className="h-4 w-4" label="Evaluating results" />}{pending ? 'Evaluating…' : 'Retry evaluation'}</Button>
+      <Button className="mt-3" variant="secondary" size="sm" disabled={pending} loading={pending} onClick={() => { void retry(); }}>
+        Retry evaluation</Button>
       {error && <p role="alert" className="mt-3 text-xs leading-5 text-danger">{error}</p>}
     </div>}
     <dl className="mt-4 divide-y divide-border">

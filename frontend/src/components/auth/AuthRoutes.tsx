@@ -1,5 +1,6 @@
+import { PageLoader } from '../ui/Skeleton';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Button, Spinner } from '../ui';
+import { Button } from '../ui';
 import { useAuth } from './AuthProvider';
 import { StudentProfileProvider } from '../student-profile/StudentProfileProvider';
 
@@ -25,8 +26,7 @@ function SessionStatus() {
           </>
         ) : (
           <>
-            <Spinner className="mx-auto text-accent" label="Restoring your session" />
-            <p className="mt-4 text-sm text-muted">Opening your workspace…</p>
+            <PageLoader />
           </>
         )}
       </div>

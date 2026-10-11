@@ -1,5 +1,6 @@
+import { PageLoader } from '../ui/Skeleton';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Button, Spinner } from '../ui';
+import { Button } from '../ui';
 import { useStudentProfile } from './StudentProfileProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 
@@ -12,7 +13,7 @@ export function ProfileReady() {
         <p className="mt-3 text-sm leading-6 text-muted">{error}</p>
         <Button className="mt-6" onClick={() => { void refresh().catch(() => {}); }}>Try again</Button>
         <div className="mx-auto mt-4 w-28"><LogoutButton /></div></>
-        : <><Spinner className="mx-auto text-accent" label="Loading your profile" /><p className="mt-4 text-sm text-muted">Opening your workspace…</p></>}
+        : <><PageLoader /></>}
     </div>
   </main>;
 }

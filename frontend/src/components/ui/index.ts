@@ -14,3 +14,5 @@ export { Select } from './Select';
 
 export { FileInput } from './FileInput';
 export { Popover } from './Popover';
+
+export { Skeleton, PageLoader } from './Skeleton';

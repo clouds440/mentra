@@ -1,7 +1,8 @@
+import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, FileText, X, ArrowDown, AlertCircle } from 'lucide-react';
-import { Button, Spinner } from '../ui';
+import { Button } from '../ui';
 import { CodeBlock } from '../content/CodeBlock';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { fileLanguage } from '../../lib/codeLanguages';
@@ -92,16 +93,16 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
       {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
       {view === 'extracted' ? <>
         {source.warnings.length > 0 && <details className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted"><summary className="cursor-pointer"><AlertCircle size={13} className="mr-2 inline" aria-hidden="true" />Extraction notes ({source.warnings.length})</summary><ul className="mt-3 space-y-2">{source.warnings.map(w => <li key={w}>{w}</li>)}</ul></details>}
-        {loading && <div className="flex min-h-40 items-center justify-center"><Spinner /></div>}
+        {loading && <Skeleton variant="text" rows={8} className="py-6" />}
         {!loading && chunks.length === 0 && <p className="source-prose">{source.excerpt || 'No extracted passages are available for this version. Open the original file to inspect it.'}</p>}
         {passages.map(chunk => {
           const language = passageLanguage(chunk, displayFilename);
           const cited = chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
           return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}</section>;
         })}
-        {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{loadingMore ? 'Loading passages…' : 'Load more passages'}</Button>}
+        {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{'Load more passages'}</Button>}
       </> : <>
-        {opening && !original && <div className="flex min-h-40 items-center justify-center"><Spinner /></div>}
+        {opening && !original && <Skeleton variant="text" rows={8} className="py-6" />}
         {original?.text !== undefined && <><CodeBlock code={original.text} language={fileLanguage(displayFilename) ?? 'plain'} filename={displayFilename ?? undefined} />{original.truncated && <p className="mt-3 text-xs text-muted">Preview shows the first 256 KiB. Download the original for the complete file.</p>}</>}
         {original?.media.startsWith('image/') && <img src={original.url} alt="Original study material" className="mx-auto max-h-[65dvh] max-w-full rounded-xl object-contain" />}
         {original?.media === 'application/pdf' && <iframe title="Original PDF" src={original.url} className="h-[60dvh] w-full rounded-xl border border-border" />}

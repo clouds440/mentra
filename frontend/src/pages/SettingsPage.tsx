@@ -1,8 +1,8 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { Database, Sparkles } from 'lucide-react';
 import { ProfileSettings } from '../components/student-profile/ProfileSettings';
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Spinner } from '../components/ui/Spinner';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
 import { AssessmentSettings } from '../components/assessments/AssessmentSettings';
 
@@ -83,7 +83,7 @@ export function SettingsPage() {
         </div>
         </div>
         <div role="tabpanel" id="settings-panel-memories" aria-labelledby="settings-tab-memories" hidden={tab !== 'memories'}>
-          {(visitedMemories || tab === 'memories') && <Suspense fallback={<div role="status" className="mt-7 flex items-center gap-2 text-sm text-muted"><Spinner />Loading memories…</div>}><MemoriesSettings active={tab === 'memories'} /></Suspense>}
+          {(visitedMemories || tab === 'memories') && <Suspense fallback={<Skeleton variant="form" />}><MemoriesSettings active={tab === 'memories'} /></Suspense>}
         </div>
         <div role="tabpanel" id="settings-panel-notifications" aria-labelledby="settings-tab-notifications" hidden={tab !== 'notifications'}>
           {tab === 'notifications' && <NotificationSettings />}

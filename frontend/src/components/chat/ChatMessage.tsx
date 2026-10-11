@@ -1,3 +1,4 @@
+import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
 import mentraLogo from '../../assets/mentra-logo.png';
 import type { ChatMessageData } from '../../types/chat';
@@ -5,7 +6,6 @@ import { useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
 import { SourceViewer, sourceLocation } from '../library/SourceViewer';
 import type { SourceReference } from '../../types/rag';
 import type { HistoryReference, MemoryReference } from '../../types/memories';
-import { Spinner } from '../ui/Spinner';
 import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
 import { ChoiceCard } from './ChoiceCard';
@@ -79,13 +79,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
-            {!!message.assessment_cards?.length && <Suspense fallback={<span role="status"><Spinner />Loading assessment…</span>}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
+            {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}
             {message.retrieval_status && ['unavailable', 'no_matches', 'no_eligible_sources'].includes(message.retrieval_status) && <p className="mt-3 text-xs text-subtle">{message.retrieval_status === 'unavailable' ? 'Study material retrieval was unavailable for this answer.' : 'No supporting Library passages were found for this answer.'}</p>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
-            {historyReference && <Suspense fallback={<span role="status"><Spinner />Loading reference…</span>}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
+            {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
             {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="text-accent hover:underline" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
           </div>
         ) : (

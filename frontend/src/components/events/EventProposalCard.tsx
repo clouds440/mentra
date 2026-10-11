@@ -1,3 +1,4 @@
+import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
@@ -13,7 +14,7 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
     const request = new AbortController(); controller.current = request;
-    void eventProposals.detail(initial.id, request.signal).then(result => { if (!request.signal.aborted) setValue(result); }).catch(reason => { if (!request.signal.aborted) setError(reason instanceof Error ? reason.message : 'Proposal unavailable.'); });
+    void eventProposals.detail(initial.id, request.signal).then(result => { if (!request.signal.aborted) setValue(result); }).catch(reason => { if (!request.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Proposal unavailable.'); });
     return () => controller.current?.abort();
   }, [initial.id]);
   async function decide(decision: 'approve' | 'dismiss', details?: EventDraft) {
@@ -22,7 +23,7 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
       const result = await eventProposals.decide(value, decision, request.signal, details);
       if (!request.signal.aborted) { setValue(result); setEditing(false); }
     } catch (reason) {
-      if (!request.signal.aborted) { setError(reason instanceof Error ? reason.message : 'Unable to save decision.');
+      if (!request.signal.aborted) { setError(reason instanceof ApiError ? reason.message : 'Unable to save decision.');
         const refreshed = await eventProposals.detail(value.id, request.signal).catch(() => null);
         if (refreshed && !request.signal.aborted) setValue(refreshed);
       }
@@ -38,9 +39,9 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
     {!pending && <p role="status" className="text-sm">{value.state === 'approved' ? 'Event saved.' : `Proposal ${value.state}.`}</p>}
     {value.event_id && <Link className="text-sm text-accent underline" to={`/progress?tab=events&event=${value.event_id}`}>View event</Link>}
     {pending && !editing && <div className="flex flex-wrap gap-2">
-      <Button size="sm" disabled={busy} onClick={() => { if (value.action === 'status') void decide('approve').catch(() => {}); else setEditing(true); }}>{value.action === 'create' ? 'Add event' : 'Review update'}</Button>
+      <Button size="sm" disabled={busy} loading={busy} onClick={() => { if (value.action === 'status') void decide('approve').catch(() => {}); else setEditing(true); }}>{value.action === 'create' ? 'Add event' : 'Review update'}</Button>
       {value.action !== 'status' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(true)}>Edit details</Button>}
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void decide('dismiss').catch(() => {})}>Dismiss</Button>
+      <Button size="sm" variant="ghost" disabled={busy} loading={busy} onClick={() => void decide('dismiss').catch(() => {})}>Dismiss</Button>
     </div>}
     {pending && editing && <EventEditor initial={value.candidate ?? {}} onSaved={() => {}} onConfirmed={draft => decide('approve', draft)} onCancel={() => setEditing(false)} />}
   </section>;

@@ -1,3 +1,4 @@
+import { Skeleton } from '../ui/Skeleton';
 import { Toggle } from '../ui/Toggle';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
@@ -49,7 +50,7 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
       finally { if (!controller.signal.aborted) setLoading(false); }
     }
     void load(); window.addEventListener('focus', load); return () => { controller.abort(); window.removeEventListener('focus', load); };
-  }, [selection.include_archived, selection.document_ids?.join(','), selection.context_ids?.join(',')]);
+  }, [selection.include_archived, selection.document_ids?.join(','), selection.context_ids?.join(','), pickerOpen]);
   async function loadMore() {
     const controller = controllerRef.current;
     setLoadingMore(true);
@@ -111,10 +112,10 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
             <span className="block truncate text-xs text-subtle">{document.filename}</span>
           </button>)}
         </div>
-        {(loading || loadingMore) && <p role="status" className="mt-2 text-xs text-muted">Loading material...</p>}
+        {(loading || loadingMore) && <Skeleton variant="list" />}
         {!loading && !loadingMore && !matches.length && !error && <p role="status" className="mt-2 text-xs text-muted">{query ? 'No matching ready material.' : 'No ready material yet. Add material in Library.'}</p>}
         {error && <p role="alert" className="mt-2 text-xs text-danger">{error}</p>}
-        {nextOffset < total && <Button size="sm" variant="secondary" disabled={loading || loadingMore} onClick={() => void loadMore()}>Load more material</Button>}
+        {nextOffset < total && <Button size="sm" variant="secondary" disabled={loading || loadingMore} loading={loadingMore} onClick={() => void loadMore()}>Load more material</Button>}
         <div className="mt-2 flex flex-wrap gap-3 border-t border-border pt-2 text-xs">
           <button type="button" className="text-accent" onClick={() => { choose({ mode: 'CROSS_CONTEXT', include_archived: selection.include_archived }); onPick(); }}>Choose learning contexts</button>
           <Link to="/library" className="text-accent">Manage Library</Link>
@@ -124,7 +125,7 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
     {selection.mode !== 'STANDARD' && <details className="mb-3 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">{selection.mode === 'SOURCE_SPECIFIC' ? 'Using selected material' : selection.mode === 'CROSS_CONTEXT' ? 'Using selected learning contexts' : 'Use relevant study material automatically'}</summary>
     <div className="mt-3 space-y-3"><label className="block">Study sources<Select aria-label="Study sources" className="mt-1" value={selection.mode} disabled={disabled} onChange={e => choose({ mode: e.target.value as ChatSelection['mode'], include_archived: e.target.value === 'STANDARD' ? false : selection.include_archived })}><option value="STANDARD">Automatic relevant material</option><option value="SOURCE_SPECIFIC">Choose material</option><option value="CROSS_CONTEXT">Choose learning contexts</option></Select></label>
     {selection.mode === 'SOURCE_SPECIFIC' && <label className="block">Selected material<Select multiple className="mt-1" value={selection.document_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, document_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{documents.filter(d => d.active_generation_id && (selection.include_archived || (!d.archived && contexts.some(c => c.status !== 'ARCHIVED' && d.context_ids.includes(c.context_id))))).map(d => <option key={d.id} value={d.id}>{d.title}{d.archived ? ' (archived)' : ''}</option>)}</Select></label>}
-    {selection.mode === 'SOURCE_SPECIFIC' && nextOffset < total && <Button size="sm" variant="secondary" disabled={disabled || loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Loading material…' : 'Load more material'}</Button>}
+    {selection.mode === 'SOURCE_SPECIFIC' && nextOffset < total && <Button size="sm" variant="secondary" disabled={disabled || loadingMore} loading={loadingMore} onClick={() => void loadMore()}>{'Load more material'}</Button>}
     {selection.mode === 'CROSS_CONTEXT' && <label className="block">Selected learning contexts<Select multiple className="mt-1" value={selection.context_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, context_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{contexts.filter(c => c.status !== 'ARCHIVED' || selection.include_archived).map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>}
     <Toggle label="Allow explicitly selected archived material" disabled={disabled} checked={selection.include_archived ?? false} onChange={e => choose({ ...selection, include_archived: e.target.checked })} />
     {notice && <p role="status" className="text-muted">{notice}</p>}

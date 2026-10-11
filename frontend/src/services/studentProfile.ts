@@ -29,9 +29,9 @@ export const skipCalibration = (version: number) => request<StudentProfile>('/ca
 export const retryEvaluation = () => request<StudentProfile>('/calibration/evaluate', { method: 'POST' });
 export function profileError(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status >= 500) return 'Mentra couldn’t save your profile right now. Please try again.';
-    if (error.status === 422) return 'Check the highlighted details and try again.';
+    if (error.status >= 500) return 'Your profile could not be saved.';
+    if (error.status === 422) return 'These profile details could not be accepted.';
     return error.message;
   }
-  return 'Couldn’t reach Mentra. Your saved progress is safe. Check your connection and try again.';
+  return 'Mentra could not be reached.';
 }

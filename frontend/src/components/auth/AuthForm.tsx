@@ -1,7 +1,7 @@
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button, Card, Input, Spinner } from '../ui';
+import { Button, Card, Input } from '../ui';
 import { useAuth } from './AuthProvider';
 import { ApiError } from '../../services/api';
 import { authErrorMessage } from '../../services/auth';
@@ -49,7 +49,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         const backendFields: FieldErrors = {};
         for (const issue of failure.details) {
           const field = issue.location[issue.location.length - 1];
-          if (field === 'username' || field === 'password') backendFields[field] = issue.message.replace(/^Value error, /, '');
+          if (field === 'username' || field === 'password') backendFields[field] = 'This value could not be accepted.';
         }
         setFields(backendFields);
         setError(Object.keys(backendFields).length ? null : authErrorMessage(failure));
@@ -102,9 +102,8 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               : registration && <p id="password-hint" className="mt-2 text-xs leading-5 text-subtle">Use at least 12 characters.</p>}
           </div>
         </div>
-        <Button className="mt-7 min-h-12 w-full" disabled={submitting} type="submit">
-          {submitting ? <><Spinner className="h-4 w-4" label={registration ? 'Creating account' : 'Signing in'} />{registration ? 'Creating account…' : 'Signing in…'}</>
-            : <>{registration ? 'Create account' : 'Sign in'}<ArrowRight aria-hidden="true" size={16} /></>}
+        <Button className="mt-7 min-h-12 w-full" disabled={submitting} loading={submitting} type="submit">
+          {registration ? 'Create account' : 'Sign in'}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted">

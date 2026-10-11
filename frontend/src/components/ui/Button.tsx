@@ -1,9 +1,11 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '../../utils/cn';
+import { Spinner } from './Spinner';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
 }
 
 const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
@@ -23,6 +25,8 @@ export function Button({
   variant = 'primary',
   size = 'md',
   type = 'button',
+  loading = false,
+  children,
   ...props
 }: ButtonProps) {
   return (
@@ -35,6 +39,8 @@ export function Button({
       )}
       type={type}
       {...props}
-    />
+      disabled={props.disabled || loading}
+      aria-busy={loading || undefined}
+    >{loading && <Spinner aria-hidden="true" className="h-4 w-4 shrink-0" />}{children}</button>
   );
 }
