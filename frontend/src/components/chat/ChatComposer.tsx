@@ -1,9 +1,13 @@
 import { ArrowUp, Paperclip } from 'lucide-react';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
+import type { ChatSelection } from '../../types/rag';
 import { Button, Textarea } from '../ui';
 
 interface ChatComposerProps {
+  selection: ChatSelection;
+  onSelectionChange: (value: ChatSelection) => void;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -13,6 +17,8 @@ interface ChatComposerProps {
 }
 
 export function ChatComposer({
+  selection,
+  onSelectionChange,
   value,
   onChange,
   onSubmit,
@@ -21,6 +27,12 @@ export function ChatComposer({
   hasAttachments,
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeOptionId, setActiveOptionId] = useState<string>();
+  const pickerRef = useRef<SourcePickerHandle>(null);
+  const dismissedMention = useRef<number | null>(null);
+  const mentionRef = useRef<{ start: number; end: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => {
@@ -31,13 +43,43 @@ export function ChatComposer({
   }, [value]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (pickerRef.current?.handleKeyDown(event)) return;
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       onSubmit();
     }
   }
 
+  function updateMention(text: string, cursor: number) {
+    const match = /(?:^|\s)@([^@\n]*)$/.exec(text.slice(0, cursor));
+    if (!match) {
+      mentionRef.current = null; dismissedMention.current = null;
+      setPickerOpen(false); setQuery(''); return;
+    }
+    const start = cursor - match[1].length - 1;
+    mentionRef.current = { start, end: cursor };
+    setQuery(match[1]);
+    setPickerOpen(dismissedMention.current !== start);
+  }
+
+  function closePicker() {
+    dismissedMention.current = mentionRef.current?.start ?? null;
+    setPickerOpen(false);
+  }
+
   return (
+    <>
+      <SourceSelector ref={pickerRef} selection={selection} onChange={onSelectionChange} disabled={isThinking}
+        anchor={textareaRef} pickerOpen={pickerOpen} query={query} onActiveOptionChange={setActiveOptionId} onClose={closePicker}
+        onPick={() => {
+          const mention = mentionRef.current;
+          if (mention) onChange(value.slice(0, mention.start) + value.slice(mention.end));
+          mentionRef.current = null; dismissedMention.current = null; setPickerOpen(false); setQuery('');
+          requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+            if (mention) textareaRef.current?.setSelectionRange(mention.start, mention.start);
+          });
+        }} />
     <form
       aria-label="Message Mentra"
       className="rounded-2xl border border-border-strong bg-surface p-2 shadow-lg shadow-shadow/10 focus-within:border-border-hover"
@@ -48,11 +90,22 @@ export function ChatComposer({
     >
       <Textarea
         aria-label="Ask Mentra anything"
+        aria-haspopup="listbox"
+        aria-expanded={pickerOpen}
+        aria-controls={pickerOpen ? 'study-material-results' : undefined}
+        aria-activedescendant={pickerOpen ? activeOptionId : undefined}
+        aria-autocomplete="list"
         className="max-h-48 min-h-[3.25rem] resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-sm leading-6 placeholder:text-subtle focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60"
         disabled={isThinking}
-        onChange={(event) => onChange(event.currentTarget.value)}
+        onChange={(event) => {
+          const text = event.currentTarget.value;
+          const cursor = event.currentTarget.selectionStart;
+          onChange(text);
+          updateMention(text, cursor);
+        }}
+        onSelect={event => updateMention(event.currentTarget.value, event.currentTarget.selectionStart)}
         onKeyDown={handleKeyDown}
-        placeholder="Ask Mentra anything..."
+        placeholder="Ask Mentra anything... Type @ to choose study material"
         ref={textareaRef}
         rows={1}
         value={value}
@@ -87,5 +140,6 @@ export function ChatComposer({
         </div>
       </div>
     </form>
+    </>
   );
 }

@@ -9,6 +9,7 @@ import { AssessmentsPage } from './pages/AssessmentsPage';
 import { ChatPage } from './pages/ChatPage';
 import { ChatSession } from './components/chat/ChatSession';
 import { LibraryPage } from './pages/LibraryPage';
+import { AddMaterialPage } from './pages/AddMaterialPage';
 import { MaterialDetailPage } from './pages/MaterialDetailPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -42,6 +43,7 @@ function App() {
                   <Route index element={<ChatPage />} />
                   <Route path="chat/:conversationId" element={<ChatPage />} />
                   <Route path="library" element={<LibraryPage />} />
+                  <Route path="library/new" element={<AddMaterialPage />} />
                   <Route path="library/:documentId" element={<MaterialDetailPage />} />
                   <Route path="progress" element={<ProgressPage />} />
                   <Route path="assessments" element={<AssessmentsPage />} />

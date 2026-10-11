@@ -1,6 +1,5 @@
 ﻿import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
-import { SourceSelector } from '../components/chat/SourceSelector';
 import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
@@ -108,7 +107,6 @@ export function ChatPage() {
       )}
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         <div className="mx-auto w-full max-w-3xl">
-          <SourceSelector key={`${identity?.learner_id}-${id}`} selection={selection} disabled={view.busy} onChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} />
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
             {view.unsent && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
@@ -122,7 +120,7 @@ export function ChatPage() {
             }}>Remove</button>
           </li>)}</ul>}
           {uploading && <p role="status" className="mb-2 text-xs text-muted">Uploading files…</p>}
-          <ChatComposer isThinking={view.busy || view.loading || uploading} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
+          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>

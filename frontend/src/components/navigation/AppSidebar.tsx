@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   MessageSquareText,
   Settings2,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -110,7 +109,11 @@ export function AppSidebar({
             title={collapsed ? 'New chat' : undefined}
             type="button"
           >
-            <Sparkles aria-hidden="true" className="shrink-0 text-accent" size={17} />
+            <svg aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-heading" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3H5a2 2 0 0 0-2 2v15l4-4h12a2 2 0 0 0 2-2v-3" />
+              <path d="m15 7 5-5 3 3-5 5-4 1 1-4Z" />
+              <path d="m18 4 3 3" />
+            </svg>
             <span className={cn(collapsed && 'lg:hidden')}>New chat</span>
           </button>
         </div>
@@ -149,17 +152,19 @@ export function AppSidebar({
 
         <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
           <div className="relative">
-            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
-                <div className="border-b border-border px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
+            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" matchWidth viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
+                <div className={cn('border-b border-border px-4 py-3', collapsed && 'lg:px-1 lg:text-center')}>
+                  <p className={cn('text-[11px] font-medium uppercase tracking-[0.12em] text-subtle', collapsed && 'lg:hidden')}>Signed in as</p>
                   <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
                 </div>
                 <div className="p-2">
                   <Link
+                    aria-label="Settings"
                     aria-current={location.pathname === '/settings' && !memoryActive ? 'page' : undefined}
                     className={
                       cn(
                         'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                        collapsed && 'lg:justify-center lg:px-0',
                         location.pathname === '/settings' && !memoryActive
                           ? 'bg-active font-medium text-foreground'
                           : 'text-muted hover:bg-hover hover:text-foreground',
@@ -172,17 +177,17 @@ export function AppSidebar({
                     to="/settings"
                   >
                     <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
-                    <span>Settings</span>
+                    <span className={cn(collapsed && 'lg:hidden')}>Settings</span>
                   </Link>
-                  <Link to="/settings?tab=memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', memoryActive ? 'bg-active font-medium text-foreground' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
-                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span>Memories</span>
+                  <Link to="/settings?tab=memories" aria-label="Memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', collapsed && 'lg:justify-center lg:px-0', memoryActive ? 'bg-active font-medium text-foreground' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
+                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span className={cn(collapsed && 'lg:hidden')}>Memories</span>
                   </Link>
                 </div>
                 <div className="border-t border-border px-2 pb-2">
-                  <ThemeSelector collapsed={false} />
+                  <ThemeSelector collapsed={collapsed} vertical />
                 </div>
                 <div className="border-t border-border p-2">
-                  <LogoutButton />
+                  <LogoutButton collapsed={collapsed} />
                 </div>
             </Popover>
 

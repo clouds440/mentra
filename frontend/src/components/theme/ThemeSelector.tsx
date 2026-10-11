@@ -8,14 +8,14 @@ const options = [
   { value: 'system', label: 'System', icon: Monitor },
 ] as const;
 
-export function ThemeSelector({ collapsed }: { collapsed: boolean }) {
+export function ThemeSelector({ collapsed, vertical = false }: { collapsed: boolean; vertical?: boolean }) {
   const { preference, setPreference } = useTheme();
   return (
     <fieldset className="mt-3 min-w-0">
       <legend className={cn('mb-2 px-3 text-[11px] font-medium text-subtle', collapsed && 'lg:sr-only')}>
         Appearance
       </legend>
-      <div className={cn('flex gap-1 rounded-lg border border-border p-1', collapsed && 'lg:flex-col')}>
+      <div className={cn('flex gap-1 rounded-lg border border-border p-1', vertical ? 'flex-col' : collapsed && 'lg:flex-col')}>
         {options.map(({ value, label, icon: Icon }) => (
           <label key={value} className="relative min-w-0 flex-1 cursor-pointer">
             <input
@@ -29,7 +29,7 @@ export function ThemeSelector({ collapsed }: { collapsed: boolean }) {
             />
             <span
               title={`${label} theme`}
-              className="flex min-h-8 items-center justify-center gap-1.5 rounded-md px-1 text-[11px] text-muted hover:bg-hover peer-checked:bg-active peer-checked:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+              className={cn('flex min-h-8 items-center gap-2 rounded-md px-2 text-xs text-muted hover:bg-hover peer-checked:bg-active peer-checked:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-accent', !vertical && 'justify-center', collapsed && 'lg:justify-center lg:px-0')}
             >
               <Icon aria-hidden="true" size={14} className="shrink-0" />
               <span className={cn(collapsed && 'lg:hidden')}>{label}</span>

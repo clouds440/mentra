@@ -65,6 +65,7 @@ test('Library code and HTML script/style metadata reach the polished source read
   await page.setViewportSize({ width: 1440, height: 1000 });
   await register(page);
   await page.goto('/library');
+  await page.getByRole('button', { name: 'Add material', exact: true }).click();
   await page.getByLabel('File', { exact: true }).setInputFiles({ name: 'Greeting.tsx', mimeType: 'text/plain', buffer: Buffer.from(userCode) });
   await page.getByLabel('Material title', { exact: true }).fill('Greeting component');
   await page.getByLabel('New context name', { exact: true }).fill('React');
@@ -105,6 +106,7 @@ test('Library code and HTML script/style metadata reach the polished source read
 test('Markdown uploads render rich content and adjacent source chunks stay continuous', async ({ page }) => {
   await register(page);
   await page.goto('/library');
+  await page.getByRole('button', { name: 'Add material', exact: true }).click();
   const markdown = '# JavaScript notes\n\nHere is a reusable pattern with `const`.\n\n```js\nconst answer = 42;\n```\n\n| Kind | Example |\n| --- | --- |\n| Value | 42 |';
   await page.getByLabel('File', { exact: true }).setInputFiles({ name: 'notes.md', mimeType: 'text/markdown', buffer: Buffer.from(markdown) });
   await page.getByLabel('Material title', { exact: true }).fill('Code notes');

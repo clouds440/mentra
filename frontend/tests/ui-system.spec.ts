@@ -32,9 +32,9 @@ test('portaled dropdowns support keyboard, multiselect, anchoring and dismissal'
   await level.click(); await level.press('Escape'); await expect(level).toBeFocused();
   await expect(list).toHaveCount(0);
   await page.goto('/');
-  await page.getByText('Use relevant study material automatically', { exact: true }).click();
-  const sources = page.getByRole('combobox', { name: 'Study sources', exact: true });
-  await sources.click(); await page.getByRole('option', { name: 'Choose learning contexts', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Ask Mentra anything' }).press('@');
+  await page.getByRole('button', { name: 'Choose learning contexts', exact: true }).click();
+  await page.getByText('Using selected learning contexts', { exact: true }).click();
   const contexts = page.getByRole('combobox', { name: 'Selected learning contexts', exact: true });
   await contexts.click();
   const choices = page.getByRole('listbox', { name: 'Selected learning contexts options' });
@@ -59,6 +59,7 @@ for (const theme of ['light', 'dark'] as const) {
     await register(page);
     await page.goto('/library');
     await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Add material', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Upload file', exact: true })).toBeVisible();
     const file = page.getByLabel('File', { exact: true });
     expect(await file.evaluate(node => getComputedStyle(node).clip !== 'auto')).toBe(true);
@@ -85,3 +86,39 @@ for (const theme of ['light', 'dark'] as const) {
     await page.screenshot({ path: testInfo.outputPath(`progress-events-${theme}.png`), fullPage: true });
   });
 }
+
+test('account drawer matches its capsule and stacks theme choices', async ({ page }, testInfo) => {
+  await register(page);
+  for (const state of ['expanded', 'collapsed', 'mobile'] as const) {
+    if (state === 'collapsed') await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+    if (state === 'mobile') {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+    }
+    const capsule = page.getByRole('button', { name: /^Account menu/ });
+    await capsule.click();
+    const panel = page.locator('#sidebar-account-panel');
+    await expect(panel).toBeVisible();
+    await expect.poll(async () => {
+      const a = await capsule.boundingBox(); const b = await panel.boundingBox();
+      return Math.abs(a!.width - b!.width) + Math.abs(a!.x - b!.x);
+    }).toBeLessThan(2);
+    expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    const signOut = await panel.getByRole('button', { name: 'Sign out', exact: true }).boundingBox();
+    const panelBounds = await panel.boundingBox();
+    expect(signOut!.y).toBeGreaterThanOrEqual(panelBounds!.y);
+    expect(signOut!.y + signOut!.height).toBeLessThanOrEqual(panelBounds!.y + panelBounds!.height);
+    if (state === 'collapsed') expect(Math.abs(signOut!.x + signOut!.width / 2 - panelBounds!.x - panelBounds!.width / 2)).toBeLessThan(2);
+    const light = panel.getByRole('radio', { name: 'Light theme' }).locator('..');
+    const dark = panel.getByRole('radio', { name: 'Dark theme' }).locator('..');
+    const system = panel.getByRole('radio', { name: 'System theme' }).locator('..');
+    const boxes = await Promise.all([light.boundingBox(), dark.boundingBox(), system.boundingBox()]);
+    expect(boxes[1]!.y).toBeGreaterThanOrEqual(boxes[0]!.y + boxes[0]!.height);
+    expect(boxes[2]!.y).toBeGreaterThanOrEqual(boxes[1]!.y + boxes[1]!.height);
+    await dark.click(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await light.click(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.screenshot({ path: testInfo.outputPath(`account-${state}.png`) });
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0); await expect(capsule).toBeFocused();
+  }
+});
