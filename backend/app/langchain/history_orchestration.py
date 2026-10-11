@@ -157,7 +157,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         return AIMessage(content=content)
                 else:
                     return AIMessage(content=content)
-            raise AppError('AI_PROVIDER_ERROR', 'The provider returned an invalid final answer.', 502)
+            raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
 
     async def model_round(state):
         nonlocal repairs, answer_schema
@@ -203,7 +203,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 additional_sources=additional_sources, system_context=fallback_context)
         if isinstance(response, AIMessage) and response.invalid_tool_calls:
             if repairs >= 1 or final:
-                raise AppError('AI_PROVIDER_ERROR', 'The provider returned malformed tool arguments. Retry this message.', 502)
+                raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
             repairs += 1
             budget.call()
             conversation.append(SystemMessage(content='The preceding model output had malformed function arguments and was not executed. Return valid arguments matching the provided schema, or a truthful final answer.'))
@@ -228,7 +228,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         raise
                 elif direct_candidate and not scope.get('_domain_tool_used'):
                     if final or scope.get('direct_rejected'):
-                        raise AppError('AI_PROVIDER_ERROR', 'The provider did not establish whether tools are needed. Retry or clarify your question.', 502)
+                        raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
                     scope['direct_rejected'] = True
                     repairs += 1
                     budget.call()
@@ -240,7 +240,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             if outputs:
                 if len(response.tool_calls) != 1:
                     if repairs >= 1 or final:
-                        raise AppError('AI_PROVIDER_ERROR', 'The provider mixed a final answer with pending tools.', 502)
+                        raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
                     repairs += 1
                     budget.call()
                     conversation.append(SystemMessage(content='The final answer was mixed with pending actions and nothing executed. Return only the needed tool calls or only the final answer schema.'))
@@ -257,7 +257,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         return dict(iteration=iteration+1, response=None, done=False, repair=True)
                     raise
         if final:
-            raise AppError('AI_PROVIDER_ERROR', 'The provider did not produce a final answer within the tool limit.', 502)
+            raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
         if len(response.tool_calls) > 6:
             raise AppError('TOOL_BUDGET', 'The provider requested too many tools in one response.', 422)
         return dict(response=response, done=False)

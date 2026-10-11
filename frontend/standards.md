@@ -49,6 +49,8 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Render Markdown with the existing `components/content/MarkdownContent` and shared Prism `CodeBlock`, used by chat and Library. Keep feature reference resolution in its feature adapter; never enable arbitrary HTML or duplicate the formatting stack.
 - Web citations resolve only message-local validated W references. Reuse `WebCitation`, `WebCitations` and `WebsiteIcon` for external links and origin identity. Favicons use anonymous HTTPS origin requests without referrers; blocked/unavailable icons render a stable fallback. Never send search terms to a favicon service. Website activity badges use the existing attempt-fenced stream, not a new polling store.
 
+- User-facing failures use the closed vocabulary in `services/userError.ts`, including persisted turn errors inside successful responses. Never render arbitrary server error/reason/warning strings. Map tool limitations by capability/code and file notes to plain-language descriptions; preserve uncertain-action notices and retry/review guidance. Saved history stays unchanged.
+
 ## TypeScript
 
 - Keep strict type checking enabled and avoid `any`.

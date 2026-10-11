@@ -1,3 +1,4 @@
+import { materialWarningMessage } from '../../services/userError';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -92,7 +93,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     <div className="source-reader">
       {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
       {view === 'extracted' ? <>
-        {source.warnings.length > 0 && <details className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted"><summary className="cursor-pointer"><AlertCircle size={13} className="mr-2 inline" aria-hidden="true" />Extraction notes ({source.warnings.length})</summary><ul className="mt-3 space-y-2">{source.warnings.map(w => <li key={w}>{w}</li>)}</ul></details>}
+        {source.warnings.length > 0 && <details className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted"><summary className="cursor-pointer"><AlertCircle size={13} className="mr-2 inline" aria-hidden="true" />Extraction notes ({source.warnings.length})</summary><ul className="mt-3 space-y-2">{source.warnings.map(w => <li key={w}>{materialWarningMessage(w)}</li>)}</ul></details>}
         {loading && <Skeleton variant="text" rows={8} className="py-6" />}
         {!loading && chunks.length === 0 && <p className="source-prose">{source.excerpt || 'No extracted passages are available for this version. Open the original file to inspect it.'}</p>}
         {passages.map(chunk => {

@@ -59,6 +59,7 @@ class ChatEndpointTests(unittest.TestCase):
         client = create_test_client(FakeModelFactory(FakeChatModel('')))
         response = client.post('/api/v1/chat', json={'messages':[{'role':'user','content':'Hello'}]})
         self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"]["message"], "Mentra couldn’t finish this response. Please try again.")
 
     def test_chat_returns_reply_and_sends_system_prompt_and_history(self) -> None:
         model = FakeChatModel("Let's work through it.")
@@ -133,7 +134,7 @@ class ChatEndpointTests(unittest.TestCase):
             {
                 "error": {
                     "code": "AI_CONFIGURATION_ERROR",
-                    "message": "AI_MODEL is missing.",
+                    "message": "Mentra isn’t available right now. Please try again later.",
                 }
             },
         )
@@ -157,6 +158,7 @@ class ChatEndpointTests(unittest.TestCase):
             response.json()["error"]["code"], "AI_PROVIDER_ERROR"
         )
         self.assertNotIn("private provider detail", response.text)
+        self.assertEqual(response.json()["error"]["message"], "Mentra couldn’t finish this response. Please try again.")
 
     def test_invalid_turns_are_rejected(self) -> None:
         client = create_test_client(FakeModelFactory())

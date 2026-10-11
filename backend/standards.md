@@ -40,6 +40,8 @@ Do not add empty folders or modules merely to mirror a template. Create them whe
 - Use async functions when they provide value for asynchronous I/O; do not make every function async automatically.
 - Keep generic helpers genuinely generic. Do not create a giant `utils.py` or speculative domain helpers.
 
+- Public chat failure messages must use plain learner-facing wording. Keep configuration, provider and protocol diagnostics private; preserve typed error codes and status for recovery. Model prompts must describe tool failures without quoting internal receipts or claiming uncertain actions succeeded.
+
 ## API and errors
 
 - Version public routes under `/api/v1`; define feature routers in route modules and include them in the central API router.

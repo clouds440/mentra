@@ -1,3 +1,4 @@
+import { materialWarningMessage } from '../services/userError';
 import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
@@ -59,7 +60,7 @@ export function MaterialDetailPage() {
   }
   return <div className="h-full overflow-y-auto"><section className="page-container">
     <Link to="/library" className="text-sm text-accent">Back to Library</Link><div><h1 className="page-title">{doc.title}</h1><p className="mt-2 text-sm text-muted">{doc.archived ? 'Archived' : active ? 'Ready to study' : 'Not yet indexed'}{job ? ` · ${job.stage}` : ''}</p></div>
-    {error && <p role="alert" className="text-sm text-danger">{error}</p>}{active?.warnings.map(w => <p key={w} className="text-sm text-muted">{w}</p>)}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}{active?.warnings.map(w => <p key={w} className="text-sm text-muted">{materialWarningMessage(w)}</p>)}
     {doc.jobs.filter(j => j.state === 'FAILED').slice(0, 1).map(j => <div key={j.id} className="rounded-xl border border-border p-4"><p className="text-sm text-danger">This material could not be processed.</p><Button className="mt-3" variant="secondary" disabled={busy} loading={busy} onClick={() => void action(() => retryJob(j.id))}>Retry processing</Button></div>)}
     <form className="space-y-4 rounded-xl border border-border p-5" onSubmit={e => { e.preventDefault(); void action(() => updateMaterial(doc, { title, context_ids: selection })); }}>
       <label className="block text-sm">Title<Input className="mt-2" value={title} maxLength={200} required onChange={e => setTitle(e.target.value)} /></label>

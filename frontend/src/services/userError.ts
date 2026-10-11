@@ -1,8 +1,50 @@
+export const responseError = 'Mentra couldn’t finish this response. Please try again.';
+
+// Persisted errors arrive in successful responses and bypass ApiError. Only
+// explicitly approved text may render; unknown/legacy diagnostics stay private.
+export function chatErrorMessage(message?: string | null): string {
+  if (message === 'The requested document could not be found. Select another document.') return message;
+  if (message === 'Generation interrupted. Retry this message.') return 'This response was interrupted. Please try again.';
+  return responseError;
+}
+
+export function toolWarningMessage(tool: string, code: string): string {
+  if (/CONFIRM|REVIEW_REQUIRED/.test(code)) return 'Please review this action before continuing.';
+  if (tool === 'web_search') return 'Web search couldn’t be completed. Some information may be missing.';
+  if (tool === 'event_manage') return 'The event change couldn’t be confirmed. Check your events before trying again.';
+  if (tool === 'event_lookup') return 'Your events couldn’t be checked.';
+  if (tool.startsWith('assessment_')) return 'This practice step couldn’t be completed. Check your practice before trying again.';
+  if (['search_study_material', 'get_study_source_chunk', 'document_extract'].includes(tool)) return 'Some study material couldn’t be read. Check the original file.';
+  if (tool === 'user_memory' || tool === 'history_lookup') return 'Some information from previous conversations couldn’t be checked.';
+  return 'Part of this request couldn’t be completed. Some information may be missing.';
+}
+
+export function materialWarningMessage(message: string): string {
+  const page = /(?:page|slide) (\d+)/i.exec(message);
+  const location = page ? ` on ${/slide/i.test(message) ? 'slide' : 'page'} ${page[1]}` : '';
+  if (/OCR|handwriting|equations/i.test(message)) return `Some text${location} may be inaccurate or missing. Check handwriting and equations against the original.`;
+  if (/no readable|could not be read|could not be decoded|could not be located/i.test(message)) return `Some content${location} couldn’t be read. Check the original file.`;
+  if (/not fetched|external.*scripts/i.test(message)) return 'Content linked from another location wasn’t included. Check the original file.';
+  if (/headers|footers|speaker notes|annotations|charts|drawing text/i.test(message)) return 'Some notes, images or other content may be missing. Check the original file.';
+  if (/ambiguous|No answer was recognized|review every answer/i.test(message)) return 'Some answers or question numbers couldn’t be read clearly. Review every answer before submitting.';
+  return 'Some content may be incomplete. Check the original file.';
+}
+
+export function webSearchWarningMessage(outcome: string): string {
+  if (outcome === 'partial') return 'Only some web results were available. Check important details against the sources.';
+  if (outcome === 'quota_exhausted' || outcome === 'rate_limited') return 'Web search has reached its limit for now. Please try again later.';
+  if (outcome === 'timeout') return 'Web search took too long. Please try again.';
+  if (outcome === 'invalid_input') return 'Try a different search phrase or website.';
+  if (outcome === 'disabled') return 'Web search isn’t available right now.';
+  return 'Current web information couldn’t be checked. Please try again later.';
+}
+
 export function errorMessage(status: number, code: string): string {
   if (code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
   if (['USERNAME_TAKEN', 'ACCOUNT_EXISTS'].includes(code)) return 'That username is already registered.';
   if (code.startsWith('SPEECH_')) return 'Your recording could not be transcribed.';
-  if (/AI|LLM|PROVIDER|GENERATION/.test(code)) return 'Mentra could not complete your response.';
+  if (code === 'AI_CONFIGURATION_ERROR') return 'Mentra isn’t available right now. Please try again later.';
+  if (/^(AI_|LLM_|PROVIDER_|GENERATION_)/.test(code)) return responseError;
   if (code === 'NETWORK_ERROR') return 'Couldn’t reach Mentra. Check your connection and try again.';
   if (code === 'REQUEST_TIMEOUT') return 'This took too long to complete.';
   if (code === 'CHAT_NOT_FOUND') return 'Conversation not found.';

@@ -1,15 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function recoveryChat(page: Page, state: 'RUNNING' | 'SUCCEEDED' | 'FAILED') {
+async function recoveryChat(page: Page, state: 'RUNNING' | 'SUCCEEDED' | 'FAILED', failureMessage = 'The requested document could not be found. Select another document.', diagnosticWarnings = false) {
   const id = 'recovery-chat', turnId = 'recovery-turn';
   const selection = {mode:'STANDARD', context_ids:[], document_ids:[], include_archived:false};
   const conversation = {id, title:'Recovery test', revision:2, message_count:2, selection,
     created_at:'2026-10-11T00:00:00Z', updated_at:'2026-10-11T00:00:00Z', deleted_at:null};
   const user = {id:'user-message', conversation_id:id, sequence:1, role:'user', content:'Explain gravity', created_at:conversation.created_at};
   const answer = {id:'assistant-message', conversation_id:id, sequence:2, role:'assistant', content:'Gravity attracts masses.', created_at:conversation.created_at,
-    tool_warnings:[{tool_name:'event_manage', code:'TOOL_TIMEOUT', message:'The event service did not respond.', task_impact:'required_for_part', effect_certainty:'unknown'}]};
+    retrieval_warning: diagnosticWarnings ? 'SQLAlchemy private database trace' : null,
+    web_searches: diagnosticWarnings ? [{outcome:'unavailable', reason:'MCP provider API_KEY private diagnostic', current_date:'2026-10-11', current_datetime:conversation.created_at, delivered_at:conversation.created_at, reference_timezone:'UTC', reused_within_turn:false}] : [],
+    tool_warnings:[{tool_name:'event_manage', code:'TOOL_TIMEOUT', message:diagnosticWarnings ? 'SQLAlchemy private database trace' : 'The event service did not respond.', task_impact:'required_for_part', effect_certainty:'unknown'}]};
   const snapshot = () => ({conversation, items:state === 'SUCCEEDED' ? [user, answer] : [user], has_more:false, next_cursor:null,
-    turn:{id:turnId, state, attempt:1, selection, user_sequence:1, error:state === 'FAILED' ? 'The requested document could not be found. Select another document.' : null}});
+    turn:{id:turnId, state, attempt:1, selection, user_sequence:1, error:state === 'FAILED' ? failureMessage : null}});
   let event = {schema_version:1, conversation_id:id, turn_id:turnId, attempt:1, sequence:1, step_id:'read-step', tool_name:'event_lookup',
     user_message:'Reading your agenda failed. Retrying, attempt 2 of 3.', status:'retry_wait', tool_attempt:2, max_attempts:3, error_code:'TOOL_TIMEOUT'};
   await page.route('**/api/v1/**', async route => {
@@ -91,7 +93,7 @@ test('retry progress is visible and permanent limitations survive refresh', asyn
   await expect(page.getByLabel('Response limitations')).toContainText('Completion of this action has not been verified.');
   await expect(page.getByRole('article', {name:'Mentra response'})).toContainText('Gravity attracts masses.');
   await page.reload();
-  await expect(page.getByLabel('Response limitations')).toContainText('The event service did not respond.');
+  await expect(page.getByLabel('Response limitations')).toContainText('The event change couldn’t be confirmed.');
 });
 
 test('canonical failure gives its specific safe next step and retry control', async ({page}) => {
@@ -106,3 +108,30 @@ test('successful chat remains readable with limitations on a narrow screen', asy
   await expect(page.getByLabel('Response limitations')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('saved tool, retrieval and web diagnostics never render as response limitations', async ({page}) => {
+  await recoveryChat(page, 'SUCCEEDED', undefined, true);
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    const answer = page.getByRole('article', {name:'Mentra response'});
+    await expect(answer).toContainText('The event change couldn’t be confirmed.');
+    await expect(answer).toContainText('Current web information couldn’t be checked.');
+    await expect(answer).toContainText('Some study material couldn’t be fully checked.');
+    await expect(answer).not.toContainText(/SQLAlchemy|MCP|API_KEY|private diagnostic/);
+  }
+});
+
+for (const diagnostic of [
+  'The AI provider could not complete the request. Check its configuration and try again.',
+  'Missing required chat model configuration: AI_MODEL, AI_BASE_URL, AI_API_KEY.',
+  'SQLAlchemy database error: private connection details',
+]) {
+  test(`saved diagnostic is safe on initial load and reload: ${diagnostic.split(':')[0]}`, async ({page}) => {
+    await recoveryChat(page, 'FAILED', diagnostic);
+    await expect(page.getByRole('alert')).toContainText('Mentra couldn’t finish this response. Please try again.');
+    await expect(page.getByRole('button', {name:'Retry response'})).toBeVisible();
+    await expect(page.getByRole('alert')).not.toContainText(diagnostic);
+    await page.reload();
+    await expect(page.getByRole('alert')).toContainText('Mentra couldn’t finish this response. Please try again.');
+  });
+}

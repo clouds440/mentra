@@ -89,7 +89,7 @@ class ChatService:
         except ModelConfigurationError as exc:
             raise AppError(
                 "AI_CONFIGURATION_ERROR",
-                str(exc),
+                "Mentra isn’t available right now. Please try again later.",
                 status_code=503,
             ) from exc
         except AppError:
@@ -98,15 +98,14 @@ class ChatService:
             logger.warning("Chat provider request failed (%s).", type(exc).__name__)
             raise AppError(
                 "AI_PROVIDER_ERROR",
-                "The AI provider could not complete the request. Check its "
-                "configuration and try again.",
+                "Mentra couldn’t finish this response. Please try again.",
                 status_code=502,
             ) from exc
 
         if not isinstance(response.content, str) or not response.content.strip():
             raise AppError(
                 "AI_PROVIDER_ERROR",
-                "The AI provider returned an unsupported response format.",
+                "Mentra couldn’t finish this response. Please try again.",
                 status_code=502,
             )
         return response.content

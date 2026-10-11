@@ -1,3 +1,4 @@
+import { materialWarningMessage } from '../../services/userError';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
@@ -65,7 +66,7 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
     <div className="flex items-center gap-2"><FileText aria-hidden="true" size={16} /><span className="break-all font-medium">{file.filename}</span></div>
     {!detail && !error && <Skeleton variant="text" rows={2} className="mt-3" />}
     <p className="mt-1 text-xs text-muted">{detail?.ready ? 'Content extracted' : detail?.error ? 'Could not read this file' : 'Waiting for file extraction'}</p>
-    {detail?.warnings.map((warning, index) => <p key={index} className="mt-1 text-xs text-muted">{warning}</p>)}
+    {detail?.warnings.map((warning, index) => <p key={index} className="mt-1 text-xs text-muted">{materialWarningMessage(warning)}</p>)}
     {detail?.library_result ? <Link className="mt-2 inline-block text-accent underline" to={`/library/${detail.library_result.document_id}`}>View in Library · processing status</Link>
       : choosing && loadingContexts ? <Skeleton variant="form" rows={1} className="mt-3" /> : choosing ? <div className="mt-2 space-y-2">
         <Select aria-label={`Learning context for ${file.filename}`} value={context} onChange={event => setContext(event.target.value)} disabled={busy}>

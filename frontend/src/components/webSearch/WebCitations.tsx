@@ -1,5 +1,6 @@
 import type { WebSource, WebSearchRecord } from '../../types/webSearch';
 import { WebCitation } from './WebCitation';
+import { webSearchWarningMessage } from '../../services/userError';
 
 function civilDate(value: string | null | undefined): string | undefined {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
@@ -33,6 +34,6 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
       </li>)}</ol>
     </details>}
     {searches.some(search => search.outcome === 'no_results') && !sources.length && <p className="text-xs text-muted">No matching web sources were found.</p>}
-    {!!limitations.length && <p className="mt-2 text-xs text-muted" aria-label="Web search limitation">{limitations[limitations.length - 1]?.reason ?? 'Current web knowledge could not be verified.'}</p>}
+    {!!limitations.length && <p className="mt-2 text-xs text-muted" aria-label="Web search limitation">{webSearchWarningMessage(limitations[limitations.length - 1].outcome)}</p>}
   </div>;
 }
