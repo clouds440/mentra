@@ -10,8 +10,8 @@ import {
   Settings2,
   X,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { NavLink, Link, useLocation, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { MentraLogo } from '../brand/MentraLogo';
 import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -43,6 +43,12 @@ export function AppSidebar({
   const { identity } = useAuth();
   const location = useLocation();
   const { conversationId } = useParams();
+  const owner = identity?.learner_id;
+  const [lastChat, setLastChat] = useState({ owner, id: conversationId });
+  useEffect(() => {
+    if (conversationId || location.pathname === '/') setLastChat({ owner, id: conversationId });
+  }, [conversationId, location.pathname, owner]);
+  const chatTarget = conversationId ?? (lastChat.owner === owner ? lastChat.id : undefined);
   const activeChat = useConversation(conversationId ?? '');
   const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
@@ -66,11 +72,11 @@ export function AppSidebar({
         aria-label="Main navigation"
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-border bg-background transition-[width,transform] duration-200 ease-out lg:relative lg:z-20 lg:translate-x-0',
-          collapsed && 'lg:w-[4.5rem]',
+          collapsed && 'lg:w-14',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-border px-4">
+        <div className={cn('flex h-12 shrink-0 items-center justify-between border-b border-border px-4', collapsed && 'lg:justify-center lg:px-0')}>
           <div className="flex min-w-0 items-center gap-3">
             <MentraLogo working={activeChat.busy} />
             <span
@@ -92,7 +98,7 @@ export function AppSidebar({
           </button>
         </div>
 
-        <div className={cn('px-3 pt-5', collapsed && 'lg:px-2')}>
+        <div className={cn('px-3 pt-5', collapsed && 'lg:px-1.5')}>
           <button
             aria-label="Start a new chat"
             className={cn(
@@ -116,12 +122,15 @@ export function AppSidebar({
           </button>
         </div>
 
-        <nav className={cn('space-y-1 px-3 pt-5', collapsed && 'lg:px-2')} aria-label="Workspace">
-          {primaryNavigation.map(({ label, to, icon: Icon }) => (
-            <NavLink
+        <nav className={cn('space-y-1 px-3 pt-5', collapsed && 'lg:px-1.5')} aria-label="Workspace">
+          {primaryNavigation.map(({ label, to, icon: Icon }) => {
+            const isActive = to === '/' ? location.pathname === '/' : location.pathname === to || location.pathname.startsWith(`${to}/`);
+            return (
+            <Link
               key={to}
               aria-label={collapsed ? label : undefined}
-              className={({ isActive }) =>
+              aria-current={isActive ? 'page' : undefined}
+              className={
                 cn(
                   'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   isActive
@@ -130,27 +139,27 @@ export function AppSidebar({
                   collapsed && 'lg:justify-center lg:px-0',
                 )
               }
-              end={to === '/'}
               onClick={() => {
                 setAccountOpen(false);
                 onCloseMobile();
               }}
               title={collapsed ? label : undefined}
-              to={to}
+              to={to === '/' && chatTarget ? `/chat/${chatTarget}` : to}
             >
               <Icon aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
               <span className={cn(collapsed && 'lg:hidden')}>{label}</span>
-            </NavLink>
-          ))}
+            </Link>
+          );
+          })}
         </nav>
 
         {!collapsed && (
           <ConversationList onOpen={() => { setAccountOpen(false); onCloseMobile(); }} />
         )}
 
-        <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-2')}>
+        <div className={cn('mt-auto shrink-0 border-t border-border p-3', collapsed && 'lg:px-1.5')}>
           <div className="relative">
-            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" matchWidth={!collapsed || mobileOpen} viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
+            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" width={240} matchWidth={!collapsed || mobileOpen} viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
                 <div className="border-b border-border px-4 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
                   <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>

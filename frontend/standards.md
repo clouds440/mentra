@@ -25,7 +25,8 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Use React Router routes in `App.tsx`; `AppLayout` owns the persistent application shell and renders active pages through an outlet.
 - Route paths are lowercase and resource-oriented: `/` for Chat, `/library`, `/progress`, `/assessments`, and `/settings`.
 - Navigation belongs in the application shell, not repeated inside individual pages. Keep desktop collapse and mobile drawer behavior accessible and operable.
-- The account popover retains full labels and its normal width outside a collapsed desktop sidebar. Expanded desktop and mobile sidebars match the account capsule width; the shared Popover bounds the surface to the viewport.
+- The desktop collapsed sidebar is 56px wide; sidebar and main navbar headers share a 48px height so their borders align. The account popover retains full labels at 240px outside a collapsed desktop sidebar. Expanded desktop and mobile sidebars match the account capsule width; the shared Popover bounds the surface to the viewport.
+- On an existing chat route, highlight the conversation row, while the Chat navigation item stays unselected and returns to the last viewed chat from other workspace pages. New Chat resets that return target to the empty chat.
 - Keep page-specific behavior and UI with the relevant page/feature. Do not add routes, guards, onboarding, or account flows without a product requirement.
 - `/login` and `/register` use `AuthLayout` and a shared username/password form. `RequireGuest` redirects signed-in users; `RequireAuth` guards the workspace and preserves the requested destination.
 - The authenticated `StudentProfileProvider` owns profile restoration. `ProfileReady` handles loading/retry; `RequireOnboardingComplete` gates the workspace. `/onboarding` collects required information and optional calibration; `/calibration` resumes later from Settings.
