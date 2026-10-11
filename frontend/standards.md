@@ -27,6 +27,7 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Navigation belongs in the application shell, not repeated inside individual pages. Keep desktop collapse and mobile drawer behavior accessible and operable.
 - The desktop collapsed sidebar is 56px wide; sidebar and main navbar headers share a 48px height so their borders align. The account popover retains full labels at 240px outside a collapsed desktop sidebar. Expanded desktop and mobile sidebars match the account capsule width; the shared Popover bounds the surface to the viewport.
 - On an existing chat route, highlight the conversation row, while the Chat navigation item stays unselected and returns to the last viewed chat from other workspace pages. New Chat resets that return target to the empty chat.
+- The account capsule displays the login username. The optional preferred name (“What should Mentra call you?”) belongs to the shared onboarding/Settings ProfileForm and may be cleared independently of the username.
 - Keep page-specific behavior and UI with the relevant page/feature. Do not add routes, guards, onboarding, or account flows without a product requirement.
 - `/login` and `/register` use `AuthLayout` and a shared username/password form. `RequireGuest` redirects signed-in users; `RequireAuth` guards the workspace and preserves the requested destination.
 - The authenticated `StudentProfileProvider` owns profile restoration. `ProfileReady` handles loading/retry; `RequireOnboardingComplete` gates the workspace. `/onboarding` collects required information and optional calibration; `/calibration` resumes later from Settings.
@@ -41,6 +42,7 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Keep feature UI such as chat messages and composers outside `components/ui/`; reserve that directory for primitives.
 - Use the established icon library (`lucide-react`) consistently. Give icon-only controls accessible names and titles where useful; do not use emoji as application icons.
 - Use `components/brand/MentraLogo` for the decorative brand mark. Pass `working` only for active Mentra generation; the shared CSS owns alternating rotation and an alpha-masked accent sweep, without size pulses. Reduced-motion users receive a static mark, and the surrounding UI owns accessible status text.
+- Chat activity uses the native accessible details disclosure with its filled browser marker hidden. An outlined right-hand chevron appears on hover or keyboard focus and rotates when opened.
 - Empty states should explain the current state honestly and offer only actions that work. Do not present mock data as saved learner activity or invent analytics.
 - Reuse existing UI primitives, including Spinner/loading states and the accessible `Toggle` for binary preferences. Keep theme selection in the existing account drawer and use semantic Light/Dark/System tokens.
 - Render Markdown with the existing `components/content/MarkdownContent` and shared Prism `CodeBlock`, used by chat and Library. Keep feature reference resolution in its feature adapter; never enable arbitrary HTML or duplicate the formatting stack.

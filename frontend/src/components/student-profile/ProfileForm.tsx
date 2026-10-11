@@ -23,6 +23,8 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     event.preventDefault();
     if (pending || !profile) return;
     const issues: Record<string, string> = {};
+    const preferredName = (details.preferred_name ?? '').trim();
+    if (preferredName.length > 80 || /[\p{C}\u2028\u2029]/u.test(preferredName)) issues.preferred_name = 'Use a name of up to 80 characters without control characters.';
     if (!details.education_level) issues.education_level = 'Select your education level.';
     if (!details.field_of_study.trim()) issues.field_of_study = 'Enter your field or area of study.';
     if (details.learning_goal.trim().length < 5) issues.learning_goal = 'Add a short sentence about what you want to learn.';
@@ -34,6 +36,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     setPending(true); setError(null);
     try {
       const next = await updateDetails({ ...details, education_level: details.education_level as EducationLevel,
+        preferred_name: preferredName || null,
         field_of_study: details.field_of_study.trim(), learning_goal: details.learning_goal.trim() }, profile.version);
       replace(next); onSaved?.();
     } catch (failure) {
@@ -50,6 +53,14 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
   return <form aria-label="Student profile" aria-busy={pending} noValidate onSubmit={submit} className="space-y-5">
     {error && <p role="alert" className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">{error}</p>}
     <fieldset disabled={pending} className="space-y-5">
+      <div>
+        <label htmlFor="preferred_name" className="mb-2 block text-sm font-medium text-heading">What should Mentra call you?</label>
+        <Input id="preferred_name" name="preferred_name" autoComplete="nickname" maxLength={80} value={details.preferred_name ?? ''}
+          aria-invalid={Boolean(fields.preferred_name)} aria-describedby={`preferred_name-help${fields.preferred_name ? ' preferred_name-error' : ''}`}
+          onChange={event => change('preferred_name', event.target.value)} />
+        <p id="preferred_name-help" className="mt-2 text-xs leading-5 text-subtle">Optional. Mentra will use this name when it fits naturally. Leave blank to avoid a preferred name.</p>
+        {fieldError('preferred_name')}
+      </div>
       <div>
         <label htmlFor="education_level" className="mb-2 block text-sm font-medium text-heading">Education level</label>
         <Select id="education_level" name="education_level" required value={details.education_level}

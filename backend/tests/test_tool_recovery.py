@@ -36,7 +36,7 @@ class RoutingTests(unittest.TestCase):
     def test_only_general_queries_are_candidates(self):
         for query in ('Hello', 'What can you do?', 'Explain photosynthesis', 'What is gravity?'):
             self.assertTrue(general_query(query), query)
-            self.assertEqual([s.module for s in plan_request(query).steps], ['chat'])
+            self.assertEqual([s.module for s in plan_request(query).steps], ['chat', 'profile'])
         for query in ('Explain my progress', 'Explain this file', 'What is the latest news?',
                       'Explain photosynthesis and create a quiz', 'Summarize pasted notes',
                       'What can you do and show my agenda?', 'And make it harder', 'Explain your current health'):
@@ -417,6 +417,7 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
     async def test_general_query_skips_all_unrelated_reads(self):
         from app.langchain.orchestration_service import OrchestrationService
         service = Mock()
+        service.profile.prompt_context.return_value = SimpleNamespace(model_dump=lambda **kwargs: {'details': {'preferred_name': 'Ayesha'}})
         chat = SimpleNamespace(reply=AsyncMock(return_value='A general explanation.'))
         orchestration = OrchestrationService(chat, learner=service, rag=service, assessments=service, history=service, attachments=service)
         scope = dict(conversation_id='chat', current_user_message_id='user', context_rows=[], history_references=[], memory_references=[])
@@ -427,7 +428,9 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         service.chat.recent.assert_not_called()
         service.prompt_context.assert_not_called()
         service.get_relevant_context.assert_not_called()
-        self.assertEqual(scope['_tool_budget'].calls, 0)
+        service.profile.prompt_context.assert_called_once_with('owner')
+        self.assertEqual(chat.reply.call_args.kwargs['profile_context']['details']['preferred_name'], 'Ayesha')
+        self.assertEqual(scope['_tool_budget'].calls, 1)
 
     async def test_required_document_failure_reaches_limited_answer(self):
         from app.langchain.orchestration_service import OrchestrationService

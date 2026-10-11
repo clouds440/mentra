@@ -1,5 +1,6 @@
 export type EducationLevel = 'primary' | 'middle_school' | 'high_school' | 'college' | 'undergraduate' | 'graduate' | 'other';
 export interface ProfileDetails {
+  preferred_name?: string | null;
   education_level: EducationLevel;
   field_of_study: string;
   learning_goal: string;

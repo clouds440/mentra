@@ -22,6 +22,7 @@ test('information is mandatory and optional calibration resumes across refresh a
   await expect(page.getByText('Select your education level.')).toBeVisible();
   await page.goto('/settings');
   await expect(page).toHaveURL(/\/onboarding$/);
+  await page.getByLabel('What should Mentra call you?', { exact: true }).fill('Ayesha');
   await fillProfile(page);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'A quick starting point' })).toBeVisible();
@@ -34,6 +35,19 @@ test('information is mandatory and optional calibration resumes across refresh a
   await page.getByRole('button', { name: 'Skip for now', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
   await page.goto('/settings');
+  await expect(page.getByRole('button', { name: `Account menu for ${account.username}` })).toContainText(account.username);
+  await expect(page.getByText('Ayesha', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
+  await expect(page.getByLabel('What should Mentra call you?', { exact: true })).toHaveValue('Ayesha');
+  await page.getByLabel('What should Mentra call you?', { exact: true }).fill('Ayesha Noor');
+  await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await expect(page.getByText('Ayesha Noor', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Ayesha Noor', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
+  await page.getByLabel('What should Mentra call you?', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await expect(page.getByText('Not set', { exact: true })).toBeVisible();
   await expect(page.getByText('Not yet estimated', { exact: true })).toHaveCount(5);
   await expect(page.getByRole('link', { name: 'Start calibration', exact: true })).toBeVisible();
 });

@@ -2,6 +2,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Literal
+import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.core.identifiers import LearnerId
@@ -28,6 +29,16 @@ class ProfileDetails(Contract):
     learning_goal: str = Field(min_length=5, max_length=500)
     learning_preference: Literal['balanced', 'concise', 'examples_first', 'step_by_step', 'conceptual']
     explanation_depth: Literal['brief', 'standard', 'deep']
+    preferred_name: str | None = Field(default=None, max_length=80)
+
+    @field_validator('preferred_name', mode='before')
+    @classmethod
+    def clean_preferred_name(cls, value):
+        if isinstance(value, str):
+            if any(unicodedata.category(char).startswith('C') or char in '\u2028\u2029' for char in value):
+                raise ValueError('Use a single-line name without control characters.')
+            return ' '.join(value.split()) or None
+        return value
 
     @field_validator('field_of_study', 'learning_goal', mode='before')
     @classmethod

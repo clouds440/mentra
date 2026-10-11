@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { apiEvents } from '../../services/api';
 import { chatStore } from '../../stores/chatStore';
 import { ThinkingIndicator } from './ChatMessage';
@@ -71,8 +72,11 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
       {search.user_message}{sites(search)}
     </div>}
     {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
-    {!!steps.length && <details className="ml-11 mt-2 text-xs text-muted">
-      <summary className="cursor-pointer">Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</summary>
+    {!!steps.length && <details className="group/activity ml-11 mt-2 text-xs text-muted">
+      <summary className="group/trigger flex w-fit cursor-pointer list-none items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+        <span>Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</span>
+        <ChevronRight aria-hidden="true" size={14} className="shrink-0 opacity-0 transition-[opacity,transform] motion-reduce:transition-none group-hover/trigger:opacity-100 group-focus-visible/trigger:opacity-100 group-open/activity:rotate-90" />
+      </summary>
       <ol className="mt-2 space-y-1">{steps.map(step => <li key={step.step_id}>
         {step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
         <span className="text-subtle"> — {step.status}</span>

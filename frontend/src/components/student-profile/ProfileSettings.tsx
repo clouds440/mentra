@@ -12,6 +12,7 @@ export function ProfileSettings() {
   if (!profile?.details) return null;
   const details = profile.details;
   const entries = [
+    ['What Mentra calls you', details.preferred_name || 'Not set'],
     ['Education level', educationLevels.find((option) => option.value === details.education_level)?.label],
     ['Field or area of study', details.field_of_study], ['Primary learning goal', details.learning_goal],
     ['Learning preference', preferences.find((option) => option.value === details.learning_preference)?.label],

@@ -20,9 +20,12 @@ class StudentProfileService:
             return store.profile()
 
     def update_details(self, learner_id, request: ProfileUpdate):
-        request = ProfileUpdate.model_validate(request.model_dump())
+        request = ProfileUpdate.model_validate(request.model_dump(exclude_unset=True))
         with self.repository.transaction(learner_id) as store:
             profile = store.profile()
+            # Older callers omit this optional field; only an explicit blank/null clears it.
+            if profile.details and 'preferred_name' not in request.details.model_fields_set:
+                request.details = request.details.model_copy(update={'preferred_name': profile.details.preferred_name})
             if profile.version != request.expected_version:
                 # A lost response retry with identical details is harmless.
                 if profile.details == request.details:

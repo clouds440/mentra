@@ -215,7 +215,7 @@ export function AppSidebar({
                 {accountMark ?? <CircleUserRound aria-hidden="true" size={16} />}
               </span>
               <span className={cn('min-w-0 flex-1 truncate font-medium text-foreground', collapsed && 'lg:hidden')}>
-                Account
+                {accountName}
               </span>
               <ChevronDown
                 aria-hidden="true"

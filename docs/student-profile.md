@@ -6,12 +6,29 @@ never registers concepts or writes learning evidence/concept mastery.
 
 ## Ownership and scope
 
-The learner controls education level, field/major, primary goal, learning preference,
+The learner controls their optional preferred name, education level, field/major, primary goal, learning preference,
 and explanation depth. `ProfileDetails` is the only public write contract for these
 fields. AI output has a different strict schema containing only five broad estimates:
 overall proficiency, reasoning, quantitative reasoning, comprehension, and domain
 familiarity. It cannot include factual fields or preferences. Profile evidence is a
 trusted server integration contract, not a client-accessible scoring endpoint.
+
+`preferred_name` is optional, single-line Unicode text of up to 80 characters.
+Onboarding and Settings share the “What should Mentra call you?” field. Blank/null
+clears it; older clients omitting the field preserve the saved preference. Existing
+JSON profile storage requires no migration. Name-only edits preserve estimates,
+context version and calibration. Each chat plan loads current profile context;
+chat-v5 treats the name as data, prefers it to stale transcript names, and uses it
+sparingly when natural. An unset name is not inferred from the login username.
+The account capsule displays the login username independently of this preference.
+
+Verified on 2026-10-11: 77 affected backend checks passed against isolated
+PostgreSQL, including legacy omission, Unicode validation, owner isolation,
+name-only calibration preservation and current-name chat preparation. Nine
+profile/web-search browser scenarios passed, including onboarding, Settings edits,
+reload, clearing and unchanged calibration submission. Production builds and theme
+checks passed. The activity disclosure was also checked for a hidden native marker,
+right-hand outlined hover/focus chevron and keyboard operation.
 
 Estimates carry value/confidence, counts, effective evidence weight, source counts,
 last evidence time, and a short rationale. Applied evidence stores the validated AI

@@ -58,7 +58,8 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     capability = bool(re.fullmatch(r'(what can you do|how can you help(?: me)?|what are your capabilities|what can mentra do)[?!. ]*', text))
     direct = general_query(query) and not assessment and not personal and not event and not selected_sources and not attachments
     learning = not direct and (assessment or study or bool(re.search(r'\b(progress|weakness|mastery|learning context)\b', text)))
-    modules = ['chat']
+    # The learner's chosen form of address is available even for simple greetings.
+    modules = ['chat', 'profile']
     if personal: modules.extend(['history', 'memory', 'profile'])
     if event: modules.append('events')
     if learning: modules.extend(['learner', 'profile'])
