@@ -14,6 +14,15 @@ class ActivityRepository:
     def __init__(self, sessions):
         self.sessions = sessions
 
+    def ensure_active(self, owner, job):
+        with self.sessions.begin() as session:
+            session.execute(text("SET LOCAL statement_timeout = '5s'"))
+            turn = session.execute(select(turns).join(conversations, turns.c.conversation_id == conversations.c.id).where(
+                turns.c.id == job['turn_id'], turns.c.learner_id == owner,
+                conversations.c.deleted_at.is_(None))).mappings().first()
+            if not turn or turn['state'] != 'RUNNING' or turn['attempt'] != job['attempt'] or turn['lease_until'] <= datetime.now(timezone.utc):
+                raise AppError('CHAT_ATTEMPT_EXPIRED', 'This response is no longer running.', 409)
+
     def append(self, owner, job, update: ActivityUpdate):
         with self.sessions.begin() as session:
             session.execute(text("SET LOCAL lock_timeout = '5s'"))
@@ -27,8 +36,10 @@ class ActivityRepository:
                 raise AppError('CHAT_ATTEMPT_EXPIRED', 'This response is no longer running.', 409)
             scope = (activity.c.learner_id == owner, activity.c.turn_id == job['turn_id'], activity.c.attempt == job['attempt'])
             sequence = session.execute(select(func.coalesce(func.max(activity.c.sequence), 0)).where(*scope)).scalar_one() + 1
-            if sequence > 256:
-                raise AppError('ACTIVITY_LIMIT', 'The response exceeded its execution limit.', 422)
+            # Reserve durable capacity for lifecycle/recovery reports rather than
+            # letting a long token preview prevent the final tool receipt.
+            if sequence > 256 or (sequence > 192 and (update.token_delta is not None or update.step_id == 'response-stream')):
+                return None
             event = ActivityEvent(**update.model_dump(), event_id=uuid4(), conversation_id=turn['conversation_id'],
                 turn_id=turn['id'], attempt=turn['attempt'], sequence=sequence, occurred_at=now)
             session.execute(activity.insert().values(learner_id=owner, turn_id=turn['id'], attempt=turn['attempt'],
@@ -61,3 +72,6 @@ class DurableActivitySink:
 
     async def publish(self, update):
         await run_in_threadpool(self.repository.append, self.owner, self.job, update)
+
+    async def ensure_active(self):
+        await run_in_threadpool(self.repository.ensure_active, self.owner, self.job)

@@ -18,6 +18,7 @@ class PromptSource(StrEnum):
     ASSESSMENT_TRANSCRIPTION = 'assessment_transcription'
     CHAT_EVIDENCE = 'chat_evidence'
     EVENT_ADMISSION = 'event_admission'
+    TOOL_RECOVERY = 'tool_recovery'
 
 
 @lru_cache(maxsize=len(PromptSource))
@@ -50,6 +51,8 @@ def get_system_prompt(source: PromptSource) -> str:
         from .evidence import SYSTEM_PROMPT
     elif source is PromptSource.EVENT_ADMISSION:
         from .event_admission import SYSTEM_PROMPT
+    elif source is PromptSource.TOOL_RECOVERY:
+        from .tool_recovery import SYSTEM_PROMPT
     else:  # Defensive if the enum grows without a registered prompt module.
         raise ValueError(f"No system prompt is registered for {source!r}")
     return SYSTEM_PROMPT
@@ -85,6 +88,8 @@ def get_prompt_version(source: PromptSource) -> str:
         from .evidence import VERSION
     elif source is PromptSource.EVENT_ADMISSION:
         from .event_admission import VERSION
+    elif source is PromptSource.TOOL_RECOVERY:
+        from .tool_recovery import VERSION
     else:
         raise ValueError(f"No prompt version is registered for {source!r}")
     return VERSION

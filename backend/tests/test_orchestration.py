@@ -74,6 +74,19 @@ class DurableOrchestrationTests(unittest.TestCase):
         with self.db.sessions() as session:
             self.assertEqual(session.execute(select(func.count()).select_from(activity).where(activity.c.turn_id == job['turn_id'])).scalar_one(), 0)
 
+    def test_preview_capacity_preserves_recovery_reports_and_lifecycle_guards(self):
+        body, job = self.turn()
+        sample = self.activity.append(self.owner, job, ActivityUpdate(step_id='response-stream', status='running', user_message='Writing your response', token_delta='part'))
+        with self.db.sessions.begin() as session:
+            session.execute(activity.insert(), [dict(learner_id=self.owner, turn_id=job['turn_id'], attempt=1, sequence=sequence,
+                created_at=sample.occurred_at, payload=sample.model_copy(update={'event_id':uuid4(), 'sequence':sequence}).model_dump(mode='json')) for sequence in range(2,193)])
+        self.assertIsNone(self.activity.append(self.owner, job, ActivityUpdate(step_id='response-stream', status='running', user_message='Writing your response', token_delta='more')))
+        recovery = self.activity.append(self.owner, job, ActivityUpdate(step_id='retry', status='retry_wait', user_message='Retrying the read.', tool_attempt=2, max_attempts=3))
+        self.assertEqual(recovery.sequence, 193)
+        self.chat.finish(self.owner, job, error='Retry')
+        with self.assertRaises(AppError):
+            self.activity.append(self.owner, job, ActivityUpdate(step_id='response-stream', status='running', user_message='Writing your response', token_delta='stale'))
+
     def test_attachment_extracts_once_binds_owner_and_reuses_library_pipeline(self):
         reader = Mock()
         reader.read.return_value = DocumentContent('txt', 'text/plain', [dict(text='Photosynthesis converts light energy.', page=2, method='ocr')], [], 'test-reader')

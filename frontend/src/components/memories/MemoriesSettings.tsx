@@ -59,8 +59,8 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
   useEffect(() => {
     const bc = new BroadcastChannel(`mentra-memory-${owner}`);
     channel.current = bc;
-    bc.onmessage = () => setRefresh(value => value + 1);
-    const focus = () => { if (active) setRefresh(value => value + 1); };
+    bc.onmessage = () => refreshPage(() => setRefresh(value => value + 1));
+    const focus = () => { if (active) refreshPage(() => setRefresh(value => value + 1)); };
     window.addEventListener('focus', focus);
     return () => { bc.close(); channel.current = undefined; window.removeEventListener('focus', focus); };
   }, [owner, active]);
@@ -119,7 +119,7 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
         if (cause instanceof ApiError && (cause.code === 'MEMORY_CONFLICT' || cause.status === 404)) {
           // Reconcile stale preferences/list rows and dialog revisions. Require
           // another explicit click after displaying the freshly loaded statement.
-          setRefresh(value => value + 1);
+          refreshPage(() => setRefresh(value => value + 1));
           setNotice('Another session changed your memory settings or records. Current values have been reloaded; review them before trying again.');
           const selected = deleting ?? resolving;
           if (selected) {

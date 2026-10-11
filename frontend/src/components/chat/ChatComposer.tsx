@@ -127,7 +127,7 @@ export function ChatComposer({
           disabled={isThinking}
           onClick={() => fileRef.current?.click()}
           aria-label="Attach files to chat"
-          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle"
+          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle transition-colors duration-150 enabled:hover:text-foreground focus-visible:text-foreground"
           title="Read files in chat; choose later whether to add them to Library"
         >
           <Paperclip aria-hidden="true" size={16} />

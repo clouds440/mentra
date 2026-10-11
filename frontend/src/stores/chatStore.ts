@@ -169,7 +169,7 @@ class ChatStore {
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
     const messages = older ? items.slice(0, 200) : items.slice(-200);
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
-      error: page.turn?.state === 'FAILED' ? 'Mentra could not complete your response.' : null, turn: page.turn ?? view.turn,
+      error: page.turn?.state === 'FAILED' ? page.turn.error || 'Mentra could not complete your response.' : null, turn: page.turn ?? view.turn,
       before: page.incremental ? (messages[0]?.sequence > 1 ? messages[0].sequence : null) : page.has_more ? messages[0]?.sequence ?? null : null,
       olderWindow: older && items.length > 200 || older && view.olderWindow,
       revision: page.conversation.revision });

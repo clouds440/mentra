@@ -62,7 +62,8 @@ class MentraLLM:
                            **({'config': config} if config else {}))
         reserve_workflow(source, cost, **({'config': config} if config else {}))
         model = self._model(source, output_schema)
-        result = await model.ainvoke(prepared)
+        from .provider_invocation import invoke_provider
+        result = await invoke_provider(model, prepared, maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
         if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
             log_usage(result['raw'], source, cost)
             if result.get('parsing_error'):
@@ -83,6 +84,8 @@ class MentraLLM:
             # Existing server-owned system context (such as learner packets) is
             # retained after the selected source prompt, never instead of it.
             context = "\n\n".join(str(message.content) for message in system_messages)
+            if system_context:
+                context += '\n\n' + system_context
             turns = [message for message in messages if not isinstance(message, SystemMessage)]
             system = "\n\n".join(get_system_prompt(prompt_source)
                                     for prompt_source in (source, *additional_sources))
@@ -101,28 +104,9 @@ class MentraLLM:
         model = self._model(source, output_schema)
         if tools:
             model = model.bind_tools(tools, **({'tool_choice': tool_choice} if tool_choice is not None else {}))
-        if on_delta is not None and output_schema is None and hasattr(model, 'astream'):
-            from langchain_core.messages import AIMessageChunk
-            from langchain_core.messages.utils import message_chunk_to_message
-            aggregate, pending = None, ''
-            import time
-            emitted = time.monotonic()
-            async for chunk in model.astream(prepared):
-                if not isinstance(chunk, AIMessageChunk): continue
-                aggregate = chunk if aggregate is None else aggregate + chunk
-                if isinstance(chunk.content, str): pending += chunk.content
-                # Only public assistant text is streamed; tool arguments and
-                # provider reasoning/content blocks never enter the transport.
-                if pending and (len(pending) >= 512 or time.monotonic()-emitted >= .2):
-                    for start in range(0,len(pending),1000): await on_delta(pending[start:start+1000])
-                    pending, emitted = '', time.monotonic()
-            if aggregate is None: raise ValueError('Provider returned no response chunks')
-            result = message_chunk_to_message(aggregate)
-            if getattr(result,'tool_calls',None): await on_delta(None)
-            elif pending:
-                for start in range(0,len(pending),1000): await on_delta(pending[start:start+1000])
-        else:
-            result = await model.ainvoke(prepared)
+        from .provider_invocation import invoke_provider
+        result = await invoke_provider(model, prepared, on_delta=None if output_schema else on_delta,
+                                       maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
         if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
             log_usage(result['raw'], source, cost)
             if result.get('parsing_error'):

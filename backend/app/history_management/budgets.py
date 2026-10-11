@@ -2,6 +2,10 @@ from dataclasses import dataclass, field
 from app.core.exceptions import AppError
 from langchain_core.messages import HumanMessage
 from langchain_core.messages.utils import count_tokens_approximately
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+_admitted = ContextVar('admitted_tool_budget', default=None)
 
 
 @dataclass
@@ -14,12 +18,22 @@ class ToolBudget:
     delivered: dict = field(default_factory=dict)
 
     def call(self, write=False):
+        if _admitted.get() is self:
+            return  # The executor already counted this physical attempt.
         if write and (self.result_tokens > 2944 or self.result_characters > 11776):
             raise AppError('TOOL_BUDGET', 'No space remains for a write receipt. Answer from available evidence.', 422)
         self.calls += 1
         self.writes += int(write)
         if self.calls > 6 or self.writes > 2:
             raise AppError('TOOL_BUDGET', 'Tool call limit reached. Answer from available evidence.', 422)
+
+    @contextmanager
+    def admitted(self):
+        token = _admitted.set(self)
+        try:
+            yield
+        finally:
+            _admitted.reset(token)
 
     def consume(self, content):
         # UTF-8 bytes bound byte-tokenized content even for CJK/emoji/code.

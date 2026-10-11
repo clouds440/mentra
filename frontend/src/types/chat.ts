@@ -1,6 +1,11 @@
 import type { SourceReference, ChatSelection } from './rag';
 import type { HistoryReference, MemoryReference } from './memories';
+export interface ToolWarning {
+  tool_name: string; code: string; message: string;
+  task_impact: string; effect_certainty: string;
+}
 export interface ChatMessageData {
+  tool_warnings?: ToolWarning[];
   interactions?: import('./interactions').ChoiceCardData[];
   interaction_response?: import('./interactions').InteractionResponse;
   attachments?: import('../services/chatAttachments').ChatAttachment[];
@@ -23,6 +28,7 @@ export interface ChatMessageData {
 export type ChatTurn = Pick<ChatMessageData, 'role' | 'content'>;
 
 export interface ChatResponse {
+  tool_warnings?: ToolWarning[];
   role: 'assistant';
   assessment_cards?: import('./assessments').ChatAssessmentCardData[];
   content: string;

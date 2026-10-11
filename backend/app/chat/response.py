@@ -19,6 +19,7 @@ class ChatResponse(BaseModel):
     event_references: list[dict] = Field(default_factory=list)
     interactions: list[ChoiceCard] = Field(default_factory=list)
     assessment_cards: list[dict] = Field(default_factory=list)
+    tool_warnings: list[dict] = Field(default_factory=list, max_length=16)
 
     @field_validator('assessment_cards')
     @classmethod

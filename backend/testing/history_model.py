@@ -7,11 +7,13 @@ from testing.rag import TestChatFactory
 class HistoryChatFactory(TestChatFactory):
     def bind_tools(self, tools, **kwargs):
         self.available_tools = {tool.name for tool in tools if not isinstance(tool,type)}
-        self.final_schema = next((tool for tool in tools if isinstance(tool,type) and tool.__name__=='NewChatReply'),None)
+        self.final_schema = next((tool for tool in tools if isinstance(tool,type) and tool.__name__ in ('NewChatReply', 'DirectNewChatReply', 'DirectAnswer')),None)
         self.announced_tools = {tool.name for tool in tools if not isinstance(tool,type) and 'user_message' in tool.args_schema.model_fields}
         return self
 
     def tool_call(self, name, args, identifier):
+        if name not in getattr(self, 'available_tools', set()) and 'enable_workflow_tools' in getattr(self, 'available_tools', set()):
+            return dict(name='enable_workflow_tools', args=dict(tool_names=[name]), id=identifier + '-discover', type='tool_call')
         if name in getattr(self, 'announced_tools', set()):
             from app.langchain.tool_activity import LABELS
             args = dict(args, tool_name=name, user_message=LABELS[name])
@@ -39,17 +41,21 @@ class HistoryChatFactory(TestChatFactory):
         response = await self._respond(messages)
         if getattr(self,'final_schema',None) is not None and not response.tool_calls:
             question = next((str(item.content) for item in messages if item.type=='human'),'New chat')
-            return AIMessage(content='',tool_calls=[dict(name='NewChatReply',args=dict(content=response.content,
-                conversation_title=' '.join(question.split()[:8])[:80] or 'New chat'),id='final-answer',type='tool_call')])
+            arguments = dict(content=response.content)
+            if 'conversation_title' in self.final_schema.model_fields:
+                arguments['conversation_title'] = ' '.join(question.split()[:8])[:80] or 'New chat'
+            if 'general_query' in self.final_schema.model_fields:
+                from app.langchain.planning import general_query
+                general = general_query(question)
+                arguments.update(general_query=general, needs_tools=not general, uncertain=False)
+            return AIMessage(content='',tool_calls=[dict(name=self.final_schema.__name__, args=arguments,id='final-answer',type='tool_call')])
         return response
 
     async def _respond(self, messages):
-        results = [x for x in messages if isinstance(x, ToolMessage)]
+        results = [x for x in messages if isinstance(x, ToolMessage) and x.name != 'enable_workflow_tools']
         if results:
             result = json.loads(results[-1].content)
             if results[-1].name == 'get_active_learning_contexts':
-                if any('keep mixing up linear equations' in str(m.content).lower() for m in messages if m.type=='human'):
-                    assert 'assessment_generate' in self.available_tools, 'LLM-initiated assessment must be directly available without a quiz keyword'
                 context = next(item for item in result['contexts'] if item['name']=='Algebra')
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',
                     dict(context_id=context['context_id'],topic='Linear equations',count=5,question_format='mcq') if any(any(phrase in str(m.content).lower() for phrase in ('five question mcq', 'interactive quiz', 'clickable options', 'keep mixing up linear equations')) for m in messages if m.type=='human') else dict(context_id=context['context_id'],topic='Linear equations',count=2), 'assessment-generate')])

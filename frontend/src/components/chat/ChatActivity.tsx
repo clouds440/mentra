@@ -6,16 +6,21 @@ import { ThinkingIndicator } from './ChatMessage';
 interface Activity {
   schema_version: 1; conversation_id: string; turn_id: string; attempt: number;
   sequence: number; step_id: string; user_message: string; tool_name: string | null;
-  status: 'planned' | 'running' | 'completed' | 'failed' | 'waiting';
+  status: 'planned' | 'running' | 'completed' | 'failed' | 'waiting' | 'retry_wait' | 'degraded' | 'cancelled';
   token_delta?: string | null; token_reset?: boolean;
+  tool_attempt?: number | null; max_attempts?: number | null; error_code?: string | null;
 }
 
 function valid(value: unknown): value is Activity {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<Activity>;
-  return v.schema_version === 1 && Number.isInteger(v.sequence) && typeof v.user_message === 'string'
+  return v.schema_version === 1 && Number.isInteger(v.sequence) && (v.sequence ?? 0) > 0 && typeof v.user_message === 'string'
     && v.user_message.length <= 240 && typeof v.step_id === 'string' && typeof v.attempt === 'number'
     && (v.tool_name === null || typeof v.tool_name === 'string')
+    && ['planned', 'running', 'completed', 'failed', 'waiting', 'retry_wait', 'degraded', 'cancelled'].includes(v.status ?? '')
+    && (v.tool_attempt == null || Number.isInteger(v.tool_attempt) && v.tool_attempt >= 1 && v.tool_attempt <= 3)
+    && (v.max_attempts == null || Number.isInteger(v.max_attempts) && v.max_attempts >= 1 && v.max_attempts <= 3)
+    && (v.error_code == null || typeof v.error_code === 'string' && v.error_code.length <= 100)
     && (v.token_delta === undefined || v.token_delta === null || typeof v.token_delta === 'string' && v.token_delta.length <= 2000);
 }
 
@@ -51,12 +56,12 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
   }, [conversationId, turnId, attempt]);
   const current = steps[steps.length - 1];
   return <div>
-    <ThinkingIndicator label={current?.status === 'failed' ? 'This step could not be completed.' : current?.user_message ?? 'Planning your request'} />
+    <ThinkingIndicator label={current?.user_message ?? 'Planning your request'} />
     {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
     {!!steps.length && <details className="ml-11 mt-2 text-xs text-muted">
       <summary className="cursor-pointer">Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</summary>
       <ol className="mt-2 space-y-1">{steps.map(step => <li key={step.step_id}>
-        {step.status === 'failed' ? 'This step could not be completed.' : step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
+        {step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
         <span className="text-subtle"> — {step.status}</span>
       </li>)}</ol>
     </details>}

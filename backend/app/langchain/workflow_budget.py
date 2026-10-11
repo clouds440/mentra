@@ -12,6 +12,15 @@ class ModelBudget:
     rounds: int = 0
     input_tokens: int = 0
     output_reserved: int = 0
+    answer_reserve: float = 20
+
+    @property
+    def remaining(self):
+        return max(0, self.deadline - monotonic())
+
+    @property
+    def tool_remaining(self):
+        return max(.001, self.remaining - self.answer_reserve)
 
     def reserve(self, tokens, output):
         if monotonic() >= self.deadline or self.rounds >= 12 or self.input_tokens+tokens > 65536 or self.input_tokens+tokens+self.output_reserved+output > 98304:

@@ -70,7 +70,8 @@ def create_workflow_tools(owner, scope, budget):
             key = 'study:' + query
             if key in budget.cache:
                 return budget.cache[key]
-            result = await run_in_threadpool(scope['rag_service'].search, owner,
+            initial = scope.get('_initial_search')
+            result = initial[1] if initial and initial[0] == query else await run_in_threadpool(scope['rag_service'].search, owner,
                 SearchRequest(query=query, **selection.model_dump(), limit=3, token_budget=1000))
             scope['retrieval_status'] = result.status
             sources = scope.setdefault('study_sources', [])
@@ -83,7 +84,8 @@ def create_workflow_tools(owner, scope, budget):
                     sources.append(source)
                 # Provenance lives in the server source registry, not every prompt.
                 packet.append(dict(token=source.token, title=source.title, excerpt=source.excerpt))
-            receipt = dict(status=result.status, sources=packet)
+            receipt = dict(status=result.status, sources=packet, warnings=result.warnings)
+            scope.setdefault('retrieval_warnings', []).extend(warning for warning in result.warnings if warning not in scope.get('retrieval_warnings', []))
             budget.cache[key] = receipt
             return receipt
 

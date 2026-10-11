@@ -53,7 +53,7 @@ class ConversationService:
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':
-                current.get().outcome = 'degraded' if response.get('retrieval_warning') else 'success'
+                current.get().outcome = 'degraded' if response.get('retrieval_warning') or response.get('tool_warnings') else 'success'
         except asyncio.CancelledError:
             await run_in_threadpool(self.repository.finish, owner, job, None, 'Generation interrupted. Retry this message.')
             raise

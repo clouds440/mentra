@@ -28,6 +28,7 @@ class ChatService:
         history_runtime: tuple | None = None,
         document_context: list[dict] | None = None,
         profile_context: dict | None = None,
+        recovery_context: list[dict] | None = None,
     ) -> str:
         conversation = [
             HumanMessage(content=content)
@@ -49,6 +50,9 @@ class ChatService:
         try:
             sources = []
             context = {}
+            if recovery_context:
+                sources.append(PromptSource.TOOL_RECOVERY)
+                context['missing_context'] = recovery_context
             if profile_context is not None:
                 context['student_profile'] = profile_context
             if document_context:

@@ -173,7 +173,10 @@ class TitleEndToEndTests(unittest.IsolatedAsyncioTestCase):
             owner = learner_id('alice')
             repo = ChatRepository(db.sessions)
             service = ConversationService(repo)
-            model = ScriptedModel([output(), AIMessage(content='Here is more detail.')])
+            direct = output()
+            direct.tool_calls[0]['name'] = 'DirectNewChatReply'
+            direct.tool_calls[0]['args'].update(general_query=True, needs_tools=False, uncertain=False)
+            model = ScriptedModel([direct, AIMessage(content='Here is more detail.')])
             chat = ChatService(MentraLLM(SimpleNamespace(get_model=lambda: model)))
             orchestrator = OrchestrationService(chat, history=SimpleNamespace(profile=None))
             async def generate(messages, selection, state):

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     ai_temperature: float = Field(default=0.2, ge=0, le=2)
     ai_timeout: float = Field(default=30, gt=0)
     ai_max_retries: int = Field(default=2, ge=0)
+    tool_read_timeout_seconds: float = Field(default=10, gt=0, le=60)
+    tool_read_max_attempts: int = Field(default=3, ge=1, le=3)
     chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)

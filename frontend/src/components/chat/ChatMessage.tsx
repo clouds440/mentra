@@ -83,6 +83,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {message.retrieval_warning && <p className="mt-3 text-xs text-muted">{message.retrieval_warning}</p>}
+            {!!message.tool_warnings?.length && <div className="mt-3 rounded-xl border border-border px-3 py-2 text-xs text-muted" aria-label="Response limitations">
+              <p className="font-medium">Response limitations</p>
+              <ul className="mt-1 space-y-1">{message.tool_warnings.map((warning, index) => <li key={`${warning.tool_name}-${warning.code}-${index}`}>
+                {warning.message}{warning.effect_certainty === 'unknown' && ' Completion of this action has not been verified.'}
+              </li>)}</ul>
+            </div>}
             {message.retrieval_status && ['unavailable', 'no_matches', 'no_eligible_sources'].includes(message.retrieval_status) && <p className="mt-3 text-xs text-subtle">{message.retrieval_status === 'unavailable' ? 'Study material retrieval was unavailable for this answer.' : 'No supporting Library passages were found for this answer.'}</p>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
             {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}

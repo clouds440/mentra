@@ -63,6 +63,14 @@ def schema_tokens(tools):
     if not tools:
         return 0
     content = json.dumps([convert_to_openai_tool(tool) for tool in tools], ensure_ascii=False, separators=(',', ':'))
+    return _schema_cost(content, _encoding() is not None)
+
+
+@lru_cache(maxsize=256)
+def _schema_cost(content, tokenizer_available):
+    # Cache only public schema JSON, never account context or bound closures.
+    # Encoding availability is part of the key so cache loss cannot reuse a
+    # less conservative estimate. Changed definitions naturally change the key.
     return count_messages([HumanMessage(content=content)])
 
 
