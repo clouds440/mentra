@@ -403,19 +403,26 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); bac
   opacity: 0;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .mentra-logo[data-working='true'] .mentra-logo-mark {
-    animation: mentra-logo-turn 10s ease-in-out infinite alternate;
+  .mentra-logo[data-working='true'] {
+    animation: mentra-logo-breathe 3.8s ease-in-out infinite;
   }
-  .mentra-logo[data-working='true'] .mentra-logo-shimmer {
-    opacity: 1;
-    animation: mentra-logo-sweep 3.2s ease-in-out infinite;
+  .mentra-logo[data-working='true'] > .mentra-logo-mark {
+    animation: mentra-logo-turn 12s linear infinite;
   }
+  .mentra-logo[data-working='true'] > .mentra-logo-mark > .mentra-logo-shimmer {
+    animation: mentra-logo-sweep 3.8s ease-in-out infinite;
+  }
+}
+@keyframes mentra-logo-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
 }
 @keyframes mentra-logo-turn {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 @keyframes mentra-logo-sweep {
-  from { background-position: 100% 0; }
-  to { background-position: 0% 0; }
+  0% { background-position: 100% 0; opacity: 0; }
+  15%, 85% { opacity: .65; }
+  100% { background-position: 0% 0; opacity: 0; }
 }

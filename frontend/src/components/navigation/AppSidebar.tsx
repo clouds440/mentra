@@ -18,7 +18,6 @@ import { LogoutButton } from '../auth/LogoutButton';
 import { useAuth } from '../auth/AuthProvider';
 import { cn } from '../../utils/cn';
 import { ConversationList } from '../chat/ConversationList';
-import { useConversation } from '../../stores/chatStore';
 
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
@@ -49,7 +48,6 @@ export function AppSidebar({
     if (conversationId || location.pathname === '/') setLastChat({ owner, id: conversationId });
   }, [conversationId, location.pathname, owner]);
   const chatTarget = conversationId ?? (lastChat.owner === owner ? lastChat.id : undefined);
-  const activeChat = useConversation(conversationId ?? '');
   const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
@@ -78,7 +76,7 @@ export function AppSidebar({
       >
         <div className={cn('flex h-12 shrink-0 items-center justify-between border-b border-border px-4', collapsed && 'lg:justify-center lg:px-0')}>
           <div className="flex min-w-0 items-center gap-3">
-            <MentraLogo working={activeChat.busy} />
+            <MentraLogo />
             <span
               className={cn(
                 'text-[15px] font-semibold tracking-tight text-accent/90',

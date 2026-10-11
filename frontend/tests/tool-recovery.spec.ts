@@ -42,6 +42,8 @@ test('current activity replaces earlier steps and never renders internal labels'
   const chat = await recoveryChat(page, 'RUNNING');
   const activity = page.getByLabel('Current activity');
   await expect(activity).toContainText('Trying again');
+  await expect(page.locator('.mentra-logo[data-working="true"]')).toHaveCount(1);
+  await expect(page.getByRole('complementary', {name:'Main navigation'}).locator('.mentra-logo')).toHaveAttribute('data-working', 'false');
   chat.step('profile_context', 'running', 'profile_context');
   await expect(activity.getByRole('status')).toHaveText('Thinking');
   await expect(activity).not.toContainText('profile_context');
@@ -60,6 +62,23 @@ test('current activity replaces earlier steps and never renders internal labels'
   await expect(activity).not.toContainText('new_internal_operation');
   await expect(activity.getByRole('status')).toHaveCount(1);
   await expect(activity.locator('details, ol, li')).toHaveCount(0);
+});
+
+test('important limits and review states are announced while routine profile reads stay quiet', async ({page}) => {
+  const chat = await recoveryChat(page, 'RUNNING');
+  const activity = page.getByLabel('Current activity');
+  await expect(activity).toContainText('Trying again');
+  chat.step('web_search', 'degraded', 'MCP provider returned partial search results');
+  await expect(activity).toContainText('Web search was limited; continuing with available information');
+  chat.step('event_manage', 'failed', 'SQL transaction effect_certainty unknown');
+  await expect(activity).toContainText('The event change couldn’t be confirmed');
+  await expect(activity).not.toContainText('SQL');
+  chat.step('assessment_answer', 'waiting', 'Interaction requires confirmation');
+  await expect(activity).toContainText('Waiting for your input');
+  chat.step('get_relevant_learner_context', 'running', 'Loading learner context packet');
+  await expect(activity).toContainText('Checking your learning progress');
+  chat.step('profile_context', 'running', 'Loading profile context packet');
+  await expect(activity.getByRole('status')).toHaveText('Thinking');
 });
 
 test('retry progress is visible and permanent limitations survive refresh', async ({page}) => {

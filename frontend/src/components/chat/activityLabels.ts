@@ -42,7 +42,7 @@ const messageLabels: Record<string, string> = {
 
 // These reads are routine prompt preparation, not a distinct user-facing action.
 const quietTools = new Set([
-  'profile_context', 'get_active_learning_contexts', 'get_relevant_learner_context',
+  'profile_context', 'get_active_learning_contexts',
   'resolve_student_concept', 'enable_workflow_tools',
 ]);
 
@@ -51,7 +51,16 @@ export function activityLabel(activity?: ActivityLabelInput): string {
   if (activity.status === 'waiting') return 'Waiting for your input';
   if (activity.status === 'cancelled') return 'Stopping this request';
   if (quietTools.has(activity.tool_name ?? '')) return 'Thinking';
-  if (activity.status === 'failed' || activity.status === 'degraded') return 'Thinking';
+  if (activity.status === 'failed' || activity.status === 'degraded') {
+    if (activity.tool_name === 'web_search') return 'Web search was limited; continuing with available information';
+    if (activity.tool_name === 'document_extract') return 'The attachment couldn’t be fully read';
+    if (activity.tool_name === 'search_study_material' || activity.tool_name === 'get_study_source_chunk') return 'Study material couldn’t be fully checked';
+    if (activity.tool_name === 'event_manage') return 'The event change couldn’t be confirmed';
+    if (activity.tool_name === 'assessment_answer') return 'Your answers couldn’t be fully evaluated';
+    if (activity.tool_name?.startsWith('assessment_')) return 'This practice step couldn’t be finished';
+    if (activity.tool_name && Object.prototype.hasOwnProperty.call(toolLabels, activity.tool_name)) return 'Some information is unavailable; continuing with what I have';
+    return 'Thinking';
+  }
   if (activity.status === 'retry_wait') return 'Trying again';
   if (activity.step_id === 'response-stream') return 'Writing your answer';
   if (activity.step_id === 'protocol-repair') return 'Taking another look';
