@@ -2,7 +2,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import mentraLogo from '../assets/mentra-logo.png';
+import { MentraLogo } from '../components/brand/MentraLogo';
 import { Button, Card, Spinner } from '../components/ui';
 import { ProfileForm } from '../components/student-profile/ProfileForm';
 import { ProfileEstimates } from '../components/student-profile/ProfileEstimates';
@@ -57,7 +57,7 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
   return <main className="min-h-dvh bg-background px-3 py-4 text-foreground sm:px-6 sm:py-10">
     <div className="mx-auto w-full max-w-xl">
       <header className="mb-7 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5"><img src={mentraLogo} alt="" aria-hidden="true" className="h-8 w-8 object-contain" /><span className="text-lg font-semibold tracking-tight">mentra</span></div>
+        <div className="flex items-center gap-2.5"><MentraLogo /><span className="text-lg font-semibold tracking-tight">mentra</span></div>
         <div className="w-28"><LogoutButton /></div>
       </header>
       <Card className="auth-enter rounded-2xl p-4 shadow-lg shadow-shadow/5 backdrop-blur-none sm:p-8">

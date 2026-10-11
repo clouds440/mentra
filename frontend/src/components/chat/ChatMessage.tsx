@@ -1,6 +1,6 @@
 import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
-import mentraLogo from '../../assets/mentra-logo.png';
+import { MentraLogo } from '../brand/MentraLogo';
 import type { ChatMessageData } from '../../types/chat';
 import { useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
 import { SourceViewer, sourceLocation } from '../library/SourceViewer';
@@ -75,7 +75,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           aria-hidden="true"
           className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center"
         >
-          <img alt="" className="h-6 w-6 object-contain" src={mentraLogo} />
+          <MentraLogo className="h-6 w-6" />
         </div>
       )}
       <div
@@ -123,7 +123,7 @@ export function ThinkingIndicator({ label = '' }: ThinkingIndicatorProps) {
   return (
     <div role="status" aria-live="polite" className="flex items-center gap-3.5 text-sm text-subtle">
       <span className="grid h-7 w-7 place-items-center">
-        <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={mentraLogo} />
+        <MentraLogo working className="h-6 w-6" />
       </span>
       <span className="flex items-center gap-2">
         {label}

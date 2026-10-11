@@ -39,6 +39,7 @@ Create folders to meet a real architectural need, not to imitate a large project
 - Prefer composition over a broad prop surface. Do not generalize a one-off component until a second real use case exists.
 - Keep feature UI such as chat messages and composers outside `components/ui/`; reserve that directory for primitives.
 - Use the established icon library (`lucide-react`) consistently. Give icon-only controls accessible names and titles where useful; do not use emoji as application icons.
+- Use `components/brand/MentraLogo` for the decorative brand mark. Pass `working` only for active Mentra generation; the shared CSS owns alternating rotation and an alpha-masked accent sweep, without size pulses. Reduced-motion users receive a static mark, and the surrounding UI owns accessible status text.
 - Empty states should explain the current state honestly and offer only actions that work. Do not present mock data as saved learner activity or invent analytics.
 - Reuse existing UI primitives, including Spinner/loading states and the accessible `Toggle` for binary preferences. Keep theme selection in the existing account drawer and use semantic Light/Dark/System tokens.
 - Render Markdown with the existing `components/content/MarkdownContent` and shared Prism `CodeBlock`, used by chat and Library. Keep feature reference resolution in its feature adapter; never enable arbitrary HTML or duplicate the formatting stack.

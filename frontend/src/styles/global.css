@@ -389,3 +389,33 @@ html[data-theme-ready] aside {
   .overlay-backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 }
 dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); backdrop-filter: blur(3px); }
+
+/* Animate only active marks; the PNG alpha masks color to the logo itself. */
+.mentra-logo-shimmer {
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  background: linear-gradient(90deg, transparent 35%, rgb(var(--accent) / .7) 50%, transparent 65%);
+  background-size: 300% 100%;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mentra-logo[data-working='true'] .mentra-logo-mark {
+    animation: mentra-logo-turn 10s ease-in-out infinite alternate;
+  }
+  .mentra-logo[data-working='true'] .mentra-logo-shimmer {
+    opacity: 1;
+    animation: mentra-logo-sweep 3.2s ease-in-out infinite;
+  }
+}
+@keyframes mentra-logo-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes mentra-logo-sweep {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}

@@ -4,7 +4,7 @@ import {
   Lightbulb,
   Sparkles,
 } from 'lucide-react';
-import mentraLogo from '../../assets/mentra-logo.png';
+import { MentraLogo } from '../brand/MentraLogo';
 import { Button } from '../ui';
 
 const suggestions = [
@@ -25,7 +25,7 @@ export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
         aria-hidden="true"
         className="mb-6 grid h-12 w-12 place-items-center"
       >
-        <img alt="" className="h-12 w-12 object-contain" src={mentraLogo} />
+        <MentraLogo className="h-12 w-12" />
       </div>
       <p className="text-sm font-medium tracking-wide text-accent/90">Mentra</p>
       <h1 className="mt-3 text-2xl font-medium tracking-tight text-foreground sm:text-3xl">

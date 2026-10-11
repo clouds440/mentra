@@ -11,13 +11,14 @@ import {
   X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
-import mentraLogo from '../../assets/mentra-logo.png';
+import { NavLink, Link, useLocation, useParams } from 'react-router-dom';
+import { MentraLogo } from '../brand/MentraLogo';
 import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';
 import { useAuth } from '../auth/AuthProvider';
 import { cn } from '../../utils/cn';
 import { ConversationList } from '../chat/ConversationList';
+import { useConversation } from '../../stores/chatStore';
 
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
@@ -41,6 +42,8 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { identity } = useAuth();
   const location = useLocation();
+  const { conversationId } = useParams();
+  const activeChat = useConversation(conversationId ?? '');
   const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
@@ -69,12 +72,7 @@ export function AppSidebar({
       >
         <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <div className="flex min-w-0 items-center gap-3">
-            <img
-              alt=""
-              aria-hidden="true"
-              className="h-8 w-8 shrink-0 object-contain"
-              src={mentraLogo}
-            />
+            <MentraLogo working={activeChat.busy} />
             <span
               className={cn(
                 'text-[15px] font-semibold tracking-tight text-accent/90',
