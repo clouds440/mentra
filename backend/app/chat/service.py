@@ -39,7 +39,7 @@ class ConversationService:
             # Context selection runs once, after retrieval, when the complete prompt budget is known.
             if with_scope:
                 current = next(row for row in rows if row['sequence'] == job['user_sequence'])
-                scope = dict(job, current_user_message_id=current['id'], context_rows=rows,
+                scope = dict(job, interaction_response=current.get('metadata', {}).get('interaction_response'), current_user_message_id=current['id'], context_rows=rows,
                     visible_ids=[], visible_user_messages=[], evidence_ids={current['id']},
                     history_references=[], memory_references=[])
                 from app.langchain.activity import ActivityPublisher

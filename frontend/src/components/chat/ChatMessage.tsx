@@ -8,6 +8,7 @@ import type { HistoryReference, MemoryReference } from '../../types/memories';
 import { Spinner } from '../ui/Spinner';
 import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
+import { ChoiceCard } from './ChoiceCard';
 import { Link } from 'react-router-dom';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
@@ -76,6 +77,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {isAssistant ? (
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
+            {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
             {!!message.assessment_cards?.length && <Suspense fallback={<span role="status"><Spinner />Loading assessment…</span>}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}

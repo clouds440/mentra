@@ -1,0 +1,139 @@
+import { expect, test } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { finishOnboardingWithoutAssessment } from './profile-helpers';
+
+const origin = 'http://127.0.0.1:18003';
+test('native choices continue chat and retain selections after refresh on mobile', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/register');
+  await page.getByLabel('Username', { exact: true }).fill(`choices_${randomUUID().slice(0,8)}`);
+  await page.getByLabel('Password', { exact: true }).fill('isolated interactive password');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await finishOnboardingWithoutAssessment(page);
+  const composer = page.getByRole('textbox', { name: 'Ask Mentra anything' });
+  async function send(text: string) {
+    await expect(composer).toBeEnabled(); await composer.fill(text);
+    await page.getByRole('button', { name: 'Send message' }).click();
+    await expect(composer).toBeEnabled();
+  }
+  await send('Show single choices');
+  const cards = page.getByRole('region', { name: 'Interactive question' });
+  await expect(cards).toHaveCount(1);
+  await cards.first().getByRole('radio', { name: 'Biology' }).focus();
+  await page.keyboard.press('Space');
+  await cards.first().getByRole('button', { name: 'Submit selection' }).click();
+  await expect(page.getByText('Selected topic IDs: biology', { exact: true })).toBeVisible();
+  await expect(cards.first().getByRole('radio', { name: 'Biology' })).toBeDisabled();
+  await send('Show multiple choices');
+  await expect(cards).toHaveCount(2);
+  await cards.last().getByRole('checkbox', { name: 'Algebra' }).check();
+  await cards.last().getByRole('checkbox', { name: 'Physics' }).check();
+  await cards.last().getByRole('button', { name: 'Submit selection' }).click();
+  await expect(page.getByText('Selected topic IDs: algebra, physics', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().getByRole('radio', { name: 'Biology' })).toBeChecked();
+  await expect(cards.last().getByRole('checkbox', { name: 'Physics' })).toBeChecked();
+  await expect(cards.last().getByRole('checkbox', { name: 'Physics' })).toBeDisabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath('choices-mobile.png'), fullPage: true });
+  await send('Hello'); await expect(composer).toBeEnabled();
+});
+
+for (const request of ['Give me a five question interactive quiz on Linear equations', 'Quiz me with five clickable options questions on Linear equations', 'I keep mixing up linear equations']) {
+test(`five question MCQ invoked from ${request} restores progress and grades`, async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.goto('/register');
+  await page.getByLabel('Username', { exact: true }).fill(`mcq_${randomUUID().slice(0,8)}`);
+  await page.getByLabel('Password', { exact: true }).fill('isolated interactive password');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await finishOnboardingWithoutAssessment(page);
+  const headers = { Origin: 'http://127.0.0.1:15173' };
+  const context = await (await page.request.post(`${origin}/api/v1/learning-contexts`, { headers, data: { name: 'Algebra', activate: true } })).json();
+  const setup = await page.request.post(`${origin}/api/v1/assessments`, { headers, data: { client_request_id: randomUUID(), context_id: context.context_id, topic: 'Linear equations', concept_names: ['Linear equations'], confirm_new_concepts: true, count: 1 } });
+  expect(setup.ok()).toBeTruthy();
+  await page.request.delete(`${origin}/api/v1/assessments/${(await setup.json()).id}`, { headers });
+  const composer = page.getByRole('textbox', { name: 'Ask Mentra anything' });
+  await composer.fill(request);
+  await page.getByRole('button', { name: 'Send message' }).click();
+  const card = page.getByRole('region', { name: 'Chat assessment' });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Add & answer', exact: true })).toHaveCount(0);
+  const savedAssessments=(await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items;
+  expect(savedAssessments).toHaveLength(1);
+  expect(savedAssessments[0].questions).toHaveLength(5);
+  expect(JSON.stringify(savedAssessments[0])).not.toContain('correct_option_id');
+  const quiz = card.getByRole('region', { name: 'Interactive quiz' });
+  await expect(quiz.getByRole('radio').first()).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('interactive-desktop-light.png'), fullPage: true });
+  await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
+  // The server commits the first answer, but its response never reaches the browser.
+  await page.route('**/api/v1/assessments/attempts/*/draft', async route => {
+    await route.fetch(); await route.abort('failed');
+  }, { times: 1 });
+  await quiz.getByRole('button', { name: 'Save & next' }).click();
+  await expect(quiz.getByRole('alert')).toBeVisible();
+  await expect(quiz.getByRole('radio', { name: 'A supported explanation.', exact: true })).toBeChecked();
+  await quiz.getByRole('button', { name: 'Save & next' }).click();
+  await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
+  await page.reload();
+  await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('mentra-theme', 'dark'));
+  await page.reload();
+  await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('quiz-dark.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await quiz.scrollIntoViewIfNeeded();
+  await expect.poll(() => page.getByRole('complementary', { name:'Main navigation' }).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath('interactive-mobile-dark.png') });
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  if (request.startsWith('Give me')) {
+    // Another client saves a different first answer after this card loaded.
+    const latest=(await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json())[0];
+    const questionId=savedAssessments[0].questions[0].id;
+    const changed=await page.request.put(`${origin}/api/v1/assessments/attempts/${latest.id}/draft`, { headers, data: { expected_revision:latest.revision, answers:{ ...latest.answers, [questionId]:'b' } } });
+    expect(changed.ok()).toBeTruthy();
+    await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
+    await quiz.getByRole('button', { name: 'Save & next' }).click();
+    await expect(quiz.getByRole('alert')).toContainText('Answers changed elsewhere');
+    await expect(quiz.getByRole('button', { name: 'Save & next' })).toBeDisabled();
+    await quiz.getByRole('button', { name: 'Back', exact:true }).click();
+    await expect(quiz.getByRole('radio', { name: 'An unsupported explanation.', exact: true })).toBeChecked();
+    await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
+    await quiz.getByRole('button', { name: 'Save & next' }).click();
+    await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
+  }
+  for (let i=2;i<=5;i++) {
+    await quiz.getByRole('radio', { name: i<=3 ? 'A supported explanation.' : 'An unsupported explanation.', exact: true }).check();
+    await quiz.getByRole('button', { name: i<5 ? 'Save & next' : 'Save answer', exact: true }).click();
+    await expect(quiz.getByText(new RegExp(`${i} answers saved`))).toBeVisible();
+  }
+  await quiz.getByLabel('Quiz assistance used').click();
+  await page.getByRole('option', { name: 'I answered independently', exact: true }).click();
+  await quiz.getByRole('button', { name: 'Finish quiz' }).click();
+  await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible({ timeout: 20000 });
+  await expect(card.getByText('Feedback saved and learner evidence applied.', { exact: true })).toBeVisible();
+  const feedback = card.getByRole('region', { name: 'Assessment feedback' });
+  await expect(feedback.getByText('3 correct', { exact:true })).toBeVisible();
+  await expect(feedback.getByText('2 incorrect', { exact:true })).toBeVisible();
+  await expect(feedback.getByRole('region', { name: 'Question 4 feedback' })).toContainText('An unsupported explanation.');
+  await expect(feedback.getByRole('region', { name: 'Question 4 feedback' })).toContainText('Correct answer');
+  await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('feedback-desktop-dark.png') });
+  await page.evaluate(() => localStorage.setItem('mentra-theme', 'light'));
+  await page.reload();
+  await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible();
+  await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('feedback-desktop-light.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
+  await expect.poll(() => page.getByRole('complementary', { name:'Main navigation' }).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath('feedback-mobile-light.png') });
+  await feedback.getByRole('region', { name:'Question 4 feedback' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('feedback-incorrect-mobile.png') });
+});
+
+}

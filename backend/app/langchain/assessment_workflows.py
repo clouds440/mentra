@@ -46,7 +46,7 @@ class AssessmentWorkflows:
         while len(questions) < request.count:
             batch_count = min(3, request.count-len(questions))
             generated = await self.llm.ainvoke(PromptSource.ASSESSMENT_GENERATION,
-            dict(topic=request.topic, count=batch_count, question_offset=len(questions), purpose=request.purpose, targets=targets,
+            dict(topic=request.topic, question_format=request.question_format, count=batch_count, question_offset=len(questions), purpose=request.purpose, targets=targets,
                 recommendations=[item.model_dump(mode='json') for item in recommendations if item.concept_id in concepts],
                 verification=[item.model_dump(mode='json') for item in verification if item.concept_id in concepts], sources=prompt_sources,
                 profile=profile_context.model_dump(mode='json') if profile_context else None,
@@ -54,10 +54,12 @@ class AssessmentWorkflows:
                 revision_instructions=request.revision_instructions,
                 original_overview=[dict(number=index, excerpt=q['prompt'][:160], truncated=len(q['prompt'])>160)
                     for index,q in enumerate(revision['questions'],1)] if revision else None,
-                original_questions=[dict(prompt=q['prompt'], marks=q['marks'], difficulty=q['difficulty'], concept_ids=q['concept_ids'])
+                original_questions=[dict(prompt=q['prompt'], marks=q['marks'], difficulty=q['difficulty'], concept_ids=q['concept_ids'], options=q.get('options', []))
                     for q in revision['questions'][len(questions):len(questions)+batch_count]] if revision else None), output_schema=GeneratedAssessment)
             if len(generated.questions) != min(3, request.count-len(questions)):
                 raise AppError('ASSESSMENT_INVALID_GENERATION', 'The generated assessment did not match its requested count.', 502)
+            if any(bool(q.options) != (request.question_format == 'mcq') for q in generated.questions):
+                raise AppError('ASSESSMENT_INVALID_GENERATION', 'Questions must match the selected assessment format.', 502)
             title = title or generated.title
             questions.extend(generated.questions)
         generated = GeneratedAssessment(title=title, questions=questions)
@@ -73,6 +75,7 @@ class AssessmentWorkflows:
         batches, current = [], []
         # A question/rubric/answer is indivisible. Never silently trim student work.
         for question in assessment['questions']:
+            if question.get('options'): continue
             proposed = [*current, question]
             payload = dict(questions=proposed, answers={q['id']:attempt['answers'][q['id']] for q in proposed},
                            transcription_confirmed=attempt['extraction'] is not None)
@@ -90,7 +93,18 @@ class AssessmentWorkflows:
         if current:
             batches.append(current)
         grades = []
+        from app.assessments.schemas import QuestionGrade, ConceptGrade
+        for question in assessment['questions']:
+            if question.get('options'):
+                correct = attempt['answers'][question['id']] == question['correct_option_id']
+                score = question['marks'] if correct else 0
+                grades.append(QuestionGrade(question_id=question['id'], score=score, confidence=1,
+                    feedback=('Correct. ' if correct else 'Incorrect. ') + question['model_answer'],
+                    concept_grades={identifier:ConceptGrade(score=score, max_score=question['marks'], confidence=1)
+                        for identifier in question['concept_ids']}))
         for batch in batches:
+            batch = [q for q in batch if not q.get('options')]
+            if not batch: continue
             partial = await self.llm.ainvoke(PromptSource.ASSESSMENT_GRADING,
                 dict(questions=batch, answers={q['id']:attempt['answers'][q['id']] for q in batch},
                      transcription_confirmed=attempt['extraction'] is not None), output_schema=GradedAssessment)

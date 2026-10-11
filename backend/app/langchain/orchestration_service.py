@@ -115,7 +115,7 @@ class OrchestrationService:
         if self.rag is None:
             references = dict(history_references=history_scope['history_references'], memory_references=history_scope['memory_references']) if history_scope else {}
             if history_scope:
-                references.update(event_proposals=history_scope.get('event_proposals', []), event_references=history_scope.get('event_references', []), assessment_cards=history_scope.get('assessment_cards', []))
+                references.update(event_proposals=history_scope.get('event_proposals', []), event_references=history_scope.get('event_references', []), assessment_cards=history_scope.get('assessment_cards', []), interactions=history_scope.get('interactions', []))
             return ChatResponse(role='assistant', content=reply, **title_fields, **references)
         sources = history_scope.get('study_sources', []) if history_scope else [chunk.source for chunk in result.chunks] if result else []
         if history_scope and history_scope.get('retrieval_status'):
@@ -125,6 +125,7 @@ class OrchestrationService:
         # Unknown markers never become links. The UI only resolves the allowlisted tokens.
         return ChatResponse(role='assistant', content=reply, **title_fields, sources=sources, citations=cited,
                             assessment_cards=history_scope.get('assessment_cards', []) if history_scope else [],
+                            interactions=history_scope.get('interactions', []) if history_scope else [],
                             event_proposals=history_scope.get('event_proposals', []) if history_scope else [],
                             event_references=history_scope.get('event_references', []) if history_scope else [],
                             history_references=history_scope['history_references'] if history_scope else [],

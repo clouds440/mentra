@@ -20,6 +20,7 @@ class GeneratePractice(BaseModel):
     concept_names: list[str] = Field(default_factory=list, max_length=5)
     count: int = Field(default=3, ge=1, le=10)
     grounded: bool = False
+    question_format: str = Field(default='written', pattern='^(written|mcq)$', description='Use mcq when you decide an interactive quiz is useful or the student asks for interactive, clickable, in-chat or one-question-at-a-time assessment. Ordinary quiz requests may use written answer sheets.')
 
 
 class AssessmentStatus(BaseModel):
@@ -46,6 +47,7 @@ class RevisePractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
     draft_id: str | None = Field(default=None, min_length=1, max_length=100)
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
+    question_format: str | None = Field(default=None, pattern='^(written|mcq)$')
     instructions: str = Field(min_length=1, max_length=2000,
         description='Verbatim requested changes from the current student message; never add changes they did not request.')
     count: int | None = Field(default=None, ge=1, le=10)
@@ -227,10 +229,10 @@ def create_workflow_tools(owner, scope, budget):
             if number > len(source['questions']):
                 raise AppError('ASSESSMENT_QUESTION_NOT_FOUND', 'Choose a question from this assessment.', 422)
             value = source['questions'][number-1]
-            return dict(title=source['title'], number=number, prompt=value['prompt'], marks=value['marks'],
+            return dict(title=source['title'], number=number, prompt=value['prompt'], marks=value['marks'], options=value.get('options', []),
                 next_step='Answer the student follow-up. Clarification does not save the draft or start an attempt.')
 
-        async def revise(instructions, draft_id=None, assessment_id=None, count=None):
+        async def revise(instructions, draft_id=None, assessment_id=None, count=None, question_format=None):
             budget.call(True)
             if bool(draft_id) == bool(assessment_id):
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose exactly one assessment to revise.', 422)
@@ -248,6 +250,7 @@ def create_workflow_tools(owner, scope, budget):
             result = await service.generate_chat(owner, scope['conversation_id'], GenerationRequest(
                 client_request_id=operation, context_id=source['context_id'], topic=source['title'],
                 count=count if count is not None else len(source['questions']), purpose=source['purpose'],
+                question_format=question_format or ('mcq' if all(q.get('options') for q in source['questions']) else 'written'),
                 grounded=bool(source['sources']), document_ids=list(dict.fromkeys(str(s['document_id']) for s in source['sources'])),
                 revision_draft_id=draft_id, revision_assessment_id=assessment_id, revision_instructions=instructions))
             scope.setdefault('assessment_cards', []).append(result)
@@ -268,8 +271,12 @@ def create_workflow_tools(owner, scope, budget):
                             grade_revision=item.grade_revision,
                             score=sum(grade.score for grade in item.grades or []),
                             max_score=sum(q.marks for q in assessment.questions),
-                            feedback=[dict(number=numbers[grade.question_id], score=grade.score,
+                            results=[dict(question_id=grade.question_id, number=numbers[grade.question_id],
+                                score=grade.score, outcome=grade.outcome) for grade in item.grades or []],
+                            feedback=[dict(question_id=grade.question_id, number=numbers[grade.question_id], score=grade.score,
                                 marks=next(q.marks for q in assessment.questions if str(q.id)==grade.question_id),
+                                outcome=grade.outcome, answer=item.answers.get(grade.question_id, '')[:200],
+                                correct_answer=grade.correct_answer[:300] if grade.correct_answer else None,
                                 confidence=grade.confidence, feedback=grade.feedback[:300]) for grade in (item.grades or [])[:2]],
                             next_step='Review the inline card for all feedback and transcription details.') for item in attempts[:1]])
 

@@ -26,6 +26,8 @@
   --primary: 3 105 161;
   --primary-hover: 7 89 133;
   --danger: 190 18 60;
+  --success: 21 128 61;
+  --warning: 161 98 7;
   --overlay: 2 6 23;
   --shadow: 15 23 42;
   --code: 241 245 249;
@@ -64,6 +66,8 @@
   --primary: 56 189 248;
   --primary-hover: 125 211 252;
   --danger: 254 205 211;
+  --success: 134 239 172;
+  --warning: 253 224 71;
   --code: 9 13 21;
   --code-surface: 10 17 30;
   --code-header: 16 25 42;

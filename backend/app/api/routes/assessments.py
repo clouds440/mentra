@@ -2,11 +2,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, Query, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
-from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, Assessment, Attempt
+from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
 from pydantic import BaseModel, ConfigDict, Field
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
+
+@router.put('/attempts/{identifier}/draft', response_model=Attempt)
+async def save_draft(identifier: UUID, body: SaveDraftAnswers,
+                     request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.repository.save_draft_answers,
+                                  identity.learner_id, str(identifier), body)
 
 class AssessmentPreferences(BaseModel):
     model_config = ConfigDict(extra='forbid')

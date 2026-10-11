@@ -39,7 +39,7 @@ class AssessmentRepository:
 
     def public(self, row):
         return Assessment(**{key:row[key] for key in ('id','context_id','title','purpose','revision','created_at','sources')},
-            questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric')}) for question in row['questions']])
+            questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id')}) for question in row['questions']])
 
     def attempt_public(self, row):
         return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3))
@@ -158,6 +158,43 @@ class AssessmentRepository:
             return [self.attempt_public(row) for row in session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner,
                 t.c.assessment_id == assessment_id).order_by(t.c.attempt_number.desc()).limit(20)).mappings()]
 
+    def save_draft_answers(self, owner, identifier, body):
+        with self.transactions.write(owner) as tx:
+            row = self._attempt(tx._session, owner, identifier)
+            questions = self._assessment(tx._session, owner, row['assessment_id'])['questions']
+            self.validate_mcq_answers(questions, body.answers, partial=True)
+            if row['state'] != 'draft':
+                raise AppError('REVISION_CONFLICT', 'Only draft answers can be saved.', 409)
+            # Exact retries after a lost response are safe without incrementing revision.
+            if row['answers'] == body.answers: return self.attempt_public(row)
+            if row['revision'] != body.expected_revision:
+                raise AppError('REVISION_CONFLICT', 'Answers changed. Reload before saving.', 409)
+            values = dict(answers=body.answers, revision=row['revision']+1)
+            tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
+            return self.attempt_public(dict(row, **values))
+
+    @staticmethod
+    def validate_mcq_answers(questions, answers, partial=False):
+        allowed = {q['id']:q for q in questions}
+        if set(answers)-set(allowed):
+            raise AppError('ASSESSMENT_INVALID_ANSWER', 'Unknown question.', 422)
+        for key, answer in answers.items():
+            q = allowed[key]
+            if not isinstance(answer, str) or not answer.strip() or len(answer)>8000 or (q.get('options') and answer not in {x['id'] for x in q['options']}):
+                raise AppError('ASSESSMENT_INVALID_ANSWER', 'Choose a valid answer.', 422)
+        if partial and any(not q.get('options') for q in questions):
+            raise AppError('ASSESSMENT_INVALID_ANSWER', 'This draft endpoint supports MCQ assessments.', 422)
+
+    @staticmethod
+    def normalize_answers(questions, answers):
+        from app.interactions.schemas import ChoiceOption, canonical_option_id
+        normalized = dict(answers)
+        for question in questions:
+            if question.get('options') and question['id'] in answers:
+                normalized[question['id']] = canonical_option_id(
+                    [ChoiceOption.model_validate(x) for x in question['options']], answers[question['id']])
+        return normalized
+
     def submit(self, owner, identifier, body):
         with self.transactions.write(owner) as tx:
             session = tx._session
@@ -174,7 +211,9 @@ class AssessmentRepository:
             questions = self._assessment(session, owner, row['assessment_id'])['questions']
             if set(body.answers) != {q['id'] for q in questions} or any(not answer.strip() or len(answer)>8000 for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE', 'Answer every question with at most 8000 characters each.', 422)
-            values = dict(answers=body.answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
+            answers = self.normalize_answers(questions, body.answers)
+            self.validate_mcq_answers(questions, answers)
+            values = dict(answers=answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
                 profile_context_version=self.profile_version(session, owner),
                 submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', assistance=body.assistance, error=None, log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id == identifier).values(**values))
@@ -205,9 +244,11 @@ class AssessmentRepository:
                 raise AppError('ASSESSMENT_INCOMPLETE','Review every answer before submitting a correction.',422)
             if row['extraction'] and not body.transcription_confirmed:
                 raise AppError('TRANSCRIPTION_CONFIRMATION_REQUIRED','Confirm the corrected transcription.',422)
+            answers = self.normalize_answers(questions, body.answers)
+            self.validate_mcq_answers(questions, answers)
             history=[*row['grade_history'],dict(grade_revision=row['grade_revision'],grades=row['grades'],answers=row['answers'],assistance=row.get('assistance','unknown'),corrected_at=self.clock().isoformat())]
             if len(history)>10:raise AppError('CORRECTION_LIMIT','This attempt has reached its correction limit.',409)
-            values=dict(grade_history=history,grade_revision=row['grade_revision']+1,answers=body.answers,grades=None,
+            values=dict(grade_history=history,grade_revision=row['grade_revision']+1,answers=answers,grades=None,
                 profile_context_version=self.profile_version(session, owner),
                 revision=row['revision']+1,state='submitted',submitted_at=self.clock(),worker_attempts=0,retry_at=None,
                 submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',assistance=body.assistance,error=None,log_context=workflow_logger.envelope())
@@ -246,7 +287,16 @@ class AssessmentRepository:
             expected = sum(len(question.concept_grades) for question in grades.questions)
             accepted = sum(bool(item.get('accepted')) for item in receipt or [])
             evidence_status = 'applied' if accepted == expected else 'partial' if accepted else 'unavailable'
-            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='graded', grades=grades.model_dump(mode='json')['questions'],
+            questions = {str(question['id']): question for question in job['assessment']['questions']}
+            public_grades = []
+            for grade in grades.questions:
+                question = questions[grade.question_id]
+                correct = next((option['label'] for option in question.get('options', [])
+                                if option['id'] == question.get('correct_option_id')), None)
+                public_grades.append(dict(grade.model_dump(mode='json'),
+                    outcome='correct' if grade.score == question['marks'] else 'wrong' if grade.score == 0 else 'partial',
+                    correct_answer=correct))
+            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='graded', grades=public_grades,
                 evidence_status=evidence_status, evidence_receipt=receipt,
                 revision=row['revision']+1, claim_id=None, claim_until=None, retry_at=None, error=None))
 

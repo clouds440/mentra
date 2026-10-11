@@ -1,6 +1,8 @@
 import type { SourceReference, ChatSelection } from './rag';
 import type { HistoryReference, MemoryReference } from './memories';
 export interface ChatMessageData {
+  interactions?: import('./interactions').ChoiceCardData[];
+  interaction_response?: import('./interactions').InteractionResponse;
   attachments?: import('../services/chatAttachments').ChatAttachment[];
   conversation_id?: string;
   id: string;

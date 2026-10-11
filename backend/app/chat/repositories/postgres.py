@@ -123,6 +123,8 @@ class ChatRepository:
         attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))
         # Retain fingerprints for existing clients/turns without attachments.
         fingerprint = sha256(json.dumps([conversation_id, content, selection] + ([attachment_ids] if attachment_ids else []), sort_keys=True).encode()).hexdigest()
+        if request.interaction_response:
+            fingerprint = sha256((fingerprint + request.interaction_response.model_dump_json()).encode()).hexdigest()
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             existing = session.execute(select(t).where(t.c.id == turn_id)).mappings().first()
@@ -165,11 +167,27 @@ class ChatRepository:
                 if pending['lease_until'] >= now():
                     raise AppError('CHAT_BUSY', 'Wait for the current response before sending another message.', 409)
                 session.execute(update(t).where(t.c.id == pending['id']).values(state='FAILED', error='Generation interrupted.'))
+            interaction_metadata = {}
+            if request.interaction_response:
+                from app.chat.interactions import resolve_choice
+                reply = request.interaction_response
+                source = session.execute(select(m).where(m.c.id == str(reply.message_id), m.c.learner_id == owner,
+                    m.c.conversation_id == conversation_id, m.c.role == 'assistant')).mappings().first()
+                if not source: raise AppError('INTERACTION_NOT_FOUND', 'This interaction is unavailable.', 404)
+                metadata = dict(source['metadata'])
+                cards = [dict(x) for x in metadata.get('interactions', [])]
+                card, content = resolve_choice(cards, reply)
+                if card.get('submitted_turn_id'):
+                    raise AppError('INTERACTION_COMPLETED', 'This interaction has already been submitted.', 409)
+                card.update(selected=reply.selected, submitted_turn_id=turn_id)
+                metadata['interactions'] = cards
+                session.execute(update(m).where(m.c.id == source['id']).values(metadata=metadata))
+                interaction_metadata = dict(interaction_response=reply.model_dump(mode='json'))
             sequence = conversation['message_count'] + 1
             from .attachments import AttachmentRepository
             attachment_metadata = AttachmentRepository.bind(session, owner, attachment_ids, conversation_id)
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
-                role='user', content=content, metadata={'attachments': attachment_metadata} if attachment_metadata else {}, created_at=now()))
+                role='user', content=content, metadata={**interaction_metadata, **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
                 user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=workflow_logger.envelope()))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))

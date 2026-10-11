@@ -48,11 +48,15 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 args_schema=tool.args_schema, coroutine=read))
     from .workflow_tools import create_workflow_tools
     tools.extend(create_workflow_tools(owner, scope, budget))
-    enabled = set(scope.get('workflow_modules', ('history', 'memory', 'learner', 'events', 'rag', 'assessment')))
-    domains = dict(history_lookup='history', user_memory='memory', event_lookup='events', event_manage='events',
+    from app.chat.interactions import create_interaction_tools
+    tools.extend(create_interaction_tools(owner, scope, budget))
+    enabled = set(scope.get('workflow_modules', ('history', 'memory', 'learner', 'events', 'rag', 'assessment', 'chat')))
+    domains = dict(present_choices='chat', history_lookup='history', user_memory='memory', event_lookup='events', event_manage='events',
                    search_study_material='rag', assessment_generate='assessment', assessment_revise='assessment', assessment_question='assessment', assessment_status='assessment', assessment_answer='assessment', assessment_lookup='assessment')
+    def tool_enabled(name):
+        return name in ('enable_workflow_tools', 'assessment_generate') or domains.get(name, 'learner') in enabled
     def selected():
-        return [tool for tool in tools if tool.name == 'enable_workflow_tools' or domains.get(tool.name, 'learner') in enabled]
+        return [tool for tool in tools if tool_enabled(tool.name)]
     class EnableModules(BaseModel):
         modules: list[Literal['history', 'memory', 'learner', 'events', 'rag', 'assessment']] = Field(min_length=1, max_length=3)
     async def enable(modules):
@@ -75,6 +79,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         tool_schema += json.dumps(output_schema.model_json_schema())
     context = dict(context, history_scope=dict(current_user_message_id=scope['current_user_message_id'],
         visible_user_messages=[dict(id=x.id, excerpt=str(x.content)[:100]) for x in conversation if x.type == 'human' and x.id][-8:]))
+    if scope.get('interaction_response'):
+        context['interaction_response'] = scope['interaction_response']
     if scope.get('chat_assessments'):
         context['chat_assessments'] = scope['chat_assessments']
     if scope.get('assessment_attachment_ids'):
@@ -176,7 +182,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
 
         async def invoke(call):
             tool = dispatch.get(call['name'])
-            if tool is None or (call['name'] != 'enable_workflow_tools' and domains.get(call['name'], 'learner') not in enabled):
+            if tool is None or not tool_enabled(call['name']):
                 budget.call()
                 return dict(outcome='rejected', reason='Unknown tool.')
             from .activity import current_tool_call
@@ -224,7 +230,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 try:
                     budget.consume(content)
                 except AppError:
-                    is_write = call['name'] in ('event_manage', 'resolve_student_concept', 'assessment_generate', 'assessment_revise', 'assessment_answer') or (
+                    is_write = call['name'] in ('present_choices', 'event_manage', 'resolve_student_concept', 'assessment_generate', 'assessment_revise', 'assessment_answer') or (
                         call['name'] == 'user_memory' and call['args'].get('action') != 'recall')
                     if not is_write:
                         raise
@@ -235,7 +241,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         value = result.get(key)
                         if isinstance(value, dict):
                             receipt[key] = {field:value[field] for field in ('id', 'revision', 'status') if field in value}
-                    for key in ('concept_id', 'candidate_id', 'id', 'draft_id', 'assessment_id', 'attempt_id'):
+                    for key in ('concept_id', 'candidate_id', 'id', 'draft_id', 'assessment_id', 'attempt_id', 'interaction_id'):
                         if result.get(key): receipt[key] = result[key]
                     content = json.dumps(receipt, separators=(',', ':'))
                     # Reserved by ToolBudget.call(write=True), independent of

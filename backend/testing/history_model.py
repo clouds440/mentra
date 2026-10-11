@@ -6,6 +6,7 @@ from testing.rag import TestChatFactory
 
 class HistoryChatFactory(TestChatFactory):
     def bind_tools(self, tools, **kwargs):
+        self.available_tools = {tool.name for tool in tools if not isinstance(tool,type)}
         self.final_schema = next((tool for tool in tools if isinstance(tool,type) and tool.__name__=='NewChatReply'),None)
         self.announced_tools = {tool.name for tool in tools if not isinstance(tool,type) and 'user_message' in tool.args_schema.model_fields}
         return self
@@ -22,7 +23,7 @@ class HistoryChatFactory(TestChatFactory):
                 data = json.loads(messages[-1].content)
                 if schema.__name__ == 'GeneratedAssessment':
                     revised = bool(data.get('revision_instructions'))
-                    return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=[dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset",0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=2, model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else []) for index in range(data['count'])])
+                    return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=[dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset",0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=2, model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **(dict(options=[dict(id='a',label='A supported explanation.'),dict(id='b',label='An unsupported explanation.')],correct_option_id='a') if data.get('question_format')=='mcq' else {})) for index in range(data['count'])])
                 if schema.__name__ == 'GradedAssessment':
                     return schema(questions=[dict(question_id=question['id'], score=1, confidence=.95,
                         feedback='A useful partial explanation. Add the missing detail.',
@@ -47,10 +48,16 @@ class HistoryChatFactory(TestChatFactory):
         if results:
             result = json.loads(results[-1].content)
             if results[-1].name == 'get_active_learning_contexts':
+                if any('keep mixing up linear equations' in str(m.content).lower() for m in messages if m.type=='human'):
+                    assert 'assessment_generate' in self.available_tools, 'LLM-initiated assessment must be directly available without a quiz keyword'
                 context = next(item for item in result['contexts'] if item['name']=='Algebra')
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',
-                    dict(context_id=context['context_id'],topic='Linear equations',count=2), 'assessment-generate')])
+                    dict(context_id=context['context_id'],topic='Linear equations',count=5,question_format='mcq') if any(any(phrase in str(m.content).lower() for phrase in ('five question mcq', 'interactive quiz', 'clickable options', 'keep mixing up linear equations')) for m in messages if m.type=='human') else dict(context_id=context['context_id'],topic='Linear equations',count=2), 'assessment-generate')])
             if (results[-1].name or '').startswith('assessment_'):
+                if results[-1].name == 'assessment_generate' and not result.get('reason'):
+                    return AIMessage(content='Your interactive quiz is ready. Choose an answer for each question, then submit to see your feedback.' if result.get('assessment_id') else 'Your practice questions are ready. You can answer here or upload an answer sheet.')
+                if results[-1].name == 'assessment_answer' and not result.get('reason'):
+                    return AIMessage(content='Your answers have been submitted. Your feedback will appear here when grading finishes.' if result.get('outcome') in ('submitted', 'grading') else 'Your answers are ready to review. Check each question before submitting.')
                 return AIMessage(content=result.get('reason', result.get('next_step', 'Your assessment is ready in the chat card.')))
             if 'memories' in result:
                 return AIMessage(content='Your saved preference is ' + result['memories'][0]['content'] + ' [['+result['memories'][0]['token']+']]' if result['memories'] else 'No saved memories matched.')
@@ -68,7 +75,11 @@ class HistoryChatFactory(TestChatFactory):
         context = json.loads(system[marker+2:]) if marker >= 0 else {}
         scope = context.get('history_scope')
         if scope:
-            if lowered.startswith('generate a two question quiz'):
+            if lowered.startswith(('show single choices', 'show multiple choices')):
+                return AIMessage(content='', tool_calls=[self.tool_call('present_choices', dict(kind='multiple_choice' if 'multiple' in lowered else 'single_choice', question='Choose learning topics', options=[dict(id='algebra',label='Algebra'),dict(id='biology',label='Biology'),dict(id='physics',label='Physics')]), 'choice-create')])
+            if context.get('interaction_response'):
+                return AIMessage(content='Selected topic IDs: ' + ', '.join(context['interaction_response']['selected']))
+            if lowered.startswith(('generate a two question quiz', 'generate a five question mcq', 'give me a five question interactive quiz', 'quiz me with five clickable options questions', 'i keep mixing up linear equations')):
                 return AIMessage(content='',tool_calls=[self.tool_call('get_active_learning_contexts',{},'assessment-context')])
             if lowered.startswith('explain question 1') and context.get('chat_assessments'):
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_question',

@@ -1,3 +1,4 @@
+from .interactions import ChoiceCard
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 from app.rag.schemas import SourceReference, ChatSelection
@@ -16,6 +17,7 @@ class ChatResponse(BaseModel):
     memory_references: list[dict] = Field(default_factory=list)
     event_proposals: list[dict] = Field(default_factory=list)
     event_references: list[dict] = Field(default_factory=list)
+    interactions: list[ChoiceCard] = Field(default_factory=list)
     assessment_cards: list[dict] = Field(default_factory=list)
 
     @field_validator('assessment_cards')

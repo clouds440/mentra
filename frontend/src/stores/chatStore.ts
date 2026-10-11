@@ -185,7 +185,7 @@ class ChatStore {
     try { const page = await api.getMessages(id, view.before, signal); if (this.alive(signal)) await this.applyPage({ ...page, turn: view.turn }, true); }
     catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, error: this.error(error) }); }
   }
-  async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = []) {
+  async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = [], interactionResponse?: import('../types/interactions').InteractionResponse) {
     if (!this.owner || this.view(id).busy) return;
     if (this.view(id).olderWindow) {
       const signal = this.controller.signal;
@@ -197,9 +197,9 @@ class ChatStore {
     if (retry && !body && view.turn?.state === 'FAILED') {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
-      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
+      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
-    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, attachment_ids: attachments.map(file => file.id) };
+    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
     body = { ...body, retry };
     this.pending.set(id, body);
     this.setView(id, { busy: true, error: null, unsent: null });
@@ -212,6 +212,12 @@ class ChatStore {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;
       await this.applyPage(page);
       if (!this.alive(signal)) return;
+      if (body.interaction_response) {
+        const reply = body.interaction_response;
+        this.setView(id, { messages: this.view(id).messages.map(message => message.id === reply.message_id ? {
+          ...message, interactions: message.interactions?.map(card => card.id === reply.interaction_id ? { ...card, selected: reply.selected, submitted_turn_id: body!.client_turn_id } : card)
+        } : message) });
+      }
       this.channel?.postMessage('changed');
       if (page.turn?.state === 'RUNNING') this.poll(id);
       void this.sync();

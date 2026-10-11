@@ -4,6 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.rag.schemas import ChatSelection
 
 
+from .interactions import InteractionResponse
+
 class SendTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     conversation_id: UUID
@@ -11,6 +13,7 @@ class SendTurn(BaseModel):
     expected_revision: int = Field(ge=0)
     content: str = Field(min_length=1, max_length=4000)
     retrieval: ChatSelection = Field(default_factory=ChatSelection)
+    interaction_response: InteractionResponse | None = None
     retry: bool = False
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=4)
 

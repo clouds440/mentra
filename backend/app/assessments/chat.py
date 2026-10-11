@@ -86,7 +86,9 @@ class ChatAssessments:
                 operation_id=str(request.client_request_id), assessment_id=None, created_at=self.repository.clock())
             session.execute(chat_drafts.insert().values(**row))
             auto = session.scalar(select(preferences.c.auto_add).where(preferences.c.learner_id == owner))
-            if auto: row = self._publish(session, owner, row)
+            # Interactive work is a real assessment immediately; retain draft-first
+            # policy for written worksheets unless the account opted into auto-add.
+            if auto or request.question_format == 'mcq': row = self._publish(session, owner, row)
             return self.public(row)
 
     def _publish(self, session, owner, row):

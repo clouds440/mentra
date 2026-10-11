@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
 const origin = 'http://127.0.0.1:18003';
-test('assessment discussion and revisions precede solving, with partial answers continuing in chat', async ({page}) => {
+test('assessment discussion and revisions precede solving, with partial answers continuing in chat', async ({page}, testInfo) => {
   test.setTimeout(90_000);
   await page.goto('/register');
   await page.getByLabel('Username',{exact:true}).fill(`quiz_revision_${randomUUID().slice(0,8)}`);
@@ -46,6 +46,11 @@ test('assessment discussion and revisions precede solving, with partial answers 
   await cards.last().getByLabel('I reviewed and corrected all extracted answers').check();
   await cards.last().getByRole('button',{name:'Confirm text & submit',exact:true}).click();
   await expect(cards.last().getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible({timeout:20_000});
+  const feedback = cards.last().getByRole('region', { name: 'Assessment feedback' });
+  await expect(feedback.getByText('2 partially correct', { exact:true })).toBeVisible();
+  await page.setViewportSize({ width:1280, height:1100 });
+  await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path:testInfo.outputPath('feedback-partial-desktop.png') });
 });
 
 test('chat quiz remains a draft, typed answers grade inline, saved assessment survives chat', async ({page}) => {

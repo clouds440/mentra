@@ -9,6 +9,7 @@ export interface StoredMessage extends ChatMessageData {
   conversation_id: string; sequence: number; created_at: string;
 }
 export interface PendingTurn {
+  interaction_response?: import('./interactions').InteractionResponse;
   conversation_id: string; client_turn_id: string; expected_revision: number;
   content: string; retrieval: ChatSelection; retry?: boolean;
   attachment_ids?: string[];

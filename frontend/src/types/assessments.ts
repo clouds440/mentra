@@ -1,6 +1,6 @@
-export interface AssessmentQuestion { id: string; prompt: string; concept_ids: string[]; difficulty: number; marks: number; source_tokens: string[] }
+export interface AssessmentQuestion { options?: import('./interactions').ChoiceOption[]; id: string; prompt: string; concept_ids: string[]; difficulty: number; marks: number; source_tokens: string[] }
 export interface Assessment { id: string; context_id: string; title: string; purpose: string; revision: number; created_at: string; questions: AssessmentQuestion[]; sources: import('./rag').SourceReference[] }
-export interface QuestionGrade { question_id: string; score: number; confidence: number; feedback: string; concept_grades: Record<string, { score: number; max_score: number; confidence: number }>; misconceptions: string[] }
+export interface QuestionGrade { question_id: string; score: number; confidence: number; feedback: string; concept_grades: Record<string, { score: number; max_score: number; confidence: number }>; misconceptions: string[]; outcome?: 'correct' | 'partial' | 'wrong' | null; correct_answer?: string | null }
 export interface AssessmentAttempt {
   id: string; assessment_id: string; revision: number; state: 'draft' | 'pending_transcription' | 'submitted' | 'grading' | 'graded' | 'failed';
   attempt_number: number; answers: Record<string, string>; grades: QuestionGrade[] | null;
