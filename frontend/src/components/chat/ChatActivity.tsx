@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { apiEvents } from '../../services/api';
 import { chatStore } from '../../stores/chatStore';
 import { ThinkingIndicator } from './ChatMessage';
 import { WebsiteIcon, safeWebsite } from '../webSearch/WebsiteIcon';
 import type { WebsiteIdentity } from '../../types/webSearch';
+import { activityLabel } from './activityLabels';
 
 interface Activity {
   schema_version: 1; conversation_id: string; turn_id: string; attempt: number;
@@ -31,10 +31,10 @@ function valid(value: unknown): value is Activity {
 }
 
 export function ChatActivity({ conversationId, turnId, attempt }: { conversationId: string; turnId?: string; attempt?: number }) {
-  const [steps, setSteps] = useState<Activity[]>([]);
+  const [current, setCurrent] = useState<Activity>();
   const [preview, setPreview] = useState('');
   useEffect(() => {
-    setSteps([]);
+    setCurrent(undefined);
     setPreview('');
     if (!turnId || !attempt) return;
     const controller = new AbortController();
@@ -52,7 +52,8 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
           cursor = data.sequence;
           if (data.token_reset) setPreview('');
           else if (data.token_delta) setPreview(previous => (previous + data.token_delta).slice(0, 60_000));
-          setSteps(previous => [...previous.filter(step => step.step_id !== data.step_id), data].slice(-16));
+          setCurrent(previous => ({ ...data, websites: data.websites?.length ? data.websites
+            : data.status === 'completed' && data.tool_name === 'web_search' && previous?.tool_name === 'web_search' ? previous.websites : [] }));
         });
       } catch { /* Existing canonical status polling remains available during connection failures. */ }
       if (!controller.signal.aborted && !terminal) timer = setTimeout(() => void connect(), 2000);
@@ -60,28 +61,13 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
     void connect();
     return () => { controller.abort(); if (timer) clearTimeout(timer); };
   }, [conversationId, turnId, attempt]);
-  const current = steps[steps.length - 1];
-  const search = [...steps].reverse().find(step => step.tool_name === 'web_search' && step.step_id.endsWith('-web'));
   const sites = (step: Activity) => !!step.websites?.length && <span className="mt-1 flex flex-wrap gap-2">{step.websites.map(site =>
     <span key={site.domain} className="inline-flex min-w-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted">
       <WebsiteIcon website={site} /><span className="break-all">{site.domain}</span>
     </span>)}</span>;
-  return <div>
-    <ThinkingIndicator label={current?.user_message ?? 'Planning your request'} />
-    {search && <div className="ml-11 mt-2 text-xs text-muted" role="status" aria-live="polite">
-      {search.user_message}{sites(search)}
-    </div>}
+  return <div aria-label="Current activity">
+    <ThinkingIndicator label={activityLabel(current)} />
+    {current && <div className="ml-11">{sites(current)}</div>}
     {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
-    {!!steps.length && <details className="group/activity ml-11 mt-2 text-xs text-muted">
-      <summary className="group/trigger flex w-fit cursor-pointer list-none items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
-        <span>Activity{current?.tool_name ? ` · ${current.tool_name}` : ''}</span>
-        <ChevronRight aria-hidden="true" size={14} className="shrink-0 opacity-0 transition-[opacity,transform] motion-reduce:transition-none group-hover/trigger:opacity-100 group-focus-visible/trigger:opacity-100 group-open/activity:rotate-90" />
-      </summary>
-      <ol className="mt-2 space-y-1">{steps.map(step => <li key={step.step_id}>
-        {step.user_message}{step.tool_name && <span className="text-subtle"> · {step.tool_name}</span>}
-        <span className="text-subtle"> — {step.status}</span>
-        {sites(step)}
-      </li>)}</ol>
-    </details>}
   </div>;
 }

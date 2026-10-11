@@ -10,11 +10,11 @@ async function recoveryChat(page: Page, state: 'RUNNING' | 'SUCCEEDED' | 'FAILED
     tool_warnings:[{tool_name:'event_manage', code:'TOOL_TIMEOUT', message:'The event service did not respond.', task_impact:'required_for_part', effect_certainty:'unknown'}]};
   const snapshot = () => ({conversation, items:state === 'SUCCEEDED' ? [user, answer] : [user], has_more:false, next_cursor:null,
     turn:{id:turnId, state, attempt:1, selection, user_sequence:1, error:state === 'FAILED' ? 'The requested document could not be found. Select another document.' : null}});
+  let event = {schema_version:1, conversation_id:id, turn_id:turnId, attempt:1, sequence:1, step_id:'read-step', tool_name:'event_lookup',
+    user_message:'Reading your agenda failed. Retrying, attempt 2 of 3.', status:'retry_wait', tool_attempt:2, max_attempts:3, error_code:'TOOL_TIMEOUT'};
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/events') && path.includes('/turns/')) {
-      const event = {schema_version:1, conversation_id:id, turn_id:turnId, attempt:1, sequence:1, step_id:'read-step', tool_name:'event_lookup',
-        user_message:'Reading your agenda failed. Retrying, attempt 2 of 3.', status:'retry_wait', tool_attempt:2, max_attempts:3, error_code:'TOOL_TIMEOUT'};
       await route.fulfill({contentType:'text/event-stream', body:`event: activity\ndata: ${JSON.stringify(event)}\n\n`});
       return;
     }
@@ -33,14 +33,41 @@ async function recoveryChat(page: Page, state: 'RUNNING' | 'SUCCEEDED' | 'FAILED
     await route.fulfill({json:body});
   });
   await page.goto(`/chat/${id}`);
-  return {finish: () => {state = 'SUCCEEDED';}};
+  return {finish: () => {state = 'SUCCEEDED';}, step: (tool_name: string, status: string, user_message: string) => {
+    event = {...event, sequence:event.sequence + 1, step_id:`step-${event.sequence + 1}`, tool_name, status, user_message};
+  }};
 }
+
+test('current activity replaces earlier steps and never renders internal labels', async ({page}) => {
+  const chat = await recoveryChat(page, 'RUNNING');
+  const activity = page.getByLabel('Current activity');
+  await expect(activity).toContainText('Trying again');
+  chat.step('profile_context', 'running', 'profile_context');
+  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity).not.toContainText('profile_context');
+  await expect(activity).not.toContainText('Checking your learning preferences');
+  chat.step('assessment_generate', 'running', 'Dispatching assessment_generate through MCP');
+  await expect(activity).toContainText('Creating your practice questions');
+  await expect(activity).not.toContainText('Trying again');
+  await expect(activity).not.toContainText('assessment_generate');
+  chat.step('assessment_generate', 'completed', 'Successfully completed assessment_generate');
+  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity).not.toContainText('Creating your practice questions');
+  await expect(activity).not.toContainText('completed');
+  chat.step('new_internal_operation', 'running', 'Executing SQL repository internal operation');
+  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity).not.toContainText('SQL');
+  await expect(activity).not.toContainText('new_internal_operation');
+  await expect(activity.getByRole('status')).toHaveCount(1);
+  await expect(activity.locator('details, ol, li')).toHaveCount(0);
+});
 
 test('retry progress is visible and permanent limitations survive refresh', async ({page}) => {
   const chat = await recoveryChat(page, 'RUNNING');
-  await expect(page.getByRole('region', {name:'Chat workspace'}).getByRole('status')).toContainText('Retrying, attempt 2 of 3');
-  await page.getByText('Activity · event_lookup', {exact:true}).click();
-  await expect(page.getByText('retry_wait', {exact:false})).toBeVisible();
+  await expect(page.getByLabel('Current activity').getByRole('status')).toContainText('Trying again');
+  await expect(page.getByLabel('Current activity')).not.toContainText('event_lookup');
+  await expect(page.getByLabel('Current activity')).not.toContainText('retry_wait');
+  await expect(page.getByLabel('Current activity').locator('details, ol')).toHaveCount(0);
   chat.finish();
   await expect(page.getByLabel('Response limitations')).toContainText('Completion of this action has not been verified.');
   await expect(page.getByRole('article', {name:'Mentra response'})).toContainText('Gravity attracts masses.');
