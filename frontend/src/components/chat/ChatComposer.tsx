@@ -1,6 +1,6 @@
 import { ArrowUp, Paperclip, Mic, Square, LoaderCircle } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
 import type { ChatSelection } from '../../types/rag';
 import { Button, Textarea } from '../ui';
@@ -62,6 +62,22 @@ export function ChatComposer({
     }
   }
 
+  function handlePaste(event: ClipboardEvent<HTMLFormElement>) {
+    // Files and items describe the same clipboard payload; use one collection
+    // so screenshots aren't staged twice. Text-only paste remains native.
+    const files = Array.from(event.clipboardData.files);
+    if (!files.length) for (const item of Array.from(event.clipboardData.items)) {
+      if (item.kind !== 'file') continue;
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+    if (!files.length) return;
+    event.preventDefault();
+    if (isThinking) return;
+    onFiles(files);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
   function updateMention(text: string, cursor: number) {
     const match = /(?:^|\s)@([^@\n]*)$/.exec(text.slice(0, cursor));
     if (!match) {
@@ -95,6 +111,7 @@ export function ChatComposer({
     <form
       aria-label="Message Mentra"
       className="rounded-2xl border border-border-strong bg-surface p-2 shadow-lg shadow-shadow/10 focus-within:border-border-hover"
+      onPaste={handlePaste}
       onSubmit={(event) => {
         event.preventDefault();
         if (!voice.busy) onSubmit();

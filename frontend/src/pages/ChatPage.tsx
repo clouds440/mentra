@@ -203,7 +203,6 @@ export function ChatPage() {
                   : <div className="flex h-16 w-32 items-center gap-2 px-2.5 pr-7"><FileText className="h-5 w-5 shrink-0" aria-hidden="true" /><span className="line-clamp-2 break-all">{item.file.name}</span></div>}
                 <button type="button" disabled={uploading} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface text-foreground shadow-sm hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}><X size={12} aria-hidden="true" /></button>
               </li>)}</ul>}
-              {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
             </>} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>

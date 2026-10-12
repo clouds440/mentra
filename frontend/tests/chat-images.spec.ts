@@ -3,6 +3,15 @@ import { test, expect, type Page } from '@playwright/test';
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6YZsAAAAASUVORK5CYII=', 'base64');
 const image = (number: number) => ({ name: `image-${number}.png`, mimeType: 'image/png', buffer: png });
 
+async function pasteFiles(page: Page, files: { name: string; mimeType: string; buffer: Buffer }[], itemsOnly = false) {
+  await page.getByRole('textbox', { name: 'Ask Mentra anything' }).evaluate((input, payload) => {
+    const clipboard = new DataTransfer();
+    for (const file of payload.files) clipboard.items.add(new File([Uint8Array.from(atob(file.data), c => c.charCodeAt(0))], file.name, { type: file.mimeType }));
+    if (payload.itemsOnly) Object.defineProperty(clipboard, 'files', { value: [] });
+    input.dispatchEvent(new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true, cancelable: true }));
+  }, { files: files.map(file => ({ name: file.name, mimeType: file.mimeType, data: file.buffer.toString('base64') })), itemsOnly });
+}
+
 async function setup(page: Page, failSecondUpload = false) {
   const conversation = { id: 'image-chat', title: 'Image discussion', revision: 1, message_count: 0,
     selection: { mode: 'STANDARD' }, created_at: '2026-10-12T00:00:00Z', updated_at: '2026-10-12T00:00:00Z', deleted_at: null };
@@ -68,6 +77,86 @@ for (const width of [1280, 390]) test(`three images stay staged until Send and s
   await expect(page.getByRole('article', { name: 'Your message' })).toContainText('Compare the three diagrams.');
   for (const number of [1, 2, 3]) await expect(page.getByLabel(`Attachment image-${number}.png`).getByRole('img')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('native clipboard image paste stages once and leaves the typed query intact', async ({ page }) => {
+  const state = await setup(page);
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = 100; canvas.height = 100;
+    const context = canvas.getContext('2d')!; context.fillStyle = '#478a78'; context.fillRect(0, 0, 100, 100);
+    const picture = await new Promise<Blob>(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': picture })]);
+  });
+  const input = page.getByRole('textbox', { name:'Ask Mentra anything' });
+  await input.fill('Explain this diagram.');
+  await input.press('Control+V');
+  await expect(page.getByLabel('Attached files').getByRole('img')).toHaveCount(1);
+  await expect(input).toHaveValue('Explain this diagram.');
+  expect(state.uploads()).toBe(0); expect(state.sent).toHaveLength(0);
+});
+
+test('pasted documents and item-only clipboard files append to the same staged attachments', async ({ page }) => {
+  const state = await setup(page);
+  await page.getByLabel('Upload chat files').setInputFiles(image(1));
+  await pasteFiles(page, [{name:'notes.pdf', mimeType:'application/pdf', buffer:Buffer.from('%PDF-1.4 test')}]);
+  await pasteFiles(page, [image(2)], true);
+  const attachments = page.getByRole('form', { name:'Message Mentra' }).getByLabel('Attached files');
+  await expect(attachments.locator('li')).toHaveCount(3);
+  await expect(attachments.getByRole('img')).toHaveCount(2);
+  await expect(attachments).toContainText('notes.pdf');
+  expect(state.uploads()).toBe(0); expect(state.sent).toHaveLength(0);
+  await attachments.getByRole('button', { name:'Remove notes.pdf', exact:true }).click();
+  await expect(attachments.locator('li')).toHaveCount(2);
+});
+
+test('clipboard attachments respect shared image and total file limits', async ({ page }) => {
+  await setup(page);
+  await page.getByLabel('Upload chat files').setInputFiles([image(1), image(2), image(3)]);
+  await pasteFiles(page, [image(4)]);
+  await expect(page.getByRole('alert')).toContainText('three images');
+  await expect(page.getByLabel('Attached files').getByRole('img')).toHaveCount(3);
+  await pasteFiles(page, [{name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('Notes')}]);
+  await expect(page.getByLabel('Attached files').locator('li')).toHaveCount(4);
+  await pasteFiles(page, [{name:'extra.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4')}]);
+  await expect(page.getByRole('alert')).toContainText('four files');
+  await expect(page.getByLabel('Attached files').locator('li')).toHaveCount(4);
+});
+
+test('plain text paste keeps normal editing behavior', async ({ page }) => {
+  await setup(page);
+  await page.context().grantPermissions(['clipboard-read','clipboard-write']);
+  await page.evaluate(() => navigator.clipboard.writeText('pasted text'));
+  const input = page.getByRole('textbox', { name:'Ask Mentra anything' });
+  await input.fill('Before '); await input.press('Control+V');
+  await expect(input).toHaveValue('Before pasted text');
+  await expect(page.getByLabel('Attached files')).toHaveCount(0);
+});
+
+for (const files of [false, true]) test(`sending ${files ? 'attachments' : 'text'} never adds a skeleton to the composer`, async ({ page }) => {
+  await setup(page);
+  let release!: () => void, started!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const requested = new Promise<void>(resolve => { started = resolve; });
+  await page.route(files ? '**/api/v1/chat-attachments' : '**/api/v1/conversations/turns', async route => {
+    started(); await pending; await route.fallback();
+  });
+  if (files) await pasteFiles(page, [image(1)]);
+  const composer = page.getByRole('form', { name:'Message Mentra' });
+  await composer.getByRole('textbox').fill('Explain this.');
+  const height = await composer.evaluate(el => el.getBoundingClientRect().height);
+  await composer.getByRole('button', { name:'Send message', exact:true }).click();
+  await requested;
+  try {
+    await expect(composer.getByRole('status', { name:'Loading' })).toHaveCount(0);
+    expect(await composer.evaluate(el => el.getBoundingClientRect().height)).toBeCloseTo(height, 0);
+    if (files) {
+      await expect(composer.getByLabel('Attached files').getByRole('img')).toHaveCount(1);
+      await pasteFiles(page, [image(2)]);
+      await expect(composer.getByLabel('Attached files').getByRole('img')).toHaveCount(1);
+    }
+  } finally { release(); }
+  await expect(page.getByRole('article', { name:'Mentra response' })).toBeVisible();
 });
 
 test('failed uploads retain staged images and query, and retry reuses completed upload', async ({ page }) => {
