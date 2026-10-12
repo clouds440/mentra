@@ -14,7 +14,12 @@ export function toolWarningMessage(tool: string, code: string): string {
   if (tool === 'event_manage') return 'The event change couldn’t be confirmed. Check your events before trying again.';
   if (tool === 'event_lookup') return 'Your events couldn’t be checked.';
   if (tool.startsWith('assessment_')) return 'This practice step couldn’t be completed. Check your practice before trying again.';
-  if (['search_study_material', 'get_study_source_chunk', 'document_extract'].includes(tool)) return 'Some study material couldn’t be read. Check the original file.';
+  if (['search_study_material', 'get_study_source_chunk', 'document_extract'].includes(tool)) {
+    if (/BUDGET|LIMIT/.test(code)) return 'Additional material checks reached the limit for this response. The answer uses the information that was available.';
+    if (code === 'TOOL_TIMEOUT') return 'A study-material lookup took too long. Some passages may not have been checked.';
+    if (tool === 'document_extract') return 'An attached file couldn’t be read. Check the original file.';
+    return 'Some source passages couldn’t be retrieved. Other retrieved passages may still support this answer.';
+  }
   if (tool === 'user_memory' || tool === 'history_lookup') return 'Some information from previous conversations couldn’t be checked.';
   return 'Part of this request couldn’t be completed. Some information may be missing.';
 }

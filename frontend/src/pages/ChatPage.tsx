@@ -1,5 +1,6 @@
 ﻿import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
+import { FileText, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
@@ -29,6 +30,7 @@ export function ChatPage() {
   const list = useChatList();
   const conversation = list.items.find(chat => chat.id === id);
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
+  const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>();
   const [draft, setDraft] = useState('');
   useEffect(() => { if (practice) setDraft(`Help me practice ${practice.slice(0, 200)}. Ask one question at a time.`); }, [practice]);
   const [validation, setValidation] = useState<string | null>(null);
@@ -80,10 +82,23 @@ export function ChatPage() {
     setDraft(''); setValidation(null); setStopping(false); bottomRef.current = true;
     prependRef.current = null;
     userScrollUntil.current = 0;
-    if (conversationId) void chatStore.open(conversationId);
+    if (conversationId) void chatStore.open(conversationId, true);
     else setSelection({ mode: 'STANDARD' });
   }, [conversationId]);
-  useEffect(() => { if (conversation) setSelection(conversation.selection); }, [conversation?.id, conversation?.revision]);
+  useEffect(() => {
+    if (view.loading) return;
+    const turn = view.turn;
+    const key = `${id}:${turn?.id}:${turn?.attempt}:${turn?.state}`;
+    if (selectionTurn.current?.key === key) return;
+    const previous = selectionTurn.current;
+    selectionTurn.current = { key, chat: id, turn: turn?.id, state: turn?.state };
+    const completed = turn?.state === 'SUCCEEDED' && previous?.chat === id && (previous.turn !== turn.id || previous.state !== 'SUCCEEDED');
+    if (turn?.state === 'RUNNING' || turn?.state === 'FAILED') setSelection(turn.selection);
+    else setSelection(!completed && selectedDocument ? { mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] } : { mode: 'STANDARD' });
+    if (completed && selectedDocument) setParams(current => {
+      const next = new URLSearchParams(current); next.delete('document'); return next;
+    }, { replace: true });
+  }, [id, view.loading, view.turn?.id, view.turn?.attempt, view.turn?.state]);
   useEffect(() => {
     if (selectedDocument) setSelection({ mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] });
   }, [selectedDocument, newChatKey]);
@@ -181,12 +196,15 @@ export function ChatPage() {
             {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          {!!files.length && <ul className="mb-2 flex flex-wrap gap-2" aria-label="Attached files">{files.map(item => <li key={item.id} className="max-w-48 rounded-lg border border-border px-3 py-2 text-xs text-muted">
-            {item.preview && <img src={item.preview} alt={`Preview of ${item.file.name}`} className="mb-2 h-20 w-full rounded-md object-contain" />}
-            <span className="break-all">{item.file.name}</span> <button type="button" disabled={uploading} className="ml-2 underline" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}>Remove</button>
-          </li>)}</ul>}
-          {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length} />
+          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+            attachments={<>
+              {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
+                {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />
+                  : <div className="flex h-16 w-32 items-center gap-2 px-2.5 pr-7"><FileText className="h-5 w-5 shrink-0" aria-hidden="true" /><span className="line-clamp-2 break-all">{item.file.name}</span></div>}
+                <button type="button" disabled={uploading} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface text-foreground shadow-sm hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}><X size={12} aria-hidden="true" /></button>
+              </li>)}</ul>}
+              {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
+            </>} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>

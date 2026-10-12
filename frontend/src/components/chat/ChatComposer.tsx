@@ -1,6 +1,6 @@
 import { ArrowUp, Paperclip, Mic, Square, LoaderCircle } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
 import type { ChatSelection } from '../../types/rag';
 import { Button, Textarea } from '../ui';
@@ -19,6 +19,7 @@ interface ChatComposerProps {
   onStop?: () => void;
   onFiles: (files: File[]) => void;
   hasAttachments?: boolean;
+  attachments?: ReactNode;
 }
 
 export function ChatComposer({
@@ -31,6 +32,7 @@ export function ChatComposer({
   canStop, stopping, onStop,
   onFiles,
   hasAttachments,
+  attachments,
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -98,6 +100,7 @@ export function ChatComposer({
         if (!voice.busy) onSubmit();
       }}
     >
+      {attachments}
       <Textarea
         dir="auto"
         hidden={voice.busy}

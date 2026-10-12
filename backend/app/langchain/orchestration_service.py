@@ -84,6 +84,12 @@ class OrchestrationService:
         modules = {step.module for step in plan.steps}
         required = {step.module for step in plan.steps if step.required}
         recovery_scope['execution_plan'] = plan
+        if self.rag is not None and 'rag' in modules:
+            # Modest extra room for targeted refinements, not larger individual
+            # retrieval packets. The coordinator also caps this to prompt space.
+            budget.max_calls = 8
+            budget.max_result_tokens = 4800
+            budget.max_result_bytes = 19200
         chat_assessments = []
         if self.assessments is not None and history_scope and not history_scope.get('stateless') and 'assessment' in modules:
             chat_assessments = await read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']) or []

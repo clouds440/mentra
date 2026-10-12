@@ -211,7 +211,7 @@ class ToolExecutor:
                 envelope = current_budget.get()
                 delay = retry_delay(error, attempt)
                 retry_window = min(60, envelope.tool_remaining if envelope else timeout)
-                can_retry = receipt['retryable'] and not write and attempt < max_attempts and self.budget.calls < 6 and math.isfinite(delay) and retry_window > delay + .1
+                can_retry = receipt['retryable'] and not write and attempt < max_attempts and self.budget.calls < self.budget.max_calls and math.isfinite(delay) and retry_window > delay + .1
                 if can_retry:
                     await self.publisher.emit(step, 'retry_wait', f'{label} failed. Retrying, attempt {attempt + 1} of {max_attempts}.',
                         tool_name=name, tool_call_id=call_id, tool_attempt=attempt + 1, max_attempts=max_attempts, error_code=receipt['code'])

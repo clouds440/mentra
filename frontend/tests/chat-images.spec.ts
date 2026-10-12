@@ -83,3 +83,41 @@ test('failed uploads retain staged images and query, and retry reuses completed 
   await expect(page.getByRole('article', { name: 'Mentra response' })).toBeVisible();
   expect(state.uploads()).toBe(3); expect(state.sent[0].attachment_ids).toEqual(['file-1', 'file-2']);
 });
+
+for (const width of [1280, 390]) test(`compact attachments fit inside composer without cropping at ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 700 });
+  await setup(page);
+  const portrait = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 1920;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#478a78'; context.fillRect(0, 0, 720, 1920);
+    context.fillStyle = '#fff'; context.fillRect(0, 0, 720, 100); context.fillRect(0, 1820, 720, 100);
+    return canvas.toDataURL().split(',')[1];
+  });
+  await page.getByLabel('Upload chat files').setInputFiles([
+    { name: 'portrait.png', mimeType: 'image/png', buffer: Buffer.from(portrait, 'base64') },
+    { name: 'study-notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Study notes') },
+  ]);
+  const composer = page.getByRole('form', { name: 'Message Mentra' });
+  const staged = composer.getByLabel('Attached files');
+  await expect(staged.getByRole('img')).toBeVisible();
+  const bounds = await composer.evaluate(form => {
+    const image = form.querySelector('img')!;
+    const preview = image.getBoundingClientRect();
+    const frame = image.parentElement!.getBoundingClientRect();
+    const text = form.querySelector('textarea')!.getBoundingClientRect();
+    const rect = form.getBoundingClientRect();
+    return { ratio: preview.width / preview.height, height: preview.height, padding: frame.width - preview.width,
+      enclosed: frame.top >= rect.top && frame.bottom < text.top && text.bottom < rect.bottom,
+      overflow: document.documentElement.scrollHeight > innerHeight + 1 };
+  });
+  expect(bounds.ratio).toBeCloseTo(720 / 1920, 2);
+  expect(bounds.height).toBeLessThanOrEqual(96);
+  expect(bounds.padding).toBeLessThanOrEqual(2);
+  expect(bounds.enclosed).toBe(true); expect(bounds.overflow).toBe(false);
+  await expect(staged.getByRole('button', { name: 'Remove portrait.png' })).toHaveText('');
+  await page.screenshot({ path: info.outputPath('composer-previews.png') });
+  await staged.getByRole('button', { name: 'Remove portrait.png' }).click();
+  await expect(staged.getByRole('img')).toHaveCount(0);
+  await expect(staged).toContainText('study-notes.txt');
+});

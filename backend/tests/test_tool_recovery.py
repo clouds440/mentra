@@ -436,6 +436,7 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.orchestration_service import OrchestrationService
         attachments = Mock()
         attachments.extract.side_effect = AppError('DOCUMENT_UNAVAILABLE', 'The document could not be read.', 503)
+        attachments.image_input.return_value = None
         chat = SimpleNamespace(reply=AsyncMock(return_value='The document content could not be verified.'))
         orchestration = OrchestrationService(chat, attachments=attachments)
         scope = dict(conversation_id='chat', current_user_message_id='user', context_rows=[], attachment_ids=['file'], history_references=[], memory_references=[])
@@ -448,6 +449,7 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.orchestration_service import OrchestrationService
         attachments = Mock()
         attachments.extract.side_effect = ['first content', 'second content']
+        attachments.image_input.return_value = None
         attachments.context.side_effect = lambda extracted, *a, **kw: {'text':extracted}
         chat = SimpleNamespace(reply=AsyncMock(return_value='Two documents were read.'))
         scope = dict(conversation_id='chat', current_user_message_id='user', context_rows=[], attachment_ids=['first', 'second'], history_references=[], memory_references=[])

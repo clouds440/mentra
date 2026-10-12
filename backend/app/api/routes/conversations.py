@@ -108,8 +108,8 @@ async def messages(conversation_id: UUID, request: Request, before: int | None =
 
 @router.get('/{conversation_id}/status')
 async def status(conversation_id: UUID, request: Request, turn_id: UUID | None = None,
-                 incremental: bool = False, identity=Depends(require_onboarded_identity)):
-    return await run_in_threadpool(service(request).repository.status, identity.learner_id, str(conversation_id), str(turn_id) if turn_id else None, incremental)
+                 incremental: bool = False, after: int | None = Query(None, ge=0), identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(service(request).repository.status, identity.learner_id, str(conversation_id), str(turn_id) if turn_id else None, incremental, after)
 
 
 @router.patch('/{conversation_id}')

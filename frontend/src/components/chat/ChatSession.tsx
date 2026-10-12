@@ -13,7 +13,8 @@ export function ChatSession() {
     const refresh = () => { if (document.visibilityState === 'visible') void chatStore.sync(); };
     window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
     document.addEventListener('visibilitychange', refresh);
-    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
+    const timer = window.setInterval(refresh, 5000);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, []);
   return null;
 }

@@ -24,8 +24,8 @@ def packet_cost(value):
 
 def fit_result(result, scope, budget):
     result = result.model_copy(deep=True)
-    byte_limit = min(4800, 12800 - budget.result_characters - scope.get('_web_reserved_bytes', 0))
-    token_limit = min(1200, 3200 - budget.result_tokens - scope.get('_web_reserved_tokens', 0))
+    byte_limit = min(4800, budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0))
+    token_limit = min(1200, budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0))
     had_sources = bool(result.sources)
     value = result.model_dump(mode='json', exclude_none=True)
     size, tokens = packet_cost(value)
@@ -81,7 +81,7 @@ def create_web_tools(service, owner, scope, budget):
     async def search(query, website=None):
         request = SearchInput(query=query, website=website)
         key = request.model_dump_json()
-        if 12800 - budget.result_characters - scope.get('_web_reserved_bytes', 0) < 600 or 3200 - budget.result_tokens - scope.get('_web_reserved_tokens', 0) < 600:
+        if budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0) < 600 or budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0) < 600:
             return fit_result(service.envelope('budget_exhausted', website=request.website), scope, budget)
         if key in cache:
             result = service.refresh(cache[key])

@@ -213,6 +213,10 @@ class ChatRepository:
             conversation_values = dict()
             sequence = row['message_count']
             if not error:
+                # Composer source consent is one-turn; retain the immutable
+                # turn selection for retry/audit while clearing the next draft.
+                from app.rag.schemas import ChatSelection
+                conversation_values['selection'] = ChatSelection().model_dump()
                 sequence += 1
                 payload = dict(response)
                 generated_title = payload.pop('conversation_title', None)
@@ -263,7 +267,7 @@ class ChatRepository:
             self._change(session, owner, conversation_id, state)
             return True
 
-    def status(self, owner, conversation_id, turn_id=None, incremental=False):
+    def status(self, owner, conversation_id, turn_id=None, incremental=False, after=None):
         with self.sessions.begin() as session:
             # Consistent locking order across every writer.
             state = self._sync_lock(session, owner)
@@ -278,7 +282,10 @@ class ChatRepository:
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=row['revision'], updated_at=row['updated_at']))
                 self._change(session, owner, conversation_id, state)
                 turn = dict(turn, state='FAILED', error='Generation interrupted. Retry this message.')
-            if incremental and turn:
+            if after is not None:
+                page = self._page(session, owner, conversation_id, after=after)
+                incremental = True
+            elif incremental and turn:
                 rows = session.execute(select(m).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
                     m.c.sequence.in_([turn['user_sequence'], turn['assistant_sequence']])).order_by(m.c.sequence)).mappings().all()
                 page = dict(items=[self._public_message(item) for item in rows], has_more=False, next_cursor=None)

@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const title = 'A long conversation about understanding motion and forces';
-async function workspace(page: Page, running = false, populated = false, stream = '') {
-  const selection = {mode:'STANDARD', context_ids:[], document_ids:[], include_archived:false};
+async function workspace(page: Page, running = false, populated = false, stream = '', selected = false) {
+  const selection = {mode:selected ? 'SOURCE_SPECIFIC' : 'STANDARD', context_ids:[], document_ids:selected ? ['material-1'] : [], include_archived:false};
   const conversation = {id:'polish-chat', title, revision:2, message_count:40, selection, created_at:'2026-10-11T00:00:00Z', updated_at:'2026-10-11T00:00:00Z', deleted_at:null};
   const file = {id:'image-file', filename:'study.png', size_bytes:1024};
   const items: Record<string, unknown>[] = Array.from({length:40}, (_, i) => ({id:`message-${i}`, conversation_id:conversation.id, sequence:i+1, role:i % 2 ? 'assistant' : 'user', content:`${i === 39 ? 'Latest answer' : 'Earlier question and explanation'} ${'Learning takes practice. '.repeat(20)}`, created_at:conversation.created_at, ...(i === 38 ? {attachments:[file]} : {})}));
@@ -23,7 +23,10 @@ async function workspace(page: Page, running = false, populated = false, stream 
     else if (path.endsWith('/student-profile')) body = {learner_id:'polish-user', details:{education_level:'college', field_of_study:'Physics', learning_goal:'Understand motion', learning_preference:'balanced', explanation_depth:'standard'}, estimates:Object.fromEntries(['overall_proficiency','reasoning','quantitative','comprehension','domain_familiarity'].map(key => [key,{value:null, confidence:0, evidence_count:0}])), onboarding_phase:'complete', calibration_status:'skipped', evaluation_status:'not_started', version:1, context_version:1};
     else if (path.endsWith('/conversations/sync')) body = {reset:false, cursor:1, has_more:false, conversations:[conversation], deleted_ids:[], list_cursor:null};
     else if (path.endsWith('/stop')) { expect(route.request().postDataJSON()).toEqual({attempt:1}); state='FAILED'; conversation.revision++; items.push({id:'stopped', conversation_id:conversation.id, sequence:41, role:'assistant', content:'Response stopped. Ready when you are.', created_at:conversation.created_at}); body = snapshot(); }
-    else if (path.endsWith('/status')) body = snapshot();
+    else if (path.endsWith('/status')) {
+      const url = new URL(route.request().url());
+      body = url.searchParams.has('after') ? { ...snapshot(), incremental:true, items:items.filter(item => Number(item.sequence) > Number(url.searchParams.get('after'))) } : snapshot();
+    }
     else if (path.includes('/chat-attachments/')) body = {...file, ready:true, warnings:[], error:null, library_result:null};
     else if (path.endsWith('/documents')) body = {items:populated ? [{id:'material-1', title:'Motion and forces', filename:'Physics notes.pdf', context_ids:[context.context_id], jobs:[], active_generation_id:'generation-1', archived:false}] : [], total:populated ? 1 : 0, limit:30, offset:0};
     else if (path.endsWith('/learning-contexts')) body = [context];
@@ -38,13 +41,43 @@ async function workspace(page: Page, running = false, populated = false, stream 
     await route.fulfill({json:body});
   });
   return {
-    complete(content: string) {
+    complete(content: string, warnings: Record<string, unknown>[] = []) {
       state = 'SUCCEEDED'; conversation.revision++; conversation.message_count++;
-      items.push({id:'formatted-answer', conversation_id:conversation.id, sequence:41, role:'assistant', content, created_at:conversation.created_at,
+      items.push({id:'formatted-answer', conversation_id:conversation.id, sequence:41, role:'assistant', content, created_at:conversation.created_at, tool_warnings:warnings,
         interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]});
     },
   };
 }
+
+test('source selection clears once after success and retrieval limits are described accurately', async ({ page }) => {
+  const updates: string[] = [];
+  page.on('request', request => { if (request.url().includes('/status?after=')) updates.push(request.url()); });
+  const state = await workspace(page, true, true, '', true);
+  await page.goto('/chat/polish-chat?document=material-1');
+  await expect(page.getByText('Using selected material', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Current activity')).toBeVisible();
+  state.complete('Answer grounded in the available passages.', [{tool_name:'search_study_material',code:'TOOL_BUDGET',task_impact:'optional',effect_certainty:'read_only'}]);
+  await expect(page.getByText('Using selected material', { exact: true })).toHaveCount(0, {timeout:15_000});
+  await expect(page).toHaveURL(/\/chat\/polish-chat$/);
+  await expect(page.getByLabel('Response limitations')).toContainText('Additional material checks reached the limit');
+  await expect(page.getByLabel('Response limitations')).not.toContainText('couldn’t be read');
+  expect(updates.some(url => url.endsWith('after=40'))).toBe(true);
+  const input = page.getByRole('textbox', { name: 'Ask Mentra anything' });
+  await input.fill('@Motion');
+  await page.getByRole('option', { name: /Motion and forces/ }).click();
+  await expect(page.getByText('Using selected material', { exact: true })).toBeVisible();
+  await page.evaluate(async () => { const path='/src/stores/chatStore.ts'; const { chatStore }=await import(path); await chatStore.sync(); });
+  await expect(page.getByText('Using selected material', { exact: true })).toBeVisible();
+});
+
+test('stopping a response retains the selected source for retry', async ({ page }) => {
+  await workspace(page, true, true, '', true);
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByRole('button', { name: 'Stop response' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Stop response' }).click();
+  await expect(page.getByText('Response stopped. Ready when you are.')).toBeVisible();
+  await expect(page.getByText('Using selected material', { exact: true })).toBeVisible();
+});
 
 for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390,height:844}, {width:390,height:420}]) {
   test(`formatted answer reveals as a unit and scrolls only inside chat at ${size.width}x${size.height}`, async ({page}, info) => {

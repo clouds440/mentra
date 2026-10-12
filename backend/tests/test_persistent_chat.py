@@ -47,6 +47,32 @@ class PersistentChatTests(unittest.TestCase):
         self.assertEqual([m['sequence'] for m in history['items']], [1,2,3,4])
         self.assertEqual(history['items'][0]['id'], page['items'][0]['id'])
 
+    def test_success_clears_next_draft_selection_but_preserves_turn_sources(self):
+        from app.rag.schemas import ChatSelection
+        selection = ChatSelection(mode='SOURCE_SPECIFIC', document_ids=[str(uuid4())])
+        request, page = self.complete(self.request(retrieval=selection))
+        self.assertEqual(page['conversation']['selection']['mode'], 'STANDARD')
+        self.assertEqual(page['turn']['selection']['mode'], 'SOURCE_SPECIFIC')
+        self.assertEqual(page['turn']['selection']['document_ids'], [str(selection.document_ids[0])])
+
+    def test_failed_response_keeps_selection_for_retry(self):
+        from app.rag.schemas import ChatSelection
+        request = self.request(retrieval=ChatSelection(mode='SOURCE_SPECIFIC', document_ids=[str(uuid4())]))
+        job = self.repo.begin_turn(self.owner, request)
+        self.repo.finish(self.owner, job, None, error='Test generation failure')
+        page = self.repo.status(self.owner, str(request.conversation_id))
+        self.assertEqual(page['conversation']['selection']['mode'], 'SOURCE_SPECIFIC')
+
+    def test_incremental_status_includes_all_device_messages_and_is_owner_scoped(self):
+        request, page = self.complete()
+        request2 = request.model_copy(update={'client_turn_id': uuid4(), 'expected_revision': page['conversation']['revision'], 'content': 'Question from another device'})
+        self.complete(request2)
+        delta = self.repo.status(self.owner, str(request.conversation_id), after=2)
+        self.assertTrue(delta['incremental'])
+        self.assertEqual([item['sequence'] for item in delta['items']], [3, 4])
+        self.assertEqual(self.repo.status(self.owner, str(request.conversation_id), after=4)['items'], [])
+        with self.assertRaises(AppError): self.repo.status(self.other, str(request.conversation_id), after=0)
+
     def test_duplicate_send_does_not_append_or_generate_twice(self):
         request, page = self.complete()
         self.assertFalse(self.repo.begin_turn(self.owner, request)['run'])

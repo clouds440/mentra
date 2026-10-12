@@ -59,10 +59,10 @@ export class ChatCache {
       const current = await tx.objectStore('conversations').get(chat.id);
       if (!current || current.revision < chat.revision) await tx.objectStore('conversations').put(chat);
     }
-    // Server messages are immutable. Existing IDs need no rewrite on recovery or pagination.
+    // Content is immutable, but interaction metadata can change after submission.
     const blocked = new Set<string>();
     for (const id of new Set(messages.map(message => message.conversation_id))) if (await tx.objectStore('deleted').getKey(id)) blocked.add(id);
-    for (const message of messages) if (!blocked.has(message.conversation_id) && !await tx.objectStore('messages').getKey(message.id)) await tx.objectStore('messages').put(message);
+    for (const message of messages) if (!blocked.has(message.conversation_id)) await tx.objectStore('messages').put(message);
     for (const id of removed) {
       await tx.objectStore('deleted').put({ id, at: Date.now() });
       await tx.objectStore('conversations').delete(id); await tx.objectStore('pending').delete(id);

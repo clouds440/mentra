@@ -24,6 +24,8 @@ class ChatStore {
   private chats = new Map<string, Conversation>();
   private deleted = new Set<string>();
   private views = new Map<string, ChatView>();
+  private loadedMessages = new Map<string, Map<number, StoredMessage>>();
+  private sequences = new Map<string, number>();
   private pending = new Map<string, PendingTurn>();
   private loads = new Map<string, Promise<void>>();
   private cursor: number | null = null;
@@ -47,10 +49,6 @@ class ChatStore {
   private setView(id: string, patch: Partial<ChatView>) {
     const previous = this.view(id); this.views.delete(id);
     this.views.set(id, { ...previous, ...patch }); this.chatListeners.get(id)?.forEach(fn => fn());
-    if (this.views.size > 12) for (const [key, value] of this.views) {
-      if (this.views.size <= 12) break;
-      if (!this.chatListeners.get(key)?.size && !value.busy && !this.pending.has(key)) { this.views.delete(key); this.opened.delete(key); }
-    }
   }
   private mergeChats(rows: Conversation[]) {
     for (const row of rows) {
@@ -82,7 +80,7 @@ class ChatStore {
     this.pollers.forEach(timer => clearTimeout(timer)); this.pollers.clear();
     if (this.cache) void this.cache.close(clear).catch(() => {});
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
-    this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear();
+    this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
     this.list = { items: [], loading: true, error: null, more: false }; this.publish();
     this.chatListeners.forEach(values => values.forEach(fn => fn()));
   }
@@ -102,15 +100,16 @@ class ChatStore {
           this.mergeChats(page.conversations);
           for (const id of page.deleted_ids) {
             this.deleted.add(id);
+            this.loadedMessages.delete(id); this.sequences.delete(id);
             this.chats.delete(id); this.pending.delete(id); this.setView(id, { ...empty, error: 'This conversation was deleted.' });
           }
           this.cursor = page.cursor; more = page.has_more;
           await this.persist(() => cache.apply(page.conversations, [], page.deleted_ids, page.cursor, page.reset ? this.listCursor : undefined, page.reset));
           if (!this.alive(signal)) return;
           this.list = { ...this.list, loading: false, error: null }; this.publish();
-          for (const row of page.conversations) {
-            const view = this.views.get(row.id);
-            if (view && this.chatListeners.get(row.id)?.size && !view.busy && view.revision !== row.revision) void this.open(row.id, true);
+          for (const [id, listeners] of this.chatListeners) {
+            const view = this.views.get(id), row = this.chats.get(id);
+            if (listeners.size && view && row && view.revision < row.revision) void this.open(id, false, true);
           }
           if (page.reset) for (const [id, values] of this.chatListeners) { if (values.size && this.views.has(id)) void this.open(id, true); }
         }
@@ -134,28 +133,52 @@ class ChatStore {
       if (this.alive(signal)) { this.list = { ...this.list, loading: false }; this.publish(); }
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, loading: false, error: this.error(error) }; this.publish(); } }
   }
-  open(id: string, refresh = false): Promise<void> {
+  open(id: string, refresh = false, updates = false): Promise<void> {
     if (!this.owner) return Promise.resolve();
     const existing = this.loads.get(id); if (existing) return existing;
     const view = this.view(id), chat = this.chats.get(id);
-    if (view.busy && this.pending.has(id) && !refresh) return Promise.resolve();
-    if (!refresh && this.opened.has(id) && view.revision === chat?.revision && !view.busy) return Promise.resolve();
+    if (view.busy && this.pending.has(id) && !refresh && !updates) return Promise.resolve();
+    if (!refresh && !updates && this.opened.has(id) && view.revision === chat?.revision && !view.busy) return Promise.resolve();
     const signal = this.controller.signal, cache = this.cache!;
-    this.setView(id, { loading: true });
+    if (!updates) this.setView(id, { loading: true });
+    let reconciled = false;
     const operation = (async () => {
       try {
-        if (!view.messages.length && !refresh) {
+        if (!view.messages.length) {
           const cached = await cache.messages(id).catch(() => []);
           if (this.alive(signal) && cached.length) this.setView(id, { messages: cached, before: cached[0].sequence > 1 ? cached[0].sequence : null });
         }
-        const page = await api.getTurn(id, signal, view.busy && view.messages.length > 0 && !view.olderWindow); if (!this.alive(signal)) return;
+        const loaded = this.loadedMessages.get(id);
+        const oldest = loaded?.size ? [...loaded.keys()].reduce((a, b) => Math.min(a, b)) : undefined;
+        let page = await api.getTurn(id, signal, false, updates ? this.sequences.get(id) : undefined);
+        if (!this.alive(signal)) return;
         await this.applyPage(page);
+        while (page.incremental && page.has_more && page.next_cursor !== null && this.alive(signal) && !this.deleted.has(id)) {
+          page = await api.getTurn(id, signal, false, page.next_cursor);
+          if (!this.alive(signal)) return;
+          await this.applyPage(page);
+        }
+        // Revisit reconciles every previously loaded page, without downloading unseen history.
+        let before = !updates && page.has_more ? page.items[0]?.sequence : undefined;
+        while (before !== undefined && oldest !== undefined && before > oldest && this.alive(signal) && !this.deleted.has(id)) {
+          const history = await api.getMessages(id, before, signal);
+          if (!this.alive(signal)) return;
+          await this.applyPage({ ...history, incremental: true, turn: page.turn });
+          const next = history.has_more ? history.items[0]?.sequence : undefined;
+          if (next === undefined || next >= before) break;
+          before = next;
+        }
         this.opened.add(id);
-        if (this.alive(signal) && page.turn?.state === 'RUNNING' && !refresh) this.poll(id);
-      } catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, busy: false, error: this.error(error) }); }
+        reconciled = true;
+        if (this.alive(signal) && page.turn?.state === 'RUNNING' && (!updates || !view.busy)) this.poll(id);
+      } catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, error: this.error(error) }); }
     })();
     this.loads.set(id, operation);
-    void operation.finally(() => { if (this.loads.get(id) === operation) this.loads.delete(id); });
+    void operation.finally(() => {
+      if (this.loads.get(id) !== operation) return;
+      this.loads.delete(id);
+      if (reconciled && this.alive(signal) && !this.deleted.has(id) && this.chatListeners.get(id)?.size && this.view(id).revision < (this.chats.get(id)?.revision ?? 0)) void this.open(id, false, true);
+    });
     return operation;
   }
   private async applyPage(page: MessagePage, older = false) {
@@ -164,20 +187,27 @@ class ChatStore {
     if (this.deleted.has(id)) return;
     if (page.conversation.revision < view.revision) return;
     this.mergeChats([page.conversation]);
+    const loaded = this.loadedMessages.get(id) ?? new Map<number, StoredMessage>();
+    page.items.forEach(message => loaded.set(message.sequence, message));
+    this.loadedMessages.set(id, loaded);
+    if (page.items.length) this.sequences.set(id, Math.max(this.sequences.get(id) ?? 0, ...page.items.map(message => message.sequence)));
     const values = new Map<number, StoredMessage>();
     if (older || page.incremental) view.messages.forEach(message => values.set(message.sequence, message));
+    else loaded.forEach(message => values.set(message.sequence, message));
     page.items.forEach(message => values.set(message.sequence, message));
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
-    const messages = older ? items.slice(0, 200) : items.slice(-200);
+    const messages = older || page.incremental && view.olderWindow ? items.slice(0, 200) : items.slice(-200);
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
       error: page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn: page.turn ?? view.turn,
-      before: page.incremental ? (messages[0]?.sequence > 1 ? messages[0].sequence : null) : page.has_more ? messages[0]?.sequence ?? null : null,
-      olderWindow: older && items.length > 200 || older && view.olderWindow,
+      before: messages[0]?.sequence > 1 ? messages[0].sequence : null,
+      olderWindow: older && items.length > 200 || (older || page.incremental) && view.olderWindow,
       revision: page.conversation.revision });
     this.publish();
     await this.persist(() => cache.apply([page.conversation], page.items, []));
     if (!this.alive(signal)) return;
     if (page.turn && page.turn.state !== 'RUNNING') {
+      const timer = this.pollers.get(id);
+      if (timer) { clearTimeout(timer); this.pollers.delete(id); }
       this.pending.delete(id); await this.persist(() => cache.pending(null, id));
     }
   }
@@ -251,7 +281,7 @@ class ChatStore {
     const signal = this.controller.signal;
     this.pollers.set(id, setTimeout(async () => {
       this.pollers.delete(id); if (!this.alive(signal)) return;
-      await this.open(id, true);
+      await this.open(id, false, true);
       if (this.alive(signal) && this.view(id).busy && attempt < 50) this.poll(id, attempt + 1);
     }, Math.min(2000 + attempt * 500, 10000)));
   }
@@ -270,6 +300,7 @@ class ChatStore {
     try {
       await api.deleteChat(chat, signal); if (!this.alive(signal)) return false;
       this.deleted.add(id); this.chats.delete(id); this.pending.delete(id); this.setView(id, empty); this.publish();
+      this.loadedMessages.delete(id); this.sequences.delete(id);
       await this.persist(() => cache.apply([], [], [id])); this.channel?.postMessage('changed'); void this.sync(); return true;
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, error: this.error(error) }; this.publish(); void this.sync(); } return false; }
   }

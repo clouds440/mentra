@@ -103,8 +103,13 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     # trim prior exchanges once, preserving the current user question.
     image_allowance = 2048 * sum(isinstance(block, dict) and block.get('type') == 'image_url'
         for message in conversation if isinstance(message.content, list) for block in message.content)
+    current_question = next((message for message in reversed(conversation) if message.type == 'human'), None)
+    current_cost = count_tokens_approximately([current_question]) if current_question is not None else 0
+    result_space = max(0, settings.chat_context_window_tokens - settings.chat_output_token_reserve - system_cost - current_cost - 1056)
+    budget.max_result_tokens = min(budget.max_result_tokens, result_space)
+    budget.max_result_bytes = min(budget.max_result_bytes, budget.max_result_tokens * 4)
     available = min(scope.get('history_token_budget', settings.chat_history_token_budget) + image_allowance,
-        settings.chat_context_window_tokens - settings.chat_output_token_reserve - system_cost - 4000)
+        settings.chat_context_window_tokens - settings.chat_output_token_reserve - system_cost - budget.max_result_tokens - 800)
     while len(conversation) > 1 and conversation[0].type != 'human':
         conversation.pop(0)
     while len(conversation) > 1 and count_tokens_approximately(conversation) > available:
@@ -167,7 +172,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         # Tool results are never trimmed into orphan messages.
         from .workflow_budget import current_budget
         envelope = current_budget.get()
-        final = iteration == 4 or budget.calls >= 6 or scope.get('_repair_exhausted', False) or scope.get('_exhausted_repeat', False) or bool(envelope and envelope.remaining <= envelope.answer_reserve) or bool(web and web.enabled and (budget.result_tokens > 2600 or budget.result_characters > 11000))
+        results_full = budget.result_tokens > budget.max_result_tokens - 600 or budget.result_characters > budget.max_result_bytes - 1800
+        final = iteration == 4 or budget.calls >= budget.max_calls or scope.get('_repair_exhausted', False) or scope.get('_exhausted_repeat', False) or bool(envelope and envelope.remaining <= envelope.answer_reserve) or results_full
         if direct_candidate and scope.get('_domain_tool_used'):
             answer_schema = output_schema
         available_tools = [] if final else selected()

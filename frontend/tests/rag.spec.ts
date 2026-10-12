@@ -118,7 +118,7 @@ test('Library upload, refresh, grounded chat, citation, replacement and deletion
   await page.getByLabel('Material title', { exact: true }).fill('Decorator Notes');
   await page.getByLabel('New context name', { exact: true }).fill('Python');
   await page.getByRole('button', { name: 'Upload material', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Upload accepted');
+  await expect(page.getByRole('status').filter({ hasText: 'Upload accepted' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('link', { name: 'Study in chat', exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole('link', { name: 'Study in chat', exact: true }).click();
