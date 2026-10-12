@@ -27,6 +27,7 @@ class ChatService:
         source_packet: dict | None = None,
         history_runtime: tuple | None = None,
         document_context: list[dict] | None = None,
+        image_context: list[dict] | None = None,
         profile_context: dict | None = None,
         recovery_context: list[dict] | None = None,
     ) -> str:
@@ -48,6 +49,9 @@ class ChatService:
                         offset = index + 1
                         break
         from app.web_search.citations import historical_web_markers
+        if image_context:
+            current = next(message for message in reversed(conversation) if message.type == 'human')
+            current.content = [dict(type='text', text=current.content), *[image['block'] for image in image_context]]
         for message in conversation:
             if message.type == 'ai':
                 message.content = historical_web_markers(message.content)
@@ -59,9 +63,11 @@ class ChatService:
                 context['missing_context'] = recovery_context
             if profile_context is not None:
                 context['student_profile'] = profile_context
-            if document_context:
+            if document_context or image_context:
                 sources.append(PromptSource.CHAT_ATTACHMENTS)
-                context['chat_attachments'] = document_context
+                context['chat_attachments'] = document_context or []
+                if image_context:
+                    context['chat_images'] = [dict(id=image['id'], filename=image['filename']) for image in image_context]
             if learner_context is not None:
                 sources.append(PromptSource.LEARNER_CONTEXT)
                 context['learner'] = learner_context.model_dump(mode='json', exclude_none=True)

@@ -105,8 +105,22 @@ class MentraLLM:
         if tools:
             model = model.bind_tools(tools, **({'tool_choice': tool_choice} if tool_choice is not None else {}))
         from .provider_invocation import invoke_provider
-        result = await invoke_provider(model, prepared, on_delta=None if output_schema else on_delta,
-                                       maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
+        try:
+            result = await invoke_provider(model, prepared, on_delta=None if output_schema else on_delta,
+                                           maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
+        except Exception as error:
+            from .image_fallback import chat_image_fallback, has_images, recoverable_image_failure
+            fallback = chat_image_fallback.get()
+            if fallback is None or not has_images(prepared) or not recoverable_image_failure(error):
+                raise
+            if on_delta is not None:
+                await on_delta(None)
+            await fallback(prepared)
+            cost = check_input(prepared, source, tools=[*(tools or []), *([output_schema] if output_schema else [])],
+                               **({'config': config} if config else {}))
+            reserve_workflow(source, cost, **({'config': config} if config else {}))
+            result = await invoke_provider(model, prepared, on_delta=None if output_schema else on_delta,
+                                           maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
         if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
             log_usage(result['raw'], source, cost)
             if result.get('parsing_error'):

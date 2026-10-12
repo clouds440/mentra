@@ -101,7 +101,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     system_cost = count_tokens_approximately([SystemMessage(content=instructions + system_context)]) + schema_tokens(selected()) + schema_tokens([answer_schema] if answer_schema else [])
     # Reserve maximum cumulative result size plus call protocol overhead upfront;
     # trim prior exchanges once, preserving the current user question.
-    available = min(scope.get('history_token_budget', settings.chat_history_token_budget),
+    image_allowance = 2048 * sum(isinstance(block, dict) and block.get('type') == 'image_url'
+        for message in conversation if isinstance(message.content, list) for block in message.content)
+    available = min(scope.get('history_token_budget', settings.chat_history_token_budget) + image_allowance,
         settings.chat_context_window_tokens - settings.chat_output_token_reserve - system_cost - 4000)
     while len(conversation) > 1 and conversation[0].type != 'human':
         conversation.pop(0)

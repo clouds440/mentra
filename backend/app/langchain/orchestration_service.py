@@ -71,8 +71,14 @@ class OrchestrationService:
                 return None
             return result
         query = next((content for role, content in reversed(messages) if role == 'user'), '')
+        ids = list(history_scope.get('attachment_ids', [])) if history_scope else []
+        if self.attachments is not None and history_scope and not ids:
+            for row in reversed(history_scope.get('context_rows', [])):
+                if row.get('metadata', {}).get('attachments'):
+                    ids = [item['id'] for item in row['metadata']['attachments']][:4]
+                    break
         from .planning import plan_request
-        plan = plan_request(query, attachments=bool(history_scope and history_scope.get('attachment_ids')),
+        plan = plan_request(query, attachments=bool(ids),
                             selected_sources=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)),
                             context_rows=history_scope.get('context_rows', ()) if history_scope else ())
         modules = {step.module for step in plan.steps}
@@ -97,23 +103,26 @@ class OrchestrationService:
             workflow_logger.set_outcome('degraded', code='RETRIEVAL_DEGRADED')
             warning = ' '.join(result.warnings)
         kwargs = {'source_packet': packet} if self.rag is not None else {}
+        images = []
         if self.attachments is not None and history_scope and not history_scope.get('stateless'):
-            ids = history_scope.get('attachment_ids', [])
-            if not ids:
-                # Follow-up questions can refer to the latest attached user message.
-                for row in reversed(history_scope['context_rows']):
-                    if row.get('metadata', {}).get('attachments'):
-                        ids = [item['id'] for item in row['metadata']['attachments']][:4]
-                        break
             documents = []
             history_scope['assessment_attachment_ids'] = ids
             answer_upload = 'assessment' in modules and bool(re.search(r'\b(grade|evaluate|mark|answers?|solutions?|answer sheet)\b', query, re.I))
             for identifier in ([] if answer_upload or plan.direct_candidate else ids):
+                image = await run_in_threadpool(self.attachments.image_input, owner, identifier,
+                    history_scope['conversation_id'])
+                if image is not None:
+                    if len(images) >= 3:
+                        raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
+                    images.append(image)
+                    continue
                 extracted = await read('document_extract', self.attachments.extract, owner, identifier, history_scope['conversation_id'], required='documents' in required, timeout=120)
                 if extracted is not None:
                     documents.append(self.attachments.context(extracted, query, maximum=8000 // max(1, len(ids))))
             if documents:
                 kwargs['document_context'] = documents
+            if images:
+                kwargs['image_context'] = images
         if self.history is not None and self.history.profile is not None and 'profile' in modules:
             kwargs['profile_context'] = await read('profile_context', self.history.profile.prompt_context, owner)
             if kwargs['profile_context'] is not None:
@@ -154,7 +163,25 @@ class OrchestrationService:
         if recovery_scope.get('tool_warnings'):
             kwargs['recovery_context'] = recovery_scope['tool_warnings']
         async with activity.step('Preparing your answer'):
-            reply = await self.chat.reply(messages, **kwargs)
+            from .image_fallback import chat_image_fallback
+            async def fallback(prepared):
+                # Replace only the rejected model input. Never replay prior tools.
+                replacements = {}
+                for image in images:
+                    extracted = await run_in_threadpool(self.attachments.extract, owner, image['id'], history_scope['conversation_id'])
+                    context = self.attachments.context(extracted, query, maximum=8000 // len(images))
+                    replacements[image['block']['image_url']['url']] = dict(type='text', text=
+                        'Image input was unavailable. OCR fallback provides text only; visual details cannot be verified.\n' + json.dumps(context, ensure_ascii=False))
+                for message in prepared:
+                    if isinstance(message.content, list):
+                        message.content = [replacements[block['image_url']['url']] if isinstance(block, dict)
+                            and block.get('type') == 'image_url' else block for block in message.content]
+                workflow_logger.set_outcome('degraded', code='CHAT_VISION_OCR_FALLBACK')
+            token = chat_image_fallback.set(fallback if images else None)
+            try:
+                reply = await self.chat.reply(messages, **kwargs)
+            finally:
+                chat_image_fallback.reset(token)
         if recovery_scope.get('tool_warnings'):
             workflow_logger.set_outcome('degraded', code='OPTIONAL_CAPABILITY_UNAVAILABLE')
         title = history_scope.get('conversation_title') if history_scope else None

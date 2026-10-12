@@ -125,7 +125,7 @@ export function ChatComposer({
       <VoiceInput voice={voice} />
       <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
         <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
-          onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+          onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; requestAnimationFrame(() => textareaRef.current?.focus()); }} />
         <button
           type="button"
           disabled={isThinking}

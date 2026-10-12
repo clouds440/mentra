@@ -13,6 +13,7 @@ import { Spinner } from '../components/ui';
 import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from '../services/chatAttachments';
 
 interface ChatOutletContext { newChatKey: number; setChatTitle: (title: string) => void }
+interface StagedFile { id: string; file: File; preview?: string; saved?: ChatAttachment }
 
 export function ChatPage() {
   const { identity } = useAuth();
@@ -31,28 +32,37 @@ export function ChatPage() {
   const [draft, setDraft] = useState('');
   useEffect(() => { if (practice) setDraft(`Help me practice ${practice.slice(0, 200)}. Ask one question at a time.`); }, [practice]);
   const [validation, setValidation] = useState<string | null>(null);
-  const [files, setFiles] = useState<ChatAttachment[]>([]);
+  const [files, setFiles] = useState<StagedFile[]>([]);
+  const staged = useRef<StagedFile[]>([]);
+  const sending = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [stopping, setStopping] = useState(false);
   const uploadController = useRef(new AbortController());
   useEffect(() => {
-    uploadController.current = new AbortController(); setFiles([]); setUploading(false);
-    return () => uploadController.current.abort();
+    uploadController.current = new AbortController(); setFiles([]); staged.current = []; setUploading(false); sending.current = false;
+    return () => {
+      uploadController.current.abort();
+      staged.current.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
+    };
   }, [id, identity?.learner_id]);
 
-  async function attach(selected: File[]) {
-    if (uploading || view.busy) return;
-    if (selected.length + files.length > 4) { setValidation('Attach up to four files per message.'); return; }
-    const signal = uploadController.current.signal;
-    setUploading(true); setValidation(null);
-    try {
-      for (const file of selected) {
-        const saved = await uploadChatAttachment(file, signal);
-        if (signal.aborted) return;
-        setFiles(previous => [...previous, saved]);
-      }
-    } catch (error) { if (!signal.aborted) setValidation(error instanceof ApiError ? error.message : 'Could not upload this file.'); }
-    finally { if (!signal.aborted) setUploading(false); }
+  function attach(selected: File[]) {
+    if (sending.current || view.busy) return;
+    const isImage = (file: File) => file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
+    if (selected.length + staged.current.length > 4) { setValidation('Attach up to four files per message, including at most three images.'); return; }
+    if (selected.filter(isImage).length + staged.current.filter(item => isImage(item.file)).length > 3) { setValidation('Attach up to three images per message.'); return; }
+    if (selected.some(file => !file.size || file.size > 25 * 1024 * 1024)) { setValidation('Choose nonempty files of at most 25 MiB each.'); return; }
+    staged.current = [...staged.current, ...selected.map(file => ({ id: crypto.randomUUID(), file,
+      preview: isImage(file) ? URL.createObjectURL(file) : undefined }))];
+    setFiles([...staged.current]); setValidation(null);
+  }
+  function removeStaged(identifier: string) {
+    if (sending.current) return;
+    const item = staged.current.find(file => file.id === identifier);
+    if (item?.preview) URL.revokeObjectURL(item.preview);
+    if (item?.saved) void removeChatAttachment(item.saved.id).catch(() => {});
+    staged.current = staged.current.filter(file => file.id !== identifier);
+    setFiles([...staged.current]);
   }
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prependRef = useRef<number | null>(null);
@@ -93,14 +103,32 @@ export function ChatPage() {
     return () => observer.disconnect();
   }, [id, view.loading, !!view.messages.length]);
 
-  function sendMessage() {
-    const content = draft.trim() || (files.length ? 'Please read the attached files.' : ''); if (!content || view.busy || uploading) return;
+  async function sendMessage() {
+    const content = draft.trim() || (files.length ? 'Please help me understand the attached files.' : ''); if (!content || view.busy || sending.current || view.loading) return;
     if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
-    setDraft(''); setValidation(null); bottomRef.current = true;
-    void chatStore.send(id, content, selection, false, files); setFiles([]);
-    if (!conversationId) navigate(`/chat/${id}`, { replace: true });
+    const signal = uploadController.current.signal;
+    sending.current = true; setUploading(true); setValidation(null);
+    try {
+      const saved: ChatAttachment[] = [];
+      for (const item of staged.current) {
+        item.saved ??= await uploadChatAttachment(item.file, signal);
+        if (signal.aborted) return;
+        saved.push(item.saved);
+      }
+      if (signal.aborted) return;
+      setDraft(''); bottomRef.current = true;
+      staged.current.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
+      staged.current = []; setFiles([]);
+      const request = chatStore.send(id, content, selection, false, saved);
+      if (!conversationId) navigate(`/chat/${id}`, { replace: true });
+      await request;
+    } catch (error) {
+      if (!signal.aborted) setValidation(error instanceof ApiError ? error.message : 'Could not upload this file. Your message is still staged; try again.');
+    } finally {
+      if (!signal.aborted) { sending.current = false; setUploading(false); }
+    }
   }
 
   return (
@@ -136,13 +164,12 @@ export function ChatPage() {
             {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          {!!files.length && <ul className="mb-2 flex flex-wrap gap-2" aria-label="Attached files">{files.map(file => <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-xs text-muted">
-            {file.filename} <button type="button" className="ml-2 underline" aria-label={`Remove ${file.filename}`} onClick={() => {
-              setFiles(previous => previous.filter(value => value.id !== file.id)); void removeChatAttachment(file.id).catch(() => {});
-            }}>Remove</button>
+          {!!files.length && <ul className="mb-2 flex flex-wrap gap-2" aria-label="Attached files">{files.map(item => <li key={item.id} className="max-w-48 rounded-lg border border-border px-3 py-2 text-xs text-muted">
+            {item.preview && <img src={item.preview} alt={`Preview of ${item.file.name}`} className="mb-2 h-20 w-full rounded-md object-contain" />}
+            <span className="break-all">{item.file.name}</span> <button type="button" disabled={uploading} className="ml-2 underline" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}>Remove</button>
           </li>)}</ul>}
           {uploading && <Skeleton variant="list" rows={1} className="mb-2" />}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={sendMessage} value={draft} onFiles={selected => void attach(selected)} hasAttachments={!!files.length} />
+          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length} />
           <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>

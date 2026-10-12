@@ -43,7 +43,15 @@ The facade has no mutable request state, global job queue or local result cache.
 
 New capabilities should get their own typed results and provider protocols rather than adding unrelated methods to the OCR port. Add them to the facade and compose their providers in `factory.py`. Local or future remote providers can implement the same capability contracts; provider-specific libraries and model loading stay inside adapters. Future visual embeddings, image classification or description can therefore be added alongside OCR without making RAG own those implementations. This is an extension boundary, not a provisioned remote vision service or a new distributed queue.
 
-## Verification
+## Direct chat images
+
+`chat_images.prepare_chat_image` validates PNG/JPEG/GIF/WebP raster bytes and prepares a JPEG of at most 1600 pixels per side for the existing chat model. GIF input uses its first frame. Original bytes remain in Chat's owned attachment storage. The OCR facade and its provider contracts are unchanged.
+
+General chat supplies up to three images together with the user's query to the same configured `AI_MODEL`, endpoint and key. Files are staged locally in the composer and uploaded only on Send. Chat owns attachment authorization, the durable message association and original downloads; orchestration owns selection and model invocation. Follow-up questions can reuse the most recent attachment group. Documents keep native parsing, and image OCR is used for model-input recovery or explicit text ingestion into Library. OCR recovery replaces the failed provider request without replaying domain tools; assessment transcription retains its separate review workflow.
+
+`tests.test_chat_images` covers direct model input, original-byte preservation, image admission, OCR/library cache separation, provider recovery and follow-up routing. `frontend/tests/chat-images.spec.ts` exercises local staging, three-image admission, retry reuse and restored previews with a mocked API. Run the frontend-only browser checks with `npx playwright test --config playwright.mock.config.ts`.
+
+## OCR verification
 
 `backend/tests/vision/test_ocr.py` checks exact commands, limits, output and failure behavior, temporary cleanup, independent concurrent requests, provider substitution, and RAG capability/fingerprint/error compatibility. `backend/testing/vision_real.py` exercises the public facade with real PNG, JPEG and scanned-PDF fixtures. Its recorded output is [vision-verification.json](../../../docs/vision-verification.json).
 

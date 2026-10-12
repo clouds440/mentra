@@ -35,6 +35,10 @@ class AttachmentRepository:
             attachments.c.id.in_(identifiers))).mappings().all()
         if len(rows) != len(set(identifiers)) or any(row['conversation_id'] not in (None, conversation_id) for row in rows):
             raise AppError('CHAT_ATTACHMENT_NOT_FOUND', 'An attachment is unavailable for this conversation.', 404)
+        image_count = sum(row['data'].startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff', b'GIF87a', b'GIF89a'))
+            or row['data'][:4] == b'RIFF' and row['data'][8:12] == b'WEBP' for row in rows)
+        if image_count > 3:
+            raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
         if any(row['conversation_id'] is None and row['created_at'] < datetime.now(timezone.utc) - timedelta(days=1) for row in rows):
             raise AppError('CHAT_ATTACHMENT_EXPIRED', 'Upload this file again before sending.', 409)
         session.execute(update(attachments).where(attachments.c.learner_id == owner,
