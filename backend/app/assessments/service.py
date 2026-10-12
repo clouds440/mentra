@@ -21,7 +21,7 @@ class AssessmentService:
         from .chat import ChatAssessments
         self.chat = ChatAssessments(repository)
 
-    async def generate_chat(self, owner, conversation, request):
+    async def generate_chat(self, owner, conversation, request, *, generated_targets=False):
         previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
         if previous: return previous
         claim = await run_in_threadpool(self.repository.claim_generation, owner, request)
@@ -32,11 +32,27 @@ class AssessmentService:
             import asyncio
             from app.langchain.workflow_budget import model_budget
             with model_budget():
-                generated, sources = await asyncio.wait_for(self.workflows.generate(owner, request, revision=revision), 150)
+                generated, sources = await asyncio.wait_for(self.workflows.generate(owner, request, revision=revision, generated_targets=generated_targets), 150)
             return await run_in_threadpool(self.chat.save, owner, conversation, request, generated, sources, claim)
         finally:
             try: await run_in_threadpool(self.repository.release_generation, owner, request.client_request_id, claim)
             except Exception: workflow_logger.event('assessment.generation_cleanup_deferred', code='CLAIM_CLEANUP_UNAVAILABLE')
+
+    async def generate_chat_from_topic(self, owner, conversation, *, client_request_id, topic,
+                                       context_id=None, **options):
+        # Verify conversation ownership before creating any context or targets.
+        await run_in_threadpool(self.chat.recent, owner, conversation)
+        if context_id is None:
+            from app.learner.schemas import ResolveLearningContextRequest
+            context = await run_in_threadpool(self.workflows.learner.resolve_learning_context,
+                ResolveLearningContextRequest(learner_id=owner, name=topic))
+            context_id = context.context_id
+        from .schemas import GenerationRequest
+        request = GenerationRequest(client_request_id=client_request_id, context_id=context_id,
+            topic=topic, confirm_new_concepts=False, **options)
+        # Authorization is internal; keep legacy request fingerprints unchanged
+        # so a retry can recover an assessment created before this behavior change.
+        return await self.generate_chat(owner, conversation, request, generated_targets=True)
 
     async def generate(self, owner, request):
         previous = await run_in_threadpool(self.repository.replay, owner, request)

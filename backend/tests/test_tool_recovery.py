@@ -48,6 +48,10 @@ class RoutingTests(unittest.TestCase):
         plan = plan_request('And make it harder', context_rows=[dict(role='assistant', metadata={'assessment_cards': [{'id': 'draft'}]})])
         self.assertIn('assessment_revise', plan.tool_names)
         self.assertIn('assessment_generate', plan_request('Give me a test').tool_names)
+        for query in ('Give me a 3-question interactive assessment on optics', 'Quiz me with five clickable options questions'):
+            plan = plan_request(query)
+            self.assertIn('assessment_generate', plan.tool_names)
+            self.assertNotIn('assessment_question', plan.tool_names)
 
     def test_explicit_sources_and_attachments_deny_general_shortcut(self):
         for options in ({'selected_sources': True}, {'attachments': True}):

@@ -56,8 +56,9 @@ async def lifespan(application):
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
     application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
         embedding, vector, FileStorage(storage.name), settings)
-    application.state.learner_service = LearnerEngine(database.repository)
     llm = MentraLLM(HistoryChatFactory())
+    from app.langchain.concept_identity import ConceptIdentityResolver
+    application.state.learner_service = LearnerEngine(database.repository, generated_concept_resolver=ConceptIdentityResolver(llm))
     application.state.chat_service = ChatService(llm)
     application.state.conversation_service = ConversationService(ChatRepository(database.sessions))
     application.state.history_management = create_history_management(database.sessions, llm, application.state.student_profile_service)

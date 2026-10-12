@@ -2,7 +2,7 @@ from app.core.identifiers import LearnerId
 """Typed, serializable request and response contracts for learner services."""
 
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Literal, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
@@ -32,6 +32,34 @@ class ConceptResolution(LearnerSchema):
     method: str | None = None
     candidate_id: str | None = None
     alternatives: list[str] = Field(default_factory=list)
+
+
+class GeneratedConceptsRequest(LearnerSchema):
+    learner_id: LearnerId
+    context_id: str = Field(min_length=1, max_length=100)
+    topic: str = Field(min_length=1, max_length=200)
+    labels: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(min_length=1, max_length=10)
+
+
+class ConceptSearchTerms(LearnerSchema):
+    terms: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=20)
+
+
+class ConceptIdentityMatch(LearnerSchema):
+    label: str = Field(min_length=1, max_length=200)
+    concept_id: str | None = None
+    equivalent_label: str | None = Field(default=None, min_length=1, max_length=200)
+    confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode='after')
+    def one_identity(self):
+        if self.concept_id is not None and self.equivalent_label is not None:
+            raise ValueError('Choose an existing concept or an equivalent earlier label.')
+        return self
+
+
+class ConceptIdentityMatches(LearnerSchema):
+    matches: list[ConceptIdentityMatch] = Field(default_factory=list, max_length=10)
 
 
 class EvidenceSubmissionRequest(LearnerSchema):

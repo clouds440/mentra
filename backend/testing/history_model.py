@@ -23,6 +23,12 @@ class HistoryChatFactory(TestChatFactory):
         class Structured:
             async def ainvoke(self, messages):
                 data = json.loads(messages[-1].content)
+                if schema.__name__ == 'AssessmentTargets':
+                    return schema(concept_names=data.get('existing_concepts', [])[:3] or [data['topic'] + ': foundational concepts', data['topic'] + ': basic applications'])
+                if schema.__name__ == 'ConceptSearchTerms':
+                    return schema(terms=data['labels'])
+                if schema.__name__ == 'ConceptIdentityMatches':
+                    return schema(matches=[dict(label=label, concept_id=None, confidence=1) for label in data['labels']])
                 if schema.__name__ == 'GeneratedAssessment':
                     revised = bool(data.get('revision_instructions'))
                     return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=[dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset",0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=2, model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **(dict(options=[dict(id='a',label='A supported explanation.'),dict(id='b',label='An unsupported explanation.')],correct_option_id='a') if data.get('question_format')=='mcq' else {})) for index in range(data['count'])])
@@ -88,6 +94,10 @@ class HistoryChatFactory(TestChatFactory):
         context = json.loads(system[marker+2:]) if marker >= 0 else {}
         scope = context.get('history_scope')
         if scope:
+            prefix = 'give me an interactive assessment on '
+            if lowered.startswith(prefix):
+                return AIMessage(content='', tool_calls=[self.tool_call('assessment_generate',
+                    dict(topic=question[len(prefix):], count=3, question_format='mcq'), 'topic-assessment')])
             if lowered.startswith(('show single choices', 'show multiple choices')):
                 return AIMessage(content='', tool_calls=[self.tool_call('present_choices', dict(kind='multiple_choice' if 'multiple' in lowered else 'single_choice', question='Choose learning topics', options=[dict(id='algebra',label='Algebra'),dict(id='biology',label='Biology'),dict(id='physics',label='Physics')]), 'choice-create')])
             if context.get('interaction_response'):

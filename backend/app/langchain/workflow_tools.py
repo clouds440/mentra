@@ -15,9 +15,9 @@ class SearchStudy(BaseModel):
 
 class GeneratePractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    context_id: str = Field(min_length=1, max_length=100)
+    context_id: str | None = Field(default=None, min_length=1, max_length=100, description='Existing owned learning context if relevant. Omit when none exists; the assessment workflow creates or reuses a topic context.')
     topic: str = Field(min_length=1, max_length=200)
-    concept_names: list[str] = Field(default_factory=list, max_length=5)
+    concept_names: list[str] = Field(default_factory=list, max_length=5, description='Concrete practice concepts inferred from the requested topic, preferably subject-qualified. Omit to let the assessment model select suitable concepts. Prior concept IDs or confirmation are not required.')
     count: int = Field(default=3, ge=1, le=10)
     grounded: bool = False
     question_format: str = Field(default='written', pattern='^(written|mcq)$', description='Use mcq when you decide an interactive quiz is useful or the student asks for interactive, clickable, in-chat or one-question-at-a-time assessment. Ordinary quiz requests may use written answer sheets.')
@@ -101,8 +101,8 @@ def create_workflow_tools(owner, scope, budget):
             body = GeneratePractice(**arguments)
             request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{body.model_dump_json()}")
             selection = scope.get('retrieval_selection') or ChatSelection()
-            result = await service.generate_chat(owner, scope['conversation_id'], GenerationRequest(client_request_id=request_id,
-                **body.model_dump(), document_ids=selection.document_ids or [], confirm_new_concepts=False))
+            result = await service.generate_chat_from_topic(owner, scope['conversation_id'], client_request_id=request_id,
+                **body.model_dump(), document_ids=selection.document_ids or [])
             scope.setdefault('assessment_cards', []).append(result)
             public = result['assessment']
             return dict(outcome='saved' if result['assessment_id'] else 'chat_draft', draft_id=result['id'],

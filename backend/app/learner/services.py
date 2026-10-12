@@ -10,6 +10,7 @@ from app.learner.schemas import (
     ActiveContextsResponse,
     ConceptResolution,
     ConceptResolutionRequest,
+    GeneratedConceptsRequest,
     ConceptStateRequest,
     ConceptStateResponse,
     EvidenceSubmissionRequest,
@@ -42,6 +43,8 @@ class LearnerService(Protocol):
     ) -> ConceptResolution: ...
 
     def get_context_summaries(self, learner_id: str, context_ids: list[str] | None = None) -> list[LearningContextSummary]: ...
+
+    async def resolve_generated_concepts(self, request: GeneratedConceptsRequest) -> list[Concept]: ...
 
     def submit_evidence(
         self,

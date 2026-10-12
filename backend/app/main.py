@@ -47,9 +47,9 @@ def create_app() -> FastAPI:
                         logger.warning('Speech model warmup unavailable; voice requests may retry initialization.')
                 embedding_service = SentenceTransformerEmbeddingService(settings)
                 vector_store: VectorStore = QdrantVectorStore(settings, embedding_service)
-                application.state.learner_service = create_learner_engine()
-                application.state.auth_service = create_auth_service()
                 application.state.llm = MentraLLM(model_factory)
+                application.state.learner_service = create_learner_engine(application.state.llm)
+                application.state.auth_service = create_auth_service()
                 application.state.student_profile_service = create_student_profile_service(model_factory, application.state.llm)
                 application.state.embedding_service = embedding_service
                 application.state.vector_store = vector_store

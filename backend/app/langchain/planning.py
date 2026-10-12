@@ -78,6 +78,7 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     if assessment:
         if re.search(r'\b(harder|easier|revise|change)\b', text): names.extend(['assessment_lookup', 'assessment_revise'])
         elif re.search(r'\b(grade|evaluate|mark|submit|answers?)\b', text): names.extend(['assessment_lookup', 'assessment_answer'])
+        elif re.search(r'\b(generate|create|give|build|prepare|make|want|need)\b|\b(?:quiz|test) me\b', text): names.append('assessment_generate')
         elif re.search(r'\b(question|status|progress|explain)\b', text): names.extend(['assessment_lookup', 'assessment_question', 'assessment_status'])
         else: names.extend(['get_active_learning_contexts', 'assessment_generate'])
     return ExecutionPlan(intent=intent, steps=[ExecutionStep(module=module, required=module in ('documents', 'rag') and (source_request or selected_sources or attachments), token_budget=allocation[module]) for module in dict.fromkeys(modules)], confirmation_required=event, direct_candidate=direct, capabilities_query=capability, tool_names=list(dict.fromkeys(names)))

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Annotated
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -60,6 +60,10 @@ class GeneratedQuestion(Contract):
 class GeneratedAssessment(Contract):
     title: str = Field(min_length=1, max_length=200)
     questions: list[GeneratedQuestion] = Field(min_length=1, max_length=10)
+
+
+class AssessmentTargets(Contract):
+    concept_names: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(min_length=1, max_length=5)
 
 class ConceptGrade(Contract):
     score: float = Field(ge=0)

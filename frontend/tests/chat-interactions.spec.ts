@@ -41,6 +41,26 @@ test('native choices continue chat and retain selections after refresh on mobile
   await send('Hello'); await expect(composer).toBeEnabled();
 });
 
+test('first chat generates an interactive assessment from a topic with no prior learner data', async ({ page }) => {
+  await page.goto('/register');
+  await page.getByLabel('Username', { exact:true }).fill(`cold_quiz_${randomUUID().slice(0,8)}`);
+  await page.getByLabel('Password', { exact:true }).fill('isolated cold start password');
+  await page.getByRole('button', { name:'Create account', exact:true }).click();
+  await finishOnboardingWithoutAssessment(page);
+  expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(0);
+  await page.getByRole('textbox', { name:'Ask Mentra anything' }).fill('Give me an interactive assessment on introductory optics');
+  await page.getByRole('button', { name:'Send message' }).click();
+  const card = page.getByRole('region', { name:'Chat assessment' });
+  const quiz = card.getByRole('region', { name:'Interactive quiz' });
+  await expect(quiz.getByText(/Question 1 of 3/)).toBeVisible({ timeout:20_000 });
+  await expect(page.getByLabel('Response limitations')).toHaveCount(0);
+  await quiz.getByRole('radio', { name:'A supported explanation.', exact:true }).check();
+  await quiz.getByRole('button', { name:'Save & next' }).click();
+  await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
+  await page.reload();
+  await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
+});
+
 for (const request of ['Give me a five question interactive quiz on Linear equations', 'Quiz me with five clickable options questions on Linear equations', 'I keep mixing up linear equations']) {
 test(`five question MCQ invoked from ${request} restores progress and grades`, async ({ page }, testInfo) => {
   test.setTimeout(120_000);

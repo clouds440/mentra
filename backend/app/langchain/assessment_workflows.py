@@ -1,6 +1,6 @@
 from uuid import uuid4
 from app.core.exceptions import AppError
-from app.assessments.schemas import GeneratedAssessment, GradedAssessment
+from app.assessments.schemas import GeneratedAssessment, GradedAssessment, AssessmentTargets
 from app.learner.schemas import ConceptResolutionRequest, StudyRecommendationsRequest, VerificationCandidatesRequest, EvidenceSubmissionRequest
 from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
@@ -12,24 +12,10 @@ from app.core.logging import workflow_logger
 class AssessmentWorkflows:
     def __init__(self, llm, learner, rag=None, profile=None): self.llm, self.learner, self.rag, self.profile = llm, learner, rag, profile
 
-    async def generate(self, owner, request, *, revision=None):
+    async def generate(self, owner, request, *, revision=None, generated_targets=False):
         from starlette.concurrency import run_in_threadpool
         await run_in_threadpool(self.learner.get_context_summaries, owner, [request.context_id])
         concepts = list(dict.fromkeys(identifier for question in revision['questions'] for identifier in question['concept_ids'])) if revision else []
-        for label in ([] if revision else request.concept_names):
-            resolution = await run_in_threadpool(self.learner.resolve_concept, ConceptResolutionRequest(label=label, learner_id=owner, context_id=request.context_id))
-            if resolution.status == 'resolved':
-                await run_in_threadpool(self.learner.link_context_concept, owner, request.context_id, resolution.concept_id)
-                concepts.append(resolution.concept_id)
-            elif request.confirm_new_concepts and resolution.status == 'candidate':
-                concept = await run_in_threadpool(self.learner.review_candidate, resolution.candidate_id)
-                concepts.append(concept.id)
-            else: raise AppError('CONCEPT_REVIEW_REQUIRED', 'Confirm new concept names or select established concepts before generating.', 409)
-        ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
-        recommendations, verification = ranked['recommendations'], ranked['verification']
-        if not concepts: concepts = list(dict.fromkeys(item.concept_id for item in [*recommendations, *verification]))[:10]
-        if not concepts: raise AppError('ASSESSMENT_TARGETS_REQUIRED', 'Enter and confirm the concept names you want to practice.', 422)
-        targets = [dict(id=identifier, name=(await run_in_threadpool(self.learner.get_concept, identifier)).canonical_name) for identifier in concepts]
         sources = []
         if request.grounded:
             if self.rag is None:
@@ -38,10 +24,37 @@ class AssessmentWorkflows:
             retrieved = await run_in_threadpool(self.rag.search_assessment, owner, AssessmentGroundingRequest(query=request.topic, context_ids=[request.context_id], approved_document_ids=request.document_ids, limit=5))
             sources = [chunk.source.model_dump(mode='json') for chunk in retrieved.chunks]
             if not sources: raise AppError('ASSESSMENT_SOURCES_REQUIRED', 'No ready study sources matched this topic.', 409)
+        prompt_sources = [{key:source[key] for key in ('token','title','excerpt')} for source in sources]
+        if not revision:
+            labels = request.concept_names
+            inferred = not labels
+            if inferred:
+                ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
+                known = list(dict.fromkeys(item.concept_id for item in [*ranked['recommendations'], *ranked['verification']]))[:10]
+                known_names = [(await run_in_threadpool(self.learner.get_concept, identifier)).canonical_name for identifier in known]
+                plan = await self.llm.ainvoke(PromptSource.ASSESSMENT_TARGETS,
+                    dict(topic=request.topic, count=request.count, purpose=request.purpose,
+                         grounded=request.grounded, sources=prompt_sources, existing_concepts=known_names), output_schema=AssessmentTargets)
+                labels = plan.concept_names
+            if inferred or request.confirm_new_concepts or generated_targets:
+                from app.learner.schemas import GeneratedConceptsRequest
+                resolved = await self.learner.resolve_generated_concepts(GeneratedConceptsRequest(
+                    learner_id=owner, context_id=request.context_id, topic=request.topic, labels=labels))
+                concepts = [concept.id for concept in resolved]
+            else:
+                for label in labels:
+                    resolution = await run_in_threadpool(self.learner.resolve_concept, ConceptResolutionRequest(
+                        label=label, learner_id=owner, context_id=request.context_id))
+                    if resolution.status != 'resolved':
+                        raise AppError('CONCEPT_REVIEW_REQUIRED', 'Confirm new concept names or select established concepts before generating.', 409)
+                    await run_in_threadpool(self.learner.link_context_concept, owner, request.context_id, resolution.concept_id)
+                    concepts.append(resolution.concept_id)
+        ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
+        recommendations, verification = ranked['recommendations'], ranked['verification']
+        targets = [dict(id=identifier, name=(await run_in_threadpool(self.learner.get_concept, identifier)).canonical_name) for identifier in concepts]
         questions = []
         title = None
         profile_context = await run_in_threadpool(self.profile.prompt_context, owner) if self.profile else None
-        prompt_sources = [{key:source[key] for key in ('token','title','excerpt')} for source in sources]
         # Bound output per call instead of asking for ten long rubrics at once.
         while len(questions) < request.count:
             batch_count = min(3, request.count-len(questions))

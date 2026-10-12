@@ -20,6 +20,7 @@ from app.learner.scoring import ExponentialRetentionPolicy, HeuristicMasteryPoli
 from app.learner.schemas import (
     ActiveContextsResponse, ConceptStateResponse, ActiveContextsRequest,
     ConceptResolutionRequest, ConceptResolution, ConceptStateRequest,
+    GeneratedConceptsRequest,
     LearnerContextRequest, LearnerContextPacket, StudyRecommendationsRequest, StudyRecommendation,
     VerificationCandidatesRequest, VerificationCandidate, ActivateLearningContextRequest,
     LearningContextSummary, ResolveLearningContextRequest, ContextActivityRequest,
@@ -37,13 +38,16 @@ from app.core.logging import workflow_logger
 class LearnerEngine:
     def __init__(self, repository: LearnerRepository, *, mastery_policy: MasteryPolicy | None = None,
                  retention_policy: RetentionPolicy | None = None, ranking_policy: RankingPolicy | None = None,
-                 semantic_resolver: SemanticResolver | None = None, clock: Callable[[], datetime] | None = None) -> None:
+                 semantic_resolver: SemanticResolver | None = None, generated_concept_resolver=None,
+                 clock: Callable[[], datetime] | None = None) -> None:
         self.repository = repository
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.mastery_policy = mastery_policy or HeuristicMasteryPolicy()
         self.retention_policy = retention_policy or ExponentialRetentionPolicy()
         self.concepts = ConceptService(repository, semantic_resolver)
         self.contexts = ContextService(repository, self.clock)
+        from app.learner.generated_concepts import GeneratedConceptService
+        self.generated_concepts = GeneratedConceptService(self.concepts, self.contexts, generated_concept_resolver)
         self.evidence = EvidenceService(repository, self.contexts, self.mastery_policy,
                                         self.retention_policy, self.clock)
         self.states = StateService(repository, self.evidence, self.mastery_policy, self.retention_policy, self.clock)
@@ -56,6 +60,9 @@ class LearnerEngine:
 
     def resolve_concept(self, request: ConceptResolutionRequest) -> ConceptResolution:
         return self.concepts.resolve(request)
+
+    async def resolve_generated_concepts(self, request: GeneratedConceptsRequest) -> list[Concept]:
+        return await self.generated_concepts.resolve(request)
 
     def get_concept(self, concept_id: str) -> Concept:
         return self.concepts.get(concept_id)
