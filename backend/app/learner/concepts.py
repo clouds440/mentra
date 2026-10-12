@@ -33,12 +33,7 @@ class ConceptService:
         if not normalize(name) or len(name) > 200:
             raise LearnerError("Canonical name must contain between 1 and 200 characters")
         with self.repository.transaction(ontology=True) as repository:
-            matches = {}
-            for form in lookup_forms(name):
-                direct = repository.get_concept_by_normalized_name(form)
-                if direct:
-                    matches[direct.id] = direct
-                matches.update({c.id: c for c in repository.find_by_normalized_alias(form)})
+            matches = {c.id: c for c in repository.find_exact_concepts(lookup_forms(name))}
             if len(matches) > 1:
                 raise LearnerError('Canonical name has ambiguous aliases; review the registry first')
             existing = next(iter(matches.values()), None)
@@ -56,12 +51,7 @@ class ConceptService:
         forms = lookup_forms(request.label)
         if not forms:
             return ConceptResolution(status="rejected", confidence=0, method="empty")
-        matches = {}
-        for form in forms:
-            direct = self.repository.get_concept_by_normalized_name(form)
-            if direct:
-                matches[direct.id] = direct
-            matches.update({c.id: c for c in self.repository.find_by_normalized_alias(form)})
+        matches = {c.id: c for c in self.repository.find_exact_concepts(forms)}
         if request.context_id and len(matches) > 1:
             scoped = {key: c for key, c in matches.items()
                       if request.context_id in self.repository.get_concept_context_ids(key, learner_id=request.learner_id)}
@@ -72,8 +62,7 @@ class ConceptService:
             return ConceptResolution(status="resolved", concept_id=concept.id,
                                      canonical_name=concept.canonical_name, confidence=1, method="exact_alias")
         candidates = dict(matches)
-        for term in sorted(tokens(request.label))[:8]:
-            candidates.update({c.id: c for c in self.repository.search_concepts(term, 20)})
+        candidates.update({c.id: c for c in self.repository.search_concept_terms(sorted(tokens(request.label))[:8], 20)})
         # Character similarity ranks suggestions only; it never establishes identity.
         ranked = sorted(candidates.values(), key=lambda c: (
             -SequenceMatcher(None, forms[0], normalize(c.canonical_name)).ratio(), c.id

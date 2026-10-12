@@ -12,7 +12,8 @@ from app.db.urls import postgres_url
 
 
 def build_engine(database_url: str, **options):
-    return create_engine(postgres_url(database_url), pool_pre_ping=True, hide_parameters=True, **options)
+    from .timing import instrument_engine
+    return instrument_engine(create_engine(postgres_url(database_url), pool_pre_ping=True, hide_parameters=True, **options))
 
 
 @lru_cache

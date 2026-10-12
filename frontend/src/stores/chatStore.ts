@@ -33,6 +33,7 @@ class ChatStore {
   private syncing: Promise<void> | null = null;
   private channel: BroadcastChannel | null = null;
   private pollers = new Map<string, ReturnType<typeof setTimeout>>();
+  private responseStarts = new Map<string, number>();
   private list: ListView = { items: [], loading: true, error: null, more: false };
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   snapshot = () => this.list;
@@ -78,6 +79,7 @@ class ChatStore {
   stop(clear = false) {
     this.controller.abort(); this.controller = new AbortController(); this.channel?.close(); this.channel = null;
     this.pollers.forEach(timer => clearTimeout(timer)); this.pollers.clear();
+    this.responseStarts.clear();
     if (this.cache) void this.cache.close(clear).catch(() => {});
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
     this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
@@ -184,6 +186,7 @@ class ChatStore {
   private async applyPage(page: MessagePage, older = false) {
     const signal = this.controller.signal, cache = this.cache!;
     const id = page.conversation.id, view = this.view(id);
+    const pendingAtPublication = this.pending.get(id);
     if (this.deleted.has(id)) return;
     if (page.conversation.revision < view.revision) return;
     this.mergeChats([page.conversation]);
@@ -205,11 +208,37 @@ class ChatStore {
     this.publish();
     await this.persist(() => cache.apply([page.conversation], page.items, []));
     if (!this.alive(signal)) return;
+    // The answer is visible before IndexedDB finishes. A new send may already
+    // own this chat; an older completion must not clear its retry state/timer.
+    if (this.pending.get(id) !== pendingAtPublication || this.view(id).busy) return;
     if (page.turn && page.turn.state !== 'RUNNING') {
+      const started = this.responseStarts.get(id);
+      if (started !== undefined) {
+        performance.measure('mentra.chat.response_visible', { start: started });
+        this.responseStarts.delete(id);
+      }
       const timer = this.pollers.get(id);
       if (timer) { clearTimeout(timer); this.pollers.delete(id); }
       this.pending.delete(id); await this.persist(() => cache.pending(null, id));
     }
+  }
+  async receiveTerminal(id: string, turnId: string, attempt: number, data: unknown) {
+    if (!this.owner || !this.cache || this.deleted.has(id)) return;
+    const page = data as Partial<MessagePage> | null;
+    const current = this.view(id).turn;
+    if (current && (current.id !== turnId || current.attempt !== attempt)) return;
+    if (!page?.conversation || page.conversation.id !== id || !Number.isInteger(page.conversation.revision)
+        || typeof page.conversation.updated_at !== 'string' || !Array.isArray(page.items)
+        || page.items.some(item => !item || item.conversation_id !== id || typeof item.id !== 'string'
+          || typeof item.content !== 'string' || !Number.isInteger(item.sequence)
+          || !['user', 'assistant'].includes(item.role))
+        || page.turn?.id !== turnId || page.turn.attempt !== attempt
+        || !['SUCCEEDED', 'FAILED'].includes(page.turn.state)) {
+      await this.open(id, false, true); return;
+    }
+    // The SSE terminal packet is the same canonical page as /status. Reconcile
+    // its revision directly instead of adding another network/database round trip.
+    await this.applyPage(page as MessagePage);
   }
   async stopResponse(id: string) {
     const turn = this.view(id).turn, signal = this.controller.signal;
@@ -244,6 +273,8 @@ class ChatStore {
     body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
     body = { ...body, retry };
     this.pending.set(id, body);
+    const started = performance.now();
+    this.responseStarts.set(id, started);
     this.setView(id, { busy: true, error: null, unsent: null });
     await this.persist(() => cache.pending(body!, id));
     if (!this.alive(signal)) return;
@@ -252,6 +283,7 @@ class ChatStore {
     this.setView(id, { busy: true, error: null, olderWindow: false, messages: retry ? view.messages : [...view.messages, optimistic].slice(-200) });
     try {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;
+      performance.measure('mentra.chat.acknowledged', { start: started });
       await this.applyPage(page);
       if (!this.alive(signal)) return;
       if (body.interaction_response) {

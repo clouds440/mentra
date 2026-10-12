@@ -1,6 +1,6 @@
 import re
 import json
-from starlette.concurrency import run_in_threadpool
+from app.core.observability.timing import run_in_threadpool
 from app.core.exceptions import AppError
 from app.rag.schemas import SearchRequest, ChatSelection
 from app.langchain.chat_service import ChatService
@@ -90,14 +90,39 @@ class OrchestrationService:
             budget.max_calls = 8
             budget.max_result_tokens = 4800
             budget.max_result_bytes = 19200
-        chat_assessments = []
+        from .concurrent_reads import gather_reads
+        preparations = []
+        def prepare(key, action):
+            preparations.append((key, action))
         if self.assessments is not None and history_scope and not history_scope.get('stateless') and 'assessment' in modules:
-            chat_assessments = await read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']) or []
-        await activity.emit('planning', 'completed', 'Your request is ready to process')
-        result, warning = None, None
+            prepare('assessments', lambda: read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']))
         if self.rag is not None and 'rag' in modules:
             selection = retrieval.model_dump() if retrieval else {}
-            result = await read('search_study_material', self.rag.search, owner, SearchRequest(query=query, **selection), required='rag' in required)
+            prepare('rag', lambda: read('search_study_material', self.rag.search, owner, SearchRequest(query=query, **selection), required='rag' in required))
+        if self.history is not None and self.history.profile is not None and 'profile' in modules:
+            prepare('profile', lambda: read('profile_context', self.history.profile.prompt_context, owner))
+        if self.learner is not None and owner and 'learner' in modules:
+            prepare('learner', lambda: read('get_relevant_learner_context', self.learner.get_relevant_context,
+                LearnerContextRequest(learner_id=owner, query=query[:4000], context_ids=retrieval.context_ids if retrieval else None)))
+        if self.attachments is not None and history_scope and not history_scope.get('stateless'):
+            history_scope['assessment_attachment_ids'] = ids
+            answer_upload = 'assessment' in modules and bool(re.search(r'\b(grade|evaluate|mark|answers?|solutions?|answer sheet)\b', query, re.I))
+            async def attachment(identifier):
+                image = await run_in_threadpool(self.attachments.image_input, owner, identifier, history_scope['conversation_id'])
+                if image is not None:
+                    return ('image', image)
+                extracted = await read('document_extract', self.attachments.extract, owner, identifier,
+                    history_scope['conversation_id'], required='documents' in required, timeout=120)
+                return ('document', self.attachments.context(extracted, query, maximum=8000 // max(1, len(ids))) if extracted is not None else None)
+            for identifier in ([] if answer_upload or plan.direct_candidate else ids):
+                prepare('attachment:' + identifier, lambda identifier=identifier: attachment(identifier))
+        async with workflow_logger.step('app.langchain.orchestration_service', 'context.prepare', input=dict(operation_count=len(preparations))):
+            values = await gather_reads([action for _, action in preparations])
+        prepared = dict(zip((key for key, _ in preparations), values))
+        await activity.emit('planning', 'completed', 'Your request is ready to process')
+        chat_assessments = prepared.get('assessments') or []
+        result, warning = prepared.get('rag'), None
+        if self.rag is not None and 'rag' in modules:
             if result is None:
                 warning = 'Study material retrieval was unavailable; document-specific claims cannot be verified.'
                 workflow_logger.set_outcome('degraded', code='RAG_UNAVAILABLE')
@@ -109,34 +134,21 @@ class OrchestrationService:
             workflow_logger.set_outcome('degraded', code='RETRIEVAL_DEGRADED')
             warning = ' '.join(result.warnings)
         kwargs = {'source_packet': packet} if self.rag is not None else {}
-        images = []
-        if self.attachments is not None and history_scope and not history_scope.get('stateless'):
-            documents = []
-            history_scope['assessment_attachment_ids'] = ids
-            answer_upload = 'assessment' in modules and bool(re.search(r'\b(grade|evaluate|mark|answers?|solutions?|answer sheet)\b', query, re.I))
-            for identifier in ([] if answer_upload or plan.direct_candidate else ids):
-                image = await run_in_threadpool(self.attachments.image_input, owner, identifier,
-                    history_scope['conversation_id'])
-                if image is not None:
-                    if len(images) >= 3:
-                        raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
-                    images.append(image)
-                    continue
-                extracted = await read('document_extract', self.attachments.extract, owner, identifier, history_scope['conversation_id'], required='documents' in required, timeout=120)
-                if extracted is not None:
-                    documents.append(self.attachments.context(extracted, query, maximum=8000 // max(1, len(ids))))
-            if documents:
-                kwargs['document_context'] = documents
-            if images:
-                kwargs['image_context'] = images
-        if self.history is not None and self.history.profile is not None and 'profile' in modules:
-            kwargs['profile_context'] = await read('profile_context', self.history.profile.prompt_context, owner)
-            if kwargs['profile_context'] is not None:
-                kwargs['profile_context'] = kwargs['profile_context'].model_dump(mode='json')
-        if self.learner is not None and owner and 'learner' in modules:
-            kwargs['learner_context'] = await read('get_relevant_learner_context', self.learner.get_relevant_context, LearnerContextRequest(learner_id=owner, query=query[:4000], context_ids=retrieval.context_ids if retrieval else None))
-            if kwargs['learner_context'] is not None:
-                recovery_scope['_initial_learner_context'] = kwargs['learner_context'].model_dump(mode='json')
+        images, documents = [], []
+        for key, value in prepared.items():
+            if key.startswith('attachment:') and value[1] is not None:
+                (images if value[0] == 'image' else documents).append(value[1])
+        if len(images) > 3:
+            raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
+        if documents: kwargs['document_context'] = documents
+        if images: kwargs['image_context'] = images
+        if 'profile' in prepared:
+            value = prepared['profile']
+            kwargs['profile_context'] = value.model_dump(mode='json') if value is not None else None
+        if 'learner' in prepared:
+            kwargs['learner_context'] = prepared['learner']
+            if prepared['learner'] is not None:
+                recovery_scope['_initial_learner_context'] = prepared['learner'].model_dump(mode='json')
         policy = history_policy or HistoryContextPolicy()
         if history_scope is not None and (self.history is not None or self.web_search is not None and self.web_search.enabled):
             history_scope['activity'] = activity

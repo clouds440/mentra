@@ -9,6 +9,10 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 
 
+from app.core.logging import workflow_logger
+
+
+@workflow_logger.operation(outcome='success')
 def lock_owner(session, owner: str):
     from app.chat.repositories.tables import sync_state
     session.execute(insert(sync_state).values(learner_id=owner, revision=0, floor=0).on_conflict_do_nothing())
@@ -21,8 +25,6 @@ class OwnedUnitOfWork:
     owner: str
     _session: object
 
-
-from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success', policies={'write': {'kind':'contextmanager'}})
 class OwnerTransactions:

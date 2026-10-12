@@ -10,6 +10,7 @@ from app.web_search.urls import favicon_url
 from .token_policy import count_messages
 from .workflow_budget import current_budget
 from .activity import current_publisher, current_tool_call
+from .concurrent_reads import project_read
 
 
 def compact_receipt(result):
@@ -82,11 +83,11 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
     if not attempt_id.strip(':'):
         attempt_id = scope.setdefault('_web_ephemeral_attempt', uuid4().hex)
 
-    async def search(query, website=None):
+    async def fetch(query, website=None):
         request = SearchInput(query=query, website=website)
         key = request.model_dump_json()
         if budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0) < 600 or budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0) < 600:
-            return fit_result(service.envelope('budget_exhausted', website=request.website), scope, budget)
+            return service.envelope('budget_exhausted', website=request.website).model_dump(mode='json')
         if key in cache:
             result = service.refresh(cache[key])
         elif scope.get(calls_name, 0) >= (1 if research else 2):
@@ -113,6 +114,10 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
                 await publisher.emit(step[:76] + '-web', status,
                     'Using recently cached web results' if result.cache_hit else 'Web search completed' if result.sources else result.reason or 'Web search completed',
                     tool_name=name, websites=sites)
+        return result.model_dump(mode='json')
+
+    def project(payload):
+        result = service.refresh(payload, within_turn=payload.get('reused_within_turn', False))
         existing = [source.model_copy(deep=True) for source in scope.get('web_sources', [])]
         by_url = {source.url: source.token for source in existing}
         staged = []
@@ -129,8 +134,11 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))[:10]
         return value
 
+    async def search(query, website=None):
+        return project_read(project, await fetch(query, website))
+
     tools = [StructuredTool.from_function(name=name, args_schema=SearchInput,
-        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.'), coroutine=search)]
+        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.'), coroutine=search, metadata={'parallel_read': True})]
     extra = getattr(service, 'research', None)
     if not research and extra is not None and extra.enabled:
         tools.extend(create_web_tools(extra, owner, scope, budget, research=True))

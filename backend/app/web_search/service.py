@@ -7,7 +7,7 @@ from time import monotonic
 from uuid import uuid5, NAMESPACE_URL
 from typing import Callable, Iterable
 from zoneinfo import ZoneInfo
-from starlette.concurrency import run_in_threadpool
+from app.core.observability.timing import run_in_threadpool
 from .repositories import RepositoryError, UsageStore
 from app.core.logging import workflow_logger
 from .schemas import SearchInput, SearchResult, WebSource

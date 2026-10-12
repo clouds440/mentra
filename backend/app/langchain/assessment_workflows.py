@@ -13,7 +13,7 @@ class AssessmentWorkflows:
     def __init__(self, llm, learner, rag=None, profile=None): self.llm, self.learner, self.rag, self.profile = llm, learner, rag, profile
 
     async def generate(self, owner, request, *, revision=None, generated_targets=False):
-        from starlette.concurrency import run_in_threadpool
+        from app.core.observability.timing import run_in_threadpool
         await run_in_threadpool(self.learner.get_context_summaries, owner, [request.context_id])
         concepts = list(dict.fromkeys(identifier for question in revision['questions'] for identifier in question['concept_ids'])) if revision else []
         sources = []

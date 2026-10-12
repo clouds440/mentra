@@ -1,6 +1,7 @@
 """Bounded LangGraph coordinator over trusted domain tools."""
 import asyncio
 import json
+from .concurrent_reads import StagedRead, staging_reads, gather_reads
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage
 from .token_policy import count_messages as count_tokens_approximately
 from app.core.config import settings
@@ -317,15 +318,23 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 current_tool_call.reset(token)
 
         async def capture(call):
+            token = staging_reads.set(True)
             try:
                 return await invoke(call)
             except Exception as error:
                 return error
+            finally:
+                staging_reads.reset(token)
 
-        # Only scope-independent learner reads may overlap. History, sources and
-        # event tools mutate reference scope and remain ordered, as do all writes.
-        # Batch adjacent reads so dependencies on earlier writes stay intact.
+        def independent(call):
+            tool = dispatch.get(call['name'])
+            return bool(tool and tool_enabled(call['name']) and not is_write(call['name'], call['args'])
+                        and (call['name'] in parallel_reads or (tool.metadata or {}).get('parallel_read')))
+
+        # Reads fetch into isolated packets. Only this loop commits references,
+        # citations and result budgets; writes/discovery form ordering barriers.
         pending = {}
+        materialized = {}
         for position, call in enumerate(response.tool_calls):
             reserved_bytes = reserved_tokens = 0
             if web is not None and web.enabled:
@@ -341,11 +350,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             read_scopes = {key: len(scope.get(key, [])) for key in ('study_sources', 'event_references', 'retrieval_warnings')}
             retrieval_before = scope.get('retrieval_status')
             accounted = False
+            staged_identity = None
             try:
-                if position not in pending and call['name'] in parallel_reads:
+                if position not in pending and independent(call):
                     batch = []
                     for index in range(position, len(response.tool_calls)):
-                        if response.tool_calls[index]['name'] not in parallel_reads: break
+                        if not independent(response.tool_calls[index]): break
                         batch.append((index,response.tool_calls[index]))
                     # Identical adjacent reads share one admitted physical call;
                     # each model call ID still receives its own result message.
@@ -354,13 +364,21 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     for _, item in batch:
                         key = item['name'] + ':' + json.dumps(item['args'], sort_keys=True, default=str)
                         if key not in singleflight:
-                            singleflight[key] = asyncio.create_task(capture(item))
-                        waiting.append(singleflight[key])
-                    values = await asyncio.gather(*waiting)
-                    pending.update({index:value for (index,_),value in zip(batch,values)})
+                            singleflight[key] = len(waiting)
+                            waiting.append(lambda item=item: capture(item))
+                    values = await gather_reads(waiting)
+                    for index, item in batch:
+                        key = item['name'] + ':' + json.dumps(item['args'], sort_keys=True, default=str)
+                        pending[index] = values[singleflight[key]]
                 result = pending[position] if position in pending else await invoke(call)
                 if isinstance(result, Exception):
                     raise result
+                if isinstance(result, StagedRead):
+                    identity = id(result)
+                    staged_identity = identity
+                    if identity not in materialized:
+                        materialized[identity] = result.materialize()
+                    result = materialized[identity]
                 if isinstance(result, dict) and result.get('repeated_failure'):
                     scope['_exhausted_repeat'] = True
                 if isinstance(result, dict) and result.get('code') in ('TOOL_INVALID_ARGUMENTS', 'TOOL_UNKNOWN', 'TOOL_NOT_ENABLED'):
@@ -398,9 +416,15 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     budget.result_tokens += count_tokens_approximately([ToolMessage(content=content, tool_call_id=call['id'])])
                     accounted = True
                 budget.delivered.setdefault(full_content, call['id'])
+                if not is_write(call['name'], call['args']) and call['name'] not in ('web_search', 'web_research', 'assessment_status'):
+                    key = call['name'] + ':' + json.dumps(call['args'], sort_keys=True, default=str)
+                    if key in executor.results:
+                        executor.results[key] = result
             except Exception as error:
                 if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
                     raise
+                if staged_identity is not None:
+                    materialized.pop(staged_identity, None)
                 del scope['history_references'][history_count:]
                 del scope['memory_references'][memory_count:]
                 scope['evidence_ids'] = evidence_before

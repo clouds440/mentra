@@ -145,10 +145,15 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
     async def test_business_failure_reports_failed_and_recovery_card_is_saved(self):
         execute = self.executor()
         async def invoke(): return dict(outcome='answer_preparation_failed', assessment_saved=True, attempt_id='attempt')
-        receipt = await execute.execute(tool('assessment_answer', invoke), {})
+        receipt = await execute.execute(tool('assessment_answer', invoke), {}, required=True)
         self.assertEqual(receipt['attempt_id'], 'attempt')
         self.assertEqual(self.trace.events[-1].status, 'failed')
         self.assertIn('assessment is saved', self.trace.events[-1].user_message)
+        self.assertEqual(self.scope['tool_warnings'][0]['effect_certainty'], 'committed')
+        self.assertEqual(self.scope['tool_warnings'][0]['task_impact'], 'required_for_part')
+        repeated = await execute.execute(tool('assessment_answer', invoke), {}, required=True)
+        self.assertEqual(repeated['effect_certainty'], 'committed')
+        self.assertEqual(repeated['attempt_id'], 'attempt')
 
     async def test_invalid_arguments_count_once_before_execution(self):
         class Input(BaseModel):

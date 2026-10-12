@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import select, update, or_, func, literal_column
+from sqlalchemy import select, update, or_, func, literal_column, union_all
 from sqlalchemy.dialects.postgresql import insert
 
 from app.learner.normalization import normalize
@@ -9,6 +9,15 @@ from app.learner.repositories.tables import concept, concept_alias, concept_rela
 
 
 class ConceptsStore(PostgresRepositoryBase):
+    def find_exact_concepts(self, forms, min_confidence=0.9):
+        aliases = select(concept_alias.c.concept_id).where(
+            concept_alias.c.normalized_alias.in_(forms), concept_alias.c.confidence >= min_confidence)
+        with self._session() as session:
+            rows = session.execute(select(concept).where(concept.c.status == 'ACTIVE',
+                or_(concept.c.normalized_name.in_(forms), concept.c.id.in_(aliases)))
+                .order_by(func.lower(concept.c.canonical_name), concept.c.id)).mappings()
+            return [self._concept_from_row(row) for row in rows]
+
     def get_concept(self, concept_id):
         def read():
             with self._session() as session:
@@ -38,6 +47,20 @@ class ConceptsStore(PostgresRepositoryBase):
             return [self._concept_from_row(row) for row in session.execute(select(concept).where(
                 concept.c.status == 'ACTIVE', or_(concept.c.normalized_name.contains(normalized_query, autoescape=True),
                                                 concept.c.id.in_(aliases))).order_by(concept.c.canonical_name).limit(limit)).mappings()]
+
+    def search_concept_terms(self, terms, limit=20):
+        queries = []
+        for term in terms:
+            aliases = select(concept_alias.c.concept_id).where(concept_alias.c.normalized_alias.contains(term, autoescape=True))
+            queries.append(select(concept.c.id).where(concept.c.status == 'ACTIVE',
+                or_(concept.c.normalized_name.contains(term, autoescape=True), concept.c.id.in_(aliases)))
+                .order_by(concept.c.canonical_name).limit(limit))
+        if not queries:
+            return []
+        with self._session() as session:
+            rows = session.execute(select(concept).where(concept.c.id.in_(union_all(*queries)))
+                .order_by(concept.c.canonical_name, concept.c.id)).mappings()
+            return [self._concept_from_row(row) for row in rows]
 
     def create_concept(self, value):
         with self._session() as session:

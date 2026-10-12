@@ -1,7 +1,7 @@
 """Generation survives a disconnected HTTP caller, with durable turn recovery."""
 import asyncio
 import logging
-from starlette.concurrency import run_in_threadpool
+from app.core.observability.timing import run_in_threadpool
 from app.core.exceptions import AppError
 from .context import HistoryContextPolicy
 
@@ -67,6 +67,7 @@ class ConversationService:
     async def _generate(self, owner, job, generate, with_scope=False):
         from time import monotonic
         deadline = monotonic() + 150
+        activity_sink = None
         try:
             rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
@@ -78,7 +79,8 @@ class ConversationService:
                     history_references=[], memory_references=[])
                 from app.langchain.activity import ActivityPublisher
                 from .repositories.activity import ActivityRepository, DurableActivitySink
-                scope['activity'] = ActivityPublisher(DurableActivitySink(ActivityRepository(self.repository.sessions), owner, job))
+                activity_sink = DurableActivitySink(ActivityRepository(self.repository.sessions), owner, job)
+                scope['activity'] = ActivityPublisher(activity_sink)
                 scope['_generation_deadline'] = deadline
                 await scope['activity'].emit('planning', 'running', 'Planning your request')
                 invocation = generate(history, job['selection'], scope)
@@ -92,6 +94,8 @@ class ConversationService:
                 generation.cancel()
                 watcher.cancel()
                 await asyncio.gather(generation, watcher, return_exceptions=True)
+            if activity_sink is not None:
+                await activity_sink.flush()
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':
@@ -107,6 +111,9 @@ class ConversationService:
             if not isinstance(error, AppError):
                 logger.error('Persistent chat generation failed (%s)', type(error).__name__)
             await run_in_threadpool(self.repository.finish, owner, job, None, message)
+        finally:
+            if activity_sink is not None:
+                await activity_sink.close()
 
     async def close(self):
         tasks = list(self.tasks)

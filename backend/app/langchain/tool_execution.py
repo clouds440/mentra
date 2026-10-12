@@ -1,5 +1,8 @@
 """Bounded read recovery; writes retain domain-owned replay/receipts."""
 import asyncio
+from time import monotonic
+from hashlib import sha256
+from .concurrent_reads import StagedRead
 import json
 import random
 import math
@@ -128,6 +131,7 @@ class ToolExecutor:
             self.scope.pop('_initial_learner_context', None)
 
     async def execute(self, tool, arguments, *, required=False, max_attempts=None, timeout=None):
+        started = monotonic()
         max_attempts = max_attempts or settings.tool_read_max_attempts
         timeout = timeout or settings.tool_read_timeout_seconds
         name = tool.name
@@ -135,6 +139,8 @@ class ToolExecutor:
         if web:
             max_attempts, timeout = 1, 46 if name == 'web_research' else 21
         def project(value):
+            if web and isinstance(value, StagedRead):
+                return StagedRead(value.project, dict(value.payload, reused_within_turn=True))
             if web:
                 from .web_tools import dated_failure
                 return dated_failure(self.scope, value)
@@ -155,6 +161,7 @@ class ToolExecutor:
             receipt = dict(self.outages[domain], repeated_failure=True, task_impact='required_for_part' if required else 'optional')
             remember_failure(self.scope, name, receipt)
             return project(receipt)
+        workflow_logger.event('tool.started', tool_name=name, arguments_fingerprint=sha256(key.encode()).hexdigest()[:16], tool_call_id=current_tool_call.get())
         step = uuid4().hex
         label = LABELS.get(name, 'Processing your request')
         call_id = current_tool_call.get()
@@ -180,20 +187,22 @@ class ToolExecutor:
                     result = await invocation if write else await asyncio.wait_for(invocation, min(timeout, envelope.tool_remaining if envelope else timeout))
                 if write:
                     self.invalidate_written_domain(domain)
-                status, semantic = outcome_status(result)
+                observed = result.payload if isinstance(result, StagedRead) and isinstance(result.payload, dict) else result
+                status, semantic = outcome_status(observed)
                 message = label
                 if status == 'failed':
                     message = 'The assessment is saved, but answer preparation failed.' if isinstance(result, dict) and result.get('assessment_saved') else 'This action could not be completed.'
                     if isinstance(result, dict) and not web:
                         result = dict(result, task_impact='required_for_part' if required else 'optional',
                                       effect_certainty='committed' if result.get('assessment_saved') else 'unknown' if write else 'read_only')
-                    remember_failure(self.scope, name, result if isinstance(result, dict) else {})
-                    self.failed[key] = result
+                        observed = result
+                    remember_failure(self.scope, name, observed if isinstance(observed, dict) else {})
+                    self.failed[key] = observed
                 elif status == 'waiting':
                     message = 'This action needs your review or more information.'
                 await self.publisher.emit(step, status, message, tool_name=name, tool_call_id=call_id,
                                           tool_attempt=attempt, max_attempts=1 if write else max_attempts)
-                workflow_logger.event('tool.result', tool_name=name, outcome=semantic, attempts=attempt)
+                workflow_logger.event('tool.result', tool_name=name, outcome=semantic, attempts=attempt, duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=call_id)
                 if not write:
                     if status != 'failed':
                         self.results[key] = result
@@ -223,7 +232,7 @@ class ToolExecutor:
                     self.outages[domain] = receipt
                 remember_failure(self.scope, name, receipt)
                 workflow_logger.event('tool.failed', level=logging.WARNING, tool_name=name, error_code=receipt['code'], category=receipt['category'],
-                                      attempts=attempt, task_impact=receipt['task_impact'], effect_certainty=receipt['effect_certainty'])
+                                      attempts=attempt, duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=call_id, task_impact=receipt['task_impact'], effect_certainty=receipt['effect_certainty'])
                 await self.publisher.emit(step, 'failed', receipt['reason'], tool_name=name, tool_call_id=call_id,
                     tool_attempt=attempt, max_attempts=1 if write else max_attempts, error_code=receipt['code'])
                 await self.publisher.emit(step + '-recovery', 'degraded', 'Continuing with available information; this action remains unverified.' if receipt['effect_certainty'] == 'unknown' else 'Continuing with available information; missing information will be identified.', tool_name=name)

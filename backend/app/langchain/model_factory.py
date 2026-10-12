@@ -81,11 +81,12 @@ class ModelFactory:
         )
         # Reuse the client's configured transport/timeout/proxy behavior. The
         # pinned adapter exposes its httpx client; only attach a content-free hook.
-        from .provider_activity import observe_request
+        from .provider_activity import observe_request, observe_response
         client = getattr(getattr(model, 'root_async_client', None), '_client', None)
         hooks = getattr(client, 'event_hooks', None)
         if isinstance(hooks, dict) and observe_request not in hooks.get('request', []):
             hooks.setdefault('request', []).append(observe_request)
+            hooks.setdefault('response', []).append(observe_response)
         self._models[key] = model
         return model
 

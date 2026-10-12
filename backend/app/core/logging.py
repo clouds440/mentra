@@ -36,7 +36,7 @@ def configure_logging(process_role='api'):
             old.close()
     handlers = [handler]
     if settings.log_file_enabled:
-        file_handler = DailyFileHandler(settings.log_directory)
+        file_handler = DailyFileHandler(settings.log_directory, queued=True)
         file_handler.addFilter(ContextFilter())
         file_handler.addFilter(ServerErrorFilter())
         file_handler.setLevel(settings.log_level)

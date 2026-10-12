@@ -41,7 +41,10 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
       try {
         await apiEvents(`/api/v1/conversations/${conversationId}/turns/${turnId}/events?attempt=${attempt}&after=${cursor}`, controller.signal, (name, data) => {
           if (controller.signal.aborted) return;
-          if (name === 'terminal' || name === 'unavailable') {
+          if (name === 'terminal') {
+            terminal = true; void chatStore.receiveTerminal(conversationId, turnId!, attempt!, data); return;
+          }
+          if (name === 'unavailable') {
             terminal = true; void chatStore.open(conversationId, false, true); return;
           }
           if (name === 'reset') { terminal = true; void chatStore.open(conversationId, false, true); return; }

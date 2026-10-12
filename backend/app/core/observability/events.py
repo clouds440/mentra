@@ -16,6 +16,9 @@ def emit(event, *, level=logging.INFO, **fields):
         if collector:
             record.update(trace_id=collector.trace_id, workflow_id=collector.workflow_id,
                           workflow=collector.workflow, sequence=collector.next_sequence())
+            operation = span.get()
+            if operation:
+                record.update(span_id=operation['span_id'], parent_span_id=operation.get('parent_span_id'))
             for key in ('request_id', 'origin_request_id', 'origin_workflow_id', 'origin_span_id'):
                 value = getattr(collector, key)
                 if value:

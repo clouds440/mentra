@@ -2,8 +2,9 @@
 import json
 from datetime import timedelta
 from hashlib import sha256
-from starlette.concurrency import run_in_threadpool
+from app.core.observability.timing import run_in_threadpool
 from app.core.exceptions import AppError
+from app.langchain.concurrent_reads import project_read, gather_reads
 from .repositories.postgres import fingerprint, now
 
 
@@ -21,12 +22,20 @@ class HistoryManagement:
         self.freshness_days = freshness_days or dict(goal=30, fact=180, preference=365)
 
     async def lookup(self, owner, scope, body, budget):
-        windows = await run_in_threadpool(self.reader.lookup, owner, scope['conversation_id'], scope['user_sequence'], body, scope['visible_ids'])
+        windows = await run_in_threadpool(self.reader.lookup, owner, scope['conversation_id'], scope['user_sequence'], body, list(scope['visible_ids']))
+        return project_read(lambda value: self._lookup_result(scope, value), windows)
+
+    @staticmethod
+    def _lookup_result(scope, windows):
         result = []
         remaining = 1500
         for window in windows:
             messages = []
             for message in window['messages']:
+                # Concurrent searches can overlap the same window. Earlier
+                # results already supplied these messages and their provenance.
+                if message['id'] in scope['visible_ids']:
+                    continue
                 if remaining < 100:
                     break
                 content = message['content'][:min(500, remaining)]
@@ -48,30 +57,12 @@ class HistoryManagement:
 
     async def memory(self, owner, scope, body, budget):
         if body.action == 'recall':
-            page = await run_in_threadpool(self.repository.list, owner, body.query, 'active', None, 5, True)
-            items, remaining = [], 750
-            for item in page['items']:
-                if len(item['content']) > remaining:
-                    break
-                remaining -= len(item['content'])
-                reference = next((x for x in scope['memory_references'] if x['memory_id'] == item['id'] and x['revision'] == item['revision']), None)
-                token = reference['token'] if reference else 'M' + str(len(scope['memory_references']) + 1)
-                if not reference:
-                    scope['memory_references'].append(dict(token=token, memory_id=item['id'], revision=item['revision']))
-                items.append(dict(token=token, id=item['id'], content=item['content'], revision=item['revision'],
-                    confirmed_at=item['confirmed_at'], expires_at=item['expires_at'], origin=item['origin']))
-            profile_values = {}
+            reads = [lambda: run_in_threadpool(self.repository.list, owner, body.query, 'active', None, 5, True)]
             if self.profile is not None:
-                profile = await run_in_threadpool(self.profile.get, owner)
-                if profile.details:
-                    words = set(body.query.casefold().split())
-                    for key, value in profile.details.model_dump(mode='json').items():
-                        text = f'{key.replace("_", " ")} {value}'.casefold()
-                        if words.intersection(text.split()):
-                            profile_values[key] = str(value)[:100]
-                        if len(profile_values) >= 5:
-                            break
-            return dict(memories=items, current_profile=profile_values, profile_note='Current profile fields are authoritative and are not copied into saved memories.')
+                reads.append(lambda: run_in_threadpool(self.profile.get, owner))
+            values = await gather_reads(reads, limit=2)
+            page, profile = values[0], values[1] if len(values) > 1 else None
+            return project_read(lambda value: self._recall_result(scope, body, *value), (page, profile))
         identifier = str(body.evidence_message_id)
         if identifier not in scope['evidence_ids']:
             return dict(outcome='rejected', reason='Evidence was not visible to this tool session.')
@@ -110,6 +101,32 @@ class HistoryManagement:
             expires_at=expiry, evidence=dict(conversation_id=row['conversation_id'], message_id=row['id'],
                 quote=body.evidence_quote, source_date=row['created_at'], source_deleted=False, explicit_consent=decision['explicit_consent']))
         return self._write_result(scope, result)
+
+
+    @staticmethod
+    def _recall_result(scope, body, page, profile):
+        items, remaining = [], 750
+        for item in page['items']:
+            if len(item['content']) > remaining:
+                break
+            remaining -= len(item['content'])
+            reference = next((x for x in scope['memory_references'] if x['memory_id'] == item['id'] and x['revision'] == item['revision']), None)
+            token = reference['token'] if reference else 'M' + str(len(scope['memory_references']) + 1)
+            if not reference:
+                scope['memory_references'].append(dict(token=token, memory_id=item['id'], revision=item['revision']))
+            items.append(dict(token=token, id=item['id'], content=item['content'], revision=item['revision'],
+                confirmed_at=item['confirmed_at'], expires_at=item['expires_at'], origin=item['origin']))
+        profile_values = {}
+        if profile is not None:
+            if profile.details:
+                words = set(body.query.casefold().split())
+                for key, value in profile.details.model_dump(mode='json').items():
+                    text = f'{key.replace("_", " ")} {value}'.casefold()
+                    if words.intersection(text.split()):
+                        profile_values[key] = str(value)[:100]
+                    if len(profile_values) >= 5:
+                        break
+        return dict(memories=items, current_profile=profile_values, profile_note='Current profile fields are authoritative and are not copied into saved memories.')
 
     @staticmethod
     def _write_result(scope, result):
