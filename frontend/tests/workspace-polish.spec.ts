@@ -148,6 +148,37 @@ test('reduced motion shows the completed answer immediately', async ({page}) => 
   expect(await final.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
+test('global scrollbars are thin, transparent and arrowless in both themes', async ({page}) => {
+  const state = await workspace(page);
+  state.complete('```python\n' + 'print("hello")\n'.repeat(100) + '```');
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByRole('log')).toBeVisible({timeout:15_000});
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const styles = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Conversation"], .code-scroll')].map(el => ({
+      standardWidth:getComputedStyle(el).scrollbarWidth,
+      standardColor:getComputedStyle(el).scrollbarColor,
+      width:getComputedStyle(el,'::-webkit-scrollbar').width,
+      height:getComputedStyle(el,'::-webkit-scrollbar').height,
+      arrows:getComputedStyle(el,'::-webkit-scrollbar-button').display,
+      arrowHeight:getComputedStyle(el,'::-webkit-scrollbar-button').height,
+      track:getComputedStyle(el,'::-webkit-scrollbar-track').backgroundColor,
+      corner:getComputedStyle(el,'::-webkit-scrollbar-corner').backgroundColor,
+      thumb:getComputedStyle(el,'::-webkit-scrollbar-thumb').backgroundColor,
+      clip:getComputedStyle(el,'::-webkit-scrollbar-thumb').backgroundClip,
+    })));
+    expect(styles).toHaveLength(2);
+    for (const style of styles) {
+      expect(style.standardWidth).toBe('auto'); expect(style.standardColor).toBe('auto');
+      expect(style.width).toBe('6px'); expect(style.height).toBe('6px');
+      expect(style.arrows).toBe('none'); expect(style.arrowHeight).toBe('0px');
+      expect(style.track).toBe('rgba(0, 0, 0, 0)'); expect(style.corner).toBe('rgba(0, 0, 0, 0)');
+      expect(style.thumb).toBe(theme === 'light' ? 'rgb(203, 213, 225)' : 'rgb(51, 65, 85)');
+      expect(style.clip).toBe('padding-box');
+    }
+  }
+});
+
 test('full width titles reveal overlay controls and history opens at the bottom', async ({page}) => {
   await workspace(page, false, true);
   await page.goto('/chat/polish-chat');

@@ -94,8 +94,6 @@ html[data-theme-ready] aside {
 @layer base {
   :root {
     color-scheme: light;
-    scrollbar-color: rgb(var(--scrollbar)) rgb(var(--surface));
-    scrollbar-width: thin;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', sans-serif;
     font-synthesis: none;
@@ -123,9 +121,24 @@ html[data-theme-ready] aside {
     font: inherit;
   }
 
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--scrollbar)) transparent;
+  }
+
+  /* Non-auto standard properties override the WebKit pseudo-elements in
+     Chromium. Use one styling mechanism per engine, including nested panes. */
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+  }
+
   *::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
+    background: transparent;
   }
 
   *::-webkit-scrollbar-track {
@@ -139,18 +152,18 @@ html[data-theme-ready] aside {
   }
 
   *::-webkit-scrollbar-thumb {
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     background-clip: padding-box;
     border-radius: 999px;
-    background: rgb(var(--scrollbar));
+    background-color: rgb(var(--scrollbar));
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--scrollbar-hover));
+    background-color: rgb(var(--scrollbar-hover));
   }
 
   *::-webkit-scrollbar-corner {
-    background: rgb(var(--surface));
+    background: transparent;
   }
 }
 
@@ -321,7 +334,7 @@ html[data-theme-ready] aside {
 .code-actions { flex-shrink: 0; gap: 2px; }
 .code-actions .code-action { min-height: 36px; padding: 0 9px; border-radius: 8px; color: rgb(var(--muted)); font-size: 11px; }
 .code-actions .code-action[aria-pressed='true'] { background: rgb(var(--active)); color: rgb(var(--accent)); }
-.code-scroll { max-height: 560px; overflow: auto; overscroll-behavior-x: contain; overscroll-behavior-y: auto; scrollbar-width: thin; }
+.code-scroll { max-height: 560px; overflow: auto; overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
 .code-scroll:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: -2px; }
 .code-layout { display: flex; align-items: stretch; min-width: 100%; width: max-content; padding: 18px 20px 18px 0; }
 .code-block .code-pre, .code-gutter {
