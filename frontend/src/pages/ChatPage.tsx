@@ -67,6 +67,8 @@ export function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prependRef = useRef<number | null>(null);
   const bottomRef = useRef(true);
+  const knownMessages = useRef<{ id: string; sequence: number | null }>({ id, sequence: null });
+  const [revealing, setRevealing] = useState<Set<string>>(new Set());
   // Image/Markdown resizing can emit scroll events without user scrolling.
   // Only actual scroll gestures should turn off following the latest message.
   const userScrollUntil = useRef(0);
@@ -89,7 +91,22 @@ export function ChatPage() {
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current; if (!container) return;
+    if (knownMessages.current.id !== id) {
+      knownMessages.current = { id, sequence: null }; setRevealing(new Set());
+    }
+    const previous = knownMessages.current.sequence;
+    const answers = previous === null || view.loading ? [] : view.messages.filter(message => message.role === 'assistant' && message.sequence > previous);
+    if (!view.loading) knownMessages.current.sequence = Math.max(previous ?? 0, ...view.messages.map(message => message.sequence));
+    if (answers.length) setRevealing(current => new Set([...current, ...answers.map(message => message.id)]));
     if (prependRef.current !== null) { container.scrollTop += container.scrollHeight - prependRef.current; prependRef.current = null; }
+    else if (bottomRef.current && answers.length) {
+      const answer = container.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(answers[0].id)}"]`);
+      if (answer) {
+        // Start a fresh answer at its top, without moving the document/header.
+        container.scrollTop += answer.getBoundingClientRect().top - container.getBoundingClientRect().top - 24;
+        bottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      }
+    }
     else if (bottomRef.current) container.scrollTop = container.scrollHeight;
   }, [id, view.messages, view.busy, view.loading]);
 
@@ -132,23 +149,23 @@ export function ChatPage() {
   }
 
   return (
-    <section aria-label="Chat workspace" className="flex h-full min-h-0 flex-col">
+    <section aria-label="Chat workspace" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
-      ) : view.messages.length === 0 ? <ChatEmptyState onChooseSuggestion={setDraft} /> : (
-        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto px-4 py-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6"
+      ) : view.messages.length === 0 ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState onChooseSuggestion={setDraft} /></div> : (
+        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6"
           ref={scrollContainerRef} role="log" aria-live="polite" tabIndex={0}
           onWheel={() => { userScrollUntil.current = performance.now() + 1500; }}
           onTouchMove={() => { userScrollUntil.current = performance.now() + 1500; }}
           onPointerDown={event => { if (event.target === event.currentTarget) userScrollUntil.current = performance.now() + 1500; }}
           onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) userScrollUntil.current = performance.now() + 1500; }}
           onScroll={() => { const el = scrollContainerRef.current; if (el && performance.now() < userScrollUntil.current) bottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-6">
+          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 pb-6">
             {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { prependRef.current = scrollContainerRef.current?.scrollHeight ?? null; bottomRef.current = false; void chatStore.older(id); }}>
               {view.loading ? <Spinner className="h-4 w-4" /> : 'Load earlier messages'}
             </button>}
-            {view.messages.map(message => <ChatMessage key={message.id} message={message} />)}
+            {view.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
             {view.busy && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
             {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { bottomRef.current = true; void chatStore.open(id, true); }}>Back to latest messages</button>}
@@ -156,7 +173,7 @@ export function ChatPage() {
         </div>
       )}
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-[52rem]">
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
             {view.unsent && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}

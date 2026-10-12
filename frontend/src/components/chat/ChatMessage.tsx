@@ -47,9 +47,10 @@ function citationPlugin(tokens: string[], content: string) {
 
 interface ChatMessageProps {
   message: ChatMessageData;
+  reveal?: boolean;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
   const [source, setSource] = useState<SourceReference>();
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
@@ -68,8 +69,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   return (
     <article
+      data-message-id={message.id}
       aria-label={isAssistant ? 'Mentra response' : 'Your message'}
-      className={isAssistant ? 'flex gap-3.5' : 'flex justify-end'}
+      className={isAssistant ? `flex gap-3.5${reveal ? ' chat-response-reveal' : ''}` : 'flex justify-end'}
     >
       {isAssistant && (
         <div

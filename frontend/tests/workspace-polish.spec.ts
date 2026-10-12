@@ -1,18 +1,23 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const title = 'A long conversation about understanding motion and forces';
-async function workspace(page: Page, running = false, populated = false) {
+async function workspace(page: Page, running = false, populated = false, stream = '') {
   const selection = {mode:'STANDARD', context_ids:[], document_ids:[], include_archived:false};
   const conversation = {id:'polish-chat', title, revision:2, message_count:40, selection, created_at:'2026-10-11T00:00:00Z', updated_at:'2026-10-11T00:00:00Z', deleted_at:null};
   const file = {id:'image-file', filename:'study.png', size_bytes:1024};
-  const items = Array.from({length:40}, (_, i) => ({id:`message-${i}`, conversation_id:conversation.id, sequence:i+1, role:i % 2 ? 'assistant' : 'user', content:`${i === 39 ? 'Latest answer' : 'Earlier question and explanation'} ${'Learning takes practice. '.repeat(20)}`, created_at:conversation.created_at, ...(i === 38 ? {attachments:[file]} : {})}));
+  const items: Record<string, unknown>[] = Array.from({length:40}, (_, i) => ({id:`message-${i}`, conversation_id:conversation.id, sequence:i+1, role:i % 2 ? 'assistant' : 'user', content:`${i === 39 ? 'Latest answer' : 'Earlier question and explanation'} ${'Learning takes practice. '.repeat(20)}`, created_at:conversation.created_at, ...(i === 38 ? {attachments:[file]} : {})}));
   let state = running ? 'RUNNING' : 'SUCCEEDED';
   const snapshot = () => ({conversation, items, has_more:false, next_cursor:null, turn:{id:'polish-turn', state, attempt:1, user_sequence:39, selection, error:state === 'FAILED' ? 'Response stopped.' : null}});
   const context = {context_id:'context-1', name:'A broader learning context with a longer descriptive name', status:'ACTIVE'};
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/source')) return route.fulfill({contentType:'image/png', body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6YZsAAAAASUVORK5CYII=', 'base64')});
-    if (path.includes('/turns/') && path.endsWith('/events')) return route.fulfill({contentType:'text/event-stream', body:'event: activity\ndata: '+JSON.stringify({schema_version:1, conversation_id:conversation.id, turn_id:'polish-turn', attempt:1, sequence:1, step_id:'planning', status:'running', tool_name:null, user_message:'Planning your request'})+'\n\n'});
+    if (path.includes('/turns/') && path.endsWith('/events')) {
+      const after = Number(new URL(route.request().url()).searchParams.get('after') ?? 0);
+      const chunks = stream.match(/[\s\S]{1,1500}/g) ?? [''];
+      const events = chunks.map((chunk, index) => ({schema_version:1, conversation_id:conversation.id, turn_id:'polish-turn', attempt:1, sequence:index+1, step_id:stream ? 'response-stream' : 'planning', status:'running', tool_name:null, user_message:stream ? 'Writing your response' : 'Planning your request', ...(chunk ? {token_delta:chunk} : {})}));
+      return route.fulfill({contentType:'text/event-stream', body:events.filter(event => event.sequence > after).map(event => 'event: activity\ndata: '+JSON.stringify(event)+'\n\n').join('')});
+    }
     let body: unknown = [];
     if (path.endsWith('/auth/me')) body = {learner_id:'polish-user', username:'learner', user_id:null, provider:null};
     else if (path.endsWith('/student-profile')) body = {learner_id:'polish-user', details:{education_level:'college', field_of_study:'Physics', learning_goal:'Understand motion', learning_preference:'balanced', explanation_depth:'standard'}, estimates:Object.fromEntries(['overall_proficiency','reasoning','quantitative','comprehension','domain_familiarity'].map(key => [key,{value:null, confidence:0, evidence_count:0}])), onboarding_phase:'complete', calibration_status:'skipped', evaluation_status:'not_started', version:1, context_version:1};
@@ -32,7 +37,116 @@ async function workspace(page: Page, running = false, populated = false) {
     else if (path.endsWith('/rag/capabilities')) body = {uploads_enabled:true, max_upload_bytes:1000000, formats:['pdf']};
     await route.fulfill({json:body});
   });
+  return {
+    complete(content: string) {
+      state = 'SUCCEEDED'; conversation.revision++; conversation.message_count++;
+      items.push({id:'formatted-answer', conversation_id:conversation.id, sequence:41, role:'assistant', content, created_at:conversation.created_at,
+        interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]});
+    },
+  };
 }
+
+for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390,height:844}, {width:390,height:420}]) {
+  test(`formatted answer reveals as a unit and scrolls only inside chat at ${size.width}x${size.height}`, async ({page}, info) => {
+    await page.setViewportSize(size);
+    const markdown = '## Formatted answer\n\nThis is **important** and uses `inline code`.\n\n- First example\n- Second example\n\n```python\nprint("Hello")\n```\n\n' + 'A readable explanation. '.repeat(150);
+    const state = await workspace(page, true, false, markdown);
+    await page.goto('/chat/polish-chat');
+    const preview = page.getByLabel('Response in progress');
+    await expect(page.getByLabel('Current activity')).toBeVisible({timeout:15_000});
+    await expect(preview).toHaveCount(0);
+    await expect(page.getByRole('heading', {name:'Formatted answer'})).toHaveCount(0);
+    const geometry = async () => page.evaluate(() => ({
+      documentHeight:document.documentElement.scrollHeight, viewport:innerHeight, windowScroll:scrollY,
+      headerTop:document.querySelector('header')!.getBoundingClientRect().top,
+      headerHeight:document.querySelector('header')!.getBoundingClientRect().height,
+      chatHeight:document.querySelector('[aria-label="Conversation"]')!.clientHeight,
+      chatContent:document.querySelector('[aria-label="Conversation"]')!.scrollHeight,
+      composerBottom:document.querySelector('[aria-label="Message Mentra"]')!.getBoundingClientRect().bottom,
+    }));
+    const during = await geometry();
+    expect(during.documentHeight).toBeLessThanOrEqual(during.viewport + 1);
+    expect(during.headerTop).toBe(0); expect(during.headerHeight).toBe(48);
+    expect(during.chatContent).toBeGreaterThan(during.chatHeight);
+    expect(during.composerBottom).toBeLessThanOrEqual(during.viewport);
+    const chat = page.getByRole('log');
+    await chat.hover(); await page.mouse.wheel(0, 2000);
+    await expect.poll(async () => (await geometry()).windowScroll).toBe(0);
+    if (size.width === 1280) {
+      const width = await chat.locator(':scope > div').evaluate(el => el.getBoundingClientRect().width);
+      expect(width).toBe(832);
+      const composerWidth = await page.getByRole('form', {name:'Message Mentra'}).evaluate(el => el.getBoundingClientRect().width);
+      expect(composerWidth).toBe(width);
+    }
+    state.complete(markdown);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(preview).toHaveCount(0);
+    const final = page.getByRole('article', {name:'Mentra response'}).last();
+    await expect(final.getByRole('heading', {name:'Formatted answer'})).toBeVisible();
+    await expect(final.locator('strong')).toHaveText('important');
+    await expect(final.getByRole('button', {name:'Copy code'})).toBeVisible();
+    await expect(final.getByLabel('Interactive question')).toBeVisible();
+    await expect(final).toHaveClass(/chat-response-reveal/);
+    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('1s');
+    await expect.poll(() => final.evaluate(el => getComputedStyle(el).clipPath), {timeout:1500, intervals:[50]}).toBe('none');
+    const heading = await final.getByRole('heading', {name:'Formatted answer'}).boundingBox();
+    const chatBounds = await chat.boundingBox();
+    expect(heading!.y).toBeGreaterThanOrEqual(chatBounds!.y);
+    expect(heading!.y).toBeLessThan(chatBounds!.y + chatBounds!.height);
+    await chat.hover(); await page.mouse.wheel(0, 4000);
+    const after = await geometry();
+    expect(after.documentHeight).toBeLessThanOrEqual(after.viewport + 1);
+    expect(after.headerTop).toBe(0); expect(after.windowScroll).toBe(0);
+    expect(after.composerBottom).toBeLessThanOrEqual(after.viewport);
+    await page.screenshot({path:info.outputPath('chat-scroll-and-rendering.png'), animations:'disabled'});
+  });
+}
+
+for (const long of [false, true]) test(`code wheel scroll chains to chat at boundaries (${long ? 'long' : 'short'} block)`, async ({page}) => {
+  await page.setViewportSize({width:1280,height:900});
+  const codeText = long ? Array.from({length:180}, (_, i) => `print(${i})`).join('\n') : 'print("Hello")';
+  const state = await workspace(page);
+  state.complete('## Code example\n\n```python\n' + codeText + '\n```\n\n' + 'More explanation after the code. '.repeat(250));
+  await page.goto('/chat/polish-chat');
+  const final = page.getByRole('article', {name:'Mentra response'}).last();
+  const code = final.getByRole('region', {name:'Python'});
+  const chat = page.getByRole('log');
+  await expect(code).toBeVisible({timeout:15_000});
+  await expect(final).not.toHaveClass(/chat-response-reveal/); // Restored history stays still.
+  await code.evaluate(el => el.scrollIntoView({block:'center'}));
+  await code.hover();
+  if (long) {
+    const chatBefore = await chat.evaluate(el => el.scrollTop);
+    await code.evaluate(el => { el.scrollTop = 0; });
+    await page.mouse.wheel(0, 150);
+    await expect.poll(() => code.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect(await chat.evaluate(el => el.scrollTop)).toBe(chatBefore);
+    await code.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  } else {
+    expect(await code.evaluate(el => el.scrollHeight <= el.clientHeight)).toBe(true);
+  }
+  const before = await chat.evaluate(el => el.scrollTop);
+  await page.mouse.wheel(0, 250);
+  await expect.poll(() => chat.evaluate(el => el.scrollTop)).toBeGreaterThan(before);
+  await code.evaluate(el => { el.scrollTop = 0; });
+  await code.hover();
+  const beforeUp = await chat.evaluate(el => el.scrollTop);
+  await page.mouse.wheel(0, -250);
+  await expect.poll(() => chat.evaluate(el => el.scrollTop)).toBeLessThan(beforeUp);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});
+
+test('reduced motion shows the completed answer immediately', async ({page}) => {
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const state = await workspace(page, true, false, 'A buffered answer.');
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByLabel('Current activity')).toBeVisible({timeout:15_000});
+  state.complete('## Ready immediately\n\nThe answer is formatted.');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const final = page.getByRole('article', {name:'Mentra response'}).last();
+  await expect(final.getByRole('heading', {name:'Ready immediately'})).toBeVisible();
+  expect(await final.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+});
 
 test('full width titles reveal overlay controls and history opens at the bottom', async ({page}) => {
   await workspace(page, false, true);

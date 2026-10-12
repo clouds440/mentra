@@ -20,7 +20,7 @@ interface ChatEmptyStateProps {
 
 export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-4 pb-10 text-center">
+    <section className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-4 pb-10 text-center">
       <div
         aria-hidden="true"
         className="mb-6 grid h-12 w-12 place-items-center"

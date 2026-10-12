@@ -32,16 +32,16 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex h-dvh min-h-[30rem] overflow-hidden bg-background text-foreground">
+    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground">
       <AppSidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         onNewChat={startNewChat}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-12 shrink-0 items-center border-b border-border px-4 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               aria-label="Open navigation menu"
               className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
@@ -63,11 +63,11 @@ export function AppLayout() {
                 <PanelLeftClose aria-hidden="true" size={18} />
               )}
             </button>
-            <span className="text-sm font-medium text-heading">{title}</span>
+            <span className="truncate text-sm font-medium text-heading">{title}</span>
           </div>
           <NotificationBell />
         </header>
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <Outlet context={{ newChatKey, setChatTitle }} />
         </main>
       </div>

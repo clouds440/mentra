@@ -32,10 +32,8 @@ function valid(value: unknown): value is Activity {
 
 export function ChatActivity({ conversationId, turnId, attempt }: { conversationId: string; turnId?: string; attempt?: number }) {
   const [current, setCurrent] = useState<Activity>();
-  const [preview, setPreview] = useState('');
   useEffect(() => {
     setCurrent(undefined);
-    setPreview('');
     if (!turnId || !attempt) return;
     const controller = new AbortController();
     let cursor = 0, timer: ReturnType<typeof setTimeout> | undefined, terminal = false;
@@ -50,8 +48,8 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
           if (name !== 'activity' || !valid(data) || data.conversation_id !== conversationId
               || data.turn_id !== turnId || data.attempt !== attempt || data.sequence <= cursor) return;
           cursor = data.sequence;
-          if (data.token_reset) setPreview('');
-          else if (data.token_delta) setPreview(previous => (previous + data.token_delta).slice(0, 60_000));
+          // Keep activity live; publish answer content only after the canonical
+          // message and its interactive cards are ready to reveal together.
           setCurrent(previous => ({ ...data, websites: data.websites?.length ? data.websites
             : data.status === 'completed' && data.tool_name === 'web_search' && previous?.tool_name === 'web_search' ? previous.websites : [] }));
         });
@@ -68,6 +66,5 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
   return <div aria-label="Current activity">
     <ThinkingIndicator label={activityLabel(current)} />
     {current && <div className="ml-11">{sites(current)}</div>}
-    {preview && <p aria-label="Response in progress" aria-busy="true" className="ml-11 mt-3 whitespace-pre-wrap text-sm text-body">{preview}</p>}
   </div>;
 }

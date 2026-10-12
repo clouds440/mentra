@@ -321,7 +321,7 @@ html[data-theme-ready] aside {
 .code-actions { flex-shrink: 0; gap: 2px; }
 .code-actions .code-action { min-height: 36px; padding: 0 9px; border-radius: 8px; color: rgb(var(--muted)); font-size: 11px; }
 .code-actions .code-action[aria-pressed='true'] { background: rgb(var(--active)); color: rgb(var(--accent)); }
-.code-scroll { max-height: 560px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.code-scroll { max-height: 560px; overflow: auto; overscroll-behavior-x: contain; overscroll-behavior-y: auto; scrollbar-width: thin; }
 .code-scroll:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: -2px; }
 .code-layout { display: flex; align-items: stretch; min-width: 100%; width: max-content; padding: 18px 20px 18px 0; }
 .code-block .code-pre, .code-gutter {
@@ -437,4 +437,14 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); bac
   0% { background-position: 100% 0; opacity: 0; }
   15%, 85% { opacity: .65; }
   100% { background-position: 0% 0; opacity: 0; }
+}
+
+/* Reveal the already-rendered message as a unit, including code and cards.
+   clip-path changes paint only, so scrolling and layout stay stable. */
+@media (prefers-reduced-motion: no-preference) {
+  .chat-response-reveal { animation: chat-response-reveal 1s ease-out; }
+}
+@keyframes chat-response-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
 }
