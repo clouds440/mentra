@@ -252,7 +252,7 @@ test('full width titles reveal overlay controls and history opens at the bottom'
   await expect(page.getByLabel('Attachment study.png').getByRole('img')).toBeVisible();
   await page.reload();
   await expect.poll(() => page.getByRole('log').evaluate(el => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(3);
-  await expect(page.getByLabel('Attachment study.png')).toContainText('Saved in this chat');
+  await expect(page.getByLabel('Attachment study.png').getByRole('button', {name:'Open study.png',exact:true})).toBeVisible();
   await page.getByRole('link', {name:'Library', exact:true}).click();
   await nav.click();
   await expect.poll(() => page.getByRole('log').evaluate(el => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(3);

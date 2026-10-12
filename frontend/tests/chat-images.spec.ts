@@ -1,7 +1,86 @@
 import { test, expect, type Page } from '@playwright/test';
+import { chooseOption } from './select-helpers';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6YZsAAAAASUVORK5CYII=', 'base64');
 const image = (number: number) => ({ name: `image-${number}.png`, mimeType: 'image/png', buffer: png });
+
+for (const width of [1280,390]) test(`saved portrait preview fits above text and opens a downloadable overlay at ${width}`, async ({page}, info) => {
+  await page.setViewportSize({width,height:900});
+  const encoded = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width=720; canvas.height=1920;
+    const context=canvas.getContext('2d')!; context.fillStyle='#5b86c4'; context.fillRect(0,0,720,1920);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const portrait = Buffer.from(encoded,'base64');
+  const state = await setup(page,false,{filename:'portrait.png',body:portrait,transientMetadata:true});
+  await page.getByLabel('Upload chat files').setInputFiles({name:'portrait.png',mimeType:'image/png',buffer:portrait});
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Explain the image.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  const message = page.getByRole('article',{name:'Your message'});
+  const card = message.getByLabel('Attachment portrait.png');
+  const image = card.getByRole('img');
+  await expect(image).toBeVisible();
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  await expect(card).not.toContainText(/Reading|processing|Ready to discuss|portrait\.png/);
+  await expect(card.getByRole('button',{name:'Download portrait.png'})).toHaveCount(0);
+  const add = card.getByRole('button',{name:'Add to Library',exact:true});
+  await expect(add).toBeEnabled({timeout:10_000});
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  const sizes = await image.evaluate(element => {
+    const image=element.getBoundingClientRect(), preview=element.parentElement!.getBoundingClientRect();
+    return {width:image.width,height:image.height,frameWidth:preview.width,frameHeight:preview.height};
+  });
+  expect(sizes.width/sizes.height).toBeCloseTo(720/1920,2);
+  expect(sizes.frameWidth).toBeCloseTo(sizes.width,1); expect(sizes.frameHeight).toBeCloseTo(sizes.height,1);
+  const bubble = message.locator('.bg-message');
+  await expect(bubble.getByLabel('Attachment portrait.png')).toHaveCount(0);
+  expect((await card.boundingBox())!.y+(await card.boundingBox())!.height).toBeLessThanOrEqual((await bubble.boundingBox())!.y);
+  expect(await add.evaluate(element => ({border:getComputedStyle(element).borderTopWidth,background:getComputedStyle(element).backgroundColor}))).toMatchObject({border:'1px'});
+  const open=card.getByRole('button',{name:'Open portrait.png',exact:true});
+  const previewReads = state.sourceReads();
+  await message.scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath('saved-attachment.png')});
+  await open.click();
+  const dialog=page.getByRole('dialog',{name:'Preview portrait.png',exact:true});
+  await expect(dialog.getByRole('img')).toBeVisible();
+  expect(state.sourceReads()).toBe(previewReads);
+  const downloaded=page.waitForEvent('download');
+  await dialog.getByRole('button',{name:'Download portrait.png',exact:true}).click();
+  expect((await downloaded).suggestedFilename()).toBe('portrait.png');
+  await page.screenshot({path:info.outputPath('attachment-overlay.png')});
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0); await expect(open).toBeFocused();
+  await open.click(); await dialog.getByRole('button',{name:'Close file preview'}).click();
+  await expect(dialog).toHaveCount(0); expect(state.sourceReads()).toBe(previewReads);
+  await add.click();
+  await expect(card.getByLabel('Learning context for portrait.png',{exact:true})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await chooseOption(card.getByLabel('Learning context for portrait.png',{exact:true}),'context-1');
+  await card.getByRole('button',{name:'Add extracted content',exact:true}).click();
+  await expect(card.getByRole('link',{name:'View in Library',exact:true})).toBeVisible();
+  await page.reload();
+  await expect(card.getByRole('link',{name:'View in Library',exact:true})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});
+
+test('document preview reports explicit open errors and retries without leaking background errors', async ({page}) => {
+  const state=await setup(page,false,{filename:'notes.txt',media:'text/plain',body:Buffer.from('Study notes\n<script>window.untrusted=true</script>'),sourceUnavailable:true});
+  await page.getByLabel('Upload chat files').setInputFiles({name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('Study notes')});
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  const card=page.getByLabel('Attachment notes.txt');
+  await expect(card).toContainText('TXT document');
+  await expect(card).not.toContainText('notes.txt');
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  await card.getByRole('button',{name:'Open notes.txt',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Preview notes.txt'});
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  state.allowSource();
+  await dialog.getByRole('button',{name:'Try again',exact:true}).click();
+  await expect(dialog.getByText('Study notes',{exact:false})).toContainText('<script>window.untrusted=true</script>');
+  expect(await page.evaluate(() => (window as unknown as {untrusted?:boolean}).untrusted)).toBeUndefined();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+});
 
 async function pasteFiles(page: Page, files: { name: string; mimeType: string; buffer: Buffer }[], itemsOnly = false) {
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).evaluate((input, payload) => {
@@ -12,17 +91,22 @@ async function pasteFiles(page: Page, files: { name: string; mimeType: string; b
   }, { files: files.map(file => ({ name: file.name, mimeType: file.mimeType, data: file.buffer.toString('base64') })), itemsOnly });
 }
 
-async function setup(page: Page, failSecondUpload = false) {
+async function setup(page: Page, failSecondUpload = false, preview?: {filename?: string; body?: Buffer; media?: string; transientMetadata?: boolean; sourceUnavailable?: boolean}) {
   const conversation = { id: 'image-chat', title: 'Image discussion', revision: 1, message_count: 0,
     selection: { mode: 'STANDARD' }, created_at: '2026-10-12T00:00:00Z', updated_at: '2026-10-12T00:00:00Z', deleted_at: null };
   const files: { id: string; filename: string; size_bytes: number }[] = [];
   const items: Record<string, unknown>[] = [];
   const sent: Record<string, unknown>[] = [];
-  let uploads = 0, rejected = false;
+  let uploads = 0, rejected = false, metadataReads = 0, sourceReads = 0, sourceUnavailable = preview?.sourceUnavailable ?? false;
+  const admitted = new Set<string>();
   const snapshot = () => ({ conversation, items, has_more: false, next_cursor: null, turn: null });
   await page.route('**/api/v1/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
-    if (path.endsWith('/source')) return route.fulfill({ contentType: 'image/png', body: png });
+    if (path.endsWith('/source')) {
+      sourceReads++;
+      if (sourceUnavailable) return route.fulfill({status:404,json:{error:{code:'NOT_FOUND',message:'File unavailable.'}}});
+      return route.fulfill({ contentType: preview?.media ?? 'image/png', body: preview?.body ?? png });
+    }
     let body: unknown = [];
     if (path.endsWith('/auth/me')) body = { learner_id: 'image-user', username: 'learner', user_id: null, provider: null };
     else if (path.endsWith('/student-profile')) body = { learner_id: 'image-user', details: { education_level: 'college', field_of_study: 'Physics', learning_goal: 'Understand motion', learning_preference: 'balanced', explanation_depth: 'standard' },
@@ -36,7 +120,7 @@ async function setup(page: Page, failSecondUpload = false) {
         rejected = true;
         return route.fulfill({ status: 503, json: { error: { code: 'UPLOAD_FAILED', message: 'Try this upload again.' } } });
       }
-      const file = { id: `file-${files.length + 1}`, filename: `image-${files.length + 1}.png`, size_bytes: png.length };
+      const file = { id: `file-${files.length + 1}`, filename: preview?.filename ?? `image-${files.length + 1}.png`, size_bytes: (preview?.body ?? png).length };
       files.push(file); body = file;
     } else if (path.endsWith('/conversations/turns')) {
       const payload = request.postDataJSON(); sent.push(payload);
@@ -44,14 +128,22 @@ async function setup(page: Page, failSecondUpload = false) {
         attachments: files.filter(file => payload.attachment_ids.includes(file.id)), created_at: conversation.created_at });
       items.push({ id: `reply-${sent.length}`, conversation_id: conversation.id, sequence: items.length + 1, role: 'assistant', content: 'Here is the image comparison.', created_at: conversation.created_at });
       conversation.revision++; conversation.message_count = items.length; body = snapshot();
-    } else if (path.includes('/chat-attachments/')) body = { ...files.find(file => path.includes(file.id)), ready: true, warnings: [], error: null, library_result: null };
+    } else if (path.endsWith('/library') && request.method() === 'POST') {
+      const id = files.find(file => path.includes(file.id))!.id; admitted.add(id);
+      body = {document_id:'saved-document',generation_id:'generation-1',job_id:'job-1',duplicate:false};
+    } else if (path.includes('/chat-attachments/')) {
+      metadataReads++;
+      if (preview?.transientMetadata && metadataReads === 1) return route.fulfill({status:404,json:{error:{code:'NOT_FOUND',message:'This file is no longer available.'}}});
+      const file = files.find(file => path.includes(file.id));
+      body = { ...file, ready: !preview?.transientMetadata || metadataReads > 2, warnings: [], error: null, library_result: admitted.has(file!.id) ? {document_id:'saved-document',generation_id:'generation-1',job_id:'job-1',duplicate:false} : null };
+    } else if (path.endsWith('/learning-contexts')) body = [{context_id:'context-1',name:'Biology',status:'ACTIVE'}];
     else if (path.endsWith('/notifications/unread-count')) body = { count: 0 };
     else if (path.endsWith('/assessments/preferences')) body = { auto_add: false, revision: 1 };
     await route.fulfill({ json: body });
   });
   await page.goto('/chat/image-chat');
   await expect(page.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEnabled({ timeout: 15_000 });
-  return { sent, uploads: () => uploads };
+  return { sent, uploads: () => uploads, sourceReads:() => sourceReads, allowSource:() => {sourceUnavailable=false;} };
 }
 
 for (const width of [1280, 390]) test(`three images stay staged until Send and survive reopening at width ${width}`, async ({ page }) => {

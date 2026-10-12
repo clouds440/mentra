@@ -86,7 +86,7 @@ export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
         className={
           isAssistant
             ? 'min-w-0 max-w-full flex-1 text-[14px] leading-7 text-body'
-              : 'min-w-0 max-w-[94%] rounded-2xl border border-border bg-message px-4 py-3 text-[14px] leading-6 text-foreground sm:max-w-[88%]'
+              : 'flex min-w-0 max-w-[94%] flex-col items-end gap-2 text-[14px] leading-6 text-foreground sm:max-w-[88%]'
         }
       >
         {isAssistant ? (
@@ -112,8 +112,8 @@ export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
             {!!message.content.trim() && <CopyResponse content={message.content} />}
           </div>
         ) : (
-          <><MarkdownContent content={message.content} />
-          {message.conversation_id && message.attachments?.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</>
+          <>{message.conversation_id && !!message.attachments?.length && <div className="flex max-w-full flex-wrap justify-end gap-3">{message.attachments.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</div>}
+          {!!message.content.trim() && <div className="max-w-full rounded-2xl border border-border bg-message px-4 py-3"><MarkdownContent content={message.content} /></div>}</>
         )}
       </div>
     </article>
