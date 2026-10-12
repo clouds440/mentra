@@ -24,19 +24,20 @@ def packet_cost(value):
 
 def fit_result(result, scope, budget):
     result = result.model_copy(deep=True)
-    byte_limit = min(4800, budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0))
-    token_limit = min(1200, budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0))
+    byte_limit = min(9000 if result.research_report else 4800, budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0))
+    token_limit = min(2400 if result.research_report else 1200, budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0))
     had_sources = bool(result.sources)
     value = result.model_dump(mode='json', exclude_none=True)
     size, tokens = packet_cost(value)
     while result.sources and (size > byte_limit or tokens > token_limit):
         last = result.sources[-1]
-        if len(last.excerpt) > 80:
+        if result.research_report and len(result.research_report) > 160:
+            result.research_report = result.research_report[:max(160, len(result.research_report)//2)]
+        elif len(last.excerpt) > 80:
             last.excerpt = last.excerpt[:max(80, len(last.excerpt)//2)]
         else:
             result.sources.pop()
-        result.outcome = 'partial'
-        result.reason = 'Some evidence was omitted to fit the answer budget.'
+        result.details_omitted = True
         value = result.model_dump(mode='json', exclude_none=True)
         size, tokens = packet_cost(value)
     if not result.sources and had_sources:
@@ -68,12 +69,15 @@ def commit_web_result(scope, result):
         scope['web_sources'] = staged
     records = scope.setdefault('web_searches', [])
     if len(records) < 6:
-        records.append({key: value for key, value in result.items() if key != 'sources'})
+        records.append({key: value for key, value in result.items() if key not in ('sources', 'research_report')})
 
 
-def create_web_tools(service, owner, scope, budget):
+def create_web_tools(service, owner, scope, budget, *, research=False):
+    name = 'web_research' if research else 'web_search'
+    cache_name = '_research_cache' if research else '_web_cache'
+    calls_name = '_research_physical_calls' if research else '_web_physical_calls'
     scope.setdefault('_tool_budget', budget)
-    cache = scope.setdefault('_web_cache', {})
+    cache = scope.setdefault(cache_name, {})
     attempt_id = ':'.join(str(scope.get(key, '')) for key in ('conversation_id', 'turn_id', 'attempt'))
     if not attempt_id.strip(':'):
         attempt_id = scope.setdefault('_web_ephemeral_attempt', uuid4().hex)
@@ -85,20 +89,21 @@ def create_web_tools(service, owner, scope, budget):
             return fit_result(service.envelope('budget_exhausted', website=request.website), scope, budget)
         if key in cache:
             result = service.refresh(cache[key])
-        elif scope.get('_web_physical_calls', 0) >= 2:
+        elif scope.get(calls_name, 0) >= (1 if research else 2):
             result = service.envelope('budget_exhausted', website=request.website)
         else:
-            scope['_web_physical_calls'] = scope.get('_web_physical_calls', 0) + 1
+            scope[calls_name] = scope.get(calls_name, 0) + 1
             envelope = current_budget.get()
-            deadline = monotonic() + min(20, envelope.tool_remaining if envelope else 20)
+            timeout = 45 if research else 20
+            deadline = monotonic() + min(timeout, envelope.tool_remaining if envelope else timeout)
             publisher = current_publisher.get() or scope.get('activity')
             step = current_tool_call.get() or 'web-search'
             if publisher:
                 sites = [dict(domain=request.website, favicon_url=favicon_url(request.website))] if request.website else []
                 await publisher.ensure_active()
                 await publisher.emit(step[:76] + '-web', 'running',
-                    f'Searching {request.website}' if request.website else 'Searching the web with You.com',
-                    tool_name='web_search', websites=sites)
+                    'Researching the web with You.com' if research else f'Searching {request.website}' if request.website else 'Searching the web with You.com',
+                    tool_name=name, websites=sites)
             bypass = bool(re.search(r"\b(search again|fresh search|recheck|bypass (?:the )?cache|(?:do not|don't) use (?:the )?cache)\b", scope.get('current_answer_text', ''), re.I))
             result = await service.search(request, owner=owner, attempt_id=attempt_id, deadline=deadline, bypass_cache=bypass)
             cache[key] = result.model_dump(mode='json')
@@ -107,7 +112,7 @@ def create_web_tools(service, owner, scope, budget):
                 status = 'completed' if result.outcome in ('ok', 'no_results') else 'degraded'
                 await publisher.emit(step[:76] + '-web', status,
                     'Using recently cached web results' if result.cache_hit else 'Web search completed' if result.sources else result.reason or 'Web search completed',
-                    tool_name='web_search', websites=sites)
+                    tool_name=name, websites=sites)
         existing = [source.model_copy(deep=True) for source in scope.get('web_sources', [])]
         by_url = {source.url: source.token for source in existing}
         staged = []
@@ -124,5 +129,9 @@ def create_web_tools(service, owner, scope, budget):
             scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))[:10]
         return value
 
-    return [StructuredTool.from_function(name='web_search', args_schema=SearchInput,
-        description='Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.', coroutine=search)]
+    tools = [StructuredTool.from_function(name=name, args_schema=SearchInput,
+        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.'), coroutine=search)]
+    extra = getattr(service, 'research', None)
+    if not research and extra is not None and extra.enabled:
+        tools.extend(create_web_tools(extra, owner, scope, budget, research=True))
+    return tools

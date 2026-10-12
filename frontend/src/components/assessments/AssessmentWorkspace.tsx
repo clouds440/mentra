@@ -1,4 +1,4 @@
-import { ClipboardCheck, Plus, ArrowUpRight, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Plus, ArrowUpRight, Sparkles, LoaderCircle } from 'lucide-react';
 import { WorkspaceHeader, WorkspaceEmpty } from '../workspace/WorkspaceHeader';
 import { materialWarningMessage } from '../../services/userError';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
@@ -7,7 +7,7 @@ import { ApiError } from '../../services/api';
 import { AssessmentFeedback } from './AssessmentFeedback';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { Toggle } from '../ui/Toggle';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, FileInput, Input, Select } from '../ui';
@@ -16,6 +16,8 @@ import { assessments } from '../../services/assessments';
 import { listContexts, listMaterials } from '../../services/rag';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
 import type { LearningContext, MaterialDocument } from '../../types/rag';
+import { assessmentSession, useEvaluatedAttempt } from '../../stores/assessmentSession';
+import { QuizAnswerReview } from './QuizAnswerReview';
 
 export function AssessmentWorkspace() { const { identity } = useAuth(); return <Workspace key={identity?.learner_id} />; }
 function Workspace() {
@@ -107,7 +109,10 @@ function Workspace() {
   </div></div>;
 }
 
-export function AnswerSheet({ assessment, initial, onChange }: { assessment: Assessment; initial: AssessmentAttempt; onChange: (attempt: AssessmentAttempt) => void }) {
+export function AnswerSheet({ assessment, initial, onChange, actions }: { assessment: Assessment; initial: AssessmentAttempt; onChange: (attempt: AssessmentAttempt) => void; actions?: ReactNode }) {
+  const { identity } = useAuth();
+  const owner = identity?.learner_id;
+  const canonical = useEvaluatedAttempt(initial.id);
   const [attempt, setAttempt] = useState(initial);
   const [answers, setAnswers] = useState(initial.state==='pending_transcription' ? initial.extraction?.answers ?? initial.answers : initial.answers);
   const [confirmed, setConfirmed] = useState(false);
@@ -118,16 +123,10 @@ export function AnswerSheet({ assessment, initial, onChange }: { assessment: Ass
   const active = useRef<AbortController | null>(null);
   const operation = useRef(crypto.randomUUID());
   useEffect(() => () => active.current?.abort(), []);
-  useEffect(() => {
-    if (!['submitted', 'grading'].includes(attempt.state) && !(attempt.state==='failed' && attempt.retry_pending)) return;
-    const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>; let polls = 0;
-    async function refresh() {
-      try { const result = await assessments.attempt(attempt.id, controller.signal); if (!controller.signal.aborted) { setAttempt(result); onChange(result); if ((['submitted','grading'].includes(result.state) || result.state==='failed' && result.retry_pending) && ++polls < 90) timer = setTimeout(() => void refresh(), 2000); } }
-      catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to check grading status.'); }
-    }
-    timer = setTimeout(() => void refresh(), 1000);
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [attempt.id, attempt.state, attempt.retry_pending]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { assessmentSession.observe(owner, attempt); }, [owner, attempt.id, attempt.state, attempt.revision, attempt.retry_pending]);
+  useEffect(() => { if (canonical && canonical !== attempt && canonical.revision >= attempt.revision) { setAttempt(canonical); onChange(canonical); } }, [canonical, attempt]);
+  const evaluating = ['submitted','grading'].includes(attempt.state) || attempt.state === 'failed' && !!attempt.retry_pending;
+  const quizPending = evaluating && assessment.questions.every(question => !!question.options?.length);
   const editable = attempt.state === 'draft' || attempt.state === 'pending_transcription' || correcting;
   async function submit() {
     const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
@@ -143,18 +142,24 @@ export function AnswerSheet({ assessment, initial, onChange }: { assessment: Ass
   }
   return <section aria-label="Assessment answer sheet" className="space-y-5">
     {attempt.state==='graded' && !correcting && <AssessmentFeedback assessment={assessment} attempt={attempt} />}
+    {evaluating && <p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Evaluating your answers…</p>}
     <p className="text-sm text-muted">Attempt {attempt.attempt_number} · {attempt.state}</p>{error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {editable && !correcting && <FileInput label="Upload an answer sheet" aria-label="Upload assessment answer sheet" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value=''; }} />}
     {attempt.extraction && <div className="space-y-2 text-sm text-muted"><p>{attempt.extraction.handwriting_support==='typed_chat' ? 'Your chat answers are ready. Check their question numbers before submitting.' : attempt.extraction.handwriting_support==='vision_requires_review' ? 'Image transcription is ready. Review every answer and its question number before submitting.' : 'Review and correct every extracted answer before submitting. Handwriting may not have been read accurately.'}</p>{attempt.extraction.warnings.map((warning,index) => <p key={index}>{materialWarningMessage(warning)}</p>)}</div>}
-    {(attempt.state !== 'graded' || correcting) && assessment.questions.map((question,index) => { const grade=attempt.grades?.find(item => item.question_id===question.id); return <section key={question.id} className="space-y-2 border-t border-border pt-4"><h3 className="text-sm font-medium">Question {index+1} · {question.marks} marks</h3><MarkdownContent content={question.prompt} />
+    {quizPending && <QuizAnswerReview assessment={assessment} answers={attempt.answers} />}
+    {!quizPending && (attempt.state !== 'graded' || correcting) && assessment.questions.map((question,index) => { const grade=attempt.grades?.find(item => item.question_id===question.id); return <section key={question.id} className="space-y-2 border-t border-border pt-4"><h3 className="text-sm font-medium">Question {index+1} · {question.marks} marks</h3><MarkdownContent content={question.prompt} />
       {editable && !!question.options?.length && attempt.extraction && <p className="text-sm text-muted">Answer text to review: {answers[question.id] || 'Not answered'}</p>}
-      {editable && question.options?.length ? <ChoiceOptions kind="single_choice" question={`Answer ${index+1}`} hideLegend options={question.options} selected={answers[question.id] ? [answers[question.id]] : []} disabled={busy} onChange={selected => { setAnswers(previous => ({ ...previous, [question.id]:selected[0] })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : editable ? <textarea aria-label={`Answer ${index+1}`} className="min-h-28 w-full rounded-xl border border-border-strong bg-input p-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-accent" maxLength={8000} disabled={busy} value={answers[question.id] ?? ''} onChange={event => { setAnswers(previous => ({ ...previous, [question.id]:event.target.value })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : <MarkdownContent content={question.options?.find(option => option.id===attempt.answers[question.id])?.label ?? attempt.answers[question.id] ?? ''} />}
+      {editable && question.options?.length ? <ChoiceOptions kind="single_choice" question={`Answer ${index+1}`} hideLegend options={question.options} selected={answers[question.id] ? [answers[question.id]] : []} renderLabel={label => <MarkdownContent content={label} />} disabled={busy} onChange={selected => { setAnswers(previous => ({ ...previous, [question.id]:selected[0] })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : editable ? <textarea aria-label={`Answer ${index+1}`} className="min-h-28 w-full rounded-xl border border-border-strong bg-input p-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-accent" maxLength={8000} disabled={busy} value={answers[question.id] ?? ''} onChange={event => { setAnswers(previous => ({ ...previous, [question.id]:event.target.value })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : <MarkdownContent content={question.options?.find(option => option.id===attempt.answers[question.id])?.label ?? attempt.answers[question.id] ?? ''} />}
       {grade && <div className="space-y-1 text-sm"><p className="font-medium">{grade.score}/{question.marks} · Grade confidence {Math.round(grade.confidence*100)}%</p><MarkdownContent content={grade.feedback} />{grade.misconceptions.map((value,i) => <p key={i} className="text-muted">{value}</p>)}</div>}
     </section>; })}
-    {editable && <><Select aria-label="Assistance used" disabled={busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select>{attempt.extraction && <Toggle label="I reviewed and corrected all extracted answers" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}<Button disabled={busy || assessment.questions.some(question => !answers[question.id]?.trim()) || !!attempt.extraction && !confirmed} loading={busy} onClick={() => void submit()}>{attempt.extraction ? 'Confirm text & submit' : 'Submit answers'}</Button></>}
-    {['submitted','grading'].includes(attempt.state) && <p role="status" className="text-sm text-muted">Grading your answers…</p>}
+    {editable && <><Select aria-label="Assistance used" disabled={busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select>{attempt.extraction && <Toggle label="I reviewed and corrected all extracted answers" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}</>}
     {attempt.error && <p role="alert" className="text-sm text-danger">Your answers could not be evaluated.</p>}
-    {attempt.state==='graded' && <><p role="status" className="text-sm text-muted">{attempt.evidence_status==='applied' ? 'Feedback saved and learner evidence applied.' : attempt.evidence_status==='partial' ? 'Feedback saved. Learner evidence was updated for confidently graded answers.' : 'Feedback saved. The grade was too uncertain to update learner evidence.'}</p>{!correcting && <Button variant="secondary" onClick={() => { setCorrecting(true); setAnswers(attempt.answers); setAssistance(attempt.assistance ?? 'unknown'); setConfirmed(false); operation.current=crypto.randomUUID(); }}>Correct answers or transcription</Button>}</>}
+    {attempt.state==='graded' && <><p role="status" className="text-sm text-muted">{attempt.evidence_status==='applied' ? 'Feedback saved and learner evidence applied.' : attempt.evidence_status==='partial' ? 'Feedback saved. Learner evidence was updated for confidently graded answers.' : 'Feedback saved. The grade was too uncertain to update learner evidence.'}</p></>}
     {!!attempt.grade_history.length && <details className="text-sm"><summary className="cursor-pointer">Previous grade revisions</summary>{attempt.grade_history.map(history => <div key={history.grade_revision} className="space-y-2 py-3"><p className="font-medium">Revision {history.grade_revision}</p>{history.grades.map(grade => <p key={grade.question_id}>{grade.score} marks · {grade.feedback}</p>)}</div>)}</details>}
+    <div className="flex flex-wrap items-center gap-2">
+      {editable && <Button size="sm" disabled={busy || assessment.questions.some(question => !answers[question.id]?.trim()) || !!attempt.extraction && !confirmed} loading={busy} onClick={() => void submit()}>{attempt.extraction ? 'Confirm text & submit' : 'Submit answers'}</Button>}
+      {attempt.state === 'graded' && !correcting && <Button size="sm" variant="secondary" onClick={() => { setCorrecting(true); setAnswers(attempt.answers); setAssistance(attempt.assistance ?? 'unknown'); setConfirmed(false); operation.current=crypto.randomUUID(); }}>Correct answers or transcription</Button>}
+      {actions}
+    </div>
   </section>;
 }

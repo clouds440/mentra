@@ -131,9 +131,9 @@ class ToolExecutor:
         max_attempts = max_attempts or settings.tool_read_max_attempts
         timeout = timeout or settings.tool_read_timeout_seconds
         name = tool.name
-        web = name == 'web_search'
+        web = name in ('web_search', 'web_research')
         if web:
-            max_attempts, timeout = 1, 21
+            max_attempts, timeout = 1, 46 if name == 'web_research' else 21
         def project(value):
             if web:
                 from .web_tools import dated_failure

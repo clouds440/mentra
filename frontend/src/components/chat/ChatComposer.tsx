@@ -6,6 +6,7 @@ import type { ChatSelection } from '../../types/rag';
 import { Button, Textarea } from '../ui';
 import { useVoiceInput } from './useVoiceInput';
 import { VoiceInput } from './VoiceInput';
+import { useAssessmentEvaluation } from '../../stores/assessmentSession';
 
 interface ChatComposerProps {
   selection: ChatSelection;
@@ -34,6 +35,7 @@ export function ChatComposer({
   hasAttachments,
   attachments,
 }: ChatComposerProps) {
+  const evaluation = useAssessmentEvaluation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -118,6 +120,10 @@ export function ChatComposer({
       }}
     >
       {attachments}
+      {(evaluation.evaluating > 0 || evaluation.submitting > 0) && <div role="status" aria-label="Quiz evaluation" aria-live="polite" className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted">
+        <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        <span>{evaluation.evaluating > 0 ? 'Evaluating quiz answers…' : 'Submitting quiz answers…'}</span>
+      </div>}
       <Textarea
         dir="auto"
         hidden={voice.busy}

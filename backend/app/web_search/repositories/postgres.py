@@ -23,8 +23,9 @@ def repository_boundary(method):
 
 
 class UsageRepository:
-    def __init__(self, sessions, *, global_limit=90, user_limit=10, minute_limit=3):
+    def __init__(self, sessions, *, global_limit=90, user_limit=10, minute_limit=3, provider=PROVIDER):
         self.sessions = sessions
+        self.provider = provider
         self.global_limit, self.user_limit, self.minute_limit = global_limit, user_limit, minute_limit
         self._cleanup_at = 0.0
 
@@ -33,12 +34,12 @@ class UsageRepository:
         with self.sessions.begin() as session:
             session.execute(text("SELECT set_config('lock_timeout', '1000ms', true), set_config('statement_timeout', '1000ms', true)"))
             lock_owner(session, owner)
-            session.execute(insert(guard).values(provider=PROVIDER).on_conflict_do_nothing())
-            session.execute(select(guard).where(guard.c.provider == PROVIDER).with_for_update()).one()
+            session.execute(insert(guard).values(provider=self.provider).on_conflict_do_nothing())
+            session.execute(select(guard).where(guard.c.provider == self.provider).with_for_update()).one()
             prior = session.execute(select(calls.c.state).where(calls.c.id == operation)).scalar_one_or_none()
             if prior is not None:
                 return 'duplicate'
-            charged = (calls.c.provider == PROVIDER, calls.c.state != 'released', calls.c.reserved_at > now - timedelta(days=1))
+            charged = (calls.c.provider == self.provider, calls.c.state != 'released', calls.c.reserved_at > now - timedelta(days=1))
             global_count = session.scalar(select(func.count()).select_from(calls).where(*charged))
             user_count = session.scalar(select(func.count()).select_from(calls).where(*charged, calls.c.learner_id == owner))
             minute_count = session.scalar(select(func.count()).select_from(calls).where(*charged, calls.c.learner_id == owner, calls.c.reserved_at > now - timedelta(minutes=1)))
@@ -46,7 +47,7 @@ class UsageRepository:
                 return 'quota_exhausted'
             if minute_count >= self.minute_limit:
                 return 'rate_limited'
-            session.execute(calls.insert().values(id=operation, provider=PROVIDER, learner_id=owner, reserved_at=now, state='reserved'))
+            session.execute(calls.insert().values(id=operation, provider=self.provider, learner_id=owner, reserved_at=now, state='reserved'))
             if monotonic() >= self._cleanup_at:
                 expired = select(calls.c.id).where(calls.c.reserved_at < now - timedelta(days=2)).limit(100)
                 session.execute(delete(calls).where(calls.c.id.in_(expired)))
@@ -78,8 +79,8 @@ class UsageRepository:
         with self.sessions.begin() as session:
             session.execute(text("SELECT set_config('lock_timeout', '1000ms', true), set_config('statement_timeout', '1000ms', true)"))
             lock_owner(session, owner)
-            session.execute(insert(guard).values(provider=PROVIDER).on_conflict_do_nothing())
-            session.execute(select(guard).where(guard.c.provider == PROVIDER).with_for_update()).one()
+            session.execute(insert(guard).values(provider=self.provider).on_conflict_do_nothing())
+            session.execute(select(guard).where(guard.c.provider == self.provider).with_for_update()).one()
             session.execute(delete(cache).where(cache.c.expires_at <= now))
             session.execute(insert(cache).values(id=key, learner_id=owner, cached_at=now, expires_at=expires, payload=payload)
                 .on_conflict_do_update(index_elements=[cache.c.id], set_=dict(cached_at=now, expires_at=expires, payload=payload)))

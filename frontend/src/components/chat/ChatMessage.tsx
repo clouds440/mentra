@@ -13,6 +13,7 @@ import { ChoiceCard } from './ChoiceCard';
 import { Link } from 'react-router-dom';
 import { WebCitation } from '../webSearch/WebCitation';
 import { WebCitations } from '../webSearch/WebCitations';
+import { CopyResponse } from './CopyResponse';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
@@ -108,6 +109,7 @@ export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
             {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
             {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="text-accent hover:underline" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
+            {!!message.content.trim() && <CopyResponse content={message.content} />}
           </div>
         ) : (
           <><MarkdownContent content={message.content} />

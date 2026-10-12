@@ -22,7 +22,9 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.4",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^2.6.0"
+    "remark-parse": "^11.0.0",
+    "tailwind-merge": "^2.6.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

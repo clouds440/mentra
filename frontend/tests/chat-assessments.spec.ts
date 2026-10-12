@@ -26,6 +26,7 @@ test('assessment discussion and revisions precede solving, with partial answers 
   await send('Generate a two question quiz on Linear equations');
   const cards = page.getByRole('region',{name:'Chat assessment'});
   await expect(cards).toHaveCount(1);
+  await expect(cards.first().getByText('Explain Linear equations (1).', {exact:true})).toBeVisible();
   const original = await cards.first().innerText();
   await send('Explain question 1 before I start');
   await expect(cards).toHaveCount(1);

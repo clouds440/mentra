@@ -32,6 +32,14 @@ class PersistenceTests(unittest.TestCase):
         self.usage = UsageRepository(self.db.sessions)
     def tearDown(self): self.db.close()
 
+    def test_authenticated_research_does_not_consume_free_search_quota(self):
+        free = UsageRepository(self.db.sessions, global_limit=1)
+        research = UsageRepository(self.db.sessions, provider='you_research', global_limit=1)
+        self.assertEqual(research.reserve(self.owner, str(uuid4()), NOW), 'reserved')
+        self.assertEqual(research.reserve(self.owner, str(uuid4()), NOW), 'quota_exhausted')
+        self.assertEqual(free.reserve(self.owner, str(uuid4()), NOW), 'reserved')
+        self.assertEqual(free.reserve(self.owner, str(uuid4()), NOW), 'quota_exhausted')
+
     def test_multiple_workers_race_for_last_global_slot_and_owner_limits(self):
         repo = UsageRepository(self.db.sessions, global_limit=1)
         with ThreadPoolExecutor(2) as pool:

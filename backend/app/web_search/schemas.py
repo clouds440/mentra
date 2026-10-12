@@ -68,4 +68,6 @@ class SearchResult(BaseModel):
     cache_hit: bool = False
     cache_expires_at: datetime | None = None
     website: str | None = None
+    research_report: str | None = Field(default=None, max_length=6000)
+    details_omitted: bool = False
     sources: list[WebSource] = Field(default_factory=list, max_length=5)

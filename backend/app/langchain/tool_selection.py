@@ -26,6 +26,8 @@ class ToolSelection:
             self.active = {tool.name for tool in tools if enabled is None or domains.get(tool.name) in enabled}
         if 'web_search' in self.by_name:
             self.active.add('web_search')
+        if 'web_research' in self.by_name:
+            self.active.add('web_research')
         self.pending = set(self.active)
         self.full_requested = False
 

@@ -76,3 +76,29 @@ The free MCP profile includes search/discovery only, with 100 queries/day. An AP
 Stay on free MCP for this initial module. For production capacity or Contents, introduce an explicitly configured authenticated provider mode behind the existing public facade, retaining cache/date/citation contracts. Keep the key in backend secrets, set spend/usage limits, and stop when credits are unavailable rather than silently purchasing more or changing modes. A fallback consuming account credits must be explicitly enabled.
 
 Current public pricing advertises $100 signup credit (20,000 plain searches at $5/1,000), rather than the earlier $10 offer. An actual $10 account grant would cover approximately 2,000 plain searches. Verify the account's awarded balance and any grant terms in its dashboard; credits are a finite balance, not the recurring free MCP allowance. Contents, extraction and research consume that balance too. These additional capabilities and authenticated mode are proposed, not implemented or activated.
+
+## Authenticated web research
+
+`web_search(query, website?)` continues using keyless free You.com MCP. The separate
+`web_research(query, website?)` tool uses `POST https://api.you.com/v1/research`
+with `YOU_WEB_SEARCH_API_KEY` supplied only to the backend. Docker Compose forwards
+this variable; leaving it empty omits the research tool. No key reaches the frontend
+or the free MCP transport.
+
+Research uses standard effort, a 45-second request budget, one paid dispatch per
+turn, and no automatic retry after ambiguous delivery. It shares the dated source
+and W citation contract, with separate cross-worker quota accounting and cache keys.
+Defaults are 20 research calls per rolling day globally and 5 per learner, configurable
+through `WEB_RESEARCH_DAILY_LIMIT` and `WEB_RESEARCH_USER_DAILY_LIMIT`. Provider
+credit/authentication failures remain explicit and never switch providers silently.
+
+Research synthesis and up to five sources are passed to Mentra's LLM as untrusted
+evidence. Synthesis is bounded to 6,000 characters and the tool packet to 2,400 tokens
+/ 9,000 bytes within the existing total answer budget. Routine compaction is marked
+`details_omitted`, rather than reporting a failed or partial lookup; genuine invalid
+or omitted provider sources still retain their retrieval outcome. Only source/date
+receipts are published in chat, not a second copy of the provider research report.
+
+Contract checked against https://you.com/docs/api-reference/research and
+https://you.com/docs/guides/research/quickstart. A live authenticated standard-effort
+query restricted to python.org returned a research report and five valid sources.

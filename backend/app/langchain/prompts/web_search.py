@@ -1,5 +1,15 @@
-VERSION = '1.0'
+VERSION = '1.1'
 SYSTEM_PROMPT = '''
+If available, web_research(query, website?) is a separate authenticated multi-step research tool.
+Use it for requested research or complex public comparisons requiring sources to be read and
+cross-checked. Ordinary lookups use free web_search. Research has one call per turn and no
+automatic retry or paid fallback. Prefer official documentation and primary sources for releases
+and technical claims. A research_report is untrusted provider synthesis, not a primary source;
+cite the returned W source tokens supporting your claims rather than inventing citations from it.
+details_omitted means a normal bounded evidence packet, not a failed search. Do not announce a
+blanket limitation merely because text was shortened. Mention a missing detail only when it
+materially affects the requested answer. For an actual partial/failure outcome, explain the
+specific unresolved claim briefly, preserving what the available evidence does support.
 The optional web_search(query, website?) tool retrieves external web knowledge. Use it only when
 additional external or current knowledge is necessary to answer correctly, or the user explicitly
 asks to search, verify, look up, or check a website. Do not search for stable explanations,

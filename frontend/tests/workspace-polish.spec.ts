@@ -1,6 +1,30 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const title = 'A long conversation about understanding motion and forces';
+test('Copy response exports plain text with intact code and reports clipboard errors', async ({page}) => {
+  const state = await workspace(page, true);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {value:{writeText:async (value:string) => { (window as unknown as {copiedText:string}).copiedText = value; }}, configurable:true});
+  });
+  await page.goto('/chat/polish-chat');
+  state.complete('# A **clear** answer\n\nUse `value` and [Python](https://python.org).\n\n```python\ndef example():\n    return "*literal*"\n```\n\n- First point\n- Second point\n\n| Name | Value |\n| --- | --- |\n| Result | 2 |');
+  const message = page.getByLabel('Mentra response',{exact:true}).last();
+  const copy = message.getByRole('button',{name:'Copy response',exact:true});
+  await expect(copy).toBeVisible({timeout:15_000});
+  await copy.click();
+  await expect(message.getByRole('button',{name:'Response copied'})).toBeVisible();
+  const copied = await page.evaluate(() => (window as unknown as {copiedText:string}).copiedText);
+  expect(copied).toContain('A clear answer');
+  expect(copied).toContain('Use value and Python (https://python.org).');
+  expect(copied).toContain('def example():\n    return "*literal*"');
+  expect(copied).toContain('Name\tValue\nResult\t2');
+  expect(copied).not.toContain('```');
+  expect(copied).not.toContain('Copy code');
+  expect(copied).not.toContain('Which example next?');
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => {throw new Error('Clipboard unavailable');}; });
+  await message.getByRole('button',{name:'Response copied'}).click();
+  await expect(message.getByRole('status').filter({hasText:'Couldn’t copy'})).toBeVisible();
+});
 async function workspace(page: Page, running = false, populated = false, stream = '', selected = false) {
   const selection = {mode:selected ? 'SOURCE_SPECIFIC' : 'STANDARD', context_ids:[], document_ids:selected ? ['material-1'] : [], include_archived:false};
   const conversation = {id:'polish-chat', title, revision:2, message_count:40, selection, created_at:'2026-10-11T00:00:00Z', updated_at:'2026-10-11T00:00:00Z', deleted_at:null};

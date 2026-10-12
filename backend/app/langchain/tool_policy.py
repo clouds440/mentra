@@ -4,6 +4,7 @@ from app.chat.titles import NewChatReply
 
 
 DOMAINS = {
+    'web_research': 'web',
     'web_search': 'web',
     'history_lookup': 'history', 'user_memory': 'memory',
     'event_lookup': 'events', 'event_manage': 'events',

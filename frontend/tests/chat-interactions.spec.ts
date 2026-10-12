@@ -55,10 +55,11 @@ test('first chat generates an interactive assessment from a topic with no prior 
   await expect(quiz.getByText(/Question 1 of 3/)).toBeVisible({ timeout:20_000 });
   await expect(page.getByLabel('Response limitations')).toHaveCount(0);
   await quiz.getByRole('radio', { name:'A supported explanation.', exact:true }).check();
-  await quiz.getByRole('button', { name:'Save & next' }).click();
+  await quiz.getByRole('button', { name:'Next' }).click();
   await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
   await page.reload();
-  await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
+  await expect(quiz.getByText(/Question 1 of 3/)).toBeVisible();
+  await expect(quiz.getByRole('radio').first()).not.toBeChecked();
 });
 
 for (const request of ['Give me a five question interactive quiz on Linear equations', 'Quiz me with five clickable options questions on Linear equations', 'I keep mixing up linear equations']) {
@@ -88,51 +89,28 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   await expect(quiz.getByRole('radio').first()).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('interactive-desktop-light.png'), fullPage: true });
   await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
-  // The server commits the first answer, but its response never reaches the browser.
-  await page.route('**/api/v1/assessments/attempts/*/draft', async route => {
-    await route.fetch(); await route.abort('failed');
-  }, { times: 1 });
-  await quiz.getByRole('button', { name: 'Save & next' }).click();
-  await expect(quiz.getByRole('alert')).toBeVisible();
-  await expect(quiz.getByRole('radio', { name: 'A supported explanation.', exact: true })).toBeChecked();
-  await quiz.getByRole('button', { name: 'Save & next' }).click();
+  await quiz.getByRole('button', { name: 'Next', exact:true }).click();
   await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
-  await page.reload();
+  expect(await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json()).toHaveLength(0);
+  const chatPath = new URL(page.url()).pathname;
+  await page.getByRole('button', { name:'Start a new chat' }).click();
+  await page.locator(`a[href="${chatPath}"]`).click();
   await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
-  await page.evaluate(() => localStorage.setItem('mentra-theme', 'dark'));
-  await page.reload();
-  await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('quiz-dark.png'), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await quiz.scrollIntoViewIfNeeded();
-  await expect.poll(() => page.getByRole('complementary', { name:'Main navigation' }).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+  await page.setViewportSize({ width:390, height:844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-  await page.screenshot({ path: testInfo.outputPath('interactive-mobile-dark.png') });
-  await page.setViewportSize({ width: 1280, height: 1000 });
-  if (request.startsWith('Give me')) {
-    // Another client saves a different first answer after this card loaded.
-    const latest=(await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json())[0];
-    const questionId=savedAssessments[0].questions[0].id;
-    const changed=await page.request.put(`${origin}/api/v1/assessments/attempts/${latest.id}/draft`, { headers, data: { expected_revision:latest.revision, answers:{ ...latest.answers, [questionId]:'b' } } });
-    expect(changed.ok()).toBeTruthy();
-    await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
-    await quiz.getByRole('button', { name: 'Save & next' }).click();
-    await expect(quiz.getByRole('alert')).toContainText('Answers changed elsewhere');
-    await expect(quiz.getByRole('button', { name: 'Save & next' })).toBeDisabled();
-    await quiz.getByRole('button', { name: 'Back', exact:true }).click();
-    await expect(quiz.getByRole('radio', { name: 'An unsupported explanation.', exact: true })).toBeChecked();
-    await quiz.getByRole('radio', { name: 'A supported explanation.', exact: true }).check();
-    await quiz.getByRole('button', { name: 'Save & next' }).click();
-    await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
-  }
-  for (let i=2;i<=5;i++) {
-    await quiz.getByRole('radio', { name: i<=3 ? 'A supported explanation.' : 'An unsupported explanation.', exact: true }).check();
-    await quiz.getByRole('button', { name: i<5 ? 'Save & next' : 'Save answer', exact: true }).click();
-    await expect(quiz.getByText(new RegExp(`${i} answers saved`))).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath('interactive-mobile.png')});
+  await page.setViewportSize({width:1280,height:1000});
+  for(let i=2;i<=5;i++) {
+    await quiz.getByRole('radio', {name:i<=3 ? 'A supported explanation.' : 'An unsupported explanation.', exact:true}).check();
+    if(i<5) await quiz.getByRole('button', {name:'Next',exact:true}).click();
   }
   await quiz.getByLabel('Quiz assistance used').click();
-  await page.getByRole('option', { name: 'I answered independently', exact: true }).click();
-  await quiz.getByRole('button', { name: 'Finish quiz' }).click();
+  await page.getByRole('option', { name:'I answered independently',exact:true }).click();
+  // All answers commit together; a lost response recovers the canonical submission.
+  if(request.startsWith('Give me')) await page.route('**/api/v1/assessments/attempts/*/submission', async route => {
+    await route.fetch(); await route.abort('failed');
+  }, {times:1});
+  await quiz.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible({ timeout: 20000 });
   await expect(card.getByText('Feedback saved and learner evidence applied.', { exact: true })).toBeVisible();
   const feedback = card.getByRole('region', { name: 'Assessment feedback' });

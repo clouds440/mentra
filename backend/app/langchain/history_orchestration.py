@@ -332,7 +332,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 from .web_tools import compact_receipt, packet_cost
                 minimum = web.envelope('budget_exhausted', searched_at=web.clock())
                 size, tokens = packet_cost(compact_receipt(minimum))
-                remaining_web = sum(item['name'] == 'web_search' for item in response.tool_calls[position+1:])
+                remaining_web = sum(item['name'] in ('web_search', 'web_research') for item in response.tool_calls[position+1:])
                 reserved_bytes, reserved_tokens = (size + 128) * remaining_web, (tokens + 32) * remaining_web
             scope['_web_reserved_bytes'], scope['_web_reserved_tokens'] = reserved_bytes, reserved_tokens
             history_count, memory_count = len(scope['history_references']), len(scope['memory_references'])
@@ -370,12 +370,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         repairs += 1
                 content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))
                 full_content = content
-                if content in budget.delivered and call['name'] != 'web_search':
+                if content in budget.delivered and call['name'] not in ('web_search', 'web_research'):
                     content = json.dumps(dict(same_result_as=budget.delivered[content]), separators=(',', ':'))
                 try:
                     budget.consume(content, reserve_tokens=reserved_tokens, reserve_bytes=reserved_bytes)
                     accounted = True
-                    if call['name'] == 'web_search':
+                    if call['name'] in ('web_search', 'web_research'):
                         from .web_tools import commit_web_result
                         commit_web_result(scope, result)
                 except AppError:
@@ -420,7 +420,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     if key.startswith(('history:', 'recall:', 'study:')):
                         budget.cache.pop(key)
                 receipt = failure(error, write=is_write(call['name'], call['args'])).model_dump()
-                if call['name'] == 'web_search':
+                if call['name'] in ('web_search', 'web_research'):
                     scope.pop('_web_pending', None)
                     from .web_tools import dated_failure
                     receipt = dated_failure(scope, receipt)
@@ -433,7 +433,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     budget.consume(content, reserve_tokens=reserved_tokens, reserve_bytes=reserved_bytes)
                 except AppError:
                     content = json.dumps(dict(outcome='unavailable', code='TOOL_BUDGET', reason='Result space exhausted. Use available evidence.', effect_certainty='unknown' if is_write(call['name'], call['args']) else 'read_only'))
-                    if call['name'] == 'web_search':
+                    if call['name'] in ('web_search', 'web_research'):
                         from .web_tools import dated_failure
                         content = json.dumps(dated_failure(scope, dict(code='TOOL_BUDGET')))
             conversation.append(ToolMessage(content=content, tool_call_id=call['id'], name=call['name']))

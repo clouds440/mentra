@@ -1,7 +1,7 @@
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { assessments } from '../../services/assessments';
@@ -10,6 +10,7 @@ import { MCQAssessment } from './MCQAssessment';
 import { AnswerSheet } from './AssessmentWorkspace';
 
 export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardData }) {
+  const navigate = useNavigate();
   const [card, setCard] = useState(initial);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
   const [ready, setReady] = useState(false);
@@ -51,17 +52,18 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   }
   const isMCQ = !card.deleted && card.assessment.questions.every(q => !!q.options?.length);
   const InlineAnswers = card.assessment.questions.every(q => !!q.options?.length) ? MCQAssessment : AnswerSheet;
+  const actions = <>
+    {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy} onClick={() => void save()}>Add to assessments</Button>}
+    {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
+    {card.assessment_id && !card.deleted && <Button size="sm" variant="secondary" onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}
+  </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
     <h2 className="font-medium text-heading">{card.assessment.title}</h2>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => setReload(value => value+1)}>Refresh</button></p>}
-    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} /> :
+    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} actions={actions} /> :
       <ol className="space-y-4">{card.assessment.questions.map((question,index) => <li key={question.id}><p className="text-sm text-muted">Question {index+1} · {question.marks} marks</p><MarkdownContent content={question.prompt} /></li>)}</ol>}
-    <div className="flex flex-wrap items-center gap-3">
-      {!card.assessment_id && <Button disabled={!ready || busy} loading={busy} onClick={() => void save()}>Add to assessments</Button>}
-      {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button variant="secondary" disabled={!ready || busy} loading={busy} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
-      {card.assessment_id && !card.deleted && <Link className="text-sm text-accent underline" to={`/assessments?assessment=${card.assessment_id}`}>View in assessments</Link>}
-    </div>
+    {(!ready && !error || !isMCQ && !attempt) && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     {!attempt && !isMCQ && <p className="text-xs text-muted">Ask questions or request changes in the chat before you begin. Revisions create a new version. When ready, send numbered answers or attach a document or handwritten image and ask Mentra to evaluate it.</p>}
   </section>;
 }
