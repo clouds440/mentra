@@ -20,10 +20,10 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
       <button type="submit" aria-label="Save conversation title" className={control}><Check size={14} /></button>
       <button type="button" aria-label="Cancel rename" className={control} onClick={() => setEditing(false)}><X size={14} /></button>
     </form> : <div className="relative min-w-0">
-      <NavLink to={`/chat/${chat.id}`} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('block w-full min-w-0 truncate rounded-lg pl-3 pr-16 py-2 lg:pr-3 lg:group-hover:pr-16 lg:group-focus-within:pr-16 [@media(hover:none)]:pr-16 text-xs text-muted hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
+      <NavLink to={`/chat/${chat.id}`} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('block w-full min-w-0 truncate rounded-lg pl-3 pr-16 py-2 lg:pr-3 lg:group-hover:pr-16 lg:group-focus-within:pr-16 [@media(hover:none)]:pr-16 text-xs text-muted group-hover:bg-hover group-focus-within:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
         {chat.title}
       </NavLink>
-      <div className={cn("absolute right-1 top-1 flex items-center rounded-md bg-background", rowControls, conversationId === chat.id && "bg-active")}><button type="button" aria-label={`Rename ${chat.title}`} className={control} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
+      <div className={cn("absolute right-1 top-1/2 -translate-y-1/2 flex items-center", rowControls)}><button type="button" aria-label={`Rename ${chat.title}`} className={control} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
       <button type="button" aria-label={`Delete ${chat.title}`} className={control} onClick={() => setDeleting(value => !value)}><Trash2 size={13} /></button></div>
     </div>}
     {deleting && <div className="mx-2 mb-2 rounded-lg border border-danger/20 bg-danger/[0.06] p-2 text-xs">
