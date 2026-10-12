@@ -30,6 +30,9 @@ def error_metadata(error):
                            function=trace.tb_frame.f_code.co_name, line=trace.tb_lineno))
         trace = trace.tb_next
     value = dict(type=type(error).__name__, frames=frames)
+    status = getattr(error, 'status_code', None)
+    if isinstance(status, int) and 100 <= status <= 599:
+        value['http_status'] = status
     code = getattr(error, 'code', None)
     if isinstance(code, str) and re.fullmatch('[A-Z][A-Z0-9_]{0,79}', code):
         value['code'] = code

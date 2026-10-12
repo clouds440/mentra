@@ -19,6 +19,23 @@ def configured_settings(**overrides: object) -> Settings:
 
 
 class ModelFactoryTests(unittest.TestCase):
+    def test_official_deepseek_disables_thinking_for_structured_and_tool_requests(self):
+        captured = []
+        class FakeChatOpenAI:
+            def __init__(self, **kwargs):
+                captured.append(kwargs)
+        fake_module = types.ModuleType('langchain_openai')
+        fake_module.ChatOpenAI = FakeChatOpenAI
+        with patch.dict(sys.modules, {'langchain_openai': fake_module}):
+            for endpoint in ('https://api.deepseek.com', 'https://api.deepseek.com/v1'):
+                factory = ModelFactory(configured_settings(ai_base_url=endpoint, ai_model='deepseek-flash'))
+                model = factory.get_model()
+                self.assertIs(factory.get_model(), model)
+                factory.get_model(model_name='deepseek-flash', output_tokens=512)
+        self.assertEqual(len(captured), 4)
+        for options in captured:
+            self.assertEqual(options['extra_body'], {'thinking': {'type': 'disabled'}})
+
     def test_model_uses_configured_compatible_endpoint(self) -> None:
         captured: dict[str, object] = {}
 

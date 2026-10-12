@@ -64,6 +64,11 @@ class ModelFactory:
                 "The langchain-openai package is required to create chat models."
             ) from exc
 
+        provider_options = {}
+        if urlsplit(self._settings.ai_base_url).hostname == 'api.deepseek.com':
+            # DeepSeek defaults to thinking mode, which rejects required/named
+            # tool choices used for both structured answers and domain tools.
+            provider_options['extra_body'] = {'thinking': {'type': 'disabled'}}
         model = ChatOpenAI(
             model=model_name or self._settings.ai_model,
             base_url=self._settings.ai_base_url,
@@ -72,6 +77,7 @@ class ModelFactory:
             timeout=self._settings.ai_timeout,
             max_retries=self._settings.ai_max_retries,
             max_tokens=output_tokens,
+            **provider_options,
         )
         # Reuse the client's configured transport/timeout/proxy behavior. The
         # pinned adapter exposes its httpx client; only attach a content-free hook.
