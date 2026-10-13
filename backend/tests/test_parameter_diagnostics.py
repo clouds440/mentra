@@ -65,3 +65,8 @@ class ParameterTests(unittest.TestCase):
         self.assertIn('Invalid date',end['error']['reason'])
         self.assertTrue(end['error']['frames'])
         self.assertNotIn('opaque-credential-123',json.dumps(self.handler.items))
+
+    def test_returned_tool_failure_retains_safe_reason_without_response_content(self):
+        value=capture({'outcome':'failed','reason':'Missing required date','content':'PRIVATE RESPONSE'})
+        self.assertEqual(value['failure_reason'],'Missing required date')
+        self.assertNotIn('PRIVATE RESPONSE',json.dumps(value))

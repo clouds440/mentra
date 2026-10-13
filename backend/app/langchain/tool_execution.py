@@ -248,8 +248,9 @@ class ToolExecutor:
                 if receipt['retryable']:
                     self.outages[domain] = receipt
                 remember_failure(self.scope, name, receipt)
+                from app.core.observability.sanitization import error_metadata
                 workflow_logger.event('tool.failed', level=logging.WARNING, tool_name=name, error_code=receipt['code'], category=receipt['category'],
-                                      attempts=attempt, duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=call_id, task_impact=receipt['task_impact'], effect_certainty=receipt['effect_certainty'])
+                                      attempts=attempt, duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=call_id, task_impact=receipt['task_impact'], effect_certainty=receipt['effect_certainty'], error=error_metadata(error))
                 await self.publisher.emit(step, 'failed', receipt['reason'], tool_name=name, tool_call_id=call_id,
                     tool_attempt=attempt, max_attempts=1 if write else max_attempts, error_code=receipt['code'])
                 await self.publisher.emit(step + '-recovery', 'degraded', 'Continuing with available information; this action remains unverified.' if receipt['effect_certainty'] == 'unknown' else 'Continuing with available information; missing information will be identified.', tool_name=name)

@@ -69,6 +69,8 @@ def capture(value, *, secrets=(), maximum=None):
             for field in ('outcome','status','state','code'):
                 status=item.get(field)
                 if isinstance(status,str) and re.fullmatch('[A-Za-z][A-Za-z0-9_]{0,79}',status): result[field]=status
+            if item.get('outcome',item.get('status')) in ('failed','unavailable','rejected','timeout','budget_exhausted','invalid_input') and isinstance(item.get('reason'),str):
+                result['failure_reason']=redact(item['reason'][:512],secrets)
             return result
         if type(item) in (list,tuple,set):
             first=next(iter(item),None)
