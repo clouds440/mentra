@@ -235,6 +235,32 @@ test('global scrollbars are thin, transparent and arrowless in both themes', asy
   }
 });
 
+test('floating shell controls leave the full viewport available to chat', async ({page}, info) => {
+  await workspace(page);
+  await page.goto('/chat/polish-chat');
+  const controls = page.getByLabel('Workspace controls');
+  await expect(page.getByRole('log')).toBeVisible();
+  await expect(page.locator('main')).toHaveCount(1);
+  const geometry = await page.locator('main').evaluate(el => ({top:el.getBoundingClientRect().top, height:el.getBoundingClientRect().height, viewport:innerHeight}));
+  expect(geometry.top).toBe(0);
+  expect(geometry.height).toBe(geometry.viewport);
+  await expect(controls).not.toContainText(title);
+  await expect(page.locator('header')).toHaveCount(0);
+  await page.getByRole('button', {name:'Collapse sidebar'}).click();
+  await expect(page.getByRole('button', {name:'Expand sidebar'})).toBeVisible();
+  await controls.getByRole('link', {name:/Notifications/}).click();
+  await expect(controls.getByText('Notifications', {exact:true})).toBeVisible();
+  await expect(page.getByRole('heading', {name:'Notifications', exact:true})).toBeVisible();
+  await page.setViewportSize({width:390, height:844});
+  await page.goto('/chat/polish-chat');
+  await page.getByRole('button', {name:'Open navigation menu'}).click();
+  const sidebar = page.getByRole('complementary', {name:'Main navigation'});
+  await expect(sidebar.getByRole('link', {name:'Library', exact:true})).toBeVisible();
+  await sidebar.getByRole('button', {name:'Close navigation menu'}).click();
+  expect(await page.locator('main').evaluate(el => el.getBoundingClientRect().height)).toBe(844);
+  await page.screenshot({path:info.outputPath('floating-chat-mobile.png'), animations:'disabled'});
+});
+
 test('full width titles reveal overlay controls and history opens at the bottom', async ({page}) => {
   await workspace(page, false, true);
   await page.goto('/chat/polish-chat');

@@ -19,14 +19,10 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [newChatKey, setNewChatKey] = useState(0);
-  const [chatTitle, setChatTitle] = useState('New Chat');
-  const title =
-    location.pathname === '/' || location.pathname.startsWith('/chat/')
-      ? chatTitle
-      : pageTitles[location.pathname] ?? 'Mentra';
+  const isChat = location.pathname === '/' || location.pathname.startsWith('/chat/');
+  const title = pageTitles[location.pathname] ?? (location.pathname.startsWith('/library/') ? 'Library' : 'Mentra');
 
   function startNewChat() {
-    setChatTitle('New Chat');
     setNewChatKey((key) => key + 1);
     navigate('/');
   }
@@ -39,12 +35,12 @@ export function AppLayout() {
         onCloseMobile={() => setMobileOpen(false)}
         onNewChat={startNewChat}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 shrink-0 items-center border-b border-border px-4 sm:px-6">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:px-5" aria-label="Workspace controls">
           <div className="flex min-w-0 items-center gap-3">
             <button
               aria-label="Open navigation menu"
-              className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+              className="pointer-events-auto grid h-9 w-9 place-items-center rounded-lg bg-background/90 text-muted backdrop-blur-sm hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
               onClick={() => setMobileOpen(true)}
               type="button"
             >
@@ -52,7 +48,7 @@ export function AppLayout() {
             </button>
             <button
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="hidden h-9 w-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:grid"
+              className="pointer-events-auto hidden h-9 w-9 place-items-center rounded-lg bg-background/90 text-muted backdrop-blur-sm hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:grid"
               onClick={() => setCollapsed((value) => !value)}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
@@ -63,12 +59,12 @@ export function AppLayout() {
                 <PanelLeftClose aria-hidden="true" size={18} />
               )}
             </button>
-            <span className="truncate text-sm font-medium text-heading">{title}</span>
+            {!isChat && <span className="truncate text-sm font-medium leading-9 text-heading">{title}</span>}
           </div>
-          <NotificationBell />
-        </header>
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <Outlet context={{ newChatKey, setChatTitle }} />
+          <div className="pointer-events-auto shrink-0 rounded-lg bg-background/90 backdrop-blur-sm"><NotificationBell /></div>
+        </div>
+        <main className={`min-h-0 min-w-0 flex-1 overflow-hidden ${isChat ? '' : 'pt-14'}`}>
+          <Outlet context={{ newChatKey }} />
         </main>
       </div>
     </div>

@@ -13,7 +13,7 @@ import { chatStore, useChatList, useConversation } from '../stores/chatStore';
 import { Spinner } from '../components/ui';
 import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from '../services/chatAttachments';
 
-interface ChatOutletContext { newChatKey: number; setChatTitle: (title: string) => void }
+interface ChatOutletContext { newChatKey: number }
 interface StagedFile { id: string; file: File; preview?: string; saved?: ChatAttachment }
 
 export function ChatPage() {
@@ -23,7 +23,7 @@ export function ChatPage() {
   const [params, setParams] = useSearchParams();
   const selectedDocument = params.get('document');
   const practice = params.get('practice');
-  const { newChatKey, setChatTitle } = useOutletContext<ChatOutletContext>();
+  const { newChatKey } = useOutletContext<ChatOutletContext>();
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const id = conversationId ?? draftId;
   const view = useConversation(id);
@@ -102,7 +102,6 @@ export function ChatPage() {
   useEffect(() => {
     if (selectedDocument) setSelection({ mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] });
   }, [selectedDocument, newChatKey]);
-  useEffect(() => { setChatTitle(conversation?.title ?? 'New Chat'); }, [conversation?.title, setChatTitle, id]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current; if (!container) return;
@@ -168,7 +167,7 @@ export function ChatPage() {
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
       ) : view.messages.length === 0 ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState onChooseSuggestion={setDraft} /></div> : (
-        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6"
+        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6 lg:pt-8"
           ref={scrollContainerRef} role="log" aria-live="polite" tabIndex={0}
           onWheel={() => { userScrollUntil.current = performance.now() + 1500; }}
           onTouchMove={() => { userScrollUntil.current = performance.now() + 1500; }}
