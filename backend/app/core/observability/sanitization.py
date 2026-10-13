@@ -30,10 +30,32 @@ def error_metadata(error):
                            function=trace.tb_frame.f_code.co_name, line=trace.tb_lineno))
         trace = trace.tb_next
     value = dict(type=type(error).__name__, frames=frames)
+    from .payloads import redact
+    try:
+        reason = str(error)
+        if type(error).__name__.endswith('ValidationError') and callable(getattr(error,'errors',None)):
+            details=error.errors()
+            value['validation']=[dict(location=list(item.get('loc',[])),type=item.get('type'),reason=redact(str(item.get('msg','')))) for item in details[:10]]
+            reason='Input validation failed; see field locations and validation types.'
+        if type(error).__module__.startswith(('sqlalchemy', 'psycopg')):
+            reason = 'Database operation failed; inspect exception type and SQLSTATE.'
+        value['reason'] = redact(reason[:2048])[:1024]
+    except Exception:
+        value['reason'] = 'Exception message unavailable.'
     status = getattr(error, 'status_code', None)
     if isinstance(status, int) and 100 <= status <= 599:
         value['http_status'] = status
     code = getattr(error, 'code', None)
     if isinstance(code, str) and re.fullmatch('[A-Z][A-Z0-9_]{0,79}', code):
         value['code'] = code
+    origin = getattr(error, 'orig', None)
+    sqlstate = getattr(origin, 'sqlstate', None) or getattr(origin, 'pgcode', None)
+    if isinstance(sqlstate,str) and re.fullmatch('[A-Z0-9]{5}',sqlstate):
+        value['sqlstate'] = sqlstate
+    cause = error.__cause__ or (error.__context__ if not error.__suppress_context__ else None)
+    if cause is not None and cause is not error:
+        try:
+            value['cause'] = dict(type=type(cause).__name__, reason=redact(str(cause)[:1024]))
+        except Exception:
+            value['cause'] = dict(type=type(cause).__name__)
     return value

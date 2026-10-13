@@ -41,7 +41,13 @@ Worker commands are `python -m app.rag.worker`, `python -m app.assessments.worke
 | `LOG_HEALTH_REQUESTS` | false | Show successful health traffic at INFO |
 | `LOG_POLL_REQUESTS` | false | Show successful sync/status traffic at INFO |
 
-The API returns `X-Request-ID`, exposed through CORS. Caller-provided correlation headers do not override server-owned IDs. Request bodies, URL queries, arbitrary path parameters, credentials, prompts, source text, answers and tool arguments are not recorded. Free-text application/dependency logs are normalized; use structured events for meaningful new diagnostics.
+The API returns `X-Request-ID`, exposed through CORS. Caller-provided correlation headers do not override server-owned IDs. Registered operations record parameter presence and structure only: supplied names, skipped/defaulted names, explicit null, empty values, types, string lengths, collection counts and bounded nested field shapes. Pydantic contracts retain the distinction between an omitted default and an explicitly supplied value. Boolean flags and controlled outcome/status codes remain visible. Query text, prompts, answers, binary data and credential values are not stored; there are no separate payload files or references.
+
+`LOG_PARAMETER_DETAILS=true` enables these compact diagnostics; false returns to metadata-only operation signatures. HTTP JSON bodies are inspected in a bounded temporary buffer while forwarding ASGI messages and immediately reduced to shapes; multipart/binary/SSE and authentication bodies are omitted. Body inspection is capped at 64 KiB, with an explicit omission marker for larger transport bodies. Domain-operation parameter capture still covers parsed requests. Nested shape depth and field counts are capped and report omitted detail counts.
+
+Each operation has monotonic wall `duration_ms`; regular calls, physical tool attempts and provider invocations also report `execution_ms` excluding response-log processing. `exclusive_ms` subtracts the union of child intervals, so overlapping async children are not counted twice. Error records retain sanitized failure reasons, stack locations and available SQLSTATE without SQL parameter dumps. Tool attempts expose passed/defaulted schema fields and parent spans; background chat summaries run in linked workflows. The file queue is bounded and nonblocking so slow disk does not stall a request. Files remain diagnostic evidence, not a crash-proof audit ledger.
+
+Free-text application/dependency logs remain normalized. Existing `connect_module` registration automatically enables parameter diagnostics without adding statements to every public method.
 
 ## Connecting a new module
 

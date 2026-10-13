@@ -10,6 +10,18 @@ from .provider_activity import provider_attempt_scope
 
 
 async def invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3):
+    async with workflow_logger.step('app.langchain.provider_invocation', 'model.invoke', request=prepared) as observed:
+        started = time.monotonic()
+        try:
+            result = await _invoke_provider(model, prepared, on_delta=on_delta, maximum_attempts=maximum_attempts)
+        finally:
+            observed.executed(started)
+        observed.response(result)
+        observed.result(dict(streaming=on_delta is not None), 'success')
+        return result
+
+
+async def _invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3):
     started = time.monotonic()
     callback_seconds = 0
     first_chunk = first_text = None

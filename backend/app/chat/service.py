@@ -104,7 +104,7 @@ class ConversationService:
                 await activity_sink.flush()
             published = await run_in_threadpool(self.repository.finish, owner, job, response, None)
             if self.summaries and published:
-                task = asyncio.create_task(self.summaries.refresh(owner, job['conversation_id']))
+                task = workflow_logger.start_task(self.summaries.refresh(owner, job['conversation_id']), name='chat.summarize')
                 self.tasks.add(task)
                 task.add_done_callback(self.tasks.discard)
             from app.core.observability.context import current

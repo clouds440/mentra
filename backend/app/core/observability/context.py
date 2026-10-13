@@ -77,7 +77,7 @@ class Collector:
         with self.lock:
             return dict(workflow=self.workflow, outcome=self.outcome,
                         duration_ms=round(((self.closed_at or time.monotonic())-self.started)*1000, 3),
-                        modules=list(self.modules), operations=[dict(x) for x in self.entries],
+                        modules=list(self.modules), operations=[{k:v for k,v in x.items() if not k.startswith('_')} for x in self.entries],
                         linked_workflows=[dict(x) for x in self.links.values()],
                         summary_truncated=bool(self.dropped or self.overflow),
                         dropped_steps=self.dropped, overflow_count=self.overflow)

@@ -190,11 +190,18 @@ class ToolExecutor:
                 if write:
                     await self.publisher.ensure_active()
                 # Validate before invoking; never retry validation or permit guessed IDs.
-                tool.args_schema.model_validate(arguments)
+                validated_arguments = tool.args_schema.model_validate(arguments)
                 with self.budget.admitted():
                     execution_started = True
-                    invocation = tool.ainvoke(arguments)
-                    result = await invocation if write else await asyncio.wait_for(invocation, min(timeout, envelope.tool_remaining if envelope else timeout))
+                    async with workflow_logger.step('app.langchain.tool_execution', 'tool.attempt', input=dict(tool_name=name, attempt=attempt), request=validated_arguments) as observed_attempt:
+                        attempt_started = monotonic()
+                        try:
+                            invocation = tool.ainvoke(arguments)
+                            result = await invocation if write else await asyncio.wait_for(invocation, min(timeout, envelope.tool_remaining if envelope else timeout))
+                        finally:
+                            observed_attempt.executed(attempt_started)
+                        observed_attempt.response(result.payload if isinstance(result, StagedRead) else result)
+                        observed_attempt.result(dict(tool_name=name, attempt=attempt), outcome_status(result.payload if isinstance(result, StagedRead) else result)[1])
                 if write:
                     self.invalidate_written_domain(domain)
                 observed = result.payload if isinstance(result, StagedRead) and isinstance(result.payload, dict) else result

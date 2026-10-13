@@ -73,13 +73,18 @@ def workflow(name, *, log_context=None, quiet=False, collector=None):
 
 
 class Operation:
-    def __init__(self, module, operation, *, purpose=None, input=None, quiet=False):
+    def __init__(self, module, operation, *, purpose=None, input=None, quiet=False, request=None, redactions=()):
         self.module, self.operation = module, operation
         self.purpose, self.input = purpose or operation, input
         self.root = None
         self.quiet = quiet
+        from .payloads import capture, sensitive_values
+        self._secrets = [*redactions, *sensitive_values(request if request is not None else input)]
+        self.request = capture(request if request is not None else input, secrets=self._secrets)
 
     def __enter__(self):
+        from .payloads import redactions
+        self.redaction_token = redactions.set((*redactions.get(), *self._secrets))
         if current.get() is None:
             self.root = workflow(self.operation, quiet=self.quiet)
             self.root.__enter__()
@@ -88,14 +93,24 @@ class Operation:
         self.entry = dict(span_id=identifier(), parent_span_id=parent['span_id'] if parent else None,
                           module=self.module, operation=self.operation, purpose=self.purpose,
                           start_sequence=self.collector.next_sequence(), execution_status='running', outcome='unknown')
+        self.entry['request'] = self.request
         self.started = time.monotonic()
         self.collector.add(self.entry)
         self.token = span.set(self.entry)
         emit('step.started', **dict(self.entry), input=safe_metadata(self.input))
         return self
 
+    def response(self, value):
+        from .payloads import capture
+        self.collector.update(self.entry, response=capture(value, secrets=self._secrets))
+
+    def executed(self, started):
+        self.collector.update(self.entry, execution_ms=round((time.monotonic()-started)*1000, 3))
+
     def result(self, value=None, outcome=None):
         metadata = safe_metadata(value)
+        if 'response' not in self.entry:
+            self.response(value)
         if isinstance(metadata, dict):
             metadata = dict(self.entry.get('result') or {}, **metadata)
         values = dict(result=metadata)
@@ -104,19 +119,35 @@ class Operation:
         self.collector.update(self.entry, **values)
 
     def __exit__(self, kind, error, traceback):
-        values = dict(duration_ms=round((time.monotonic()-self.started)*1000, 3), execution_status='returned')
+        elapsed = round((time.monotonic()-self.started)*1000, 3)
+        intervals = sorted(self.entry.pop('_child_intervals', []))
+        children, last_end = 0, self.started
+        for start, end in intervals:
+            children += max(0, end-max(start, last_end))*1000
+            last_end = max(last_end, end)
+        values = dict(duration_ms=elapsed, exclusive_ms=max(0, round(elapsed-children, 3)), execution_status='returned')
         if error:
             outcome = 'cancelled' if isinstance(error, asyncio.CancelledError) else 'timeout' if isinstance(error, TimeoutError) else 'rejected' if getattr(error, 'status_code', 500) < 500 else 'failed'
             values.update(execution_status='cancelled' if outcome == 'cancelled' else 'timeout' if outcome == 'timeout' else 'raised',
-                          outcome=outcome, error={k:v for k,v in error_metadata(error).items() if k != 'frames'})
+                          outcome=outcome, error=error_metadata(error))
+            from .payloads import redact
+            values['error']['reason'] = redact(values['error'].get('reason', ''), self._secrets)
+        if 'response' not in self.entry:
+            self.response(dict(error=values['error']) if error else None)
         self.collector.update(self.entry, **values)
         terminal = dict(self.entry)
         terminal.update(values)
         emit('step.completed', level=logging.WARNING if error else logging.INFO, **terminal)
         span.reset(self.token)
+        parent = span.get()
+        if parent:
+            with self.collector.lock:
+                parent.setdefault('_child_intervals', []).append((self.started, time.monotonic()))
         if self.root:
             self.collector.outcome = self.entry['outcome']
             self.root.__exit__(kind, error, traceback)
+        from .payloads import redactions
+        redactions.reset(self.redaction_token)
         return False
 
     async def __aenter__(self):

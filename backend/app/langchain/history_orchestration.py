@@ -342,9 +342,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                             budget.call()
                             return dict(outcome='rejected', code='TOOL_INVALID_ARGUMENTS', reason='The announcement did not match the selected capability.', category='invalid_arguments', effect_certainty='not_started')
                 from app.core.logging import workflow_logger
-                async with workflow_logger.step('app.langchain.history_orchestration', 'tool.dispatch', input=dict(tool_name=tool.name)) as execution:
+                async with workflow_logger.step('app.langchain.history_orchestration', 'tool.dispatch', input=dict(tool_name=tool.name), request=arguments) as execution:
                     required = bool(plan and any(step.required and step.module == domains.get(tool.name) for step in plan.steps))
                     result = await executor.execute(tool, arguments, required=required)
+                    execution.response(result.payload if isinstance(result, StagedRead) else result)
                     status = result.get('outcome') if isinstance(result, dict) else None
                     from .tool_execution import outcome_status
                     execution.result(dict(domain_status=status or 'returned'),

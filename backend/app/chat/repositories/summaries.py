@@ -7,6 +7,10 @@ from .tables import summaries as s
 from .postgres import now
 
 
+from app.core.logging import workflow_logger
+
+
+@workflow_logger.connect_module(default_outcome='success')
 class SummaryRepository:
     def __init__(self, chats):
         self.chats = chats

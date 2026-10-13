@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     log_event_max_bytes: int = Field(default=32768, ge=8192, le=1048576)
     log_health_requests: bool = False
     log_poll_requests: bool = False
+    log_parameter_details: bool = True
     app_env: str = "development"
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

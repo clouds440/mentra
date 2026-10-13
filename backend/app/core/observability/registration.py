@@ -1,4 +1,5 @@
 import inspect
+import time
 from contextlib import contextmanager, asynccontextmanager
 from functools import wraps
 from .steps import Operation
@@ -13,19 +14,32 @@ def operation(function=None, *, module=None, name=None, kind='call', result=None
         identity, feature = module or fn.__module__, name or fn.__qualname__
         def make(args, kwargs):
             # Signature keys are code-owned; arbitrary **kwargs names never enter logs.
+            request = None
+            secrets = []
             try:
                 bound = signature.bind_partial(*args, **kwargs)
+                request = {key:value for key,value in bound.arguments.items() if key not in ('self','cls')}
+                from .payloads import sensitive_values
+                secrets = sensitive_values(request)
+                if identity.startswith('app.auth'):
+                    request = dict(capture='authentication payload omitted')
                 shape = [key for key in bound.arguments if key not in ('self', 'cls')]
                 metadata = dict(parameters=shape[:30], parameter_count=len(shape),
                                 parameter_types={key: type(value).__name__[:80] for key, value in bound.arguments.items() if key in shape[:30]})
+                metadata['skipped_parameters'] = [key for key,param in signature.parameters.items() if key not in bound.arguments and key not in ('self','cls') and param.kind not in (param.VAR_POSITIONAL,param.VAR_KEYWORD)]
                 if input:
                     metadata.update(safe_metadata(input(bound.arguments)) or {})
             except Exception:
                 metadata = dict(parameters=[])
-            return Operation(identity, feature, input=metadata, quiet=quiet)
+            return Operation(identity, feature, input=metadata, quiet=quiet, request=request, redactions=secrets)
         def finish(step, value):
+            step.response(value if not identity.startswith('app.auth') else dict(capture='authentication payload omitted'))
             try:
                 semantic = outcome(value) if callable(outcome) else outcome
+                if isinstance(value,dict) and semantic in (None,'success'):
+                    domain=value.get('outcome',value.get('status'))
+                    if domain in ('rejected','failed','degraded','skipped','cancelled','timeout','deferred','unknown'):
+                        semantic=domain
                 if semantic is not None and semantic not in ('success','rejected','failed','degraded','skipped','cancelled','timeout','deferred','unknown'):
                     semantic = 'unknown'
                 step.result(result(value) if result else dict(return_type=type(value).__name__),
@@ -65,6 +79,7 @@ def operation(function=None, *, module=None, name=None, kind='call', result=None
             @wraps(fn)
             async def wrapped(*args, **kwargs):
                 async with make(args, kwargs) as step:
+                    started = time.monotonic()
                     try:
                         value = await fn(*args, **kwargs)
                     except BaseException:
@@ -72,12 +87,15 @@ def operation(function=None, *, module=None, name=None, kind='call', result=None
                             from .events import emit
                             emit('transaction.rolled_back')
                         raise
+                    finally:
+                        step.executed(started)
                     finish(step, value)
                     return value
         else:
             @wraps(fn)
             def wrapped(*args, **kwargs):
                 with make(args, kwargs) as step:
+                    started = time.monotonic()
                     try:
                         value = fn(*args, **kwargs)
                     except BaseException:
@@ -85,6 +103,8 @@ def operation(function=None, *, module=None, name=None, kind='call', result=None
                             from .events import emit
                             emit('transaction.rolled_back')
                         raise
+                    finally:
+                        step.executed(started)
                     finish(step, value)
                     return value
         wrapped.__mentra_observed__ = True

@@ -5,7 +5,7 @@ An OS lock protects complete records, including across Docker containers sharing
 the directory. Open/close per record also allows recovery after a sink failure.
 """
 import logging
-from queue import Queue
+from queue import Queue, Full
 from threading import Thread
 import json
 import os
@@ -61,7 +61,10 @@ class DailyFileHandler(logging.Handler):
             payload = (self.format(record) + '\n').encode('utf-8')
             day = datetime.fromtimestamp(record.created, timezone.utc).date().isoformat()
             if self._queue is not None:
-                self._queue.put((day, payload))
+                try:
+                    self._queue.put_nowait((day, payload))
+                except Full:
+                    self._report_failure()
             else:
                 self._write(day, payload)
         except Exception:

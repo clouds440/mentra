@@ -65,6 +65,10 @@ def enough_history(rows):
     return False
 
 
+from app.core.logging import workflow_logger
+
+
+@workflow_logger.connect_module(default_outcome='success')
 class ConversationSummaries:
     def __init__(self, chats, llm):
         self.chats, self.llm = chats, llm
