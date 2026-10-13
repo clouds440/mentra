@@ -104,7 +104,7 @@ export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
           </div>
         ) : (
           <>{message.conversation_id && !!message.attachments?.length && <div className="flex max-w-full flex-wrap justify-end gap-3">{message.attachments.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</div>}
-          {!!message.content.trim() && <div className="max-w-full rounded-2xl border border-border bg-message px-4 py-3"><MarkdownContent content={message.content} /></div>}</>
+          {!!message.content.trim() && <><div className="max-w-full rounded-2xl border border-border bg-message px-4 py-3"><MarkdownContent content={message.content} /></div><CopyResponse content={message.content} subject="message" /></>}</>
         )}
       </div>
     </article>

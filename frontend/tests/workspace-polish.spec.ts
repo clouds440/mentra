@@ -1,6 +1,25 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const title = 'A long conversation about understanding motion and forces';
+for (const width of [1280, 390]) {
+  test(`Copy user message excludes attachment controls at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height:844});
+    await workspace(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {value:{writeText:async (value:string) => { (window as unknown as {copiedText:string}).copiedText = value; }}, configurable:true});
+    });
+    await page.goto('/chat/polish-chat');
+    const message = page.getByLabel('Your message', {exact:true}).last();
+    await message.getByRole('button', {name:'Copy message', exact:true}).click();
+    await expect(message.getByRole('button', {name:'Message copied'})).toBeVisible();
+    const copied = await page.evaluate(() => (window as unknown as {copiedText:string}).copiedText);
+    expect(copied).toBe(`Earlier question and explanation ${'Learning takes practice. '.repeat(20)}`.trim());
+    expect(copied).not.toContain('study.png');
+    await page.evaluate(() => { navigator.clipboard.writeText = async () => {throw new Error('Clipboard unavailable');}; });
+    await message.getByRole('button', {name:'Message copied'}).click();
+    await expect(message.getByRole('status').filter({hasText:'Couldn’t copy'})).toBeVisible();
+  });
+}
 test('Copy response exports plain text with intact code and reports clipboard errors', async ({page}) => {
   const state = await workspace(page, true);
   await page.addInitScript(() => {
