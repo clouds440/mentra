@@ -1,6 +1,10 @@
 export { Toggle } from './Toggle';
 export type { ToggleProps } from './Toggle';
-export { Button } from './Button';
+export { Button, buttonStyles } from './Button';
+export { IconButton } from './IconButton';
+export { Tabs } from './Tabs';
+export { Dialog } from './Dialog';
+export { FormField } from './FormField';
 export type { ButtonProps } from './Button';
 export { Card } from './Card';
 export type { CardProps } from './Card';

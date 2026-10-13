@@ -19,6 +19,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [answerAction, setAnswerAction] = useState(false);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const lock = useRef(false);
@@ -45,7 +46,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   async function save(answer = false) {
     if (lock.current) return;
     lock.current = true;
-    const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
+    const controller = new AbortController(); active.current = controller; setBusy(true); setAnswerAction(answer); setError('');
     try {
       const value = card.assessment_id ? card : await assessments.publish(card.id!, controller.signal);
       const result = answer ? await assessments.start(value.assessment_id!, operation.current, controller.signal) : null;
@@ -63,8 +64,8 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   const isMCQ = !card.deleted && card.assessment.questions.every(q => !!q.options?.length);
   const InlineAnswers = card.assessment.questions.every(q => !!q.options?.length) ? MCQAssessment : AnswerSheet;
   const actions = <>
-    {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy} onClick={() => void save()}>Add to assessments</Button>}
-    {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
+    {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy && !answerAction} onClick={() => void save()}>Add to assessments</Button>}
+    {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
   </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
     <div className="flex items-start justify-between gap-3" aria-label="Assessment header">

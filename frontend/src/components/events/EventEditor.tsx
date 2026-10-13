@@ -61,6 +61,6 @@ export function EventEditor({ current, initial, onConfirmed, onSaved, onCancel }
       {preview.requires_choice && <p>This local time occurs twice. Choose the intended instant.</p>}
       {preview.choices.map((value, index) => <label key={index} className="flex gap-2"><input type="radio" name="instant" value={index} checked={choice === String(index)} onChange={() => setChoice(String(index))} />{value.starts_at ? new Date(value.starts_at).toUTCString() : `${draft.local_date} in ${draft.timezone}`} · {value.reminder_due_at ? `Reminder ${new Date(value.reminder_due_at).toLocaleString()}` : 'No pending reminder'} ({value.reminder_state})</label>)}
     </div>}
-    <div className="flex gap-2"><Button type="submit" disabled={busy || !!preview && (choice === '' || preview.field_errors.length > 0)}>{preview ? 'Save event' : 'Check dates & reminder'}</Button><Button variant="ghost" disabled={busy} loading={busy} onClick={onCancel}>Cancel</Button></div>
+    <div className="flex gap-2"><Button type="submit" loading={busy} disabled={busy || !!preview && (choice === '' || preview.field_errors.length > 0)}>{preview ? 'Save event' : 'Check dates & reminder'}</Button><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button></div>
   </form>;
 }

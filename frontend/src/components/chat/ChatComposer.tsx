@@ -52,6 +52,12 @@ export function ChatComposer({
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+    textarea.style.height = '0px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
+  }, [value]);
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
     const resize = () => {
       textarea.style.height = '0px';
       textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
@@ -65,7 +71,7 @@ export function ChatComposer({
     });
     observer.observe(textarea);
     return () => observer.disconnect();
-  }, [value]);
+  }, []);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (pickerRef.current?.handleKeyDown(event)) return;
@@ -123,7 +129,7 @@ export function ChatComposer({
         }} />
     <form
       aria-label="Message Mentra"
-      className="rounded-2xl border border-border-strong bg-surface p-2 shadow-lg shadow-shadow/10 focus-within:border-border-hover"
+      className="chat-composer rounded-panel border border-border-strong bg-card p-1.5 shadow-panel focus-within:border-border-hover"
       onPaste={handlePaste}
       onSubmit={(event) => {
         event.preventDefault();
@@ -181,7 +187,7 @@ export function ChatComposer({
           <Button
             aria-label={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
             title={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
-            className="h-9 min-h-9 w-9 rounded-xl p-0"
+            className="icon-control h-8 min-h-8 w-8 rounded-control p-0"
             disabled={isThinking || voice.phase === 'permission' || voice.phase === 'processing'}
             size="sm" variant="ghost" type="button"
             onClick={() => voice.phase === 'recording' ? voice.stop() : void voice.start()}
@@ -192,7 +198,7 @@ export function ChatComposer({
           </Button>
           <Button
             aria-label={canStop ? 'Stop response' : 'Send message'}
-            className="h-9 min-h-9 w-9 rounded-xl p-0"
+            className="icon-control h-8 min-h-8 w-8 rounded-control p-0"
             disabled={canStop ? stopping : (!value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
             type={canStop ? 'button' : 'submit'}

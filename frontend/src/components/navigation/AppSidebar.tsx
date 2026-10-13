@@ -18,6 +18,7 @@ import { LogoutButton } from '../auth/LogoutButton';
 import { useAuth } from '../auth/AuthProvider';
 import { cn } from '../../utils/cn';
 import { ConversationList } from '../chat/ConversationList';
+import { useMobileNavigation } from '../../hooks/useMobileNavigation';
 
 const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
@@ -53,11 +54,14 @@ export function AppSidebar({
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const accountName = identity?.username ?? (identity?.provider ? `${identity.provider} student` : 'Learner');
   const accountMark = (identity?.username ?? identity?.provider)?.slice(0, 1).toUpperCase();
+  const sidebar = useRef<HTMLElement>(null);
+  const desktop = useMobileNavigation(sidebar, mobileOpen, onCloseMobile);
+  useEffect(() => { setAccountOpen(false); }, [location.pathname, location.search, collapsed, mobileOpen]);
 
 
   return (
     <>
-      {mobileOpen && (
+      {mobileOpen && !desktop && (
         <button
           aria-label="Close navigation menu"
           className="fixed inset-0 z-40 overlay-backdrop lg:hidden"
@@ -67,6 +71,11 @@ export function AppSidebar({
       )}
 
       <aside
+        ref={sidebar}
+        role={!desktop && mobileOpen ? 'dialog' : undefined}
+        aria-modal={!desktop && mobileOpen ? true : undefined}
+        data-modal-navigation={!desktop && mobileOpen ? true : undefined}
+        tabIndex={-1}
         aria-label="Main navigation"
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-border bg-background transition-[width,transform] duration-200 ease-out lg:relative lg:z-20 lg:translate-x-0',
@@ -151,7 +160,7 @@ export function AppSidebar({
           })}
         </nav>
 
-        {!collapsed && (
+        {(!collapsed || !desktop) && (
           <ConversationList onOpen={() => { setAccountOpen(false); onCloseMobile(); }} />
         )}
 

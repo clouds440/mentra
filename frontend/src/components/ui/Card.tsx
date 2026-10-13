@@ -1,13 +1,14 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '../../utils/cn';
 
-export type CardProps = HTMLAttributes<HTMLDivElement>;
+export interface CardProps extends HTMLAttributes<HTMLDivElement> { elevated?: boolean }
 
-export function Card({ className, ...props }: CardProps) {
+export function Card({ className, elevated = false, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-[2rem] border border-border-strong bg-card shadow-2xl shadow-shadow/30 backdrop-blur-xl',
+        'rounded-panel border border-border bg-card',
+        elevated && 'shadow-panel',
         className,
       )}
       {...props}

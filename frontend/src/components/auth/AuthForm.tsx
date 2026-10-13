@@ -62,7 +62,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   }
 
   return (
-    <Card className="auth-enter rounded-2xl p-6 shadow-lg shadow-shadow/5 backdrop-blur-none sm:p-8">
+    <Card className="auth-enter p-5 shadow-panel sm:p-6">
       <div className="mb-7">
         <h1 className="text-2xl font-medium tracking-tight text-foreground">
           {registration ? 'Create your account' : 'Welcome back'}
@@ -78,7 +78,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           <div>
             <label className="mb-2 block text-sm font-medium text-heading" htmlFor="username">Username</label>
             <Input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false}
-              className="min-h-12 text-sm" maxLength={64} required value={username} disabled={submitting}
+              className="min-h-10 text-sm" maxLength={64} required value={username} disabled={submitting}
               aria-invalid={Boolean(fields.username)} aria-describedby={fields.username ? 'username-error' : registration ? 'username-hint' : undefined}
               onChange={(event) => { setUsername(event.target.value); setFields((current) => ({ ...current, username: undefined })); setError(null); }} />
             {fields.username ? <p id="username-error" role="alert" className="mt-2 text-xs leading-5 text-danger">{fields.username}</p>
@@ -88,7 +88,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
             <label className="mb-2 block text-sm font-medium text-heading" htmlFor="password">Password</label>
             <div className="relative">
               <Input id="password" name="password" type={visible ? 'text' : 'password'}
-                autoComplete={registration ? 'new-password' : 'current-password'} className="min-h-12 pr-12 text-sm"
+                autoComplete={registration ? 'new-password' : 'current-password'} className="min-h-10 pr-12 text-sm"
                 minLength={registration ? 12 : 1} maxLength={256} required value={password} disabled={submitting}
                 aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'password-error' : registration ? 'password-hint' : undefined}
                 onChange={(event) => { setPassword(event.target.value); setFields((current) => ({ ...current, password: undefined })); setError(null); }} />
@@ -102,7 +102,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               : registration && <p id="password-hint" className="mt-2 text-xs leading-5 text-subtle">Use at least 12 characters.</p>}
           </div>
         </div>
-        <Button className="mt-7 min-h-12 w-full" disabled={submitting} loading={submitting} type="submit">
+        <Button className="mt-7 min-h-10 w-full" disabled={submitting} loading={submitting} type="submit">
           {registration ? 'Create account' : 'Sign in'}
         </Button>
       </form>

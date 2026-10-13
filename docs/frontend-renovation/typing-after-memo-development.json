@@ -1,0 +1,287 @@
+{
+  "results": [
+    {
+      "route": "/library",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/node_modules/.vite/deps/react_jsx-dev-runtime.js",
+          "bytes": 37035
+        },
+        {
+          "name": "/node_modules/.vite/deps/react.js",
+          "bytes": 219
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom_client.js",
+          "bytes": 1118
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-RLJ2RCJQ.js",
+          "bytes": 77818
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-DC5AMYBS.js",
+          "bytes": 1830
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-NUMECXU6.js",
+          "bytes": 928095
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-router-dom.js",
+          "bytes": 478366
+        },
+        {
+          "name": "/node_modules/.vite/deps/lucide-react.js",
+          "bytes": 1673605
+        },
+        {
+          "name": "/node_modules/.vite/deps/clsx.js",
+          "bytes": 691
+        },
+        {
+          "name": "/node_modules/.vite/deps/tailwind-merge.js",
+          "bytes": 72653
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom.js",
+          "bytes": 295
+        },
+        {
+          "name": "/node_modules/.vite/deps/idb.js",
+          "bytes": 8126
+        }
+      ],
+      "readyMs": 944.5
+    },
+    {
+      "route": "/assessments",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/node_modules/.vite/deps/react.js",
+          "bytes": 219
+        },
+        {
+          "name": "/node_modules/.vite/deps/react_jsx-dev-runtime.js",
+          "bytes": 37035
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom_client.js",
+          "bytes": 1118
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-RLJ2RCJQ.js",
+          "bytes": 77818
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-DC5AMYBS.js",
+          "bytes": 1830
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-NUMECXU6.js",
+          "bytes": 928095
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-router-dom.js",
+          "bytes": 478366
+        },
+        {
+          "name": "/node_modules/.vite/deps/lucide-react.js",
+          "bytes": 1673605
+        },
+        {
+          "name": "/node_modules/.vite/deps/clsx.js",
+          "bytes": 691
+        },
+        {
+          "name": "/node_modules/.vite/deps/tailwind-merge.js",
+          "bytes": 72653
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom.js",
+          "bytes": 295
+        },
+        {
+          "name": "/node_modules/.vite/deps/idb.js",
+          "bytes": 8126
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-markdown.js",
+          "bytes": 93416
+        },
+        {
+          "name": "/node_modules/.vite/deps/remark-gfm.js",
+          "bytes": 101136
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-SXYLU6YE.js",
+          "bytes": 6137
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-3ECNKQ6C.js",
+          "bytes": 53762
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-CBGUEXKD.js",
+          "bytes": 72694
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-DON7UXX6.js",
+          "bytes": 128766
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-2LCSH3PH.js",
+          "bytes": 769
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-ZQL7ZJ3Z.js",
+          "bytes": 1702
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-S725DACQ.js",
+          "bytes": 37368
+        }
+      ],
+      "readyMs": 367.20000000298023
+    },
+    {
+      "route": "/chat/polish-chat",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/node_modules/.vite/deps/react.js",
+          "bytes": 219
+        },
+        {
+          "name": "/node_modules/.vite/deps/react_jsx-dev-runtime.js",
+          "bytes": 37035
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom_client.js",
+          "bytes": 1118
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-DC5AMYBS.js",
+          "bytes": 1830
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-RLJ2RCJQ.js",
+          "bytes": 77818
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-NUMECXU6.js",
+          "bytes": 928095
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-router-dom.js",
+          "bytes": 478366
+        },
+        {
+          "name": "/node_modules/.vite/deps/lucide-react.js",
+          "bytes": 1673605
+        },
+        {
+          "name": "/node_modules/.vite/deps/clsx.js",
+          "bytes": 691
+        },
+        {
+          "name": "/node_modules/.vite/deps/tailwind-merge.js",
+          "bytes": 72653
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-dom.js",
+          "bytes": 295
+        },
+        {
+          "name": "/node_modules/.vite/deps/idb.js",
+          "bytes": 8126
+        },
+        {
+          "name": "/node_modules/.vite/deps/react-markdown.js",
+          "bytes": 93416
+        },
+        {
+          "name": "/node_modules/.vite/deps/remark-gfm.js",
+          "bytes": 101136
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-SXYLU6YE.js",
+          "bytes": 6137
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-3ECNKQ6C.js",
+          "bytes": 53762
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-CBGUEXKD.js",
+          "bytes": 72694
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-2LCSH3PH.js",
+          "bytes": 769
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-ZQL7ZJ3Z.js",
+          "bytes": 1702
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-DON7UXX6.js",
+          "bytes": 128766
+        },
+        {
+          "name": "/node_modules/.vite/deps/chunk-S725DACQ.js",
+          "bytes": 37368
+        },
+        {
+          "name": "/node_modules/.vite/deps/unified.js",
+          "bytes": 333
+        },
+        {
+          "name": "/node_modules/.vite/deps/remark-parse.js",
+          "bytes": 421
+        }
+      ],
+      "readyMs": 699.7000000029802
+    }
+  ],
+  "typing": {
+    "samples": [
+      4.800000004470348,
+      12.100000001490116,
+      3.399999998509884,
+      11.699999995529652,
+      4,
+      13.100000001490116,
+      6.600000001490116,
+      0.10000000149011612,
+      0.20000000298023224,
+      0.29999999701976776,
+      0.19999999552965164,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.10000000149011612,
+      0.29999999701976776,
+      0.29999999701976776,
+      0.29999999701976776,
+      0.30000000447034836,
+      0.20000000298023224,
+      0.3999999985098839,
+      0.09999999403953552,
+      0.10000000149011612,
+      0.19999999552965164,
+      0.20000000298023224
+    ],
+    "longTasks": []
+  }
+}

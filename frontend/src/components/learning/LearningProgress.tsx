@@ -1,3 +1,4 @@
+import { Tabs } from '../ui/Tabs';
 import { TrendingUp, CalendarDays } from 'lucide-react';
 import { WorkspaceHeader } from '../workspace/WorkspaceHeader';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
@@ -40,9 +41,7 @@ function Progress() {
   }, [tab, context, reload]);
   return <div className="h-full overflow-y-auto"><div className="page-container">
     <WorkspaceHeader title={tab === 'events' ? 'Events' : 'Progress'} description={tab === 'events' ? 'Make room for your next learning milestone. Keep deadlines, practice and study sessions together.' : 'See what you’ve learned, where you’re growing, and what to explore next.'} icon={tab === 'events' ? CalendarDays : TrendingUp} />
-    <div role="tablist" aria-label="Progress sections" className="workspace-tabs" onKeyDown={event => {
-      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 'learning' : event.key === 'End' ? 'events' : tab === 'learning' ? 'events' : 'learning'; setParams({ tab: next }); document.getElementById(`progress-${next}`)?.focus(); }
-    }}>{(['learning', 'events'] as const).map(value => <button id={`progress-${value}`} key={value} role="tab" aria-selected={value === tab} aria-controls={`progress-panel-${value}`} tabIndex={value === tab ? 0 : -1} className={`border-b-2 px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-accent ${value === tab ? 'border-accent' : 'border-transparent text-muted'}`} onClick={() => setParams({ tab: value })}>{value === 'learning' ? 'Learning' : 'Events'}</button>)}</div>
+    <Tabs label="Progress sections" value={tab} onChange={value => { const next = new URLSearchParams(params); next.set('tab', value); if(value !== 'events') next.delete('event'); setParams(next); }} options={(['learning', 'events'] as const).map(value => ({ value, label: value === 'learning' ? 'Learning' : 'Events', id: `progress-${value}`, panel: `progress-panel-${value}` }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <Button variant="ghost" size="sm" onClick={() => refreshPage(() => setReload(value => value + 1))}>Retry</Button></p>}
     <section role="tabpanel" id="progress-panel-learning" aria-labelledby="progress-learning" hidden={tab !== 'learning'} className="space-y-6">
       {tab==='learning' && <ConceptReview contexts={contexts} onReviewed={() => setReload(value => value+1)} />}

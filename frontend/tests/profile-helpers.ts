@@ -15,4 +15,6 @@ export async function fillProfile(page: Page, level = 'primary', field = 'Genera
 export async function finishOnboardingWithoutAssessment(page: Page) {
   await fillProfile(page);
   await page.getByRole('button', { name: 'Skip for now', exact: true }).click();
+  await expect(page).not.toHaveURL(/\/onboarding(?:\?|$)/);
+  if (new URL(page.url()).pathname === '/') await expect(page.getByLabel('Ask Mentra anything')).toBeEnabled();
 }

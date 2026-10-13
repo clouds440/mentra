@@ -62,11 +62,11 @@ export function CalibrationAssessment({ initialAttempt, onComplete, onSkip, skip
     <div key={question.id} className="auth-enter mt-7">
       <h2 ref={heading} tabIndex={-1} className="text-lg font-medium leading-7 tracking-tight text-heading outline-none">{question.prompt}</h2>
       <p className="mt-2 text-xs leading-5 text-subtle">Choose one answer. Your answers are submitted together when you finish.</p>
-      <fieldset disabled={disabled} aria-label="Answer choices" className="mt-5 min-w-0 space-y-3">
+      <fieldset disabled={disabled} aria-label="Answer choices" className="mt-4 min-w-0 space-y-2">
         {question.options.map((option) => <label key={option.id} className="relative block cursor-pointer">
           <input type="radio" name={question.id} value={option.id} checked={choices[question.id] === option.id}
-            className="peer sr-only" onChange={() => { setChoices((current) => ({ ...current, [question.id]: option.id })); }} />
-          <span className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-border-strong bg-input px-4 py-3 text-sm leading-6 text-body transition-colors hover:bg-hover peer-checked:border-accent peer-checked:bg-active peer-checked:text-heading peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 peer-disabled:cursor-wait peer-disabled:opacity-70">
+            className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0" onChange={() => { setChoices((current) => ({ ...current, [question.id]: option.id })); }} />
+          <span className="flex min-h-10 items-center justify-between gap-3 rounded-control border border-border-strong bg-input px-3 py-2 text-sm leading-6 text-body transition-colors hover:bg-hover peer-checked:border-accent peer-checked:bg-active peer-checked:text-heading peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 peer-disabled:cursor-wait peer-disabled:opacity-70">
             <span className="min-w-0 break-words">{option.text}</span><Check aria-hidden="true" className={`shrink-0 text-accent ${choices[question.id] === option.id ? 'visible' : 'invisible'}`} size={17} /></span>
         </label>)}
       </fieldset>

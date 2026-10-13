@@ -32,6 +32,9 @@ test('assessment grading, correction, paper confirmation and learning progress',
   await register(page);
   const response=await page.request.post('http://127.0.0.1:18003/api/v1/learning-contexts',{headers:{Origin:'http://127.0.0.1:15173'},data:{name:'Algebra',activate:true}});
   expect(response.ok()).toBeTruthy();const context=await response.json();
+  // This seed bypasses the frontend mutation client and its invalidation.
+  await page.reload();
+  await expect(page.getByLabel('Ask Mentra anything')).toBeEnabled();
   await page.getByRole('link',{name:'Assessments',exact:true}).click();
   await expect(page.getByRole('tab', { name: 'Assessments', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('form', { name: 'Create assessment', exact: true })).toBeHidden();
@@ -66,6 +69,6 @@ test('assessment grading, correction, paper confirmation and learning progress',
   await page.getByRole('button',{name:'Confirm text & submit',exact:true}).click();
   await expect(page.getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible({timeout:20_000});
   await page.getByRole('link',{name:'Progress',exact:true}).click();
-  await expect(page.getByRole('columnheader',{name:'Mastery estimate',exact:true})).toBeVisible();
+  await expect(page.getByRole('columnheader',{name:'Understanding estimate',exact:true})).toBeVisible();
   await expect(page.getByRole('rowheader',{name:'Linear equations',exact:true})).toBeVisible();
 });

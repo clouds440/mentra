@@ -1,0 +1,210 @@
+{
+  "results": [
+    {
+      "route": "/library",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-RvJ5HDvK.js",
+          "bytes": 292751
+        },
+        {
+          "name": "/assets/LibraryPage-ECFs8DTT.js",
+          "bytes": 6830
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CHZSx3pL.js",
+          "bytes": 1165
+        },
+        {
+          "name": "/assets/usePageRefresh-B4X1suCk.js",
+          "bytes": 663
+        },
+        {
+          "name": "/assets/Select-nNFPcc6f.js",
+          "bytes": 5119
+        },
+        {
+          "name": "/assets/rag-DjfEGZpO.js",
+          "bytes": 2029
+        },
+        {
+          "name": "/assets/plus-Df1n_U3m.js",
+          "bytes": 358
+        },
+        {
+          "name": "/assets/file-text-CBU6DbmF.js",
+          "bytes": 590
+        }
+      ],
+      "readyMs": 218.90000000596046,
+      "layoutShift": 0.042969309488932295
+    },
+    {
+      "route": "/assessments",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-RvJ5HDvK.js",
+          "bytes": 292751
+        },
+        {
+          "name": "/assets/AssessmentsPage-BIckdgh7.js",
+          "bytes": 581
+        },
+        {
+          "name": "/assets/Tabs-fCU4KD_g.js",
+          "bytes": 870
+        },
+        {
+          "name": "/assets/AssessmentWorkspace-BUXu6Pr6.js",
+          "bytes": 21031
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CHZSx3pL.js",
+          "bytes": 1165
+        },
+        {
+          "name": "/assets/usePageRefresh-B4X1suCk.js",
+          "bytes": 663
+        },
+        {
+          "name": "/assets/MarkdownContent-D3bxX_AR.js",
+          "bytes": 184110
+        },
+        {
+          "name": "/assets/ChoiceOptions-BxBUhtUM.js",
+          "bytes": 1193
+        },
+        {
+          "name": "/assets/Toggle-aZMkyD5G.js",
+          "bytes": 1579
+        },
+        {
+          "name": "/assets/FormField-BZub011o.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/Select-nNFPcc6f.js",
+          "bytes": 5119
+        },
+        {
+          "name": "/assets/rag-DjfEGZpO.js",
+          "bytes": 2029
+        },
+        {
+          "name": "/assets/clipboard-check-BG3_L1_F.js",
+          "bytes": 509
+        },
+        {
+          "name": "/assets/plus-Df1n_U3m.js",
+          "bytes": 358
+        },
+        {
+          "name": "/assets/sparkles-Cf501-U0.js",
+          "bytes": 717
+        },
+        {
+          "name": "/assets/arrow-up-right-BZ3qe6lr.js",
+          "bytes": 372
+        }
+      ],
+      "readyMs": 174.89999999850988,
+      "layoutShift": 0.01369505140516493
+    },
+    {
+      "route": "/chat/polish-chat",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-RvJ5HDvK.js",
+          "bytes": 292751
+        },
+        {
+          "name": "/assets/Toggle-aZMkyD5G.js",
+          "bytes": 1579
+        },
+        {
+          "name": "/assets/ChatPage-Bi71oXEz.js",
+          "bytes": 64970
+        },
+        {
+          "name": "/assets/Select-nNFPcc6f.js",
+          "bytes": 5119
+        },
+        {
+          "name": "/assets/rag-DjfEGZpO.js",
+          "bytes": 2029
+        },
+        {
+          "name": "/assets/clipboard-check-BG3_L1_F.js",
+          "bytes": 509
+        },
+        {
+          "name": "/assets/ChoiceOptions-BxBUhtUM.js",
+          "bytes": 1193
+        },
+        {
+          "name": "/assets/sparkles-Cf501-U0.js",
+          "bytes": 717
+        },
+        {
+          "name": "/assets/MarkdownContent-D3bxX_AR.js",
+          "bytes": 184110
+        },
+        {
+          "name": "/assets/SourceViewer-CH5zGt3m.js",
+          "bytes": 9388
+        },
+        {
+          "name": "/assets/file-text-CBU6DbmF.js",
+          "bytes": 590
+        },
+        {
+          "name": "/assets/EventProposalCard-mFR-c10k.js",
+          "bytes": 9055
+        }
+      ],
+      "readyMs": 380.29999999701977,
+      "layoutShift": 0.000012495252821180556
+    }
+  ],
+  "typing": {
+    "samples": [
+      0.3999999985098839,
+      8.700000002980232,
+      1.6999999955296516,
+      13.399999998509884,
+      6.600000001490116,
+      1.2000000029802322,
+      11,
+      5.799999997019768,
+      0.29999999701976776,
+      0.19999999552965164,
+      0.20000000298023224,
+      0.09999999403953552,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.30000000447034836,
+      14.300000004470348,
+      6.699999995529652,
+      0.19999999552965164,
+      0.10000000149011612,
+      0.09999999403953552,
+      0.19999999552965164,
+      0.29999999701976776
+    ],
+    "longTasks": []
+  }
+}

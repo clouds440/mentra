@@ -25,7 +25,7 @@ export function MaterialUpload({ contexts, capabilities, replacement, onAccepted
     } catch (e) { if (!abort.signal.aborted) setError(materialError(e)); }
     finally { if (!abort.signal.aborted) setBusy(false); }
   }
-  return <form aria-label={replacement ? 'Replace material' : 'Add material'} onSubmit={e => void submit(e)} className="space-y-4 rounded-2xl border border-border bg-surface p-5">
+  return <form aria-label={replacement ? 'Replace material' : 'Add material'} onSubmit={e => void submit(e)} className="space-y-4 rounded-panel border border-border bg-card p-4">
     <h2 className="font-medium">{replacement ? 'Upload a revised version' : 'Add study material'}</h2>
     <p className="text-sm text-muted">{capabilities.formats.slice(0, 7).map(f => f.toUpperCase()).join(', ')}{capabilities.formats.length > 7 ? ', plus source code and configuration files (including Dockerfile and Makefile)' : ''} · Up to {Math.floor(capabilities.max_upload_bytes / 1024 / 1024)} MiB. Processing continues after upload.</p>
     <FileInput ref={input} label="File" filename={file?.name ?? ''} required disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); key.current = crypto.randomUUID(); }} />

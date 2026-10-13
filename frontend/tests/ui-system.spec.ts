@@ -101,7 +101,7 @@ test('account drawer matches its capsule and stacks theme choices', async ({ pag
     await expect(panel).toBeVisible();
     await expect.poll(async () => {
       const a = await capsule.boundingBox(); const b = await panel.boundingBox();
-      return Math.abs(a!.width - b!.width) + Math.abs(a!.x - b!.x);
+      return Math.abs((state === 'collapsed' ? 240 : a!.width) - b!.width) + Math.abs(Math.max(8, a!.x) - b!.x);
     }).toBeLessThan(2);
     expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
     const signOut = await panel.getByRole('button', { name: 'Sign out', exact: true }).boundingBox();

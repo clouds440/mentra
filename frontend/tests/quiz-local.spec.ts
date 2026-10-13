@@ -179,7 +179,7 @@ test('assessment navigation stays in the header apart from quiz and correction c
   await expect(view).toBeVisible();
   const desktop = await footer.getByRole('button').evaluateAll(elements => elements.map(element => ({top:element.getBoundingClientRect().top,height:element.getBoundingClientRect().height})));
   expect(new Set(desktop.map(value => value.top)).size).toBe(1);
-  expect(desktop.every(value => value.height === 36)).toBeTruthy();
+  expect(desktop.every(value => value.height === 32)).toBeTruthy();
   await footer.scrollIntoViewIfNeeded();
   await page.screenshot({path:testInfo.outputPath('quiz-footer-desktop.png')});
   await page.setViewportSize({width:390,height:844});

@@ -94,7 +94,8 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   expect(await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json()).toHaveLength(0);
   const chatPath = new URL(page.url()).pathname;
   await page.getByRole('button', { name:'Start a new chat' }).click();
-  await page.locator(`a[href="${chatPath}"]`).click();
+  await expect(page.getByRole('link', { name: 'Chat', exact: true })).toHaveAttribute('href', '/');
+  await page.getByRole('region', { name: 'Conversation history' }).locator(`a[href="${chatPath}"]`).click();
   await expect(quiz.getByText(/Question 2 of 5/)).toBeVisible();
   await page.setViewportSize({ width:390, height:844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();

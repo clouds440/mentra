@@ -11,10 +11,10 @@ import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatMessage } from '../components/chat/ChatMessage';
 import { ChatActivity } from '../components/chat/ChatActivity';
 import { chatStore, useChatList, useConversation } from '../stores/chatStore';
-import { Spinner } from '../components/ui';
+import { IconButton, Spinner } from '../components/ui';
 import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from '../services/chatAttachments';
 
-interface ChatOutletContext { newChatKey: number }
+interface ChatOutletContext { newChatKey: number; newChatPending: boolean }
 interface StagedFile { id: string; file: File; preview?: string; saved?: ChatAttachment }
 
 export function ChatPage() {
@@ -24,7 +24,7 @@ export function ChatPage() {
   const [params, setParams] = useSearchParams();
   const selectedDocument = params.get('document');
   const practice = params.get('practice');
-  const { newChatKey } = useOutletContext<ChatOutletContext>();
+  const { newChatKey, newChatPending } = useOutletContext<ChatOutletContext>();
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const id = conversationId ?? draftId;
   useLayoutEffect(() => { if (!conversationId) chatStore.markDraft(id); }, [id, conversationId]);
@@ -42,7 +42,7 @@ export function ChatPage() {
   const [uploading, setUploading] = useState(false);
   const [stopping, setStopping] = useState(false);
   const uploadController = useRef(new AbortController());
-  useEffect(() => {
+  useLayoutEffect(() => {
     uploadController.current = new AbortController(); setFiles([]); staged.current = []; setUploading(false); sending.current = false;
     return () => {
       uploadController.current.abort();
@@ -51,7 +51,7 @@ export function ChatPage() {
   }, [id, identity?.learner_id]);
 
   function attach(selected: File[]) {
-    if (sending.current || view.busy) return;
+    if (newChatPending || sending.current || view.busy) return;
     const isImage = (file: File) => file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
     if (selected.length + staged.current.length > 4) { setValidation('Attach up to four files per message, including at most three images.'); return; }
     if (selected.filter(isImage).length + staged.current.filter(item => isImage(item.file)).length > 3) { setValidation('Attach up to three images per message.'); return; }
@@ -109,7 +109,7 @@ export function ChatPage() {
   }, [id, view.messages, view.busy, view.loading]);
 
   async function sendMessage() {
-    const content = draft.trim() || (files.length ? 'Please help me understand the attached files.' : ''); if (!content || view.busy || sending.current || view.loading) return;
+    const content = draft.trim() || (files.length ? 'Please help me understand the attached files.' : ''); if (!content || newChatPending || view.busy || sending.current || view.loading) return;
     if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
@@ -176,12 +176,12 @@ export function ChatPage() {
             {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={view.busy || view.loading || uploading} canStop={view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
             attachments={<>
-              {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
+              {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="staged-file relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
                 {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />
                   : <div className="flex h-16 w-32 items-center gap-2 px-2.5 pr-7"><FileText className="h-5 w-5 shrink-0" aria-hidden="true" /><span className="line-clamp-2 break-all">{item.file.name}</span></div>}
-                <button type="button" disabled={uploading} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface text-foreground shadow-sm hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}><X size={12} aria-hidden="true" /></button>
+                <IconButton disabled={uploading} className="attachment-remove absolute right-0 top-0 h-6 min-h-6 w-6 rounded-full p-0 text-foreground" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}><X size={12} aria-hidden="true" /></IconButton>
               </li>)}</ul>}
             </>} />
         </div>

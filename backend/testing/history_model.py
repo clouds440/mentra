@@ -61,6 +61,14 @@ class HistoryChatFactory(TestChatFactory):
         results = [x for x in messages if isinstance(x, ToolMessage) and x.name != 'enable_workflow_tools']
         if results:
             result = json.loads(results[-1].content)
+            if results[-1].name == 'search_study_material':
+                # The current workflow admits sources through tools, not the
+                # obsolete eagerly embedded prompt packet. Retrieval stays real.
+                sources = result.get('sources') or [chunk['source'] for chunk in result.get('chunks', [])]
+                if sources:
+                    token = sources[0]['token']
+                    return AIMessage(content='The source explains Python decorators as reusable wrappers for functions. [[' + token + ']]')
+                return AIMessage(content='No supporting Library material was found. This is a general answer.')
             if results[-1].name == 'web_search':
                 if not result.get('sources'):
                     return AIMessage(content='Current facts remain unverified. ' + result.get('reason', 'No sources found.'))
@@ -94,6 +102,9 @@ class HistoryChatFactory(TestChatFactory):
         context = json.loads(system[marker+2:]) if marker >= 0 else {}
         scope = context.get('history_scope')
         if scope:
+            selected = context.get('study_source_selection', {})
+            if selected.get('document_count') or selected.get('context_count'):
+                return AIMessage(content='', tool_calls=[self.tool_call('search_study_material', dict(query=question), 'study-search')])
             prefix = 'give me an interactive assessment on '
             if lowered.startswith(prefix):
                 return AIMessage(content='', tool_calls=[self.tool_call('assessment_generate',

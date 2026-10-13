@@ -4,6 +4,22 @@
 
 These standards describe the current React, TypeScript, Vite, and Tailwind CSS codebase. Update them when an important frontend convention changes.
 
+## Compact visual system
+
+- Default buttons and fields are 36px; small buttons are 32px and large buttons 40px. Coarse-pointer controls grow to 40px and icon controls to 44px. Keep glyphs compact while preserving usable hit areas.
+- `rounded-control` (9px), `rounded-panel` (14px), semantic surfaces and restrained `shadow-panel`/`shadow-overlay` define shared geometry. `Card` is quiet by default; elevation is explicit. Workspace panels use 16px padding and pages use 16–32px horizontal padding.
+- Use `buttonStyles` for real navigation links, `IconButton` for standalone icon controls, `FormField` for shared label/help/error association, controlled `Tabs` for workspace tabs, and native `Dialog` for modal frames. Features own URLs, drafts, mutations, revision checks and panel mounting.
+- Loading overlays a spinner without changing button width or accessible labels. Track the active operation separately from disabling dependent controls; unrelated actions do not all spin.
+- Motion is explicit and short: controls 100–150ms, overlays 130–160ms, navigation up to 200ms. Completed chat answers remain immediately readable. Never apply transitions to every element, animate form dimensions, or delay dismissal for exit motion. Reduced motion and forced colors retain useful state/focus indicators.
+- Workspace headers have one H1; actions wrap beneath the full-width description on narrow screens. The shell does not repeat route titles. Preserve sidebar/composer/account placement and record substantive changes in the renovation report.
+- Mobile navigation is modal with inert background/closed content, bounded focus, nested-overlay Escape handling and focus return. Desktop collapse never removes history from an open mobile drawer.
+- Route chunks load inside local boundaries, preserving the shell and session providers. Failed chunks offer explicit reload. Keep the chat boundary stable across draft-to-saved route changes.
+- Quiet same-query refresh retains content and scroll. Different queries cannot display old results as current. Coalesce focus/visibility triggers, avoid overlapping automatic reads, and preserve mutation-triggered invalidation. Dirty material edits retain their original revision until explicit reconciliation.
+- Completed message rows use shallow React memoization. Keep immutable message updates so revisions, citations, attachments and interactive cards still publish. Avoid equality functions that ignore metadata.
+- Production static serving compresses JS/CSS and caches content-hashed assets immutably. HTML and theme bootstrap revalidate; missing assets return 404 rather than the SPA document.
+
+Run `npm run check:ui` for palette text/control contrast and broad-transition safeguards alongside theme/build checks. `playwright.visual.config.ts` runs fixture-based production UI/typing checks independently of real domain suites; `FRONTEND_VISUAL_DEV=1` enables development lifecycle checks. See [the renovation report](../docs/Frontend_Renovation_Report.md) for evidence and limits.
+
 - Workspace pages share `WorkspaceHeader`/`WorkspaceEmpty` and semantic `workspace-*` surfaces for responsive panels, filter bars, tabs and cards. Counts must come from loaded data. Select listboxes fit their option content while remaining viewport-bounded. Chat actions overlay a full-width title, reserve title space only on hover/focus (always on touch/mobile), and remain keyboard accessible.
 - Chat Stop calls the attempt-fenced server action, retains the saved stopped notice and reconciles server status; never treat aborting an HTTP request as cancellation. Attachment cards restore from message metadata, lazily load authorized raster previews, revoke object URLs and provide original downloads. Restored chats open at the latest message and follow late content resizing only while at the bottom.
 - User and assistant messages reuse the shared plain-text Copy control. Keep it close to the message, brighten text/icon on hover or keyboard focus, and use no hover background. The disclaimer is the final item inside the conversation scroll content, bottom-aligned for short chats and hidden in empty chats; it scrolls out of view with messages. Reserve its height when anchoring a newly sent exchange.

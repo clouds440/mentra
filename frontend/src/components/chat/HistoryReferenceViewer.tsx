@@ -1,3 +1,4 @@
+import { Dialog } from '../ui/Dialog';
 import { ApiError } from '../../services/api';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
@@ -14,7 +15,7 @@ export function HistoryReferenceViewer({ reference, onClose }: { reference: Hist
   const [memory, setMemory] = useState<UserMemory>();
   const [error, setError] = useState('');
   useEffect(() => {
-    dialog.current?.showModal();
+
     const controller = new AbortController();
     if ('memory_id' in reference) {
       memoryApi.detail(reference.memory_id, controller.signal).then(setMemory).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof ApiError ? cause.message : 'This reference could not be loaded.'); });
@@ -23,10 +24,10 @@ export function HistoryReferenceViewer({ reference, onClose }: { reference: Hist
     }
     return () => controller.abort();
   }, [reference]);
-  return <dialog ref={dialog} onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose(); }} aria-labelledby="history-reference-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border bg-popover p-5 text-foreground shadow-xl">
+  return <Dialog open ref={dialog} onDismiss={onClose} onClick={event => { if (event.target === event.currentTarget) onClose(); }} aria-labelledby="history-reference-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border bg-popover p-5 text-foreground shadow-xl">
     <div className="mb-5 flex items-center justify-between gap-4"><h2 id="history-reference-title" className="font-medium">{'memory_id' in reference ? 'Saved memory' : history?.title ?? 'Past conversation'}</h2><Button variant="ghost" size="sm" onClick={onClose}>Close reference</Button></div>
     {error ? <p role="alert">{error}</p> : !memory && !history ? <Skeleton variant="text" /> : null}
     {memory && <><p className="mb-4 whitespace-pre-wrap text-body">{memory.content}</p>{'revision' in reference && reference.revision !== memory.revision && <p className="mb-4 text-sm text-muted">This memory has changed since the answer. Showing the current version.</p>}<MemoryDetails memory={memory} /><Link className="mt-5 inline-block text-accent underline" to={`/settings?tab=memories&memory=${memory.id}`} onClick={onClose}>Manage this memory</Link></>}
     {history && <><div className="space-y-5">{history.messages.map(message => <section key={message.id} className="rounded-xl border border-border p-4"><p className="mb-2 text-xs text-muted">{message.role === 'user' ? 'You' : 'Mentra'} · {new Date(message.created_at).toLocaleString()}{message.exchange_status === 'FAILED' ? ' ? Response failed' : message.exchange_status === 'RUNNING' ? ' ? Response in progress' : ''}</p><MarkdownContent content={message.content} /></section>)}</div><Link className="mt-5 inline-block text-accent underline" to={`/chat/${history.conversation_id}`} onClick={onClose}>Open conversation</Link></>}
-  </dialog>;
+  </Dialog>;
 }

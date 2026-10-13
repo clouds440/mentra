@@ -1,3 +1,4 @@
+import { Tabs } from '../components/ui/Tabs';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Database, Settings2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
@@ -37,16 +38,7 @@ export function SettingsPage() {
       <div className="page-container">
         <WorkspaceHeader title="Settings" description="Make Mentra feel right for you. Manage your learning profile, saved memories and reminders." icon={Settings2} />
 
-        <div role="tablist" aria-label="Settings sections" className="workspace-tabs" onKeyDown={event => {
-          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault();
-            const current = sections.findIndex(value => `settings-tab-${value}` === (event.target as HTMLElement).id);
-            const value = event.key === 'Home' ? sections[0] : event.key === 'End' ? sections[sections.length - 1] : sections[(current + (event.key === 'ArrowRight' ? 1 : sections.length - 1)) % sections.length];
-            changeTab(value); document.getElementById(`settings-tab-${value}`)?.focus();
-          }
-        }}>
-          {sections.map(value => <button key={value} id={`settings-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`settings-panel-${value}`} tabIndex={tab === value ? 0 : -1} className={`border-b-2 px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${tab === value ? 'border-accent text-foreground' : 'border-transparent text-muted hover:text-foreground'}`} onClick={() => changeTab(value)}>{value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications'}</button>)}
-        </div>
+        <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
         <ProfileSettings />
         <AssessmentSettings />

@@ -2,7 +2,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { MentraLogo } from '../brand/MentraLogo';
 import type { ChatMessageData } from '../../types/chat';
-import { useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
+import { memo, useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
 import { SourceViewer, sourceLocation } from '../library/SourceViewer';
 import type { SourceReference } from '../../types/rag';
 import type { HistoryReference, MemoryReference } from '../../types/memories';
@@ -50,7 +50,7 @@ interface ChatMessageProps {
   reveal?: boolean;
 }
 
-export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, reveal = false }: ChatMessageProps) {
   const [source, setSource] = useState<SourceReference>();
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
@@ -109,7 +109,7 @@ export function ChatMessage({ message, reveal = false }: ChatMessageProps) {
       </div>
     </article>
   );
-}
+});
 
 interface ThinkingIndicatorProps {
   label?: string;

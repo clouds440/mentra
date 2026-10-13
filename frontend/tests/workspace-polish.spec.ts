@@ -182,7 +182,7 @@ for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390
     await expect(final.getByRole('button', {name:'Copy code'})).toBeVisible();
     await expect(final.getByLabel('Interactive question')).toBeVisible();
     await expect(final).toHaveClass(/chat-response-reveal/);
-    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('1s');
+    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0.12s');
     await expect.poll(() => final.evaluate(el => getComputedStyle(el).clipPath), {timeout:1500, intervals:[50]}).toBe('none');
     const heading = await final.getByRole('heading', {name:'Formatted answer'}).boundingBox();
     const chatBounds = await chat.boundingBox();
@@ -307,7 +307,7 @@ for (const size of [{width:1280,height:900}, {width:390,height:844}, {width:390,
   await expect(page.getByRole('article',{name:'Mentra response'}).last()).toContainText('A detailed explanation');
   const after = await position();
   expect(Math.abs(after.top-after.inset)).toBeLessThan(2);
-  expect(after.height).toBeGreaterThan(after.available);
+  await expect.poll(async () => { const current = await position(); return current.height - current.available; }).toBeGreaterThan(0);
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.screenshot({path:info.outputPath('anchored-exchange.png'), animations:'disabled'});
   await page.reload();
@@ -376,12 +376,12 @@ test('floating shell controls leave the full viewport available to chat', async 
   await page.getByRole('button', {name:'Collapse sidebar'}).click();
   await expect(page.getByRole('button', {name:'Expand sidebar'})).toBeVisible();
   await controls.getByRole('link', {name:/Notifications/}).click();
-  await expect(controls.getByText('Notifications', {exact:true})).toBeVisible();
+  await expect(controls.getByText('Notifications', {exact:true})).toHaveCount(0);
   await expect(page.getByRole('heading', {name:'Notifications', exact:true})).toBeVisible();
   await page.setViewportSize({width:390, height:844});
   await page.goto('/chat/polish-chat');
   await page.getByRole('button', {name:'Open navigation menu'}).click();
-  const sidebar = page.getByRole('complementary', {name:'Main navigation'});
+  const sidebar = page.getByLabel('Main navigation', {exact:true});
   await expect(sidebar.getByRole('link', {name:'Library', exact:true})).toBeVisible();
   await sidebar.getByRole('button', {name:'Close navigation menu'}).click();
   expect(await page.locator('main').evaluate(el => el.getBoundingClientRect().height)).toBe(844);

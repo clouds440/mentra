@@ -60,7 +60,7 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
         <div className="flex items-center gap-2.5"><MentraLogo /><span className="text-lg font-semibold tracking-tight">mentra</span></div>
         <div className="w-28"><LogoutButton /></div>
       </header>
-      <Card className="auth-enter rounded-2xl p-4 shadow-lg shadow-shadow/5 backdrop-blur-none sm:p-8">
+      <Card className="auth-enter p-4 shadow-panel sm:p-5">
         {!hasDetails ? <><p className="text-xs font-medium uppercase tracking-wider text-accent">Step 1 of 2 · Your profile</p>
           <h1 className="mt-3 text-2xl font-medium tracking-tight">Make Mentra yours</h1>
           <p className="mb-7 mt-2 text-sm leading-6 text-muted">Tell Mentra a little about you. These details help it teach at the right level, and you can edit them later.</p>

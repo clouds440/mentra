@@ -13,6 +13,7 @@ async function signUp(page: Page, name: string) {
   await finishOnboardingWithoutAssessment(page);
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
 }
 
 async function openAccountMenu(page: Page) {
@@ -24,7 +25,7 @@ test('registration uses real auth, HTTP-only cookies, refresh, and return visits
   const name = username();
   await signUp(page, name);
   await openAccountMenu(page);
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Account settings').getByText(name, { exact: true })).toBeVisible();
   const cookies = await context.cookies('http://127.0.0.1:18003/api/v1/auth/me');
   const session = cookies.find((cookie) => cookie.name === 'mentra_session');
   expect(session?.httpOnly).toBe(true);
@@ -118,6 +119,7 @@ test('background network failure keeps a known session authenticated', async ({ 
   await context.setOffline(false);
   await page.reload();
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
 });
 
 test('failed logout retains the session and allows retry', async ({ page, context }) => {
@@ -142,6 +144,7 @@ test('initial network failure offers retry and restores the real session', async
   await page.unroute('**/api/v1/auth/me');
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
 });
 
 test('every workspace route requires a session and registration preserves the destination', async ({ page }) => {
@@ -172,7 +175,7 @@ test('mobile navigation exposes logout and auth stays usable on a short screen',
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
   await openAccountMenu(page);
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
-  await expect(page.getByRole('complementary', { name: 'Main navigation' })).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  await expect(page.getByLabel('Main navigation', {exact:true})).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
   await page.screenshot({ path: testInfo.outputPath('mobile-logout.png') });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();

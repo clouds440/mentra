@@ -1,11 +1,12 @@
+import { Dialog } from '../components/ui/Dialog';
 import { materialWarningMessage } from '../services/userError';
 import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Input, Select } from '../components/ui';
+import { Button, Input, Select, FormField, buttonStyles } from '../components/ui';
 import { MaterialUpload } from '../components/library/MaterialUpload';
 import { SourceViewer } from '../components/library/SourceViewer';
 import { getMaterial, getCapabilities, listContexts, listVersions, updateMaterial, deleteMaterial, reindexMaterial, retryJob, pendingJob, materialError, tagMaterial } from '../services/rag';
@@ -21,26 +22,37 @@ export function MaterialDetailPage() {
   const [olderVersions, setOlderVersions] = useState<MaterialVersion[]>([]); const [loadingVersions, setLoadingVersions] = useState(false);
   const controllerRef = useRef<AbortController>();
   const deleteDialog = useRef<HTMLDialogElement>(null); const revision = useRef('');
+  const dirty = useRef(false);
+  const latestDocument = useRef<MaterialDocument>();
+  const [conflict, setConflict] = useState(false);
+  const [activeAction, setActiveAction] = useState('');
+  const request = useRef<AbortController>();
   const refresh = useCallback(() => setReload(v => v + 1), []);
-  usePageRefresh(refresh, !busy);
+  usePageRefresh(() => { if (!request.current) refresh(); }, !busy, doc && pendingJob(doc) ? 3000 : 60_000);
   useEffect(() => {
-    const abort = new AbortController(); let timer: ReturnType<typeof setTimeout>;
-    controllerRef.current = abort;
+    const abort = new AbortController();
+    controllerRef.current = abort; request.current = abort;
     async function load() {
       try {
         const [data, ctx, capabilities] = await Promise.all([getMaterial(documentId, abort.signal), listContexts(abort.signal), getCapabilities(abort.signal)]);
         if (abort.signal.aborted) return;
-        setDoc(data); setContexts(ctx); setCaps(capabilities);
-        if (revision.current !== `${data.id}:${data.revision}`) { revision.current = `${data.id}:${data.revision}`; setTitle(data.title); setSelection(data.context_ids); setOlderVersions([]); }
-        if (pendingJob(data)) timer = setTimeout(() => { if (navigator.onLine && document.visibilityState === 'visible') void load(); }, 3000);
+        latestDocument.current = data; setContexts(ctx); setCaps(capabilities);
+        if (dirty.current && revision.current !== `${data.id}:${data.revision}`) setConflict(true);
+        else {
+          setDoc(data);
+          if (revision.current !== `${data.id}:${data.revision}`) { revision.current = `${data.id}:${data.revision}`; setTitle(data.title); setSelection(data.context_ids); setOlderVersions([]); setConflict(false); }
+        }
       } catch (e) { if (!abort.signal.aborted) setError(materialError(e)); }
+      finally { if (request.current === abort) request.current = undefined; }
     }
-    void load(); const focus = () => { if (document.visibilityState === 'visible') { clearTimeout(timer); void load(); } };
-    window.addEventListener('focus', focus); window.addEventListener('online', focus); document.addEventListener('visibilitychange', focus);
-    return () => { abort.abort(); clearTimeout(timer); window.removeEventListener('focus', focus); window.removeEventListener('online', focus); document.removeEventListener('visibilitychange', focus); };
+    void load(); return () => { abort.abort(); if (request.current === abort) request.current = undefined; };
   }, [documentId, reload]);
   useEffect(() => { setSource(undefined); setOlderVersions([]); setConsent(false); }, [documentId]);
-  async function action(work: () => Promise<unknown>) { setBusy(true); setError(''); try { await work(); refresh(); } catch (e) { setError(materialError(e)); refresh(); } finally { setBusy(false); } }
+  async function action(name: string, work: () => Promise<unknown>) { if (busy) return; setBusy(true); setActiveAction(name); setError(''); try { await work(); if (name === 'save') dirty.current = false; refresh(); } catch (e) { setError(materialError(e)); refresh(); } finally { setBusy(false); setActiveAction(''); } }
+  function reloadSaved() {
+    const data = latestDocument.current; if (!data) return;
+    dirty.current = false; setConflict(false); setDoc(data); revision.current = `${data.id}:${data.revision}`; setTitle(data.title); setSelection(data.context_ids);
+  }
   async function loadVersions() {
     if (!doc) return;
     const controller = controllerRef.current; setLoadingVersions(true);
@@ -59,19 +71,20 @@ export function MaterialDetailPage() {
     setSource({ token: '', document_id: doc.id, version_id: versionId, generation_id: version?.generation_id ?? '', chunk_id: '', title: doc.title, heading_path: [], spans: [], excerpt: '', warnings: version?.warnings ?? [] });
   }
   return <div className="h-full overflow-y-auto"><section className="page-container">
-    <Link to="/library" className="text-sm text-accent">Back to Library</Link><div><h1 className="page-title">{doc.title}</h1><p className="mt-2 text-sm text-muted">{doc.archived ? 'Archived' : active ? 'Ready to study' : 'Not yet indexed'}{job ? ` · ${job.stage}` : ''}</p></div>
+    <Link to="/library" className="text-sm text-accent hover:underline">Back to Library</Link><header className="workspace-header"><div className="min-w-0"><h1 className="page-title">{doc.title}</h1><p className="mt-1.5 text-sm text-muted">{doc.archived ? 'Archived' : active ? 'Ready to study' : 'Not yet indexed'}{job ? ' · Preparing material' : ''}</p></div>{active && !doc.archived && <Link to={`/?document=${doc.id}`} className={buttonStyles({ variant: 'secondary' })}>Study in chat</Link>}</header>
+    {conflict && <div role="alert" className="inline-notice">Saved details changed while you were editing. Your draft is preserved. <Button size="sm" variant="secondary" onClick={reloadSaved}>Reload saved details</Button></div>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}{active?.warnings.map(w => <p key={w} className="text-sm text-muted">{materialWarningMessage(w)}</p>)}
-    {doc.jobs.filter(j => j.state === 'FAILED').slice(0, 1).map(j => <div key={j.id} className="rounded-xl border border-border p-4"><p className="text-sm text-danger">This material could not be processed.</p><Button className="mt-3" variant="secondary" disabled={busy} loading={busy} onClick={() => void action(() => retryJob(j.id))}>Retry processing</Button></div>)}
-    <form className="space-y-4 rounded-xl border border-border p-5" onSubmit={e => { e.preventDefault(); void action(() => updateMaterial(doc, { title, context_ids: selection })); }}>
-      <label className="block text-sm">Title<Input className="mt-2" value={title} maxLength={200} required onChange={e => setTitle(e.target.value)} /></label>
-      <label className="block text-sm">Associated contexts<Select multiple className="mt-2" value={selection} onChange={e => setSelection(Array.from(e.target.selectedOptions, o => o.value))}>{contexts.filter(c => c.status !== 'ARCHIVED' || selection.includes(c.context_id)).map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>
-      <Button type="submit" disabled={busy || !selection.length} loading={busy}>Save material details</Button>
+    {doc.jobs.filter(j => j.state === 'FAILED').slice(0, 1).map(j => <div key={j.id} className="rounded-xl border border-border p-4"><p className="text-sm text-danger">This material could not be processed.</p><Button className="mt-3" variant="secondary" disabled={busy} loading={activeAction === 'retry'} onClick={() => void action('retry', () => retryJob(j.id))}>Retry processing</Button></div>)}
+    <form className="workspace-panel space-y-4" onSubmit={e => { e.preventDefault(); void action('save', () => updateMaterial(doc, { title, context_ids: selection })); }}>
+      <FormField label="Title">{field => <Input {...field} value={title} maxLength={200} required onChange={e => { dirty.current = true; setTitle(e.target.value); }} />}</FormField>
+      <label className="block text-sm">Associated contexts<Select multiple className="mt-2" value={selection} onChange={e => { dirty.current = true; setSelection(Array.from(e.target.selectedOptions, o => o.value)); }}>{contexts.filter(c => c.status !== 'ARCHIVED' || selection.includes(c.context_id)).map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>
+      <Button type="submit" disabled={busy || conflict || !selection.length} loading={activeAction === 'save'}>Save material details</Button>
     </form>
-    <div className="flex flex-wrap gap-3">{active && !doc.archived && <Link to={`/?document=${doc.id}`} className="rounded-xl border border-border px-4 py-2 text-accent">Study in chat</Link>}<Button variant="secondary" disabled={busy || !!job} loading={busy} onClick={() => void action(() => updateMaterial(doc, { archived: !doc.archived }))}>{doc.archived ? 'Unarchive material' : 'Archive material'}</Button><Button variant="secondary" disabled={busy || !!job || doc.archived} loading={busy} onClick={() => void action(() => reindexMaterial(doc))}>Reindex material</Button><Button variant="secondary" disabled={busy} loading={busy} onClick={() => deleteDialog.current?.showModal()}>Delete material</Button></div>
-    <form className="space-y-3 rounded-xl border border-border p-5" onSubmit={e => { e.preventDefault(); void action(async () => { const result = await tagMaterial(doc, conceptLabels.split(',').map(s => s.trim()).filter(Boolean)); setTagNotice(result.unresolved_labels.length ? `No canonical match for: ${result.unresolved_labels.join(', ')}. These labels were not attached.` : 'Canonical concept tags updated.'); }); }}><label className="block text-sm">Concept tags<Input className="mt-2" value={conceptLabels} onChange={e => setConceptLabels(e.target.value)} placeholder="Known concept names, separated by commas" /></label><p className="text-xs text-muted">Only concepts already recognized by Mentra can be attached. This does not change your learning estimates.</p><Button disabled={busy || !!job} loading={busy} variant="secondary" type="submit">Resolve concept tags</Button>{tagNotice && <p role="status" className="text-sm text-muted">{tagNotice}</p>}</form>
+    <div className="action-row border-b border-border pb-4"><Button variant="secondary" disabled={busy || !!job} loading={activeAction === 'archive'} onClick={() => void action('archive', () => updateMaterial(doc, { archived: !doc.archived }))}>{doc.archived ? 'Unarchive material' : 'Archive material'}</Button><Button variant="secondary" disabled={busy || !!job || doc.archived} loading={activeAction === 'reindex'} onClick={() => void action('reindex', () => reindexMaterial(doc))}>Reindex material</Button><Button variant="danger" disabled={busy} onClick={() => deleteDialog.current?.showModal()}>Delete material</Button></div>
+    <form className="workspace-panel space-y-3" onSubmit={e => { e.preventDefault(); void action('tags', async () => { const result = await tagMaterial(doc, conceptLabels.split(',').map(s => s.trim()).filter(Boolean)); setTagNotice(result.unresolved_labels.length ? `No canonical match for: ${result.unresolved_labels.join(', ')}. These labels were not attached.` : 'Canonical concept tags updated.'); }); }}><label className="block text-sm">Concept tags<Input className="mt-2" value={conceptLabels} onChange={e => setConceptLabels(e.target.value)} placeholder="Known concept names, separated by commas" /></label><p className="text-xs text-muted">Only concepts already recognized by Mentra can be attached. This does not change your learning estimates.</p><Button disabled={busy || !!job} loading={activeAction === 'tags'} variant="secondary" type="submit">Resolve concept tags</Button>{tagNotice && <p role="status" className="text-sm text-muted">{tagNotice}</p>}</form>
     <section><h2 className="font-medium">Source versions</h2>{(doc.archived || contexts.some(c => doc.context_ids.includes(c.context_id) && c.status === 'ARCHIVED')) && <Toggle className="mt-3" label="Allow viewing archived source material" checked={consent} onChange={e => setConsent(e.target.checked)} />}<ul className="mt-3 space-y-2">{versions.map((v, index) => <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4 text-sm"><span>{v.filename} · {Math.ceil(v.size_bytes / 1024)} KiB {index === 0 ? '· Latest upload' : '· Earlier version'}</span><Button size="sm" variant="secondary" onClick={() => openVersion(v.id)}>Open source version</Button></li>)}</ul>{versions.length < doc.version_count && <Button className="mt-3" variant="secondary" disabled={loadingVersions} loading={loadingVersions} onClick={() => void loadVersions()}>{'Load earlier versions'}</Button>}</section>
     {caps && !doc.archived && <MaterialUpload contexts={contexts} capabilities={caps} replacement={doc} onContextCreated={refresh} onAccepted={() => refresh()} />}
     {source && <SourceViewer source={source} filename={versions.find(v => v.id === source.version_id)?.filename} includeArchived={consent} onClose={() => setSource(undefined)} />}
-    {createPortal(<dialog ref={deleteDialog} aria-label="Delete material confirmation" className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-border bg-popover p-6 text-foreground"><h2 className="font-medium">Delete {doc.title}?</h2><p className="mt-3 text-sm text-muted">This removes the material and its source versions. It stops appearing in chat immediately after the request is accepted; storage cleanup may take longer.</p><div className="mt-5 flex gap-3"><Button variant="secondary" onClick={() => deleteDialog.current?.close()}>Keep material</Button><Button disabled={busy} loading={busy} onClick={() => void action(async () => { await deleteMaterial(doc.id); deleteDialog.current?.close(); navigate('/library?deleted=1'); })}>Confirm deletion</Button></div></dialog>, document.body)}
+    <Dialog busy={busy} ref={deleteDialog} aria-label="Delete material confirmation" className="max-w-md"><h2 className="font-medium">Delete {doc.title}?</h2><p className="mt-3 text-sm text-muted">This removes the material and its source versions. It stops appearing in chat immediately after the request is accepted; storage cleanup may take longer.</p><div className="mt-5 flex gap-3"><Button variant="secondary" onClick={() => deleteDialog.current?.close()}>Keep material</Button><Button variant="danger" disabled={busy} loading={activeAction === 'delete'} onClick={() => void action('delete', async () => { await deleteMaterial(doc.id); deleteDialog.current?.close(); navigate('/library?deleted=1'); })}>Confirm deletion</Button></div></Dialog>
   </section></div>;
 }

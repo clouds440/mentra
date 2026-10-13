@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Dialog } from '../ui/Dialog';
 import { Download, FileText, X } from 'lucide-react';
 import { Button } from '../ui';
 import { Spinner } from '../ui/Spinner';
@@ -19,7 +19,7 @@ export function ChatAttachmentPreview({ filename, load, onClose }: {
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
-    dialog.current?.showModal();
+
     return () => { mounted.current = false; };
   }, []);
   useEffect(() => {
@@ -41,12 +41,12 @@ export function ChatAttachmentPreview({ filename, load, onClose }: {
     } catch (reason) { if (mounted.current) setError(reason instanceof ApiError ? reason.message : 'Couldn’t download this file. Try again.'); }
     finally { if (mounted.current) setDownloading(false); }
   }
-  return createPortal(<dialog ref={dialog} aria-label={`Preview ${filename}`} onClose={onClose}
+  return <Dialog open ref={dialog} aria-label={`Preview ${filename}`} onDismiss={onClose}
     onClick={event => {
       if (event.target !== event.currentTarget) return;
       const bounds = event.currentTarget.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.current?.close();
-    }} className="m-auto max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-hidden rounded-2xl border border-border-strong bg-popover p-0 text-foreground shadow-2xl">
+    }} className="m-auto max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-hidden rounded-2xl border border-border-strong bg-popover p-0 text-foreground shadow-overlay">
     <header className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
       <h2 className="min-w-0 truncate text-sm font-medium text-heading">{filename}</h2>
       <div className="flex shrink-0 items-center gap-1">
@@ -62,5 +62,5 @@ export function ChatAttachmentPreview({ filename, load, onClose }: {
       {original?.text !== undefined && <><pre className="whitespace-pre-wrap break-words text-sm leading-6">{original.text}</pre>{original.truncated && <p className="mt-3 text-xs text-muted">Showing the first 256 KB. Download the original for the complete file.</p>}</>}
       {original && !original.image && original.text === undefined && original.blob.type !== 'application/pdf' && <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-muted"><FileText size={36} aria-hidden="true" /><p className="max-w-sm text-sm">Download the original to open this file in its document application.</p></div>}
     </div>
-  </dialog>, document.body);
+  </Dialog>;
 }

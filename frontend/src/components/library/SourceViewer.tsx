@@ -1,7 +1,8 @@
+import { Dialog } from '../ui/Dialog';
 import { materialWarningMessage } from '../../services/userError';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+
 import { Download, FileText, X, ArrowDown, AlertCircle } from 'lucide-react';
 import { Button } from '../ui';
 import { CodeBlock } from '../content/CodeBlock';
@@ -32,7 +33,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
   const displayFilename = filename ?? source.filename ?? chunks[0]?.filename;
   const passages = useMemo(() => groupPassages(chunks), [chunks]);
   useEffect(() => {
-    dialog.current?.showModal();
+
     const controller = new AbortController(); controllerRef.current = controller;
     setLoading(true); setChunks([]); setError(''); setOriginal(undefined); setView('extracted'); originalRequest.current = undefined;
     void getSourceChunks(source.document_id, source.version_id, includeArchived, controller.signal, 0, source.generation_id || undefined)
@@ -81,7 +82,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     } catch (e) { if (!controllerRef.current?.signal.aborted) setError(materialError(e)); }
     finally { if (!controllerRef.current?.signal.aborted) setDownloadBusy(false); }
   }
-  return createPortal(<dialog ref={dialog} onClose={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-2xl">
+  return <Dialog open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-overlay">
     <header className="source-header">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent"><FileText size={13} aria-hidden="true" />Library source</p><h2 className="truncate text-xl font-semibold tracking-tight text-heading">{source.title}</h2><p className="mt-1 truncate text-xs text-muted" title={displayFilename}>{displayFilename ?? sourceLocation(source) ?? 'Study material'}</p></div>
@@ -110,5 +111,5 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
         {original && original.text === undefined && !original.media.startsWith('image/') && original.media !== 'application/pdf' && <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-muted"><FileText size={32} strokeWidth={1.2} aria-hidden="true" /><p className="text-sm">{displayFilename ?? 'Original file'}</p><p className="max-w-xs text-xs leading-5">Read the extracted content here, or download the original to open it in its document application.</p></div>}
       </>}
     </div>
-  </dialog>, document.body);
+  </Dialog>;
 }

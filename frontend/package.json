@@ -8,6 +8,7 @@
     "test:auth": "playwright test auth.spec.ts",
     "test:profile": "playwright test student-profile.spec.ts",
     "check:theme": "node scripts/theme-check.mjs",
+    "check:ui": "node scripts/ui-check.mjs",
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173"

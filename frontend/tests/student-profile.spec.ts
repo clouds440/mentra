@@ -103,7 +103,7 @@ test('skipped calibration can be completed later in settings and uses level-appr
   await expect(page).toHaveURL(/\/calibration$/);
   await page.getByRole('button', { name: 'Start quick calibration', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'The pattern is circle, square, circle, square. What comes next?' })).toBeVisible();
-  await page.getByRole('group', { name: 'Answer choices' }).getByText('Circle', { exact: true }).click();
+  await page.getByRole('group', { name: 'Answer choices' }).getByRole('radio', { name: 'Circle', exact: true }).check();
   await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Skip calibration for now', exact: true }).click();
@@ -143,6 +143,7 @@ test('selection and navigation stay local and stable until one bulk submission',
   await expect(page.getByText('Question 1 of 8', { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 320, height: 568 });
   const group = page.getByRole('group', { name: 'Answer choices' });
+  await group.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(element.clientHeight)))));
   const assessment = page.getByRole('region', { name: 'Calibration assessment' });
   let saves = 0;
   await page.route('**/api/v1/student-profile/calibration/*/answers', async (route) => {

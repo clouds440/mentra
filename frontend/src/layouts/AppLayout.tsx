@@ -1,17 +1,9 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
-
-const pageTitles: Record<string, string> = {
-  '/': 'New Chat',
-  '/library': 'Library',
-  '/progress': 'Progress',
-  '/assessments': 'Assessments',
-  '/settings': 'Settings',
-  '/notifications': 'Notifications',
-};
+import { IconButton } from '../components/ui/IconButton';
 
 export function AppLayout() {
   const location = useLocation();
@@ -19,36 +11,46 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [newChatKey, setNewChatKey] = useState(0);
+  const [newChatPending, setNewChatPending] = useState(false);
+  // Router transitions and local state can commit separately. Keep the old
+  // composer inert until the destination and its draft reset have committed.
+  useLayoutEffect(() => { setNewChatPending(false); }, [location.key]);
   const isChat = location.pathname === '/' || location.pathname.startsWith('/chat/');
-  const title = pageTitles[location.pathname] ?? (location.pathname.startsWith('/library/') ? 'Library' : 'Mentra');
+  useEffect(() => {
+    if (isChat) return;
+    const main = document.getElementById('workspace-main');
+    main?.focus({ preventScroll: true });
+  }, [location.pathname]);
 
   function startNewChat() {
+    setNewChatPending(true);
     setNewChatKey((key) => key + 1);
     navigate('/');
   }
 
   return (
     <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground">
+      <a href="#workspace-main" className="skip-link">Skip to content</a>
       <AppSidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         onNewChat={startNewChat}
       />
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div id="workspace-content" className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:px-5" aria-label="Workspace controls">
           <div className="flex min-w-0 items-center gap-3">
-            <button
+            <IconButton
               aria-label="Open navigation menu"
-              className="pointer-events-auto grid h-9 w-9 place-items-center rounded-lg bg-background/90 text-muted backdrop-blur-sm hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+              className="pointer-events-auto bg-background text-muted lg:hidden"
               onClick={() => setMobileOpen(true)}
               type="button"
             >
               <Menu aria-hidden="true" size={19} />
-            </button>
-            <button
+            </IconButton>
+            <IconButton
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="pointer-events-auto hidden h-9 w-9 place-items-center rounded-lg bg-background/90 text-muted backdrop-blur-sm hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:grid"
+              className="pointer-events-auto hidden bg-background text-muted lg:inline-flex"
               onClick={() => setCollapsed((value) => !value)}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
@@ -58,13 +60,12 @@ export function AppLayout() {
               ) : (
                 <PanelLeftClose aria-hidden="true" size={18} />
               )}
-            </button>
-            {!isChat && <span className="truncate text-sm font-medium leading-9 text-heading">{title}</span>}
+            </IconButton>
           </div>
-          <div className="pointer-events-auto shrink-0 rounded-lg bg-background/90 backdrop-blur-sm"><NotificationBell /></div>
+          <div className="pointer-events-auto shrink-0 rounded-control bg-background"><NotificationBell /></div>
         </div>
-        <main className={`min-h-0 min-w-0 flex-1 overflow-hidden ${isChat ? '' : 'pt-14'}`}>
-          <Outlet context={{ newChatKey }} />
+        <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
+          <Outlet context={{ newChatKey, newChatPending }} />
         </main>
       </div>
     </div>

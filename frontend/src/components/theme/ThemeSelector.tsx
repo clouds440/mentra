@@ -19,7 +19,7 @@ export function ThemeSelector({ collapsed, vertical = false }: { collapsed: bool
         {options.map(({ value, label, icon: Icon }) => (
           <label key={value} className="relative min-w-0 flex-1 cursor-pointer">
             <input
-              className="peer sr-only"
+              className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
               type="radio"
               name="theme"
               value={value}

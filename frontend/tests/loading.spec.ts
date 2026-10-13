@@ -29,7 +29,7 @@ test('aborted consumers and stale requests cannot poison shared cache', async ()
   await cachedPage('job',job); await cachedPage('job',job); expect(n).toBe(2);
 });
 test('errors explain outcomes', () => {
-  expect(errorMessage(502,'AI_PROVIDER_ERROR')).toBe('Mentra could not complete your response.');
+  expect(errorMessage(502,'AI_PROVIDER_ERROR')).toBe('Mentra couldn’t finish this response. Please try again.');
   expect(errorMessage(500,'UNKNOWN')).toBe('Mentra could not complete this request.');
 });
 
@@ -102,7 +102,7 @@ test('chat opening shows skeleton and revisiting an empty chat uses its existing
   await expect(page.getByRole('region',{name:'Chat workspace'}).getByRole('status',{name:'Loading'})).toHaveCount(0);
   await page.getByRole('link',{name:'Library',exact:true}).click();
   await page.getByRole('link',{name:'Empty chat',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Send message'})).toBeVisible(); expect(opens).toBe(1);
+  await expect(page.getByRole('button',{name:'Send message'})).toBeVisible(); await expect.poll(() => opens).toBe(2);
   await page.getByRole('button',{name:'Start a new chat'}).click();
   await expect(page).toHaveURL(/\/$/); await expect(page.getByRole('button',{name:'Send message'})).toBeVisible();
 });
@@ -110,12 +110,12 @@ test('technical errors are hidden',async ({page}) => {
   await mockApp(page);
   await page.route('**/api/v1/documents?**',route => route.fulfill({status:502,json:{error:{code:'AI_PROVIDER_ERROR',message:'Check provider configuration and API key'}}}));
   await page.goto('/library');
-  await expect(page.getByRole('alert')).toContainText('Mentra could not complete your response.');
+  await expect(page.getByRole('alert')).toContainText('Mentra couldn’t finish this response. Please try again.');
   await expect(page.locator('body')).not.toContainText('API key');
 });
 test('successful writes and manual reload refresh cached API data',async ({page}) => {
   const counts=await mockApp(page); await page.goto('/library');
-  await expect(page.getByText('Add material to start studying')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
   const before=counts['/api/v1/documents'];
   await page.evaluate(async () => {
     const path='/src/services/api.ts'; const {apiRequest}=await import(path);
