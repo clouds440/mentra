@@ -95,7 +95,7 @@ class ConcurrentDispatchTests(unittest.IsolatedAsyncioTestCase):
             return project_read(project, query)
         tool = StructuredTool.from_function(name='history_lookup', description='Read', args_schema=Query,
             coroutine=read, metadata={'parallel_read': True})
-        calls = [dict(name=tool.name, args=dict(query=q), id=str(i), type='tool_call') for i, q in enumerate(('first', 'second', 'first'))]
+        calls = [dict(name=tool.name, args=dict(query=q), id=str(i), type='tool_call') for i, q in enumerate(('first', 'second', ' first '))]
         result, model = await self.run_tools([tool], calls, state)
         self.assertEqual(result.content, 'Verified answer')
         self.assertEqual([r['query'] for r in state['history_references']], ['first','second'])

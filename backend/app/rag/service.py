@@ -8,6 +8,7 @@ import time
 import logging
 from uuid import uuid4
 from app.core.exceptions import AppError
+from app.core.read_cache import ReadCache, normalized_query
 from app.learner.schemas import LearnerContextRequest, ConceptResolutionRequest
 from app.learner.exceptions import LearningContextNotFoundError
 from app.learner.services import LearnerService
@@ -36,6 +37,7 @@ class RAGService:
         self.parser = parser or NativeDocumentParser()
         self._inference = BoundedSemaphore(1)
         self._query_cache = OrderedDict()
+        self._candidate_cache = ReadCache(capacity=128, ttl=120)
         self.reranker = None
         if settings.rag_reranker_path:
             from app.rag.reranker import LocalReranker
@@ -201,6 +203,8 @@ class RAGService:
         return ids, self.repository.eligible(owner, ids, request.document_ids, request.include_archived)
 
     def search(self, owner: str, request: SearchRequest) -> RetrievalResult:
+        request = request.model_copy(deep=True)
+        request.query = normalized_query(request.query)
         started = checkpoint = time.monotonic()
         diagnostics = RetrievalDiagnostics(request_id=str(uuid4()))
         def mark(stage):
@@ -211,6 +215,10 @@ class RAGService:
         if not request.query.strip():
             raise AppError('RAG_QUERY_REQUIRED', 'Enter a question to search.', 422)
         contexts, docs = self._eligible(owner, request)
+        # Resolve redirects before filtering: an old canonical ID must not
+        # eliminate material tagged with its current canonical concept.
+        if request.concept_ids:
+            request.concept_ids = [self.learner.get_concept(c).id for c in request.concept_ids]
         # Current canonical tags apply to every chunk of a material. Restrict
         # candidates before ranking so unrelated sources cannot crowd them out.
         if request.concept_ids:
@@ -218,33 +226,50 @@ class RAGService:
             docs = [doc for doc in docs if wanted.intersection(doc['concept_ids'])]
         diagnostics.eligible_documents = len(docs)
         mark('scope')
-        if request.concept_ids:
-            request.concept_ids = [self.learner.get_concept(c).id for c in request.concept_ids]
-            docs = [d for d in docs if set(request.concept_ids).intersection(d['concept_ids'])]
-            diagnostics.eligible_documents = len(docs)
         if not docs:
             return RetrievalResult(status='no_eligible_sources', context_ids=contexts, diagnostics=diagnostics, mode=request.mode)
         generation_ids = [d['active_generation_id'] for d in docs]
+        # A database-derived signature naturally changes across API/worker
+        # processes after publication, replacement, retagging or scope changes.
+        # Cache candidate IDs/scores only; hydration and final authorization
+        # below still run on every hit. Never cache source content or tokens.
+        candidate_key = json.dumps(dict(owner=owner, query=normalized_query(request.query),
+            config=self.config(), max_tokens=self.embedding.max_tokens, hybrid=self.settings.rag_hybrid_enabled,
+            concepts=sorted(request.concept_ids or []), contexts=sorted(contexts),
+            documents=sorted((str(d['id']), str(d['active_generation_id']), d.get('revision', 0)) for d in docs)),
+            sort_keys=True, default=str)
+        cached_candidates = self._candidate_cache.get(candidate_key)
         warnings = []
         try:
-            with self._inference:
-                cache_key = (owner, self.embedding.model_name, self.embedding.model_version,
-                    self.embedding.dimension, self.embedding.max_tokens, request.query)
-                cached = self._query_cache.get(cache_key)
-                if cached and time.monotonic() - cached[0] < 60:
-                    vector = cached[1]
-                    diagnostics.query_cache_hit = True
-                else:
-                    if self.embedding.query_token_count(request.query) > self.embedding.max_tokens:
-                        raise AppError('RAG_QUERY_TOO_LONG', 'Shorten this question to fit the retrieval model.', 422)
-                    vector = self.embedding.embed_query(request.query)
-                    self._query_cache[cache_key] = (time.monotonic(), vector)
-                    while len(self._query_cache) > 128:
-                        self._query_cache.popitem(last=False)
-            mark('embedding')
-            matches = self.vector_store.query_chunks(owner, generation_ids, vector, 80)
+            if cached_candidates is None:
+                with self._inference:
+                    cache_key = (owner, self.embedding.model_name, self.embedding.model_version,
+                        self.embedding.dimension, self.embedding.max_tokens, normalized_query(request.query))
+                    cached = self._query_cache.get(cache_key)
+                    if cached and time.monotonic() - cached[0] < 60:
+                        vector = cached[1]
+                        self._query_cache.move_to_end(cache_key)
+                        diagnostics.query_cache_hit = True
+                    else:
+                        if self.embedding.query_token_count(request.query) > self.embedding.max_tokens:
+                            raise AppError('RAG_QUERY_TOO_LONG', 'Shorten this question to fit the retrieval model.', 422)
+                        vector = self.embedding.embed_query(request.query)
+                        self._query_cache[cache_key] = (time.monotonic(), vector)
+                        while len(self._query_cache) > 128:
+                            self._query_cache.popitem(last=False)
+                mark('embedding')
+                matches = self.vector_store.query_chunks(owner, generation_ids, vector, 80)
+                mark('dense')
+                lexical = self.repository.lexical(owner, generation_ids, request.query, 80) if self.settings.rag_hybrid_enabled else []
+                mark('lexical')
+                self._candidate_cache.put(candidate_key, (matches, lexical))
+            else:
+                matches, lexical = cached_candidates
+                diagnostics.query_cache_hit = diagnostics.candidate_cache_hit = True
+                diagnostics.timings_ms.update(embedding=0, dense=0, lexical=0)
+                workflow_logger.event('rag.cache_hit', cache_layer='candidates', candidate_count=len(matches))
             diagnostics.dense_candidates = len(matches)
-            mark('dense')
+            mark('candidates')
         except (VectorStoreError, EmbeddingModelError) as exc:
             raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from exc
         dense = [m.id for m in matches]
@@ -253,7 +278,6 @@ class RAGService:
         ranked = [(m.id, m.score) for m in matches]
         score_type = 'dense_similarity'
         if self.settings.rag_hybrid_enabled:
-            lexical = self.repository.lexical(owner, generation_ids, request.query, 80)
             lexical_ranks = {key: index + 1 for index, key in enumerate(lexical)}
             diagnostics.lexical_candidates = len(lexical)
             ranked = reciprocal_rank_fusion([dense, lexical])

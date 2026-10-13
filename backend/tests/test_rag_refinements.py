@@ -17,6 +17,23 @@ def source(number):
 
 
 class RefinementTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repeat_revalidates_instead_of_replaying_prefetched_source_packet(self):
+        rag = Mock()
+        def result(number):
+            item = source(number)
+            return RetrievalResult(status='ok', chunks=[RetrievedChunk(content=item.excerpt,
+                score=1, score_type='test', source=item)])
+        rag.search.side_effect = [result(1), result(2)]
+        scope = dict(rag_service=rag, retrieval_selection=ChatSelection(mode='SOURCE_SPECIFIC',
+            document_ids=['document']), _initial_search=('same query', result(3)))
+        tool = create_workflow_tools('owner', scope, ToolBudget())[0]
+        first = await tool.ainvoke({'query':'same query'})
+        second = await tool.ainvoke({'query':'same query'})
+        self.assertEqual(rag.search.call_count, 2)
+        self.assertEqual(first['sources'][0]['token'], 'S1')
+        self.assertEqual(second['sources'][0]['token'], 'S2')
+        self.assertEqual([s.chunk_id for s in scope['study_sources']], ['chunk-1','chunk-2'])
+
     async def test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity(self):
         rag = Mock()
         rag.search.return_value = RetrievalResult(status='ok', chunks=[

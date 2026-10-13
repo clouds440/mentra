@@ -2,6 +2,7 @@
 import asyncio
 import json
 from .concurrent_reads import StagedRead, staging_reads, gather_reads
+from .tool_cache import tool_cache_key, REVALIDATED_READS, copy_result
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage
 from .token_policy import count_messages as count_tokens_approximately
 from app.core.config import settings
@@ -362,13 +363,13 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     singleflight = {}
                     waiting = []
                     for _, item in batch:
-                        key = item['name'] + ':' + json.dumps(item['args'], sort_keys=True, default=str)
+                        key = tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
                         if key not in singleflight:
                             singleflight[key] = len(waiting)
                             waiting.append(lambda item=item: capture(item))
                     values = await gather_reads(waiting)
                     for index, item in batch:
-                        key = item['name'] + ':' + json.dumps(item['args'], sort_keys=True, default=str)
+                        key = tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
                         pending[index] = values[singleflight[key]]
                 result = pending[position] if position in pending else await invoke(call)
                 if isinstance(result, Exception):
@@ -416,10 +417,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     budget.result_tokens += count_tokens_approximately([ToolMessage(content=content, tool_call_id=call['id'])])
                     accounted = True
                 budget.delivered.setdefault(full_content, call['id'])
-                if not is_write(call['name'], call['args']) and call['name'] not in ('web_search', 'web_research', 'assessment_status'):
-                    key = call['name'] + ':' + json.dumps(call['args'], sort_keys=True, default=str)
+                if not is_write(call['name'], call['args']) and call['name'] not in REVALIDATED_READS | {'web_search', 'web_research'}:
+                    key = tool_cache_key(dispatch.get(call['name']), call['name'], call['args'])
                     if key in executor.results:
-                        executor.results[key] = result
+                        executor.results[key] = copy_result(result)
             except Exception as error:
                 if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
                     raise
@@ -437,7 +438,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         scope.pop('retrieval_status', None)
                     else:
                         scope['retrieval_status'] = retrieval_before
-                    key = call['name'] + ':' + json.dumps(call['args'], sort_keys=True, default=str)
+                    key = tool_cache_key(dispatch.get(call['name']), call['name'], call['args'])
                     executor.results.pop(key, None)
                     executor.failed[key] = failure(error).model_dump()
                 for key in list(budget.cache):

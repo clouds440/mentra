@@ -3,7 +3,7 @@ import asyncio
 from time import monotonic
 from hashlib import sha256
 from .concurrent_reads import StagedRead
-import json
+from .tool_cache import tool_cache_key, REVALIDATED_READS, copy_result
 import random
 import math
 import logging
@@ -116,19 +116,27 @@ class ToolExecutor:
     def invalidate_written_domain(self, domain):
         # Both cache layers must expire together after a mutation, including an
         # uncertain mutation outcome. Keep write-failure receipts for replay safety.
+        affected = {'learner': {'learner', 'rag', 'profile'},
+                    'assessment': {'assessment', 'learner', 'profile'},
+                    'memory': {'memory', 'profile'}}.get(domain, {domain})
         for key in list(self.results):
             name = key.split(':', 1)[0]
-            if DOMAINS.get(name) == domain:
+            if DOMAINS.get(name, 'profile' if name == 'profile_context' else name) in affected:
                 self.results.pop(key, None)
         for key, receipt in list(self.failed.items()):
-            if DOMAINS.get(key.split(':', 1)[0]) == domain and receipt.get('category') == 'not_found' and receipt.get('effect_certainty') == 'read_only':
+            if DOMAINS.get(key.split(':', 1)[0]) in affected and receipt.get('effect_certainty') == 'read_only':
                 self.failed.pop(key, None)
-        prefixes = {'learner': ('learner:',), 'memory': ('recall:',)}.get(domain, ())
+        for name in affected:
+            self.outages.pop(name, None)
+        prefixes = tuple(prefix for name in affected for prefix in
+                         {'learner': ('learner:',), 'memory': ('recall:',), 'rag': ('study:',)}.get(name, ()))
         for key in list(self.budget.cache):
             if prefixes and key.startswith(prefixes):
                 self.budget.cache.pop(key, None)
-        if domain == 'learner':
+        if 'learner' in affected:
             self.scope.pop('_initial_learner_context', None)
+        if 'rag' in affected:
+            self.scope.pop('_initial_search', None)
 
     async def execute(self, tool, arguments, *, required=False, max_attempts=None, timeout=None):
         started = monotonic()
@@ -146,10 +154,11 @@ class ToolExecutor:
                 return dated_failure(self.scope, value)
             return value
         write = is_write(name, arguments)
-        key = name + ':' + json.dumps(arguments, sort_keys=True, default=str)
-        if not write and name != 'assessment_status' and key in self.results:
-            workflow_logger.event('tool.cache_hit', tool_name=name)
-            return project(self.results[key])
+        key = tool_cache_key(tool, name, arguments)
+        if not write and name not in REVALIDATED_READS and key in self.results:
+            workflow_logger.event('tool.cache_hit', tool_name=name, cache_layer='turn',
+                duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=current_tool_call.get())
+            return project(copy_result(self.results[key]))
         if key in self.failed:
             workflow_logger.event('tool.exhausted_skip', tool_name=name, error_code=self.failed[key].get('code', 'TOOL_UNAVAILABLE'))
             receipt = dict(self.failed[key], repeated_failure=True, task_impact='required_for_part' if required else 'optional')
@@ -204,8 +213,8 @@ class ToolExecutor:
                                           tool_attempt=attempt, max_attempts=1 if write else max_attempts)
                 workflow_logger.event('tool.result', tool_name=name, outcome=semantic, attempts=attempt, duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=call_id)
                 if not write:
-                    if status != 'failed':
-                        self.results[key] = result
+                    if status != 'failed' and name not in REVALIDATED_READS:
+                        self.results[key] = copy_result(result)
                 return result
             except asyncio.CancelledError:
                 raise

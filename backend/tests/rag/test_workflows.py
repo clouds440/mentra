@@ -40,6 +40,44 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata(self):
+        accepted = self.ready()
+        with patch.object(self.vector, 'query_chunks', wraps=self.vector.query_chunks) as dense, \
+             patch.object(self.repo, 'hydrate', wraps=self.repo.hydrate) as hydrate:
+            first = self.search()
+            first.chunks[0].source.title = 'Caller mutation'
+            hit = self.service.search(self.owner, SearchRequest(query='  decorators  ', limit=1))
+            self.assertTrue(hit.diagnostics.candidate_cache_hit)
+            self.assertNotEqual(hit.chunks[0].source.title, 'Caller mutation')
+            self.assertEqual(dense.call_count, 1)
+            self.assertEqual(hydrate.call_count, 2)
+            doc = self.repo.get_document(self.owner, accepted['document_id'])
+            self.service.update_document(self.owner, doc['id'], DocumentUpdate(expected_revision=doc['revision'], title='Renamed'))
+            fresh = self.search()
+            self.assertFalse(fresh.diagnostics.candidate_cache_hit)
+            self.assertEqual(fresh.chunks[0].source.title, 'Renamed')
+            self.assertEqual(dense.call_count, 2)
+            self.repo.request_delete(self.owner, doc['id'])
+            self.assertFalse(self.search().chunks)
+        self.assertFalse(self.service.search(self.other, SearchRequest(query='decorators')).chunks)
+
+    def test_new_publication_invalidates_candidate_cache(self):
+        first = self.ready()
+        self.search()
+        self.assertTrue(self.search().diagnostics.candidate_cache_hit)
+        second = self.upload(b'Decorators can also wrap classes.', key='new-cached-source')
+        self.worker.run_once()
+        result = self.search()
+        self.assertFalse(result.diagnostics.candidate_cache_hit)
+        self.assertEqual({c.source.document_id for c in result.chunks}, {first['document_id'], second['document_id']})
+        doc = self.repo.get_document(self.owner, first['document_id'])
+        self.upload(b'Decorators replacement published content.', key='replacement-cached-source',
+            document_id=doc['id'], expected_revision=doc['revision'])
+        self.worker.run_once()
+        fresh = self.search()
+        self.assertFalse(fresh.diagnostics.candidate_cache_hit)
+        self.assertTrue(any('replacement' in c.content for c in fresh.chunks))
+
     def test_preextracted_chat_file_never_parses_again(self):
         extracted = dict(blocks=[dict(text='Python decorators wrap functions.', page=3, method='ocr')],
                          warnings=['OCR may contain errors.'], reader_revision='verified-reader', media_type='text/plain')

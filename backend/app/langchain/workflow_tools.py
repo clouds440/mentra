@@ -68,13 +68,10 @@ def create_workflow_tools(owner, scope, budget):
 
         async def search(query):
             budget.call()
-            key = 'study:' + query
-            if key in budget.cache:
-                return project_read(project_search, budget.cache[key])
-            initial = scope.get('_initial_search')
-            result = initial[1] if initial and initial[0] == query else await run_in_threadpool(scope['rag_service'].search, owner,
+            # RAG owns revision-aware reuse. Never return cached content here
+            # without the service rechecking current source eligibility.
+            result = await run_in_threadpool(scope['rag_service'].search, owner,
                 SearchRequest(query=query, **selection.model_dump(), limit=3, token_budget=1000))
-            budget.cache[key] = result
             return project_read(project_search, result)
 
         def project_search(result):

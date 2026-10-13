@@ -93,6 +93,7 @@ class RetrievalDiagnostics(RAGSchema):
     hydrated_candidates: int = 0
     rejected_candidates: int = 0
     query_cache_hit: bool = False
+    candidate_cache_hit: bool = False
     reranking: Literal['disabled', 'ok', 'fallback'] = 'disabled'
 
 

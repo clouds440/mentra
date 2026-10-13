@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import hashlib
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from time import monotonic
 from uuid import uuid5, NAMESPACE_URL
@@ -41,6 +42,24 @@ class WebSearchService:
         self.semaphore = asyncio.Semaphore(2)
         self.cache_seconds = cache_seconds
         self.request_timeout, self.namespace = request_timeout, namespace
+        self._cache_locks = {}
+
+    @asynccontextmanager
+    async def _cache_flight(self, key, enabled):
+        # Waiters share a cache fill without owning/cancelling another request.
+        # Every caller retains its own deadline and normal quota admission.
+        if not enabled or key not in self._cache_locks and len(self._cache_locks) >= 128:
+            yield
+            return
+        entry = self._cache_locks.setdefault(key, [asyncio.Lock(), 0])
+        entry[1] += 1
+        try:
+            async with entry[0]:
+                yield
+        finally:
+            entry[1] -= 1
+            if not entry[1]:
+                self._cache_locks.pop(key, None)
 
     def envelope(self, outcome: str, *, website: str | None = None, searched_at: datetime | None = None, sources: Iterable[WebSource] = (), reused: bool = False) -> SearchResult:
         now = self.clock().astimezone(self.zone)
@@ -69,18 +88,19 @@ class WebSearchService:
         try:
             async with asyncio.timeout(remaining):
                 key = hashlib.sha256(f'{self.namespace}:{owner}:{self.clock().astimezone(self.zone).date()}:{request.model_dump_json()}'.encode('utf-8')).hexdigest()
-                if self.cache_seconds and not bypass_cache:
-                    try:
-                        cached = await run_in_threadpool(self.usage.cached, owner, key, self.clock())
-                    except RepositoryError:
-                        # Cache is optional; quota admission must still succeed before dispatch.
-                        logger.warning('Web search result cache read unavailable.')
-                        cached = None
-                    if cached:
-                        value = self.refresh(cached['payload'], within_turn=False)
-                        workflow_logger.event('web_search.cache_hit', source_count=len(value.sources))
-                        return value.model_copy(update={'cache_hit': True, 'cache_expires_at': cached['expires_at']})
-                return await self._search(request, owner, attempt_id, context, key)
+                async with self._cache_flight(key, self.cache_seconds and not bypass_cache):
+                    if self.cache_seconds and not bypass_cache:
+                        try:
+                            cached = await run_in_threadpool(self.usage.cached, owner, key, self.clock())
+                        except RepositoryError:
+                            # Cache is optional; quota admission must still succeed before dispatch.
+                            logger.warning('Web search result cache read unavailable.')
+                            cached = None
+                        if cached:
+                            value = self.refresh(cached['payload'], within_turn=False)
+                            workflow_logger.event('web_search.cache_hit', source_count=len(value.sources))
+                            return value.model_copy(update={'cache_hit': True, 'cache_expires_at': cached['expires_at']})
+                    return await self._search(request, owner, attempt_id, context, key)
         except TimeoutError:
             return self.envelope('timeout', website=request.website, searched_at=context['searched_at'])
         except (ProviderError, RepositoryError, ValueError) as error:
