@@ -61,6 +61,26 @@ class EventCaptureTests(unittest.TestCase):
         result = asyncio.run(service.capture(owner, scope))
         self.assertEqual(result[0]['outcome'], 'awaiting_confirmation')
 
+    def test_live_provider_separate_date_and_clock_format_saves(self):
+        owner, service, llm, scope = self.setup_capture()
+        item = llm.ainvoke.return_value.events[0]
+        item.candidate.local_date = item.candidate.starts_at[:10]
+        item.candidate.starts_at = '09:00'
+        result = asyncio.run(service.capture(owner, scope))
+        self.assertEqual(result[0]['outcome'], 'saved')
+        event = result[0]['event']
+        self.assertIsNone(event['local_date'])
+        self.assertEqual(event['starts_at'].astimezone(ZoneInfo('Asia/Karachi')).hour, 9)
+
+    def test_normalization_leaves_dst_gaps_folds_and_conflicting_dates_for_review(self):
+        from app.history_management.events.capture import normalize_candidate
+        from app.history_management.events.proposals import EventCandidate
+        for day, clock in [('2026-11-01','01:30'), ('2026-03-08','02:30')]:
+            item = EventCandidate(title='Exam', timezone='America/New_York', local_date=day, starts_at=clock)
+            self.assertEqual(normalize_candidate(item), item)
+        item = EventCandidate(title='Exam', timezone='Asia/Karachi', local_date='2026-10-14', starts_at='2026-10-15T09:00:00+05:00')
+        self.assertEqual(normalize_candidate(item), item)
+
     def test_general_event_types_use_same_candidate_pipeline(self):
         for kind in ('assessment', 'assignment', 'quiz', 'test', 'exam', 'project', 'presentation', 'viva'):
             text = f'I have a {kind} tomorrow at 9 am.'

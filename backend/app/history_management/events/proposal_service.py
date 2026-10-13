@@ -21,6 +21,8 @@ class EventProposalService:
         source=next((row for row in scope.get('context_rows',[]) if row['id']==str(body.message_id) and row['role']=='user'),None)
         if not source or body.quote not in source['content']:
             raise AppError('PROPOSAL_EVIDENCE_INVALID','Use an exact visible user statement.',422)
+        from .capture import normalize_candidate
+        body = body.model_copy(update={'candidate': normalize_candidate(body.candidate)})
         supported=False
         if self.llm is not None or capture_admission is not None:
             preferences=await run_in_threadpool(self.events.preferences,owner)

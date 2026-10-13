@@ -6,6 +6,9 @@ an arbitrary activity with a first-party temporal statement can be captured.
 The extractor returns exact current-message quotes, event candidates, admission
 decisions and a separate explicit-practice intent. It never reads documents,
 assistant text or summaries as new event evidence.
+Equivalent local date plus clock and naive ISO timestamp encodings are normalized
+to canonical aware instants before admission. Repeated/skipped DST times and
+conflicting dates remain reviewable; normalization never guesses an offset or date.
 
 The existing EventProposalService admission/commit pipeline remains the writer.
 Unambiguous complete actual events can be committed automatically; uncertain
