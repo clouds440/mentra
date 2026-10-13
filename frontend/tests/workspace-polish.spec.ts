@@ -10,7 +10,14 @@ for (const width of [1280, 390]) {
     });
     await page.goto('/chat/polish-chat');
     const message = page.getByLabel('Your message', {exact:true}).last();
-    await message.getByRole('button', {name:'Copy message', exact:true}).click();
+    const copy = message.getByRole('button', {name:'Copy message', exact:true});
+    const bubble = await message.locator('.bg-message').boundingBox();
+    const button = await copy.boundingBox();
+    expect(button!.y - bubble!.y - bubble!.height).toBeLessThanOrEqual(8);
+    await copy.hover();
+    await expect.poll(() => copy.evaluate(el => getComputedStyle(el).opacity)).toBe('1');
+    expect(await copy.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+    await copy.click();
     await expect(message.getByRole('button', {name:'Message copied'})).toBeVisible();
     const copied = await page.evaluate(() => (window as unknown as {copiedText:string}).copiedText);
     expect(copied).toBe(`Earlier question and explanation ${'Learning takes practice. '.repeat(20)}`.trim());
@@ -30,6 +37,8 @@ test('Copy response exports plain text with intact code and reports clipboard er
   const message = page.getByLabel('Mentra response',{exact:true}).last();
   const copy = message.getByRole('button',{name:'Copy response',exact:true});
   await expect(copy).toBeVisible({timeout:15_000});
+  await copy.hover();
+  expect(await copy.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await copy.click();
   await expect(message.getByRole('button',{name:'Response copied'})).toBeVisible();
   const copied = await page.evaluate(() => (window as unknown as {copiedText:string}).copiedText);
@@ -92,6 +101,7 @@ async function workspace(page: Page, running = false, populated = false, stream 
     await route.fulfill({json:body});
   });
   return {
+    keepLastMessages(count: number) { items.splice(0, items.length - count); },
     startWithAnswer() { items.shift(); },
     complete(content: string, warnings: Record<string, unknown>[] = []) {
       state = 'SUCCEEDED'; conversation.revision++; conversation.message_count++;
@@ -271,7 +281,8 @@ for (const size of [{width:1280,height:900}, {width:390,height:844}, {width:390,
   const disclaimer = page.getByLabel('Chat disclaimer');
   await expect(log).toBeVisible();
   const notice = await disclaimer.boundingBox(), input = await composer.boundingBox(), pane = await log.boundingBox();
-  expect(notice!.y).toBeGreaterThanOrEqual(pane!.y + pane!.height);
+  expect(await disclaimer.evaluate(el => !!el.closest('[role="log"]'))).toBe(true);
+  expect(notice!.y + notice!.height).toBeLessThanOrEqual(pane!.y + pane!.height);
   expect(notice!.y + notice!.height).toBeLessThanOrEqual(input!.y);
   const position = async () => log.evaluate(el => {
     const latest = el.querySelector<HTMLElement>('[data-latest-turn="true"]')!;
@@ -301,6 +312,29 @@ for (const size of [{width:1280,height:900}, {width:390,height:844}, {width:390,
   await page.reload();
   await expect.poll(() => log.evaluate(el => el.scrollHeight-el.scrollTop-el.clientHeight)).toBeLessThan(2);
   await expect(page.locator('[data-latest-turn="true"]')).toHaveCount(0);
+});
+
+for (const count of [0, 2, 40]) test(`chat disclaimer follows scrollable messages (${count} messages)`, async ({page}) => {
+  const state = await workspace(page);
+  state.keepLastMessages(count);
+  await page.goto('/chat/polish-chat');
+  const notice = page.getByLabel('Chat disclaimer');
+  if (!count) { await expect(notice).toHaveCount(0); return; }
+  const log = page.getByRole('log');
+  await expect(notice).toBeInViewport();
+  const gap = await notice.evaluate(el => {
+    const log = el.closest('[role="log"]')!;
+    return log.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThanOrEqual(17);
+  expect(await notice.evaluate(el => el.parentElement?.lastElementChild === el)).toBe(true);
+  if (count === 40) {
+    await log.evaluate(el => { el.scrollTop = 0; });
+    await expect(notice).not.toBeInViewport();
+    await log.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await expect(notice).toBeInViewport();
+  }
 });
 
 test('history pages beginning with an answer never acquire a temporary exchange minimum', async ({page}) => {

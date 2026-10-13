@@ -83,7 +83,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resolver.match.await_count, 1)
         self.assertEqual(len(self.db.repository.list_concepts(10)), 1)
 
-    async def test_related_concept_is_new_and_foreign_id_from_model_is_rejected(self):
+    async def test_related_concept_is_new_and_foreign_id_falls_back_without_merging(self):
         canonical = self.learner.register_concept('Python lists')
         context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner, name='Python'))
         resolver = SimpleNamespace(expand=AsyncMock(return_value=ConceptSearchTerms(terms=['Python lists'])),
@@ -92,10 +92,9 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         concepts = await self.learner.resolve_generated_concepts(self.request('Python tuples', context))
         self.assertNotEqual(concepts[0].id, canonical.id)
         resolver.match.return_value = ConceptIdentityMatches(matches=[dict(label='Python dictionaries', concept_id=str(uuid4()), confidence=1)])
-        with self.assertRaises(AppError) as error:
-            await self.learner.resolve_generated_concepts(self.request('Python dictionaries', context))
-        self.assertEqual(error.exception.code, 'CONCEPT_INVALID_MATCH')
-        self.assertEqual(len(self.db.repository.list_concepts(10)), 2)
+        concepts = await self.learner.resolve_generated_concepts(self.request('Python dictionaries', context))
+        self.assertNotEqual(concepts[0].id, canonical.id)
+        self.assertEqual(len(self.db.repository.list_concepts(10)), 3)
 
     async def test_other_learner_cannot_create_targets_in_an_owned_context_or_chat(self):
         context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.other, name='Physics'))
@@ -152,3 +151,106 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         concepts = await self.learner.resolve_generated_concepts(self.request('Models', context))
         self.assertNotIn(concepts[0].id, [left.id, right.id])
         self.assertEqual(self.learner.get_pending_concepts(self.owner), [])
+
+    async def broken_advice_quiz(self, stage):
+        from app.langchain.concept_identity import ConceptIdentityResolver
+        from app.langchain.prompts import PromptSource
+        self.learner.register_concept('Machine learning')
+        async def advice(source, payload, *, output_schema):
+            self.assertEqual(source, PromptSource.CONCEPT_IDENTITY)
+            if payload['operation'] == stage:
+                return output_schema.model_validate({'unexpected':'malformed model output'})
+            if payload['operation'] == 'search_terms': return ConceptSearchTerms(terms=['Machine learning'])
+            return ConceptIdentityMatches(matches=[])
+        self.learner.generated_concepts.resolver = ConceptIdentityResolver(SimpleNamespace(ainvoke=AsyncMock(side_effect=advice)))
+        scope = dict(assessment_service=self.service, conversation_id=self.conversation(), current_user_message_id=str(uuid4()))
+        tool = next(t for t in create_workflow_tools(self.owner, scope, ToolBudget()) if t.name == 'assessment_generate')
+        arguments = dict(topic='AI basics: models, training, fine-tuning',
+            concept_names=['AI models', 'AI model training', 'AI fine-tuning'], count=5, question_format='mcq')
+        result = await tool.ainvoke(arguments)
+        replay = await tool.ainvoke(arguments)
+        self.assertEqual(result['assessment_id'], replay['assessment_id'])
+        assessment = self.service.repository.detail(self.owner, result['assessment_id'])
+        self.assertEqual(len(assessment.questions), 5)
+        self.assertEqual(len(self.db.repository.list_concepts(10)), 4)
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(learning_evidence)), 0)
+        attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))
+        self.service.submit(self.owner, str(attempt.id), SubmitAnswers(expected_revision=attempt.revision,
+            client_request_id=uuid4(), answers={str(q.id):'a' for q in assessment.questions}))
+        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertEqual(self.service.repository.attempt(self.owner, str(attempt.id)).evidence_status, 'applied')
+
+    async def test_ai_basics_quiz_survives_malformed_synonym_expansion(self):
+        await self.broken_advice_quiz('search_terms')
+
+    async def test_ai_basics_quiz_survives_malformed_identity_matches(self):
+        await self.broken_advice_quiz('match')
+
+    async def test_invalid_question_batch_is_repaired_within_the_same_generation(self):
+        from app.langchain.prompts import PromptSource
+        from unittest.mock import patch
+        invoke = self.service.workflows.llm.ainvoke
+        calls = []
+        async def model(source, payload, **kwargs):
+            if source == PromptSource.ASSESSMENT_GENERATION:
+                calls.append(payload)
+                if len(calls) == 1: return kwargs['output_schema'].model_validate({'title':'AI', 'questions':[]})
+            return await invoke(source, payload, **kwargs)
+        with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
+            result = await self.service.generate_chat_from_topic(self.owner, self.conversation(),
+                client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
+        self.assertEqual(len(result['assessment']['questions']), 5)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual([p['question_offset'] for p in calls], [0, 0, 3])
+        self.assertIn('repair_feedback', calls[1])
+
+    async def test_malformed_topic_plan_falls_back_to_requested_topic(self):
+        from app.langchain.prompts import PromptSource
+        from unittest.mock import patch
+        invoke = self.service.workflows.llm.ainvoke
+        plans = []
+        async def model(source, payload, **kwargs):
+            if source == PromptSource.ASSESSMENT_TARGETS:
+                plans.append(payload)
+                return kwargs['output_schema'].model_validate({'concept_names':[]})
+            return await invoke(source, payload, **kwargs)
+        with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
+            result = await self.service.generate_chat_from_topic(self.owner, self.conversation(),
+                client_request_id=uuid4(), topic='AI basics', count=3, question_format='mcq')
+        self.assertEqual(len(plans), 2)
+        self.assertEqual(len(result['assessment']['questions']), 3)
+        self.assertEqual(self.db.repository.list_concepts(10)[0].canonical_name, 'AI basics')
+
+    async def test_permanently_invalid_questions_never_save_a_partial_assessment(self):
+        from app.langchain.prompts import PromptSource
+        from unittest.mock import patch
+        invoke = self.service.workflows.llm.ainvoke
+        calls = []
+        async def model(source, payload, **kwargs):
+            if source == PromptSource.ASSESSMENT_GENERATION:
+                calls.append(payload)
+                if payload['question_offset'] > 0:
+                    return kwargs['output_schema'].model_validate({'title':'AI', 'questions':[]})
+            return await invoke(source, payload, **kwargs)
+        cid = self.conversation()
+        with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
+            with self.assertRaises(AppError) as caught:
+                await self.service.generate_chat_from_topic(self.owner, cid,
+                    client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
+        self.assertEqual(caught.exception.code, 'ASSESSMENT_INVALID_GENERATION')
+        self.assertEqual([p['question_offset'] for p in calls], [0, 3, 3])
+        self.assertEqual(self.service.chat.recent(self.owner, cid), [])
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(learning_evidence)), 0)
+
+    async def test_conflicting_duplicate_identity_advice_keeps_a_separate_target(self):
+        canonical = self.learner.register_concept('Machine learning')
+        context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner, name='AI basics'))
+        self.learner.generated_concepts.resolver = SimpleNamespace(
+            expand=AsyncMock(return_value=ConceptSearchTerms(terms=['Machine learning'])),
+            match=AsyncMock(return_value=ConceptIdentityMatches(matches=[
+                dict(label='AI model training', concept_id=canonical.id, confidence=1),
+                dict(label='AI model training', concept_id=None, confidence=1)])))
+        concepts = await self.learner.resolve_generated_concepts(self.request('AI model training', context))
+        self.assertNotEqual(concepts[0].id, canonical.id)

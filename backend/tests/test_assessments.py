@@ -87,10 +87,8 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         await AssessmentWorker(self.service).run_once()
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).evidence_status,'applied')
 
-    async def test_delete_and_unknown_concept_requirements(self):
+    async def test_delete_and_new_concepts_need_no_confirmation(self):
         self.request=self.request.model_copy(update={'confirm_new_concepts':False})
-        with self.assertRaises(AppError): await self.service.generate(self.owner,self.request)
-        self.request=self.request.model_copy(update={'confirm_new_concepts':True})
         assessment,attempt=await self.prepared()
         self.service.repository.remove(self.owner,str(assessment.id))
         with self.assertRaises(AppError): self.service.repository.attempt(self.owner,str(attempt.id))
@@ -237,8 +235,9 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.db.repository.misconceptions_for_concepts(self.other,[concept]))
 
     async def test_owned_candidate_review_is_fenced_and_idempotent(self):
-        with self.assertRaises(AppError):
-            await self.service.generate(self.owner,self.request.model_copy(update={'confirm_new_concepts':False}))
+        from app.learner.schemas import ConceptResolutionRequest
+        self.learner.resolve_concept(ConceptResolutionRequest(learner_id=self.owner,
+            context_id=self.request.context_id, label='Linear equations'))
         candidates=self.learner.get_pending_concepts(self.owner)
         self.assertEqual(len(candidates),1)
         self.assertFalse(self.learner.get_pending_concepts(self.other))

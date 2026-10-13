@@ -44,10 +44,13 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
 
   function position() {
     const el = container.current; if (!el) return;
-    const style = getComputedStyle(el), content = el.firstElementChild;
+    const style = getComputedStyle(el);
     const inset = parseFloat(style.paddingTop);
-    const available = Math.max(0, el.clientHeight - inset - parseFloat(style.paddingBottom)
-      - (content ? parseFloat(getComputedStyle(content).paddingBottom) : 0));
+    const contentHeight = Math.max(0, el.clientHeight - inset - parseFloat(style.paddingBottom));
+    const contentSize = `${contentHeight}px`;
+    if (el.style.getPropertyValue('--chat-content-height') !== contentSize) el.style.setProperty('--chat-content-height', contentSize);
+    const footer = el.querySelector<HTMLElement>('[data-chat-footer]');
+    const available = Math.max(0, contentHeight - (footer?.getBoundingClientRect().height ?? 0));
     const size = `${available}px`;
     if (el.style.getPropertyValue('--latest-turn-height') !== size) el.style.setProperty('--latest-turn-height', size);
     if (prepend.current) {

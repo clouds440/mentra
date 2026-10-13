@@ -6,6 +6,7 @@ These standards describe the current React, TypeScript, Vite, and Tailwind CSS c
 
 - Workspace pages share `WorkspaceHeader`/`WorkspaceEmpty` and semantic `workspace-*` surfaces for responsive panels, filter bars, tabs and cards. Counts must come from loaded data. Select listboxes fit their option content while remaining viewport-bounded. Chat actions overlay a full-width title, reserve title space only on hover/focus (always on touch/mobile), and remain keyboard accessible.
 - Chat Stop calls the attempt-fenced server action, retains the saved stopped notice and reconciles server status; never treat aborting an HTTP request as cancellation. Attachment cards restore from message metadata, lazily load authorized raster previews, revoke object URLs and provide original downloads. Restored chats open at the latest message and follow late content resizing only while at the bottom.
+- User and assistant messages reuse the shared plain-text Copy control. Keep it close to the message, brighten text/icon on hover or keyboard focus, and use no hover background. The disclaimer is the final item inside the conversation scroll content, bottom-aligned for short chats and hidden in empty chats; it scrolls out of view with messages. Reserve its height when anchoring a newly sent exchange.
 
 ## Project structure
 

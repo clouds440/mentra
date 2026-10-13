@@ -43,6 +43,7 @@ Do not add empty folders or modules merely to mirror a template. Create them whe
 - Keep generic helpers genuinely generic. Do not create a giant `utils.py` or speculative domain helpers.
 
 - Public chat failure messages must use plain learner-facing wording. Keep configuration, provider and protocol diagnostics private; preserve typed error codes and status for recovery. Model prompts must describe tool failures without quoting internal receipts or claiming uncertain actions succeeded.
+- Assessment concepts are resolved through Learner's public facade without an exact-match/confirmation gate. Optional semantic advice may fail without blocking practice; reject unsafe merge suggestions and retain separate identities. Repair malformed target/question output once within the shared budget before saving; keep private keys, grading/provenance validation, ownership, cancellation and domain replay intact. Validation after tool execution starts is an invalid result, not invalid caller arguments.
 
 ## API and errors
 

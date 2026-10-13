@@ -13,5 +13,9 @@ class LearningContextNotFoundError(LearnerError):
     """Raised when a requested learning context does not exist."""
 
 
+class ConceptAssistanceUnavailable(LearnerError):
+    """Optional semantic advice failed; deterministic concept resolution remains usable."""
+
+
 class InvalidEvidenceError(LearnerError):
     """Raised when evidence cannot be accepted under learner policy."""

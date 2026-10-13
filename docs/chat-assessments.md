@@ -68,9 +68,24 @@ durable grading worker serves chat and the Assessments page, returns per-questio
 feedback, and admits only sufficiently reliable learner evidence. Formal grading
 exchanges are excluded from informal chat evidence to avoid double counting.
 
-Generation currently supports 1–10 questions and established concepts in an owned
-learning context. Unrecognized concepts retain the existing review requirement;
-the model must explain it rather than silently inventing canonical concepts.
+Generation supports 1–10 questions from a topic, with optional concept names.
+Chat creates or reuses an owned topic context when none was supplied. Both chat
+and direct generation allow new targets without a student confirmation gate;
+the legacy confirmation flag remains only for request/replay compatibility.
+Learner owns all canonical identity decisions. Exact aliases reuse IDs; uncertain
+matches remain separate targets rather than merging unrelated learner history.
+Malformed or unavailable semantic advice falls back to deterministic resolution,
+and proposed IDs outside the candidate set or invalid equivalences are ignored.
+Existing candidate discards, ownership checks and cancellation remain enforced.
+These separately identified concepts can be reviewed/merged using the learner
+lifecycle; generation alone never claims or writes learner mastery.
+
+Target planning and question batches each have one bounded output repair attempt
+inside the shared model/time budget. An invalid topic plan falls back to the
+requested topic. Only a failed question batch is regenerated; valid earlier batches
+remain intact. Counts, formats, private answer keys, duplicate prompts, concept IDs
+and source citations are checked before saving. Invalid model output is distinct
+from invalid tool inputs; domain replay/leases still prevent duplicate assessments.
 Multiple independent files are not automatically combined into one answer sheet;
 use a single document/PDF or choose one file. Vision accuracy depends on the
 configured provider/model and is not established by deterministic integration tests.

@@ -77,6 +77,14 @@ An optional `SemanticResolver` can search and choose from a small existing candi
 set. Returned IDs must belong to that set, and confidence must meet 0.9. No provider
 is required for the engine, and no embedding/model calls occur on exact lookups.
 
+`resolve_generated_concepts` accepts assessment targets without student catalog
+confirmation. Model-assisted synonym expansion/matching is optional advice behind
+a provider-independent failure contract. Failed advice or unsafe proposed identities
+falls back to deterministic resolution/promotion. Ambiguous meanings get separate
+topic-qualified identities; discarded candidates remain discarded. Existing merge
+and replay workflows can reconcile these later without losing evidence provenance.
+Creating a practice target does not create mastery evidence.
+
 Explicit activation makes the previous active/related contexts dormant by default;
 pass `exclusive=False` to retain multiple active contexts. Inactivity of 60 days
 causes lazy dormancy on the next context-aware request. Activity records do not

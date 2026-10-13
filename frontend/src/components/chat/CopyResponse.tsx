@@ -12,8 +12,8 @@ export function CopyResponse({ content, subject = 'response' }: { content: strin
     try { await navigator.clipboard.writeText(markdownPlainText(content)); setCopied(true); setError(false); }
     catch { setError(true); }
   }
-  return <div className="mt-3 flex flex-wrap items-center gap-2">
-    <Button size="sm" variant="ghost" aria-label={copied ? (subject === 'message' ? 'Message copied' : 'Response copied') : `Copy ${subject}`} onClick={() => void copy()}>
+  return <div className="flex flex-wrap items-center gap-2">
+    <Button size="sm" variant="ghost" className="px-2 text-foreground opacity-60 transition-opacity hover:bg-transparent hover:opacity-100 focus-visible:opacity-100" aria-label={copied ? (subject === 'message' ? 'Message copied' : 'Response copied') : `Copy ${subject}`} onClick={() => void copy()}>
       {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}{copied ? 'Copied' : 'Copy'}
     </Button>
     {error && <span role="status" className="text-xs text-muted">Couldn’t copy. Please try again.</span>}

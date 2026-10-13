@@ -3,6 +3,8 @@ from typing import Protocol
 from app.core.exceptions import AppError
 from app.learner.schemas import ConceptResolutionRequest, GeneratedConceptsRequest
 from app.learner.normalization import normalize
+from app.learner.exceptions import ConceptAssistanceUnavailable
+from app.core.logging import workflow_logger
 
 
 class GeneratedConceptResolver(Protocol):
@@ -83,20 +85,36 @@ class GeneratedConceptService:
             pending = [label for label, _ in unresolved]
             candidates = []
             if await run_in_threadpool(self.concepts.repository.list_concepts, 1):
-                terms = await self.resolver.expand(pending, request.topic)
-                candidates = await run_in_threadpool(self.shortlist, [result for _, result in unresolved], [*pending, *terms.terms])
+                terms = []
+                try:
+                    terms = (await self.resolver.expand(pending, request.topic)).terms
+                except ConceptAssistanceUnavailable:
+                    workflow_logger.event('concept.resolution_fallback', stage='search_terms')
+                candidates = await run_in_threadpool(self.shortlist, [result for _, result in unresolved], [*pending, *terms])
             if candidates or len(pending) > 1:
-                proposed = await self.resolver.match(pending, candidates, request.topic)
+                try:
+                    proposed = (await self.resolver.match(pending, candidates, request.topic)).matches
+                except ConceptAssistanceUnavailable:
+                    workflow_logger.event('concept.resolution_fallback', stage='match')
+                    proposed = []
                 allowed = {concept.id for concept in candidates}
                 seen = set()
-                for match in proposed.matches:
+                invalid = set()
+                for match in proposed:
                     if match.label not in pending or match.label in seen or (match.concept_id is not None and match.concept_id not in allowed):
-                        raise AppError('CONCEPT_INVALID_MATCH', 'Concept matching returned an invalid identity.', 502)
+                        invalid.add(match.label)
+                        continue
                     if match.equivalent_label is not None and match.equivalent_label not in pending[:pending.index(match.label)]:
-                        raise AppError('CONCEPT_INVALID_MATCH', 'Concept matching returned an invalid equivalence.', 502)
+                        invalid.add(match.label)
+                        continue
                     seen.add(match.label)
                     if match.concept_id is not None and match.confidence >= .9: matches[match.label] = match.concept_id
                     if match.equivalent_label is not None and match.confidence >= .9: equivalents[match.label] = match.equivalent_label
+                for label in invalid:
+                    matches.pop(label, None)
+                    equivalents.pop(label, None)
+                if invalid:
+                    workflow_logger.event('concept.resolution_fallback', stage='invalid_match', count=len(invalid))
         concepts, resolved_labels = {}, {}
         for label, resolution in zip(labels, resolutions):
             match = matches.get(label) or resolved_labels.get(equivalents.get(label))

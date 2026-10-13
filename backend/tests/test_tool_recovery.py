@@ -166,6 +166,15 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.budget.calls, 1)
         action.assert_not_awaited()
 
+    async def test_internal_validation_is_not_mislabeled_as_invalid_tool_arguments(self):
+        class Output(BaseModel):
+            identifier: str
+        async def invoke(): return Output.model_validate({})
+        receipt = await self.executor().execute(tool('assessment_generate', invoke, domain='assessment'), {})
+        self.assertEqual(receipt['code'], 'TOOL_INVALID_RESULT')
+        self.assertEqual(receipt['category'], 'invalid_result')
+        self.assertEqual(receipt['effect_certainty'], 'unknown')
+
     async def test_answer_reserve_stops_optional_work(self):
         execute = self.executor()
         action = AsyncMock()

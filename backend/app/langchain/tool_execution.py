@@ -34,12 +34,12 @@ class ToolFailure(BaseModel):
     effect_certainty: str = 'read_only'
 
 
-def failure(error, *, write=False, attempts=0, required=False):
+def failure(error, *, write=False, attempts=0, required=False, execution_started=False):
     code = error.code if isinstance(error, AppError) else 'TOOL_INTERNAL_ERROR'
     status = getattr(error, 'status_code', None) or getattr(getattr(error, 'response', None), 'status_code', None)
     category, retryable = 'internal_error', False
     if isinstance(error, ValidationError):
-        code, category = 'TOOL_INVALID_ARGUMENTS', 'invalid_arguments'
+        code, category = ('TOOL_INVALID_RESULT', 'invalid_result') if execution_started else ('TOOL_INVALID_ARGUMENTS', 'invalid_arguments')
     elif isinstance(error, (TimeoutError, ConnectionError, httpx.TimeoutException, httpx.TransportError)):
         code, category, retryable = 'TOOL_TIMEOUT' if isinstance(error, (TimeoutError, httpx.TimeoutException)) else 'TOOL_CONNECTION_ERROR', 'transient_dependency', True
     elif code in LIFECYCLE_CODES:
@@ -64,6 +64,7 @@ def failure(error, *, write=False, attempts=0, required=False):
     reason = error.message[:240] if isinstance(error, AppError) else {
         'invalid_arguments': 'The tool arguments were invalid. Correct them using its schema; do not guess missing user information.',
         'transient_dependency': 'The service could not complete this request in time.',
+        'invalid_result': 'This action did not produce a usable result.',
     }.get(category, 'This action could not be completed. Use available evidence or ask for the missing information.')
     certainty = 'unknown' if write else 'read_only'
     if write and category in ('invalid_arguments', 'authorization', 'not_found', 'confirmation_required', 'budget_exhausted'):
@@ -221,7 +222,7 @@ class ToolExecutor:
             except Exception as error:
                 if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
                     raise
-                receipt = failure(error, write=write, attempts=attempt, required=required).model_dump()
+                receipt = failure(error, write=write, attempts=attempt, required=required, execution_started=execution_started).model_dump()
                 if write and not execution_started:
                     receipt['effect_certainty'] = 'not_started'
                 elif write:

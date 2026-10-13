@@ -25,6 +25,12 @@ The bounded LangGraph coordinator selects domain tools, shares a parent model
 deadline, and uses `ToolExecutor` for public activity updates and recovery. Event
 proposals and assessment tools retain domain-owned validation and persistence.
 
+Assessment generation repairs malformed target/question output once before saving,
+under the existing shared budget. Learner semantic advice is optional: adapter
+failures become `ConceptAssistanceUnavailable`, allowing deterministic identity
+resolution to continue. Neither invalid advice nor a missing exact concept match
+requires another student turn. See [assessment workflow](../../../docs/chat-assessments.md).
+
 RAG may prefetch before model execution to warm its revision-aware candidate cache.
 Prefetched passages, citations, outcomes and failures are private preparation data:
 they are not injected into the model prompt or published as response limitations.

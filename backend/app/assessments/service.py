@@ -21,7 +21,7 @@ class AssessmentService:
         from .chat import ChatAssessments
         self.chat = ChatAssessments(repository)
 
-    async def generate_chat(self, owner, conversation, request, *, generated_targets=False):
+    async def generate_chat(self, owner, conversation, request):
         previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
         if previous: return previous
         claim = await run_in_threadpool(self.repository.claim_generation, owner, request)
@@ -32,7 +32,7 @@ class AssessmentService:
             import asyncio
             from app.langchain.workflow_budget import model_budget
             with model_budget():
-                generated, sources = await asyncio.wait_for(self.workflows.generate(owner, request, revision=revision, generated_targets=generated_targets), 150)
+                generated, sources = await asyncio.wait_for(self.workflows.generate(owner, request, revision=revision), 150)
             return await run_in_threadpool(self.chat.save, owner, conversation, request, generated, sources, claim)
         finally:
             try: await run_in_threadpool(self.repository.release_generation, owner, request.client_request_id, claim)
@@ -52,7 +52,7 @@ class AssessmentService:
             topic=topic, confirm_new_concepts=False, **options)
         # Authorization is internal; keep legacy request fingerprints unchanged
         # so a retry can recover an assessment created before this behavior change.
-        return await self.generate_chat(owner, conversation, request, generated_targets=True)
+        return await self.generate_chat(owner, conversation, request)
 
     async def generate(self, owner, request):
         previous = await run_in_threadpool(self.repository.replay, owner, request)

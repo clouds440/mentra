@@ -147,7 +147,8 @@ export function ChatPage() {
           onPointerDown={event => { if (event.target === event.currentTarget) scroll.noteUserScroll(); }}
           onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) scroll.noteUserScroll(); }}
           onScroll={scroll.onScroll}>
-          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 pb-6">
+          <div className="mx-auto flex min-h-[var(--chat-content-height,0px)] w-full max-w-[52rem] flex-col">
+            <div className="flex flex-col gap-8">
             {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { const done = scroll.preparePrepend(); void chatStore.older(id).finally(done); }}>
               {view.loading ? <Spinner className="h-4 w-4" /> : 'Load earlier messages'}
@@ -160,10 +161,11 @@ export function ChatPage() {
             </div>)}
             {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { scroll.showLatest(); void chatStore.open(id, true); }}>Back to latest messages</button>}
+            </div>
+            <p data-chat-footer className="mt-auto shrink-0 pt-6 text-center text-[10px] leading-4 text-subtle" aria-label="Chat disclaimer">Mentra can make mistakes. Check important information.</p>
           </div>
         </div>
       )}
-      <p className="shrink-0 px-4 pb-1 pt-1 text-center text-[10px] leading-4 text-subtle" aria-label="Chat disclaimer">Mentra can make mistakes. Check important information.</p>
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         <div className="mx-auto w-full max-w-[52rem]">
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
