@@ -99,7 +99,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         context['chat_assessments'] = scope['chat_assessments']
     if scope.get('assessment_attachment_ids'):
         context['assessment_answer_attachments'] = scope['assessment_attachment_ids']
-    system_context = json.dumps(context, ensure_ascii=False, default=str)
+    system_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
     system_cost = count_tokens_approximately([SystemMessage(content=instructions + system_context)]) + schema_tokens(selected()) + schema_tokens([answer_schema] if answer_schema else [])
     # Reserve maximum cumulative result size plus call protocol overhead upfront;
     # trim prior exchanges once, preserving the current user question.
@@ -123,14 +123,14 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     scope['visible_ids'] = [message.id for message in conversation if message.id]
     scope['evidence_ids'] = {message.id for message in conversation if message.type == 'human' and message.id}
     context['history_scope']['visible_user_messages'] = [x for x in context['history_scope']['visible_user_messages'] if x['id'] in scope['evidence_ids']]
-    system_context = json.dumps(context, ensure_ascii=False, default=str)
+    system_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
     repairs = 0
 
     def admit_schemas(new_tools):
         candidate_tools = [*new_tools, discovery, *([answer_schema] if answer_schema else [])]
         candidate_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(candidate_tools)))
         candidate_context = dict(context, missing_context=scope.get('tool_warnings', []))
-        total = count_tokens_approximately([SystemMessage(content=candidate_instructions + json.dumps(candidate_context, ensure_ascii=False, default=str)), *conversation]) + schema_tokens(candidate_tools)
+        total = count_tokens_approximately([SystemMessage(content=candidate_instructions + json.dumps(candidate_context, ensure_ascii=False, default=str, separators=(',', ':'))), *conversation]) + schema_tokens(candidate_tools)
         return total + settings.chat_output_token_reserve + 1024 <= settings.chat_context_window_tokens
     scope['_admit_schemas'] = admit_schemas
 
@@ -183,7 +183,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             available_tools = [*available_tools, answer_schema]
         if scope.get('tool_warnings'):
             context['missing_context'] = scope['tool_warnings']
-        runtime_context = json.dumps(context, ensure_ascii=False, default=str)
+        runtime_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
         sources = prompt_sources(available_tools)
         round_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *sources))
         round_cost = count_tokens_approximately([SystemMessage(content=round_instructions + runtime_context)]) + schema_tokens(available_tools)

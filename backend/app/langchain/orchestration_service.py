@@ -71,12 +71,8 @@ class OrchestrationService:
                 return None
             return result
         query = next((content for role, content in reversed(messages) if role == 'user'), '')
-        ids = list(history_scope.get('attachment_ids', [])) if history_scope else []
-        if self.attachments is not None and history_scope and not ids:
-            for row in reversed(history_scope.get('context_rows', [])):
-                if row.get('metadata', {}).get('attachments'):
-                    ids = [item['id'] for item in row['metadata']['attachments']][:4]
-                    break
+        from .attachment_selection import attachment_ids
+        ids = attachment_ids(query, history_scope) if history_scope else []
         from .planning import plan_request
         plan = plan_request(query, attachments=bool(ids),
                             selected_sources=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)),

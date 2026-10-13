@@ -126,7 +126,7 @@ class ChatImageTests(unittest.TestCase):
         asyncio.run(scenario(400, BadRequestError))
         asyncio.run(scenario(401, AuthenticationError))
 
-    def test_orchestration_reuses_saved_images_on_followup_without_ocr(self):
+    def test_orchestration_reuses_saved_images_only_on_explicit_followup_without_ocr(self):
         async def scenario():
             attachments = Mock()
             attachments.image_input.return_value = dict(id='saved', filename='photo.png', block=prepare_chat_image(raster()))
@@ -134,13 +134,42 @@ class ChatImageTests(unittest.TestCase):
             scope = dict(conversation_id='chat', attachment_ids=[], context_rows=[dict(role='user', content='Old query', metadata=dict(attachments=[dict(id='saved')]))],
                          history_references=[], memory_references=[])
             response = await OrchestrationService(chat, attachments=attachments).chat_reply(
-                [('user', 'Explain photosynthesis')], ChatSelection(), 'owner', history_scope=scope)
+                [('user', 'Explain the earlier image')], ChatSelection(), 'owner', history_scope=scope)
             self.assertEqual(response.content, 'Direct answer')
             attachments.image_input.assert_called_once_with('owner', 'saved', 'chat')
             attachments.extract.assert_not_called()
             self.assertEqual(chat.reply.call_args.kwargs['image_context'][0]['id'], 'saved')
             self.assertFalse(scope['execution_plan'].direct_candidate)
         asyncio.run(scenario())
+
+    def test_unrelated_followup_does_not_resend_old_screenshot(self):
+        async def scenario():
+            attachments = Mock()
+            chat = SimpleNamespace(reply=AsyncMock(return_value='Button with a title prop'))
+            scope = dict(conversation_id='chat', attachment_ids=[], context_rows=[dict(role='user', content='Speed test', metadata=dict(attachments=[dict(id='speed',filename='speed.png')]))], history_references=[], memory_references=[])
+            await OrchestrationService(chat, attachments=attachments).chat_reply(
+                [('user', 'Make this React button take a title prop')], ChatSelection(), 'owner', history_scope=scope)
+            attachments.image_input.assert_not_called()
+            attachments.extract.assert_not_called()
+            self.assertNotIn('image_context', chat.reply.call_args.kwargs)
+            self.assertEqual(scope['assessment_attachment_ids'], [])
+        asyncio.run(scenario())
+
+    def test_attachment_selection_preserves_current_uploads_and_named_older_files(self):
+        from app.langchain.attachment_selection import attachment_ids
+        scope = dict(attachment_ids=[],current_user_message_id='now',context_rows=[
+            dict(id='old',metadata=dict(attachments=[dict(id='first',filename='diagram.png')])),
+            dict(id='newer',metadata=dict(attachments=[dict(id='second',filename='photo.png')])),
+            dict(id='now',metadata={})])
+        self.assertEqual(attachment_ids('Look at diagram.png again',scope), ['first'])
+        self.assertEqual(attachment_ids('Compare diagram.png and photo.png',scope), ['second','first'])
+        self.assertEqual(attachment_ids('Explain the image I uploaded',scope), ['second'])
+        self.assertEqual(attachment_ids('Implement an image loading component',scope), [])
+        scope['attachment_ids']=['current']
+        self.assertEqual(attachment_ids('Compare these',scope), ['current'])
+        scope['attachment_ids']=[]
+        scope['context_rows'][-1]['metadata']={'attachments':[dict(id='current')]}
+        self.assertEqual(attachment_ids('Compare these',scope), ['current'])
 
     def test_three_images_fit_the_default_tool_chat_budget(self):
         async def scenario():

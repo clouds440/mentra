@@ -91,7 +91,7 @@ class ChatService:
                 response = await self._llm.ainvoke_messages(
                     PromptSource.CHAT, conversation,
                     additional_sources=tuple(sources),
-                    system_context=json.dumps(context, ensure_ascii=False) if context else None)
+                    system_context=json.dumps(context, ensure_ascii=False, separators=(',', ':')) if context else None)
         except ModelConfigurationError as exc:
             raise AppError(
                 "AI_CONFIGURATION_ERROR",
