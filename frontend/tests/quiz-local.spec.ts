@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function workspace(page: Page, failFirst = false, loseReply = false) {
+async function workspace(page: Page, failFirst = false, loseReply = false, codeAnswers = false) {
   const date = '2026-10-12T00:00:00Z';
   const selection = { mode:'STANDARD' };
   const conversation = { id:'quiz-chat', title:'Local quiz chat', revision:3, message_count:2, selection, created_at:date, updated_at:date, deleted_at:null };
   const assessment = { id:'assessment-quiz', context_id:'context-quiz', title:'Code quiz', purpose:'practice', revision:1, sources:[], created_at:date,
-    questions:Array.from({length:3}, (_, index) => ({id:`question-${index+1}`, prompt:`What does this code print?\n\n\`\`\`python\nvalue = ${index+1}\nprint(value + 1)\n\`\`\``, concept_ids:['concept-1'], marks:2, difficulty:.3, source_tokens:[], options:[{id:'a',label:'A supported explanation.'},{id:'b',label:'An unsupported explanation.'}]})) };
+    questions:Array.from({length:3}, (_, index) => ({id:`question-${index+1}`, prompt:`What does this code print?\n\n\`\`\`python\nvalue = ${index+1}\nprint(value + 1)\n\`\`\``, concept_ids:['concept-1'], marks:2, difficulty:.3, source_tokens:[], options:[{id:'a',label:codeAnswers ? '```python\nprint(2)\n```' : 'A supported explanation.'},{id:'b',label:'An unsupported explanation.'}]})) };
   const card = { id:'draft-quiz', conversation_id:conversation.id, assessment_id:assessment.id, assessment };
   const items = [{id:'question',conversation_id:conversation.id,sequence:1,role:'user',content:'Give me a code quiz.',created_at:date},
     {id:'reply',conversation_id:conversation.id,sequence:2,role:'assistant',content:'Your quiz is ready.',assessment_cards:[card],created_at:date}];
@@ -51,7 +51,7 @@ async function workspace(page: Page, failFirst = false, loseReply = false) {
   return {assessment,quiz,writes,submissions,starts:() => starts,attempt:() => attempt,
     hold() { hold = new Promise<void>(resolve => {release=resolve;}); requested = new Promise<void>(resolve => {entered=resolve;}); },
     requested:() => requested, release:() => {release();hold=null;},
-    grade() { attempt = {...attempt!,revision:3,state:'graded',evidence_status:'applied',grades:assessment.questions.map(q => ({question_id:q.id,score:2,confidence:1,feedback:'Correct.',concept_grades:{},misconceptions:[],outcome:'correct',correct_answer:'A supported explanation.'}))}; },
+    grade() { attempt = {...attempt!,revision:3,state:'graded',evidence_status:'applied',grades:assessment.questions.map(q => ({question_id:q.id,score:2,confidence:1,feedback:codeAnswers ? 'Correct.\n\n```python\nprint(2)\n```' : 'Correct.',concept_grades:{},misconceptions:[],outcome:'correct',correct_answer:'A supported explanation.'}))}; },
   };
 }
 
@@ -169,4 +169,26 @@ test('completed quiz actions share a compact wrapping footer', async ({page}, te
   await page.screenshot({path:testInfo.outputPath('quiz-footer-mobile.png')});
   await view.click();
   await expect(page).toHaveURL(/\/assessments\?assessment=assessment-quiz$/);
+});
+
+test('assessment results render question, answer and feedback code through Prism', async ({page}, testInfo) => {
+  const state = await workspace(page,false,false,true);
+  for(let i=1;i<=3;i++) {
+    await state.quiz.getByRole('radio').first().check();
+    if(i<3) await state.quiz.getByRole('button',{name:'Next',exact:true}).click();
+  }
+  await state.quiz.getByRole('button',{name:'Submit',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Quiz answers'})).toBeVisible();
+  state.grade();
+  const result=page.getByRole('region',{name:'Question 1 feedback',exact:true});
+  await expect(result).toBeVisible({timeout:10_000});
+  await expect(result.locator('.code-block[data-language="python"]')).toHaveCount(3);
+  await expect(result.locator('.token.number').first()).toBeVisible();
+  await result.scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath('compact-code-feedback-desktop.png')});
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(() => page.getByRole('complementary',{name:'Main navigation'}).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+  await result.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({path:testInfo.outputPath('compact-code-feedback-mobile.png')});
 });

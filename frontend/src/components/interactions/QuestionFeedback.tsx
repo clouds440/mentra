@@ -14,16 +14,16 @@ export function QuestionFeedback({ label, prompt, answer, correctAnswer, outcome
   outcome: FeedbackOutcome; score: number; maxScore: number; feedback: string; misconceptions?: string[];
 }) {
   const style = feedbackAppearance[outcome];
-  return <section aria-label={`${label} feedback`} className={`min-w-0 space-y-4 rounded-2xl border p-4 ${style.panel}`}>
+  return <section aria-label={`${label} feedback`} className={`min-w-0 space-y-3 rounded-xl border p-3 ${style.panel}`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="text-sm font-semibold text-heading">{label}</h3>
       <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${style.color}`}><style.Icon aria-hidden="true" size={16} />{style.label}<span className="ml-1 tabular-nums">{score}/{maxScore}</span></span>
     </div>
     <div className="min-w-0 break-words text-sm"><MarkdownContent content={prompt} /></div>
-    <div className="min-w-0 space-y-3 rounded-xl bg-card/70 p-3 text-sm">
+    <div className="min-w-0 space-y-2 rounded-lg bg-card/70 p-2.5 text-sm">
       <div><p className="mb-1 text-xs font-medium text-muted">Your answer</p><MarkdownContent content={answer || 'Not answered'} /></div>
-      {correctAnswer && outcome !== 'correct' && <div className="border-t border-border pt-3"><p className="mb-1 text-xs font-medium text-success">Correct answer</p><MarkdownContent content={correctAnswer} /></div>}
+      {correctAnswer && outcome !== 'correct' && <div className="border-t border-border pt-2"><p className="mb-1 text-xs font-medium text-success">Correct answer</p><MarkdownContent content={correctAnswer} /></div>}
     </div>
-    <div className="min-w-0 space-y-2 text-sm"><p className="text-xs font-semibold text-muted">Feedback</p><MarkdownContent content={feedback} />{misconceptions.length > 0 && <div className="space-y-1 border-t border-border pt-3"><p className="text-xs font-medium text-muted">What to revisit</p>{misconceptions.map((value, index) => <MarkdownContent key={index} content={value} />)}</div>}</div>
+    <div className="min-w-0 space-y-1.5 text-sm"><p className="text-xs font-semibold text-muted">Feedback</p><MarkdownContent content={feedback} />{misconceptions.length > 0 && <div className="space-y-1 border-t border-border pt-2"><p className="text-xs font-medium text-muted">What to revisit</p>{misconceptions.map((value, index) => <MarkdownContent key={index} content={value} />)}</div>}</div>
   </section>;
 }

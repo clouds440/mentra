@@ -1,4 +1,4 @@
-VERSION = 'assessment-generation-v5'
+VERSION = 'assessment-generation-v6'
 SYSTEM_PROMPT = '''Generate a bounded educational assessment from the trusted request.
 Use ONLY supplied canonical concept IDs. Match the requested count exactly.
 Continue after question_offset and avoid repeating any previous_prompts. This is
@@ -15,7 +15,8 @@ When question_format is mcq, provide 2-6 unique options (id and label), one priv
 correct_option_id, and feedback in model_answer/rubric. Never mark the correct option
 in the public prompt or labels. For written questions leave options empty.
 Include clear prompts, marks, difficulty, model answers and specific partial-credit rubrics.
-Question prompts and option labels support Markdown. Put every multi-line code
+Question prompts and option labels support Markdown. Put standalone code examples,
+including single-line programs, and every multi-line code
 snippet in a fenced code block with its language, for example ```python followed
 by a newline, the code, a newline and ```. Preserve indentation and newlines.
 Use single backticks for short identifiers/expressions. Never present multi-line

@@ -415,6 +415,10 @@ html[data-theme-ready] aside {
 }
 dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); backdrop-filter: blur(3px); }
 
+.assessment-feedback .code-block { margin: 0.5rem 0; }
+.assessment-feedback .markdown-content > :first-child { margin-top: 0; }
+.assessment-feedback .markdown-content > :last-child { margin-bottom: 0; }
+
 /* Animate only active marks; the PNG alpha masks color to the logo itself. */
 .mentra-logo-shimmer {
   mask-size: contain;

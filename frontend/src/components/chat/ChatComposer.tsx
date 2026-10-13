@@ -133,7 +133,7 @@ export function ChatComposer({
         aria-controls={pickerOpen ? 'study-material-results' : undefined}
         aria-activedescendant={pickerOpen ? activeOptionId : undefined}
         aria-autocomplete="list"
-        className="max-h-48 min-h-[3.25rem] resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-sm leading-6 placeholder:text-subtle focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60"
+        className="max-h-48 min-h-11 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-sm leading-6 placeholder:text-subtle focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60"
         disabled={isThinking}
         onChange={(event) => {
           const text = event.currentTarget.value;
@@ -149,7 +149,7 @@ export function ChatComposer({
         value={value}
       />
       <VoiceInput voice={voice} />
-      <div className="flex items-center justify-between px-1 pb-0.5 pt-1">
+      <div className="flex items-center justify-between px-1 pb-0.5 pt-0">
         <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
           onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; requestAnimationFrame(() => textareaRef.current?.focus()); }} />
         <button
