@@ -84,13 +84,17 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY)))
     def prompt_sources(available_tools):
         personal = any(domains.get(getattr(tool, 'name', '')) in ('history', 'memory') for tool in available_tools)
-        return tuple(dict.fromkeys((*additional_sources, *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
+        rag = any(domains.get(getattr(tool, 'name', '')) == 'rag' for tool in available_tools) or bool(scope.get('study_sources'))
+        return tuple(dict.fromkeys((*additional_sources, *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
     instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
     from .token_policy import schema_tokens
     plan = scope.get('execution_plan')
     direct_candidate = bool(plan and plan.direct_candidate)
     answer_schema = DirectNewChatReply if direct_candidate and output_schema else DirectAnswer if direct_candidate else output_schema
     context = dict(context, capabilities=selection.catalog)
+    if scope.get('retrieval_selection'):
+        selection_scope = scope['retrieval_selection']
+        context['study_source_selection'] = dict(mode=selection_scope.mode, document_count=len(selection_scope.document_ids or []), context_count=len(selection_scope.context_ids or []))
     context = dict(context, history_scope=dict(current_user_message_id=scope['current_user_message_id'],
         visible_user_messages=[dict(id=x.id, excerpt=str(x.content)[:100]) for x in conversation if x.type == 'human' and x.id][-8:]))
     if scope.get('interaction_response'):
@@ -350,6 +354,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             visible_before = list(scope['visible_ids'])
             read_scopes = {key: len(scope.get(key, [])) for key in ('study_sources', 'event_references', 'retrieval_warnings')}
             retrieval_before = scope.get('retrieval_status')
+            retrieval_context_before = scope.get('retrieval_context_ids')
             accounted = False
             staged_identity = None
             try:
@@ -438,6 +443,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         scope.pop('retrieval_status', None)
                     else:
                         scope['retrieval_status'] = retrieval_before
+                    if retrieval_context_before is None:
+                        scope.pop('retrieval_context_ids', None)
+                    else:
+                        scope['retrieval_context_ids'] = retrieval_context_before
                     key = tool_cache_key(dispatch.get(call['name']), call['name'], call['args'])
                     executor.results.pop(key, None)
                     executor.failed[key] = failure(error).model_dump()

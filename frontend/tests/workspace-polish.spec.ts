@@ -83,8 +83,7 @@ test('source selection clears once after success and retrieval limits are descri
   state.complete('Answer grounded in the available passages.', [{tool_name:'search_study_material',code:'TOOL_BUDGET',task_impact:'optional',effect_certainty:'read_only'}]);
   await expect(page.getByText('Using selected material', { exact: true })).toHaveCount(0, {timeout:15_000});
   await expect(page).toHaveURL(/\/chat\/polish-chat$/);
-  await expect(page.getByLabel('Response limitations')).toContainText('Additional material checks reached the limit');
-  await expect(page.getByLabel('Response limitations')).not.toContainText('couldn’t be read');
+  await expect(page.getByLabel('Response limitations')).toHaveCount(0);
   expect(updates.some(url => url.endsWith('after=40'))).toBe(true);
   const input = page.getByRole('textbox', { name: 'Ask Mentra anything' });
   await input.fill('@Motion');

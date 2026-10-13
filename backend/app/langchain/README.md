@@ -25,6 +25,14 @@ The bounded LangGraph coordinator selects domain tools, shares a parent model
 deadline, and uses `ToolExecutor` for public activity updates and recovery. Event
 proposals and assessment tools retain domain-owned validation and persistence.
 
+RAG may prefetch before model execution to warm its revision-aware candidate cache.
+Prefetched passages, citations, outcomes and failures are private preparation data:
+they are not injected into the model prompt or published as response limitations.
+Only an agent-requested `search_study_material` call delivers evidence, after the
+RAG service revalidates current source eligibility. Tool discovery remains available
+for missing capabilities; general and self-contained queries can answer directly.
+Chat renders the agent's answer without automatic tool/RAG/web limitation banners.
+
 Optional `web_search(query, website?)` is available independently of history and
 RAG when enabled. The domain facade owns provider I/O and shared operational quota;
 the LangChain adapter stages W references until the coordinator admits the exact

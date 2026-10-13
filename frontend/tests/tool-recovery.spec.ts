@@ -83,17 +83,17 @@ test('important limits and review states are announced while routine profile rea
   await expect(activity.getByRole('status')).toHaveText('Thinking');
 });
 
-test('retry progress is visible and permanent limitations survive refresh', async ({page}) => {
+test('retry progress is visible without automatic limitation banners after completion or refresh', async ({page}) => {
   const chat = await recoveryChat(page, 'RUNNING');
   await expect(page.getByLabel('Current activity').getByRole('status')).toContainText('Trying again');
   await expect(page.getByLabel('Current activity')).not.toContainText('event_lookup');
   await expect(page.getByLabel('Current activity')).not.toContainText('retry_wait');
   await expect(page.getByLabel('Current activity').locator('details, ol')).toHaveCount(0);
   chat.finish();
-  await expect(page.getByLabel('Response limitations')).toContainText('Completion of this action has not been verified.');
+  await expect(page.getByLabel('Response limitations')).toHaveCount(0);
   await expect(page.getByRole('article', {name:'Mentra response'})).toContainText('Gravity attracts masses.');
   await page.reload();
-  await expect(page.getByLabel('Response limitations')).toContainText('The event change couldn’t be confirmed.');
+  await expect(page.getByLabel('Response limitations')).toHaveCount(0);
 });
 
 test('canonical failure gives its specific safe next step and retry control', async ({page}) => {
@@ -102,10 +102,10 @@ test('canonical failure gives its specific safe next step and retry control', as
   await expect(page.getByRole('button', {name:'Retry response'})).toBeVisible();
 });
 
-test('successful chat remains readable with limitations on a narrow screen', async ({page}) => {
+test('successful chat remains readable without diagnostic banners on a narrow screen', async ({page}) => {
   await page.setViewportSize({width:390, height:844});
   await recoveryChat(page, 'SUCCEEDED');
-  await expect(page.getByLabel('Response limitations')).toBeVisible();
+  await expect(page.getByLabel('Response limitations')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -114,9 +114,9 @@ test('saved tool, retrieval and web diagnostics never render as response limitat
   for (const reload of [false, true]) {
     if (reload) await page.reload();
     const answer = page.getByRole('article', {name:'Mentra response'});
-    await expect(answer).toContainText('The event change couldn’t be confirmed.');
-    await expect(answer).toContainText('Current web information couldn’t be checked.');
-    await expect(answer).toContainText('Some study material couldn’t be fully checked.');
+    await expect(answer).not.toContainText('The event change couldn’t be confirmed.');
+    await expect(answer).not.toContainText('Current web information couldn’t be checked.');
+    await expect(answer).not.toContainText('Some study material couldn’t be fully checked.');
     await expect(answer).not.toContainText(/SQLAlchemy|MCP|API_KEY|private diagnostic/);
   }
 });

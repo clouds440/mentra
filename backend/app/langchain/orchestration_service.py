@@ -35,7 +35,7 @@ class OrchestrationService:
             return await self._chat_reply(messages, retrieval, owner, history_policy, history_scope)
 
     async def _chat_reply(self, messages, retrieval, owner, history_policy=None, history_scope=None):
-        if history_scope is None and self.web_search is not None and self.web_search.enabled and owner:
+        if history_scope is None and owner and (self.rag is not None or self.web_search is not None and self.web_search.enabled):
             from uuid import uuid4
             rows = [dict(id=str(uuid4()), role=role, content=content) for role, content in messages]
             history_scope = dict(context_rows=rows, current_user_message_id=next((row['id'] for row in reversed(rows) if row['role'] == 'user'), str(uuid4())),
@@ -50,7 +50,7 @@ class OrchestrationService:
         executor = ToolExecutor(budget, recovery_scope, activity)
         class ReadInput(BaseModel):
             request_key: str
-        async def read(name, action, *arguments, required=False, timeout=10):
+        async def read(name, action, *arguments, required=False, timeout=10, speculative=False):
             rejected_input = None
             async def invoke(request_key):
                 nonlocal rejected_input
@@ -64,7 +64,11 @@ class OrchestrationService:
                     raise
             from .tool_policy import DOMAINS
             tool = StructuredTool.from_function(name=name, description='Prepare requested context', args_schema=ReadInput, coroutine=invoke, metadata={'domain': DOMAINS.get(name, 'documents' if name == 'document_extract' else 'profile')})
-            result = await executor.execute(tool, {'request_key': json.dumps(arguments, default=str)}, required=required, max_attempts=1 if required or timeout > 10 else 2, timeout=timeout)
+            # Speculative retrieval warms RAG's revision-aware candidate cache.
+            # It must not publish warnings, consume the agent's tool budget, or
+            # become evidence before the agent requests the actual search tool.
+            reader = ToolExecutor(ToolBudget(), {}, ActivityPublisher()) if speculative else executor
+            result = await reader.execute(tool, {'request_key': json.dumps(arguments, default=str)}, required=required, max_attempts=1 if required or timeout > 10 else 2, timeout=timeout)
             if rejected_input is not None:
                 raise rejected_input
             if isinstance(result, dict) and result.get('code') and result.get('outcome') == 'unavailable':
@@ -94,7 +98,7 @@ class OrchestrationService:
             prepare('assessments', lambda: read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']))
         if self.rag is not None and 'rag' in modules:
             selection = retrieval.model_dump() if retrieval else {}
-            prepare('rag', lambda: read('search_study_material', self.rag.search, owner, SearchRequest(query=query, **selection), required='rag' in required))
+            prepare('rag', lambda: read('search_study_material', self.rag.search, owner, SearchRequest(query=query[:4000], **selection), required=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)), speculative=True))
         if self.history is not None and self.history.profile is not None and 'profile' in modules:
             prepare('profile', lambda: read('profile_context', self.history.profile.prompt_context, owner))
         if self.learner is not None and owner and 'learner' in modules:
@@ -117,19 +121,10 @@ class OrchestrationService:
         prepared = dict(zip((key for key, _ in preparations), values))
         await activity.emit('planning', 'completed', 'Your request is ready to process')
         chat_assessments = prepared.get('assessments') or []
-        result, warning = prepared.get('rag'), None
-        if self.rag is not None and 'rag' in modules:
-            if result is None:
-                warning = 'Study material retrieval was unavailable; document-specific claims cannot be verified.'
-                workflow_logger.set_outcome('degraded', code='RAG_UNAVAILABLE')
-            else:
-                recovery_scope['_initial_search'] = (query, result)
-        packet = dict(status=result.status if result else 'unavailable' if warning else 'no_eligible_sources' if 'rag' in modules else 'not_requested',
-                      sources=[chunk.source.model_dump() for chunk in result.chunks] if result else [])
-        if result and result.warnings:
-            workflow_logger.set_outcome('degraded', code='RETRIEVAL_DEGRADED')
-            warning = ' '.join(result.warnings)
-        kwargs = {'source_packet': packet} if self.rag is not None else {}
+        prepared.pop('rag', None)  # Cached candidates remain in RAG; discard speculative passages.
+        warning = None
+        packet = dict(status='not_requested', sources=[])
+        kwargs = {}
         images, documents = [], []
         for key, value in prepared.items():
             if key.startswith('attachment:') and value[1] is not None:
@@ -146,7 +141,7 @@ class OrchestrationService:
             if prepared['learner'] is not None:
                 recovery_scope['_initial_learner_context'] = prepared['learner'].model_dump(mode='json')
         policy = history_policy or HistoryContextPolicy()
-        if history_scope is not None and (self.history is not None or self.web_search is not None and self.web_search.enabled):
+        if history_scope is not None and (self.history is not None or self.rag is not None or self.web_search is not None and self.web_search.enabled):
             history_scope['activity'] = activity
             history_scope['learner_service'] = self.learner
             history_scope['web_search_service'] = self.web_search
@@ -159,7 +154,7 @@ class OrchestrationService:
             history_scope['chat_assessments'] = [dict(draft_id=card['id'], assessment_id=card['assessment_id'],
                 title=card['assessment']['title'], question_count=len(card['assessment']['questions'])) for card in chat_assessments]
             history_scope['retrieval_selection'] = retrieval or ChatSelection()
-            history_scope['study_sources'] = [chunk.source for chunk in result.chunks] if result else []
+            history_scope['study_sources'] = []
             async def delta(value):
                 await activity.emit('response-stream', 'running', 'Writing your response', token_delta=value, token_reset=value is None)
             history_scope['on_delta'] = delta
@@ -167,8 +162,6 @@ class OrchestrationService:
             kwargs['history_runtime'] = (None if history_scope.get('stateless') else self.history, owner, history_scope)
         else:
             system_text = get_system_prompt(PromptSource.CHAT)
-            if self.rag is not None:
-                system_text += '\n\n' + get_system_prompt(PromptSource.RAG_CONTEXT) + '\n\n' + json.dumps({'study_sources': packet}, ensure_ascii=False)
             if kwargs.get('learner_context') is not None:
                 system_text += '\n' + kwargs['learner_context'].model_dump_json()
             if kwargs.get('document_context'):
@@ -211,9 +204,11 @@ class OrchestrationService:
             if history_scope:
                 references.update(event_proposals=history_scope.get('event_proposals', []), event_references=history_scope.get('event_references', []), assessment_cards=history_scope.get('assessment_cards', []), interactions=history_scope.get('interactions', []))
             return ChatResponse(role='assistant', content=reply, **warning_fields, **title_fields, **references)
-        sources = history_scope.get('study_sources', []) if history_scope else [chunk.source for chunk in result.chunks] if result else []
+        sources = history_scope.get('study_sources', []) if history_scope else []
         if history_scope and history_scope.get('retrieval_status'):
             packet['status'] = history_scope['retrieval_status']
+        elif history_scope and history_scope.get('_rag_requested'):
+            packet['status'] = 'unavailable'
         dynamic_warnings = history_scope.get('retrieval_warnings', []) if history_scope else []
         if dynamic_warnings:
             warning = ' '.join(dict.fromkeys(([warning] if warning else []) + dynamic_warnings))
@@ -229,6 +224,6 @@ class OrchestrationService:
                             memory_references=history_scope['memory_references'] if history_scope else [],
                             retrieval_status=packet['status'], retrieval_warning=warning,
                             retrieval_scope=ChatSelection(mode=retrieval.mode if retrieval else 'STANDARD',
-                                context_ids=result.context_ids if result else None,
+                                context_ids=history_scope.get('retrieval_context_ids') if history_scope else None,
                                 document_ids=list(dict.fromkeys(s.document_id for s in sources)),
                                 include_archived=retrieval.include_archived if retrieval else False))

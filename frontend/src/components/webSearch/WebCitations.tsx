@@ -15,7 +15,7 @@ function instant(value: string, zone: string): string {
 export function WebCitations({ sources = [], citations = [], searches = [] }: {
   sources?: WebSource[]; citations?: string[]; searches?: WebSearchRecord[];
 }) {
-  if (!sources.length && !searches.length) return null;
+  if (!sources.length) return null;
   const zone = searches[searches.length - 1]?.reference_timezone ?? 'UTC';
   const limitations = searches.filter(search => !['ok', 'no_results'].includes(search.outcome));
   return <div className="mt-4 text-sm">
@@ -33,7 +33,5 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
         {source.excerpt && <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{source.excerpt}</p>}
       </li>)}</ol>
     </details>}
-    {searches.some(search => search.outcome === 'no_results') && !sources.length && <p className="text-xs text-muted">No matching web sources were found.</p>}
-    {!!limitations.length && <p className="mt-2 text-xs text-muted" aria-label="Web search limitation">{webSearchWarningMessage(limitations[limitations.length - 1].outcome)}</p>}
   </div>;
 }
