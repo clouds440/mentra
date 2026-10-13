@@ -20,6 +20,24 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class EventProposalRepository:
+    def for_message(self, owner, conversation_id, message_id):
+        with self.sessions() as session:
+            rows = session.execute(select(p).where(p.c.learner_id == owner, p.c.conversation_id == conversation_id,
+                p.c.message_id == message_id).order_by(p.c.created_at)).mappings().all()
+            results = []
+            for row in rows:
+                if row['state'] == 'approved' and row['event_id']:
+                    try:
+                        event = self.events.detail(owner, str(row['event_id']))
+                        results.append(dict(outcome='saved', event=event))
+                    except AppError:
+                        results.append(dict(outcome='already_known', reason='This captured event was removed.'))
+                elif row['state'] in ('pending', 'deciding'):
+                    results.append(dict(outcome='awaiting_confirmation', proposal=self._public(row).model_dump(mode='json')))
+                else:
+                    results.append(dict(outcome='already_known', reason='This event statement was previously handled.'))
+            return results
+
     def __init__(self, sessions, events_repository, clock=None):
         self.sessions, self.events = sessions, events_repository
         self.transactions = OwnerTransactions(sessions)

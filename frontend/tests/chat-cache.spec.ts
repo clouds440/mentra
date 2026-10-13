@@ -19,6 +19,11 @@ async function setup(page: Page) {
       conversations: Number(url.searchParams.get('cursor')) === cursor ? [] : chats, deleted_ids: [], list_cursor: null };
     else if (/\/(status|messages)$/.test(path)) {
       const id = path.split('/').at(-2)!, index = chats.findIndex(chat => chat.id === id);
+      if (index < 0) {
+        requests.push({ id, after:null, before:null, count:0 });
+        await route.fulfill({ status:404, json:{ error:{ code:'CHAT_NOT_FOUND', message:'Conversation not found.' } } });
+        return;
+      }
       const after = url.searchParams.has('after') ? Number(url.searchParams.get('after')) : null;
       const before = url.searchParams.has('before') ? Number(url.searchParams.get('before')) : null;
       const candidates = histories[index].filter(message => (after === null || message.sequence > after) && (before === null || message.sequence < before));
@@ -27,6 +32,15 @@ async function setup(page: Page) {
       requests.push({ id, after, before, count: items.length });
       body = { conversation: chats[index], items, incremental: after !== null, has_more: more,
         next_cursor: more ? (after === null ? items[0].sequence : items.at(-1)!.sequence) : null, turn: null };
+    } else if (path.endsWith('/conversations/turns') && route.request().method() === 'POST') {
+      const sent = route.request().postDataJSON();
+      await new Promise(resolve => setTimeout(resolve, 400));
+      const chat = {...chats[1], id:sent.conversation_id, title:'New saved chat', revision:3, message_count:2};
+      const messages = [{id:'new-user', conversation_id:chat.id, sequence:1, role:'user', content:sent.content, created_at:chat.created_at},
+        {id:'new-answer', conversation_id:chat.id, sequence:2, role:'assistant', content:'A saved answer', created_at:chat.created_at}];
+      chats.push(chat); histories.push(messages); cursor++;
+      body = {conversation:chat, items:messages, incremental:true, has_more:false, next_cursor:null,
+        turn:{id:sent.client_turn_id, attempt:1, state:'SUCCEEDED', user_sequence:1, selection}};
     } else if (path.endsWith('/notifications/unread-count')) body = { count: 0 };
     else if (path.endsWith('/assessments/preferences')) body = { auto_add: false, revision: 1 };
     await route.fulfill({ json: body });
@@ -40,6 +54,22 @@ async function setup(page: Page) {
     chat.message_count = history.length; chat.revision++; cursor++;
   }, correct() { histories[0][0].content = 'Database reconciled first message'; chats[0].revision++; cursor++; } };
 }
+
+test('new local draft never fetches status before first-send acknowledgement', async ({page}) => {
+  const state = await setup(page);
+  await page.getByRole('button', {name:'Start a new chat', exact:true}).click();
+  await page.getByRole('textbox', {name:'Ask Mentra anything'}).fill('First message in a new conversation');
+  await page.getByRole('button', {name:'Send message', exact:true}).click();
+  await expect(page.getByText('Conversation not found.', {exact:true})).toHaveCount(0);
+  await expect(page.getByText('A saved answer', {exact:true})).toBeVisible();
+  expect(state.requests.filter(request=>request.count===0)).toHaveLength(0);
+});
+
+test('genuinely missing persisted chat still reports not found', async ({page}) => {
+  await setup(page);
+  await page.goto('/chat/11111111-1111-4111-8111-111111111111');
+  await expect(page.getByText('Conversation not found.', {exact:true})).toBeVisible();
+});
 
 test('idle foreground chat appends multiple pages from another device without reloading history', async ({ page }) => {
   const state = await setup(page);

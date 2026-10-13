@@ -92,6 +92,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     direct_candidate = bool(plan and plan.direct_candidate)
     answer_schema = DirectNewChatReply if direct_candidate and output_schema else DirectAnswer if direct_candidate else output_schema
     context = dict(context, capabilities=selection.catalog)
+    if scope.get('_captured_events'):
+        context['event_capture'] = dict(results=scope['_captured_events'],
+            guidance='Acknowledge saved events using these canonical receipts. Review pending details when needed. Offer preparation advice and ask whether practice is wanted; an event announcement alone is not a request to create an assessment. Do not recreate captured events.')
     summary = scope.get('conversation_summary')
     if summary and summary['through_sequence'] < scope['user_sequence']:
         context['conversation_summary'] = summary

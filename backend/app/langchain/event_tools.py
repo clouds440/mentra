@@ -30,6 +30,8 @@ def create_event_tools(events, proposals, owner, scope, budget):
     async def manage(**arguments):
         budget.call(True)
         body = EventManage(**arguments)
+        if body.action == 'create' and str(body.message_id) == scope.get('current_user_message_id') and any(result.get('event') or result.get('proposal') for result in scope.get('_captured_events', [])):
+            return dict(outcome='already_captured', results=scope['_captured_events'])
         result = await proposals.admit(owner, body, scope)
         if result.get('proposal') and result['outcome'] == 'awaiting_confirmation':
             scope.setdefault('event_proposals', []).append(result['proposal'])

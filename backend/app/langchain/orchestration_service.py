@@ -125,6 +125,18 @@ class OrchestrationService:
         warning = None
         packet = dict(status='not_requested', sources=[])
         kwargs = {}
+        if self.event_proposals is not None and history_scope and not history_scope.get('stateless'):
+            try:
+                captured_events = await self.event_proposals.capture(owner, history_scope)
+                history_scope['_captured_events'] = captured_events
+                for result in captured_events:
+                    if result.get('event'):
+                        history_scope.setdefault('event_references', []).append({key:result['event'][key] for key in ('id','title','kind','status','revision','local_date','starts_at','ends_at','timezone','bucket')})
+                    if result.get('proposal'):
+                        history_scope.setdefault('event_proposals', []).append(result['proposal'])
+            except Exception as error:
+                from .tool_execution import failure, remember_failure
+                remember_failure(history_scope, 'event_manage', failure(error, write=True))
         images, documents = [], []
         for key, value in prepared.items():
             if key.startswith('attachment:') and value[1] is not None:

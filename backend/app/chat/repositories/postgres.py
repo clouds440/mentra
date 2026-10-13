@@ -125,6 +125,8 @@ class ChatRepository:
         fingerprint = sha256(json.dumps([conversation_id, content, selection] + ([attachment_ids] if attachment_ids else []), sort_keys=True).encode()).hexdigest()
         if request.interaction_response:
             fingerprint = sha256((fingerprint + request.interaction_response.model_dump_json()).encode()).hexdigest()
+        if request.timezone:
+            fingerprint = sha256((fingerprint + request.timezone).encode()).hexdigest()
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             existing = session.execute(select(t).where(t.c.id == turn_id)).mappings().first()
@@ -187,7 +189,7 @@ class ChatRepository:
             from .attachments import AttachmentRepository
             attachment_metadata = AttachmentRepository.bind(session, owner, attachment_ids, conversation_id)
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
-                role='user', content=content, metadata={**interaction_metadata, **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
+                role='user', content=content, metadata={**interaction_metadata, **({'timezone':request.timezone} if request.timezone else {}), **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
                 user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=workflow_logger.envelope()))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))

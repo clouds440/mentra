@@ -27,6 +27,7 @@ export function ChatPage() {
   const { newChatKey } = useOutletContext<ChatOutletContext>();
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const id = conversationId ?? draftId;
+  useLayoutEffect(() => { if (!conversationId) chatStore.markDraft(id); }, [id, conversationId]);
   const view = useConversation(id);
   const list = useChatList();
   const conversation = list.items.find(chat => chat.id === id);

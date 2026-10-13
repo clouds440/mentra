@@ -28,6 +28,8 @@ class ChatStore {
   private sequences = new Map<string, number>();
   private pending = new Map<string, PendingTurn>();
   private loads = new Map<string, Promise<void>>();
+  private drafts = new Set<string>();
+  markDraft(id: string) { this.drafts.add(id); }
   private cursor: number | null = null;
   private listCursor: string | null = null;
   private syncing: Promise<void> | null = null;
@@ -83,6 +85,7 @@ class ChatStore {
     if (this.cache) void this.cache.close(clear).catch(() => {});
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
     this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
+    this.drafts.clear();
     this.list = { items: [], loading: true, error: null, more: false }; this.publish();
     this.chatListeners.forEach(values => values.forEach(fn => fn()));
   }
@@ -139,6 +142,7 @@ class ChatStore {
     if (!this.owner) return Promise.resolve();
     const existing = this.loads.get(id); if (existing) return existing;
     const view = this.view(id), chat = this.chats.get(id);
+    if (!chat && this.drafts.has(id) && (!this.pending.has(id) || view.busy)) return Promise.resolve();
     if (view.busy && this.pending.has(id) && !refresh && !updates) return Promise.resolve();
     if (!refresh && !updates && this.opened.has(id) && view.revision === chat?.revision && !view.busy) return Promise.resolve();
     const signal = this.controller.signal, cache = this.cache!;
@@ -186,6 +190,7 @@ class ChatStore {
   private async applyPage(page: MessagePage, older = false) {
     const signal = this.controller.signal, cache = this.cache!;
     const id = page.conversation.id, view = this.view(id);
+    this.drafts.delete(id);
     const pendingAtPublication = this.pending.get(id);
     if (this.deleted.has(id)) return;
     if (page.conversation.revision < view.revision) return;
@@ -268,9 +273,9 @@ class ChatStore {
     if (retry && !body && view.turn?.state === 'FAILED') {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
-      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
+      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
-    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
+    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
     body = { ...body, retry };
     this.pending.set(id, body);
     const started = performance.now();

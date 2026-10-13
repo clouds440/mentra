@@ -5,6 +5,7 @@ export interface ToolWarning {
   task_impact: string; effect_certainty: string;
 }
 export interface ChatMessageData {
+  timezone?: string;
   web_sources?: import('./webSearch').WebSource[];
   web_citations?: string[];
   web_searches?: import('./webSearch').WebSearchRecord[];

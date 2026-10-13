@@ -99,6 +99,9 @@ def create_workflow_tools(owner, scope, budget):
     service = scope.get('assessment_service')
     if service is not None:
         async def generate(**arguments):
+            if (scope.get('_event_practice_requested') is False and
+                    any(result.get('event') or result.get('proposal') for result in scope.get('_captured_events', []))):
+                return dict(outcome='not_requested', reason='The student announced an event without asking for practice. Acknowledge the captured event, offer preparation advice, and ask whether they want a practice assessment.')
             budget.call(True)
             # Same arguments in a retried turn produce the same operation ID.
             body = GeneratePractice(**arguments)
