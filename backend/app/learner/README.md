@@ -85,6 +85,15 @@ topic-qualified identities; discarded candidates remain discarded. Existing merg
 and replay workflows can reconcile these later without losing evidence provenance.
 Creating a practice target does not create mastery evidence.
 
+The Progress page uses `get_learning_progress(LearningProgressRequest)` for bounded,
+alphabetical pages across owned context links. Search matches normalized names and
+aliases across the whole collection. Counts/page rows share one database snapshot;
+out-of-range pages clamp to the last page. It does not reuse the top-K LLM packet.
+`get_study_targets(..., supported_verification=True)` is the page presentation policy:
+unknown/insufficient evidence and untested difficulty do not become review notices,
+but supported uncertainty, retention concerns and contradictory answers can.
+AI bootstrap/adaptive verification contracts keep their existing broader candidates.
+
 Explicit activation makes the previous active/related contexts dormant by default;
 pass `exclusive=False` to retain multiple active contexts. Inactivity of 60 days
 causes lazy dormancy on the next context-aware request. Activity records do not

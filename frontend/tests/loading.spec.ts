@@ -48,6 +48,7 @@ async function mockApp(page: Page, delay=0) {
     else if(path.endsWith('/notifications/preferences')) body={enabled:true,disabled_kinds:[],revision:1};
     else if(path.endsWith('/notifications/unread-count')) body={count:0};
     else if(path.endsWith('/notifications')) body={items:[],next_cursor:null};
+    else if(path.endsWith('/learning/understanding')) body={items:[],total:0,total_concepts:0,limit:10,offset:0,generated_at:'2026-10-13T00:00:00Z'};
     else if(path.endsWith('/learning')) body={learner:{concepts:[]},recommendations:[],verification:[]};
     else if(path.endsWith('/events')) body={items:[],next_cursor:null};
     else if(path.endsWith('/memories/preferences')) body={automatic_memory:true,revision:1};
@@ -62,13 +63,13 @@ for(const theme of ['light','dark']) test(`loading and navigation cache in ${the
   await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
   await expect(page.getByRole('heading',{name:'Library',exact:true})).toBeVisible();
   await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
-  await expect(page.getByText('Add material to start studying')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
   const before=counts['/api/v1/documents'];
   await page.getByRole('link',{name:'Assessments',exact:true}).click();
   await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
   await expect(page.getByText('Create your first assessment')).toBeVisible();
   await page.getByRole('link',{name:'Library',exact:true}).click();
-  await expect(page.getByText('Add material to start studying')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
   expect(counts['/api/v1/documents']).toBe(before);
   await page.goto('/settings?tab=notifications');
   await expect(page.getByRole('switch',{name:'Enable notifications',exact:true})).toBeVisible();
@@ -76,11 +77,11 @@ for(const theme of ['light','dark']) test(`loading and navigation cache in ${the
 });
 test('data loaders cover settings, progress, notifications, upload form and mobile', async ({page}) => {
   await page.setViewportSize({width:390,height:844}); await mockApp(page,600);
-  const pages=[['/settings?tab=memories','A fresh start'],['/progress','No concept evidence yet.'],['/progress?tab=events','No events in this range.'],['/notifications','No notifications'],['/library/new','Upload']];
+  const pages=[['/settings?tab=memories','A fresh start'],['/progress','Every step builds understanding'],['/progress?tab=events','Room for your next plan'],['/notifications','No notifications'],['/library/new','Upload']];
   for(const [url,ready] of pages) {
     await page.goto(url);
     await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
-    if(url==='/notifications') await expect(page.getByText('Your notifications will appear here.').first()).toBeVisible();
+    if(url==='/notifications') await expect(page.getByRole('heading',{name:'A clear inbox'})).toBeVisible();
     else if(url==='/library/new') await expect(page.getByRole('button',{name:/Upload/}).first()).toBeVisible();
     else await expect(page.getByText(ready,{exact:false}).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

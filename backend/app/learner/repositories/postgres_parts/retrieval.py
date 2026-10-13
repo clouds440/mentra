@@ -1,6 +1,6 @@
 """Bounded SQLAlchemy queries for owned context, state and graph retrieval."""
 
-from sqlalchemy import select, func, case, or_, literal
+from sqlalchemy import select, func, case, or_, literal, Integer
 from app.learner.repositories.tables import concept, concept_alias as aliases, concept_redirect as redirects, learning_context as contexts, context_concept as links, concept_relation as relations
 from .base import PostgresRepositoryBase
 
@@ -12,6 +12,31 @@ def matches(term):
 
 
 class RetrievalStore(PostgresRepositoryBase):
+    def progress_concepts(self, learner_id, context_ids, query, limit, offset):
+        # Search the owned collection, not the compact top-K model packet.
+        linked = select(links.c.context_id).join(contexts, contexts.c.id == links.c.context_id).where(
+            links.c.concept_id == concept.c.id, links.c.learner_id == learner_id,
+            contexts.c.learner_id == learner_id, contexts.c.id.in_(context_ids)).exists()
+        base = select(concept).where(linked, concept.c.status == 'ACTIVE')
+        filtered = base
+        if query:
+            alias_match = select(aliases.c.id).where(aliases.c.concept_id == concept.c.id,
+                aliases.c.confidence >= .9, func.strpos(aliases.c.normalized_alias, query) > 0).exists()
+            filtered = base.where(or_(func.strpos(concept.c.normalized_name, query) > 0, alias_match))
+        with self._session() as session:
+            # One statement gives rows, counts and a clamped page from the same
+            # snapshot, even when links change while the reader is paging.
+            counts = select(
+                select(func.count()).select_from(filtered.subquery()).scalar_subquery().label('total'),
+                select(func.count()).select_from(base.subquery()).scalar_subquery().label('total_concepts')).cte('counts')
+            bounded_offset = func.least(offset, func.greatest(0, func.floor((counts.c.total - 1) / limit)).cast(Integer) * limit)
+            page = filtered.order_by(func.lower(concept.c.canonical_name), concept.c.id).limit(limit).offset(bounded_offset).lateral('page')
+            stmt = select(counts, bounded_offset.label('offset'), page).select_from(counts.outerjoin(page, literal(True)))
+            rows = list(session.execute(stmt).mappings())
+            summary = rows[0]
+            return ([self._concept_from_row(row) for row in rows if row['id'] is not None],
+                    summary['total'], summary['total_concepts'], summary['offset'])
+
     def canonical_concepts(self, concept_ids):
         original = concept.alias('original')
         stmt = select(original.c.id.label('original_id'), concept).select_from(original.outerjoin(redirects,

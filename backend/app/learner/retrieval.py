@@ -7,6 +7,7 @@ from app.learner.normalization import query_terms, normalize
 from app.learner.scoring.signals import diagnostics, recommended_difficulty
 from app.learner.schemas import (
     LearnerContextConcept, LearnerContextPacket, StudyRecommendation, VerificationCandidate, PerformanceEstimate,
+    LearningProgressPage,
 )
 
 
@@ -29,7 +30,7 @@ class RetrievalService:
         now = self.clock()
         return concepts, states, prerequisites, factors, now
 
-    def recommend(self, request, verification=False, *, data=None):
+    def recommend(self, request, verification=False, *, data=None, supported_only=False):
         concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request)
 
         def ranked():
@@ -49,6 +50,11 @@ class RetrievalService:
                 score *= (0.2 + 0.8 * factor['importance']) * (0.5 + 0.5 * factor['relevance'])
                 status = diagnostics(state, retention)['knowledge_status']
                 if verification:
+                    if supported_only and (reason in ('insufficient_evidence', 'difficulty_unverified')
+                            or status == 'insufficient_evidence' or not state
+                            or not (state.verification_required or (state.estimate_confidence or 0) < .65
+                                    or retention is not None and retention < .5)):
+                        continue
                     yield VerificationCandidate(concept_id=concept.id, name=concept.canonical_name,
                           reason=reason, priority=score, mastery=state.mastery if state else None,
                           estimate_confidence=state.estimate_confidence if state else None,
@@ -96,11 +102,22 @@ class RetrievalService:
                             if context.id not in context_ids and len(context_ids) < 20:
                                 context_ids.append(context.id)
                                 included_contexts[context.id] = context
+        return LearnerContextPacket(active_contexts=[c.name for c in contexts if c.status == 'ACTIVE'],
+            context_ids=context_ids, concepts=self.project(request.learner_id, concepts,
+                [included_contexts[key] for key in context_ids]), generated_at=self.clock())
+
+    def progress(self, request):
+        contexts = self.contexts.select(request.learner_id, request.context_ids)
+        concepts, total, total_concepts, offset = self.repository.progress_concepts(
+            request.learner_id, [c.id for c in contexts], normalize(request.query), request.limit, request.offset)
+        return LearningProgressPage(items=self.project(request.learner_id, concepts, contexts),
+            total=total, total_concepts=total_concepts, limit=request.limit, offset=offset, generated_at=self.clock())
+
+    def project(self, learner_id, concepts, contexts):
         ids = [c.id for c in concepts]
-        states = self.states.load(request.learner_id, ids)
-        misconceptions = self.repository.misconceptions_for_concepts(request.learner_id, ids)
-        included = [included_contexts[key] for key in context_ids]
-        factors = self.repository.context_factors(request.learner_id, included)
+        states = self.states.load(learner_id, ids)
+        misconceptions = self.repository.misconceptions_for_concepts(learner_id, ids)
+        factors = self.repository.context_factors(learner_id, contexts)
         now = self.clock()
         items = []
         for concept in concepts:
@@ -119,5 +136,4 @@ class RetrievalService:
                          hint_dependency=state.hint_dependency if state else None,
                          **factor,
                          misconceptions=misconceptions.get(concept.id, [])[:3]))
-        return LearnerContextPacket(active_contexts=[c.name for c in contexts if c.status == 'ACTIVE'],
-                                    context_ids=context_ids, concepts=items, generated_at=now)
+        return items

@@ -20,7 +20,7 @@ from app.learner.scoring import ExponentialRetentionPolicy, HeuristicMasteryPoli
 from app.learner.schemas import (
     ActiveContextsResponse, ConceptStateResponse, ActiveContextsRequest,
     ConceptResolutionRequest, ConceptResolution, ConceptStateRequest,
-    GeneratedConceptsRequest,
+    GeneratedConceptsRequest, LearningProgressRequest, LearningProgressPage,
     LearnerContextRequest, LearnerContextPacket, StudyRecommendationsRequest, StudyRecommendation,
     VerificationCandidatesRequest, VerificationCandidate, ActivateLearningContextRequest,
     LearningContextSummary, ResolveLearningContextRequest, ContextActivityRequest,
@@ -215,12 +215,15 @@ class LearnerEngine:
     def get_study_recommendations(self, request: StudyRecommendationsRequest) -> list[StudyRecommendation]:
         return self.retrieval.recommend(request)
 
-    def get_study_targets(self, learner_id, context_ids=None, limit=5):
+    def get_learning_progress(self, request: LearningProgressRequest) -> LearningProgressPage:
+        return self.retrieval.progress(request)
+
+    def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False):
         """One consistent ranking input set for recommendations and verification."""
         request = StudyRecommendationsRequest(learner_id=learner_id, context_ids=context_ids, limit=limit)
         data = self.retrieval.ranking_data(request)
         return dict(recommendations=self.retrieval.recommend(request, data=data),
-                    verification=self.retrieval.recommend(request, verification=True, data=data))
+                    verification=self.retrieval.recommend(request, verification=True, data=data, supported_only=supported_verification))
 
     def get_verification_candidates(self, request: VerificationCandidatesRequest) -> list[VerificationCandidate]:
         return self.retrieval.recommend(request, verification=True)

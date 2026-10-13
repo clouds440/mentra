@@ -44,6 +44,7 @@ Do not add empty folders or modules merely to mirror a template. Create them whe
 
 - Public chat failure messages must use plain learner-facing wording. Keep configuration, provider and protocol diagnostics private; preserve typed error codes and status for recovery. Model prompts must describe tool failures without quoting internal receipts or claiming uncertain actions succeeded.
 - Assessment concepts are resolved through Learner's public facade without an exact-match/confirmation gate. Optional semantic advice may fail without blocking practice; reject unsafe merge suggestions and retain separate identities. Repair malformed target/question output once within the shared budget before saving; keep private keys, grading/provenance validation, ownership, cancellation and domain replay intact. Validation after tool execution starts is an invalid result, not invalid caller arguments.
+- Progress browsing uses owner-scoped server search/counts and bounded pages through Learner's public facade, separate from compact model context packets. Apply evidence eligibility before selecting the top review suggestions; hide unsupported/new-topic or untested-difficulty review prompts from the page while retaining bootstrap targets for AI/assessment workflows. Confirming a concept accepts its identity/context link and never creates mastery evidence.
 
 ## API and errors
 

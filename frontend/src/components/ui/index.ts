@@ -16,3 +16,4 @@ export { FileInput } from './FileInput';
 export { Popover } from './Popover';
 
 export { Skeleton, PageLoader } from './Skeleton';
+export { Pagination } from './Pagination';

@@ -192,6 +192,23 @@ class LearnerContextPacket(LearnerSchema):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class LearningProgressRequest(LearnerSchema):
+    learner_id: LearnerId
+    context_ids: list[str] | None = Field(default=None, max_length=20)
+    query: str = Field(default='', max_length=200)
+    limit: int = Field(default=10, ge=1, le=50)
+    offset: int = Field(default=0, ge=0, le=100000)
+
+
+class LearningProgressPage(LearnerSchema):
+    items: list[LearnerContextConcept] = Field(default_factory=list, max_length=50)
+    total: int = Field(ge=0)
+    total_concepts: int = Field(ge=0)
+    limit: int = Field(ge=1, le=50)
+    offset: int = Field(ge=0)
+    generated_at: datetime
+
+
 class StudyRecommendationsRequest(LearnerSchema):
     learner_id: LearnerId
     context_ids: list[str] | None = Field(default=None, max_length=20)

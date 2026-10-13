@@ -7,3 +7,8 @@ export interface LearningOverview {
   recommendations: { concept_id: string; name: string; reason: string; knowledge_status: string; recommended_difficulty: number }[];
   verification: { concept_id: string; name: string; reason: string }[];
 }
+
+export interface LearningProgressPage {
+  items: LearningConcept[]; total: number; total_concepts: number; limit: number; offset: number;
+  generated_at: string;
+}

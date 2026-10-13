@@ -17,7 +17,7 @@ from app.learner.schemas import (
     EvidenceSubmissionResult,
     LearnerContextPacket,
     LearnerContextRequest,
-    LearningContextSummary,
+    LearningContextSummary, LearningProgressRequest, LearningProgressPage,
     StudyRecommendation,
     StudyRecommendationsRequest,
     VerificationCandidate,
@@ -43,6 +43,11 @@ class LearnerService(Protocol):
     ) -> ConceptResolution: ...
 
     def get_context_summaries(self, learner_id: str, context_ids: list[str] | None = None) -> list[LearningContextSummary]: ...
+
+    def get_learning_progress(self, request: LearningProgressRequest) -> LearningProgressPage: ...
+
+    def get_study_targets(self, learner_id: str, context_ids: list[str] | None = None,
+                         limit: int = 5, *, supported_verification: bool = False) -> dict: ...
 
     async def resolve_generated_concepts(self, request: GeneratedConceptsRequest) -> list[Concept]: ...
 
