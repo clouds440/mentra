@@ -27,7 +27,9 @@ class HistoryContextPolicy:
 
     def for_prompt(self, messages, system_text):
         from langchain_core.messages import SystemMessage
-        available = settings.chat_context_window_tokens - settings.chat_output_token_reserve - 256 - count_tokens_approximately([SystemMessage(content=system_text)])
+        available = settings.chat_input_tokens - 256 - count_tokens_approximately([SystemMessage(content=system_text)])
+        if count_tokens_approximately([HumanMessage(content=messages[-1][1])]) > available:
+            available += max(0, settings.chat_recovery_input_tokens - settings.chat_input_tokens)
         current = next((content for role, content in reversed(messages) if role == 'user'), '')
         if available < count_tokens_approximately([HumanMessage(content=current)]):
             raise AppError('CHAT_CONTEXT_LIMIT', 'The selected sources and question exceed the configured model context budget. Choose fewer sources or shorten the question.', 422)

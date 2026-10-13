@@ -58,7 +58,7 @@ def create_app() -> FastAPI:
                 application.state.chat_service = ChatService(application.state.llm)
                 from app.web_search.factory import create_web_search
                 application.state.web_search_service = create_web_search(get_session_factory(), settings)
-                application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()))
+                application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()), summary_llm=application.state.llm)
                 application.state.history_management = create_history_management(get_session_factory(), application.state.llm,
                     application.state.student_profile_service, application.state.learner_service)
                 from app.notifications.factory import create_notifications

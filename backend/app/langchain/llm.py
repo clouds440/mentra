@@ -43,6 +43,7 @@ class MentraLLM:
     def _model(self, source: PromptSource, output_schema: type[BaseModel] | None):
         from .token_policy import output_budget
         model = (self.model_factory.get_model(output_tokens=output_budget(source, self.model_factory._settings),
+                    maximum_retries=0 if source is PromptSource.CHAT_SUMMARY else None,
                     model_name=self.model_factory._settings.ai_vision_model if source is PromptSource.ASSESSMENT_TRANSCRIPTION else None)
                  if isinstance(self.model_factory, ModelFactory) else self.model_factory.get_model())
         if output_schema is not None:
@@ -63,7 +64,7 @@ class MentraLLM:
         reserve_workflow(source, cost, **({'config': config} if config else {}))
         model = self._model(source, output_schema)
         from .provider_invocation import invoke_provider
-        result = await invoke_provider(model, prepared, maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
+        result = await invoke_provider(model, prepared, maximum_attempts=1 if source is PromptSource.CHAT_SUMMARY else getattr(config, 'ai_max_retries', 2) + 1)
         if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
             log_usage(result['raw'], source, cost)
             if result.get('parsing_error'):

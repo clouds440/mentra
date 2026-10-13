@@ -49,6 +49,8 @@ class PreferencesEdit(Contract):
 
 
 class HistoryLookup(Contract):
+    message_id: UUID | None = None
+    content_offset: int = Field(default=0, ge=0, le=200000)
     scope: Literal['current_chat', 'selected_chats', 'all_chats'] = 'current_chat'
     query: str = Field(default='', max_length=300)
     chat_ids: list[UUID] = Field(default_factory=list, max_length=10)
@@ -62,6 +64,10 @@ class HistoryLookup(Contract):
     def scope_query(self):
         if self.before_sequence is not None and self.after_sequence is not None:
             raise ValueError('Choose one sequence pagination direction.')
+        if self.message_id and (self.query or self.before_sequence is not None or self.after_sequence is not None or self.scope != 'current_chat'):
+            raise ValueError('Exact message recovery requires current_chat without search or sequence anchors.')
+        if self.content_offset and not self.message_id:
+            raise ValueError('Content offsets require an exact message ID.')
         if (self.before_sequence is not None or self.after_sequence is not None) and self.scope != 'current_chat':
             raise ValueError('Sequence anchors require current_chat scope.')
         if any(value and value.tzinfo is None for value in (self.created_before, self.created_after)):

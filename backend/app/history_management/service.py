@@ -22,28 +22,40 @@ class HistoryManagement:
         self.freshness_days = freshness_days or dict(goal=30, fact=180, preference=365)
 
     async def lookup(self, owner, scope, body, budget):
-        windows = await run_in_threadpool(self.reader.lookup, owner, scope['conversation_id'], scope['user_sequence'], body, list(scope['visible_ids']))
-        return project_read(lambda value: self._lookup_result(scope, value), windows)
+        windows = await run_in_threadpool(self.reader.lookup, owner, scope['conversation_id'], scope['user_sequence'], body,
+            [] if body.message_id else list(scope['visible_ids']))
+        return project_read(lambda value: self._lookup_result(scope, value, body), windows)
 
     @staticmethod
-    def _lookup_result(scope, windows):
+    def _lookup_result(scope, windows, body=None):
         result = []
-        remaining = 1500
+        remaining = 8000
+        remaining_tokens = 1600
         for window in windows:
             messages = []
             for message in window['messages']:
                 # Concurrent searches can overlap the same window. Earlier
                 # results already supplied these messages and their provenance.
-                if message['id'] in scope['visible_ids']:
+                if message['id'] in scope['visible_ids'] and not (body and body.message_id):
                     continue
-                if remaining < 100:
+                if remaining < 100 or remaining_tokens < 100:
                     break
-                content = message['content'][:min(500, remaining)]
+                offset = body.content_offset if body and body.message_id else 0
+                original = message['content']
+                content = original[offset:offset+remaining]
+                from langchain_core.messages import HumanMessage
+                from app.langchain.token_policy import count_messages
+                while content and count_messages([HumanMessage(content=content)]) > remaining_tokens:
+                    content = content[:max(0, len(content)*3//4)]
+                next_offset = offset+len(content)
                 if message['role'] == 'assistant':
                     from app.web_search.citations import historical_web_markers
                     content = historical_web_markers(content)
                 remaining -= len(content)
-                item = dict(message, content=content, truncated=len(content) < len(message['content']))
+                remaining_tokens -= count_messages([HumanMessage(content=content)])
+                item = dict(message, content=content, content_offset=offset,
+                    next_content_offset=next_offset if next_offset < len(original) else None,
+                    truncated=offset > 0 or next_offset < len(original))
                 messages.append(item)
                 if message['role'] == 'user':
                     scope['evidence_ids'].add(message['id'])

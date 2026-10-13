@@ -44,7 +44,10 @@ class Settings(BaseSettings):
     you_web_search_api_key: str = Field(default='', repr=False)
     web_research_daily_limit: int = Field(default=20, ge=1, le=100)
     web_research_user_daily_limit: int = Field(default=5, ge=1, le=100)
-    chat_history_token_budget: int = Field(default=4096, ge=256, le=100000)
+    chat_history_token_budget: int = Field(default=1800, ge=256, le=100000)
+    chat_input_tokens: int = Field(default=8192, ge=4096, le=16384)
+    chat_recovery_input_tokens: int = Field(default=12288, ge=4096, le=16384)
+    chat_summary_enabled: bool = True
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
     assessment_generation_output_tokens: int = Field(default=8192, ge=512, le=32768)

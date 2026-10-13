@@ -51,10 +51,11 @@ class ModelFactory:
                 "OpenAI-compatible chat endpoint."
             )
 
-    def get_model(self, *, output_tokens=None, model_name=None) -> BaseChatModel:
+    def get_model(self, *, output_tokens=None, model_name=None, maximum_retries=None) -> BaseChatModel:
         self.validate_configuration()
         output_tokens = output_tokens or self._settings.chat_output_token_reserve
-        key = (output_tokens, model_name or self._settings.ai_model)
+        retries = self._settings.ai_max_retries if maximum_retries is None else maximum_retries
+        key = (output_tokens, model_name or self._settings.ai_model, retries)
         if key in self._models:
             return self._models[key]
         try:
@@ -75,7 +76,7 @@ class ModelFactory:
             api_key=self._settings.ai_api_key,
             temperature=self._settings.ai_temperature,
             timeout=self._settings.ai_timeout,
-            max_retries=self._settings.ai_max_retries,
+            max_retries=retries,
             max_tokens=output_tokens,
             **provider_options,
         )

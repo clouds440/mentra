@@ -311,7 +311,7 @@ class PersistentChatTests(unittest.TestCase):
         from unittest.mock import patch
         from app.core.config import settings
         policy = HistoryContextPolicy()
-        with patch('app.chat.context.settings', settings.model_copy(update={'chat_context_window_tokens': 1024, 'chat_output_token_reserve': 256})):
+        with patch('app.chat.context.settings', settings.model_copy(update={'chat_input_tokens': 1024, 'chat_recovery_input_tokens': 1024, 'chat_output_token_reserve': 256})):
             result = policy.for_prompt([('user', 'word '*300), ('assistant', 'word '*300), ('user', 'Current question')], 'System instruction')
             self.assertEqual(result[-1], ('user', 'Current question'))
             with self.assertRaises(AppError) as caught:

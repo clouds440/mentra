@@ -51,6 +51,14 @@ changes = Table('chat_change', metadata, owner(True), Column('revision', BigInte
     CheckConstraint('revision > 0', name='chat_change_revision'))
 
 TABLES = (conversations, messages, turns, sync_state, changes)
+summaries = Table('chat_summary', metadata,
+    Column('conversation_id', Uuid(as_uuid=False), primary_key=True), owner(),
+    Column('content', Text, nullable=False), Column('through_sequence', BigInteger, nullable=False),
+    Column('revision', BigInteger, nullable=False), Column('lease_token', Uuid(as_uuid=False)),
+    Column('lease_until', DateTime(timezone=True)),
+    ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
+    CheckConstraint('through_sequence >= 0 AND revision >= 0', name='chat_summary_revision'))
+TABLES = (*TABLES, summaries)
 activity = Table('chat_activity', metadata,
     Column('learner_id', Uuid(as_uuid=False), nullable=False),
     Column('turn_id', Uuid(as_uuid=False), primary_key=True),

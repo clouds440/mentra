@@ -28,6 +28,6 @@ def create_history_tools(service, owner, scope, budget):
         return result
 
     return [
-        StructuredTool.from_function(name='history_lookup', description='Retrieve bounded past user/assistant exchanges. Cross-chat search requires keywords. The current chat and owner are bound by the server.', args_schema=HistoryLookup, coroutine=history_lookup, metadata={'parallel_read': True}),
+        StructuredTool.from_function(name='history_lookup', description='Retrieve original past exchanges when relevant context is missing. Use message_id from a conversation summary to recover exact code or wording; continue with content_offset=next_content_offset for large messages. Otherwise search by keywords or sequence anchors. Summary references alone are not evidence. Cross-chat search requires keywords. Owner and current chat are server-bound.', args_schema=HistoryLookup, coroutine=history_lookup, metadata={'parallel_read': True}),
         StructuredTool.from_function(name='user_memory', description='Recall relevant saved user facts by keywords, or propose an evidence-backed durable memory. Writes need an exact quote and visible user-message ID. Never save secrets. Sensitive information requires explicit remember consent.', args_schema=MemoryToolInput, coroutine=user_memory, metadata={'parallel_read': True}),
     ]

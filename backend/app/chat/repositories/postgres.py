@@ -309,7 +309,8 @@ class ChatRepository:
                 from app.history_management.repositories.events.proposals import EventProposalRepository
                 EventProposalRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
-                from .tables import attachments
+                from .tables import attachments, summaries
+                session.execute(delete(summaries).where(summaries.c.conversation_id == conversation_id, summaries.c.learner_id == owner))
                 from app.assessments.repositories.tables import chat_drafts
                 session.execute(delete(chat_drafts).where(chat_drafts.c.conversation_id == conversation_id, chat_drafts.c.learner_id == owner))
                 session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
@@ -336,3 +337,14 @@ class ChatRepository:
                 query = query.where(m.c.sequence <= through)
             rows = session.execute(query.order_by(m.c.sequence.desc()).limit(max(1, min(limit, 1000)))).mappings().all()
             return [dict(row) for row in reversed(rows)]
+
+    def summary_rows(self, owner, conversation_id, after):
+        with self.sessions() as session:
+            self._conversation(session, owner, conversation_id)
+            # Read oldest unsummarized completed exchanges so long chats cannot skip gaps.
+            rows = session.execute(select(m).join(t, and_(t.c.conversation_id == m.c.conversation_id,
+                t.c.learner_id == m.c.learner_id, or_(t.c.user_sequence == m.c.sequence, t.c.assistant_sequence == m.c.sequence)))
+                .where(m.c.learner_id == owner, m.c.conversation_id == conversation_id, m.c.sequence > after,
+                    t.c.state == 'SUCCEEDED', m.c.metadata['response_stopped'].as_boolean().is_not(True))
+                .order_by(m.c.sequence).limit(256)).mappings().all()
+            return [dict(row) for row in rows]

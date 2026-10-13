@@ -55,7 +55,9 @@ class ChatReadFacade:
                 eligible.append(m.c.id.not_in(visible_ids))
             base = select(m.c.id, m.c.conversation_id, m.c.sequence, c.c.title).join(c,
                 and_(m.c.conversation_id == c.c.id, m.c.learner_id == c.c.learner_id)).where(*eligible)
-            if body.query:
+            if body.message_id:
+                hits = session.execute(base.where(m.c.id == str(body.message_id)).limit(1)).mappings().all()
+            elif body.query:
                 vector, query = func.to_tsvector('simple', m.c.content), func.websearch_to_tsquery('simple', body.query)
                 hits = session.execute(base.where(vector.op('@@')(query)).order_by(func.ts_rank_cd(vector, query).desc(), m.c.created_at.desc(), m.c.id).limit(body.limit)).mappings().all()
                 if not hits:
@@ -65,7 +67,8 @@ class ChatReadFacade:
                 hits = session.execute(base.order_by(m.c.sequence.asc() if body.after_sequence is not None else m.c.sequence.desc()).limit(body.limit)).mappings().all()
             if not hits:
                 return []
-            ranges = [and_(m.c.conversation_id == x['conversation_id'], m.c.sequence.between(max(1, x['sequence'] - 1), x['sequence'] + 1)) for x in hits]
+            ranges = [and_(m.c.conversation_id == x['conversation_id'],
+                m.c.sequence == x['sequence'] if body.message_id else m.c.sequence.between(max(1, x['sequence'] - 1), x['sequence'] + 1)) for x in hits]
             # At most three disjoint windows, expanded in one query.
             rows = [dict(x) for x in session.execute(self._window_query().where(m.c.learner_id == owner, or_(*ranges),
                 m.c.role.in_(['user', 'assistant']), or_(m.c.conversation_id != current_chat, m.c.sequence < current_sequence))

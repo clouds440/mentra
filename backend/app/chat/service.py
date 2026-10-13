@@ -15,11 +15,13 @@ from app.core.logging import workflow_logger
              'outcome': lambda value: {'FAILED':'failed','RUNNING':'deferred','SUCCEEDED':'success'}.get(value.get('turn', {}).get('state'), 'unknown')},
 })
 class ConversationService:
-    def __init__(self, repository, policy=None):
+    def __init__(self, repository, policy=None, summary_llm=None):
         self.repository = repository
         self.policy = policy or HistoryContextPolicy()
         self.tasks = set()
         self.turn_tasks = {}
+        from .summaries import ConversationSummaries
+        self.summaries = ConversationSummaries(repository, summary_llm) if summary_llm else None
 
     async def send(self, owner, request, generate, *, with_scope=False, wait=True):
         if not request.content.strip():
@@ -70,6 +72,9 @@ class ConversationService:
         activity_sink = None
         try:
             rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
+            summary = await self.summaries.load(owner, job['conversation_id']) if self.summaries else None
+            if summary and summary['through_sequence'] >= job['user_sequence']:
+                summary = None  # Never give a retried older turn future context.
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
             # Context selection runs once, after retrieval, when the complete prompt budget is known.
             if with_scope:
@@ -82,6 +87,7 @@ class ConversationService:
                 activity_sink = DurableActivitySink(ActivityRepository(self.repository.sessions), owner, job)
                 scope['activity'] = ActivityPublisher(activity_sink)
                 scope['_generation_deadline'] = deadline
+                scope['conversation_summary'] = summary
                 await scope['activity'].emit('planning', 'running', 'Planning your request')
                 invocation = generate(history, job['selection'], scope)
             else:
@@ -97,6 +103,10 @@ class ConversationService:
             if activity_sink is not None:
                 await activity_sink.flush()
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
+            if self.summaries:
+                task = asyncio.create_task(self.summaries.refresh(owner, job['conversation_id']))
+                self.tasks.add(task)
+                task.add_done_callback(self.tasks.discard)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':
                 current.get().outcome = 'degraded' if response.get('retrieval_warning') or response.get('tool_warnings') else 'success'
