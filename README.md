@@ -1,188 +1,162 @@
 # Mentra
 
-Mentra is an adaptive AI learning assistant with a FastAPI backend, React + TypeScript frontend, PostgreSQL persistence, standalone/platform identity, a granular Learner Engine, and a separate high-level Student Profile. Docker Compose runs the backend, frontend, RAG ingestion worker, and local PostgreSQL database.
+Mentra is an adaptive learning workspace built with FastAPI, React + TypeScript,
+PostgreSQL, LangChain/LangGraph, local CPU embeddings, and Qdrant retrieval.
+PostgreSQL owns conversations, attachments, assessments, learner evidence, events,
+notifications and settings; browser caches accelerate navigation and synchronization.
 
-## What Mentra currently contains
+## Current features
 
-- FastAPI backend with health checks and modular route registration
-- Centralized FastAPI error responses for application, HTTP, validation, and unexpected errors
-- React + TypeScript + Vite + Tailwind CSS frontend with a responsive, routed learning workspace
-- Local-first workspace shell with Chat, Library, Progress, Assessments, and Settings routes
-- Account-owned persistent conversations with bounded model context, recoverable turns, incremental browser caching and Markdown responses
-- On-demand history retrieval and evidence-backed user memories with manual Settings management and independent AI-write preferences
-- Manual Events backend with authenticated CRUD, lifecycle, temporal preview, operation recovery and bounded agenda/sync APIs
-- Multi-stage frontend image serving the built app with Nginx
-- PostgreSQL repositories using SQLAlchemy 2.x and Alembic
-- Modular Learner Engine with concept resolution, immutable evidence, versioned estimates, relevance, and recommendation contracts
-- Standalone accounts and generic public-key external SSO with internal learner UUIDs
-- Username/password login and registration with persistent HTTP-only sessions and guarded workspace routes
-- Separate high-level Student Profile, mandatory profile onboarding, and optional controlled eight-question calibration
-- Signed EduVerse student provisioning with an initial profile, preserving future standalone/platform identity boundaries
-- Docker Compose setup for PostgreSQL, backend, and frontend services
-- Shared LangChain invocation component (`MentraLLM`) with workflow-selected, versioned system prompts in separate modules
-- Provider-independent chat model factory for OpenAI-compatible endpoints
-- Local, image-baked BGE embeddings kept independent from chat models and exposed through `EmbeddingService`
-- Remote Qdrant Cloud adapter with collection dimension and embedding-identity validation
-- Learner-owned Library uploads, durable ingestion, local document/OCR extraction, hybrid retrieval, grounded chat citations and source lifecycle workflows
-- Shared [Mentra Vision module](backend/app/vision/README.md) for local image and PDF-page OCR, with independent capability providers
-- Environment-based configuration through `.env` values
+- **Persistent chat:** account-owned conversations, rename/delete, recoverable
+  generation and Stop, incremental cross-tab/device synchronization, and immediate
+  session-cache rendering followed by database reconciliation on revisits.
+- **Chat context:** private rolling summaries stored by chat ID, recent verbatim
+  context, and exact/keyword history recovery. Normal chat input is 8,192 tokens,
+  with a bounded 12,288-token recovery allowance and a separate 2,048-token output
+  reserve. Original displayed messages remain intact.
+- **Rich answers:** Markdown, shared Prism code blocks, citations, interactive
+  choices, compact assessment cards and a copy-as-plain-text action. Scrolling is
+  contained within chat, and answers use a short top-to-bottom reveal.
+- **Attachments and voice:** stage uploads or paste files/images inside the
+  composer before sending; up to four files including three images per message.
+  Durable authenticated previews open in a download overlay and can be added to
+  Library. Vision-capable chat models receive images with the question; local OCR
+  is a fallback. CPU Whisper voice transcription fills the editable composer.
+- **Library and RAG:** durable ingestion, native document reading and local OCR,
+  BGE embeddings, hybrid dense/lexical retrieval, optional reranking, provenance
+  and source lifecycle controls. Prefetch warms caches; passages reach the model
+  only after a requested retrieval tool call. Selected materials are cleared after
+  a successful response.
+- **Assessments:** chat drafts and saved assessments, interactive MCQs or written
+  answers, revisions that preserve originals, reviewed image/document answer
+  extraction, durable grading and learner evidence. Interactive choices stay in
+  memory until final Submit; grading status is visible in the composer.
+- **Learning Progress:** concept review, searchable understanding, practice
+  recommendations and evidence-supported follow-up reviews. Accepting a topic
+  does not count as mastery evidence.
+- **Events and notifications:** an owned agenda, reminders, manual editing and
+  durable proposals. Actual first-party event announcements are captured before
+  chat answers and auto-saved when complete/unambiguous; uncertain details remain
+  reviewable. Event announcements alone do not request practice quizzes. An
+  independent Notifications inbox receives reminder publications.
+- **Web tools:** keyless You.com MCP `web_search` and a separate authenticated
+  `web_research` tool using `YOU_WEB_SEARCH_API_KEY`, with independent quotas,
+  caching, source dates and citations. Research can consume provider credits.
+- **Identity and personalization:** standalone username/password accounts,
+  HTTP-only sessions, generic signed external SSO, EduVerse provisioning,
+  mandatory profile onboarding, optional calibration, evidence-backed memories,
+  and shared Light/Dark/System themes.
+- **Diagnostics:** correlated request/job/tool/model traces with execution timing,
+  supplied/skipped/defaulted parameter shapes and sanitized failures. Query and
+  response bodies are not retained in logs.
 
-## Project structure
+## Quick start
 
-```text
-mentra/
-|-- backend/
-|   |-- app/
-|   |   |-- api/routes/         # Auth, profile, EduVerse, conversations, memory, Events, Library, health
-|   |   |-- chat/               # Canonical conversations, durable turns, bounded model history
-|   |   |-- history_management/ # On-demand history, user memory, separate Events domain/repositories
-|   |   |-- auth/               # Accounts, sessions, generic signed external identity
-|   |   |-- student_profile/    # User details, broad estimates, controlled calibration
-|   |   |-- learner/            # Granular concept knowledge and immutable evidence
-|   |   |-- integrations/       # Trusted platform profile provisioning contracts
-|   |   |-- langchain/          # Shared LLM, source-specific prompts, chat, profile evaluator, learner tools
-|   |   |-- rag/                # Source storage, durable ingestion, parsers, retrieval, vector adapters, evaluation
-|   |   |-- vision/             # Shared stateless OCR and PDF-page rasterization with capability providers
-|   |   |-- db/                 # Connections, migrations, shared owner transactions
-|   |   |-- core/               # Settings, logging, errors, identifiers
-|   |   |-- main.py
-|   |-- alembic/versions/       # Reviewed PostgreSQL migrations
-|   |-- tests/                 # Domain, repository, API, concurrency, parser tests
-|   |-- testing/               # Isolated PostgreSQL and browser test fixtures
-|   |-- scripts/               # Synthetic learner verification
-|   |-- Dockerfile
-|   |-- requirements.txt
-|-- frontend/
-|   |-- src/
-|   |   |-- components/        # Shared UI, auth/profile providers, theme, workspace
-|   |   |-- pages/             # Login/register, onboarding/calibration, workspace
-|   |   |-- services/          # Credentialed backend API clients
-|   |   |-- layouts/
-|   |   |-- styles/            # Semantic Light/Dark/System design tokens
-|   |   |-- types/
-|   |-- tests/                 # Real auth/profile browser flows
-|   |-- scripts/               # Theme checks
-|   |-- Dockerfile
-|   |-- nginx.conf
-|   |-- package.json
-|-- docs/                      # Setup, API contracts, verification reports
-|-- .env.example
-|-- docker-compose.yml
+Docker Desktop/Engine and Docker Compose are sufficient for the container setup.
+Node.js 20+ and Python 3.12 are needed only for native development/testing.
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-## Requirements
+Configure `DATABASE_URL` with a complete hosted PostgreSQL URL and its required
+SSL options. Set `AI_MODEL`, `AI_BASE_URL` and `AI_API_KEY` for an OpenAI-compatible
+provider. Configure `QDRANT_URL`, `QDRANT_API_KEY` and `QDRANT_COLLECTION` for RAG
+readiness. `VITE_API_URL` is built into the frontend bundle and must be reachable
+from the browser; its local default is `http://localhost:8000`.
 
-- Docker Desktop or Docker Engine
-- Docker Compose
-- Node.js 20+
-- Python 3.12+
-- npm
-
-## Configure `.env`
-
-Copy the example file and adjust environment values as needed:
-
-```bash
-cp .env.example .env
-```
-
-The values configure the OpenAI-compatible chat endpoint, local embedding model, Qdrant Cloud collection, CORS, and PostgreSQL connection URL. Set `AI_MODEL`, `AI_BASE_URL`, and `AI_API_KEY` before starting. Set the Qdrant values for readiness to pass. `VITE_API_URL` is baked into the frontend bundle when its image is built, so it must be an address reachable from the user's browser (the default is `http://localhost:8000`).
-
-## Run with Docker
-
-Set `DATABASE_URL` in `.env` to your complete Supabase PostgreSQL connection URL. Local
-PostgreSQL is opt-in through the `local-db` profile; normal startup uses the hosted database.
-
-```bash
+```sh
 docker compose up --build -d --wait --wait-timeout 180
 ```
 
-## Frontend URL
+Default services are `backend`, `frontend`, `rag-worker`, `assessment-worker` and
+`events-worker`. Local PostgreSQL is optional:
 
-- http://localhost:5173
+```sh
+docker compose --profile local-db up -d postgres
+```
 
-The UI opens at `/login` for guests. Registration signs you in immediately, then requires profile information and offers a recommended, optional 1â€“2 minute calibration before entering the workspace. An HTTP-only cookie restores your session on refresh and return visits; onboarding and assessment progress follow your account. View/edit your profile and retry calibration evaluation in Settings. Sign out from the sidebar to revoke the session. Conversations and their messages are persisted per account in PostgreSQL, with incremental browser caching and recoverable turns. See [persistent chat](docs/persistent-chat.md).
+For that profile, set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra`
+for containers; native clients use the configured localhost port instead. The API
+applies Alembic migrations before starting. The repository migration head is
+`20261013_0018`; verify the actual database revision rather than assuming deployment.
+
+| Address | Purpose |
+| --- | --- |
+| `http://localhost:5173` | Frontend |
+| `http://localhost:8000/docs` | OpenAPI |
+| `http://localhost:8000/api/v1/health` | Lightweight liveness |
+| `http://localhost:8000/api/v1/health/ready` | Configuration, embeddings and Qdrant readiness; no paid model call |
+
+Guests use `/login` or `/register`, then complete onboarding. Use the same hostname
+for frontend/backend locally so cookie policy works.
 
 ## Workspace routes
 
-- `/login` and `/register` - username/password authentication
-- `/onboarding` - mandatory profile information and optional calibration
-- `/calibration` - later calibration from Settings
-- `/` - Chat
-- `/chat/:conversationId` - saved conversations, paged history, and recoverable responses
-- `/library` - owned study materials, uploads, source views and retrieval settings
-- `/progress` - placeholder; planned Events/Learning interface is not implemented
-- `/assessments` - practice and assessment placeholder
-- `/settings` - editable Student Profile, calibration/retry, theme, and account data information; `?tab=memories` opens memory management
+| Route | Feature |
+| --- | --- |
+| `/`, `/chat/:conversationId` | New/saved chat |
+| `/library`, `/library/new`, `/library/:documentId` | Materials and source views |
+| `/assessments` | Saved practice, attempts and grading |
+| `/progress` | Learning Progress; `?tab=events` opens the agenda |
+| `/events` | Redirect to the Progress Events tab |
+| `/notifications` | Notifications inbox |
+| `/settings` | Profile, calibration, account/preferences; `?tab=memories` opens memories |
+| `/onboarding`, `/calibration` | Profile setup and optional calibration |
 
-## Backend URL
+## Updating the stack
 
-- http://localhost:8000
-
-## Swagger/OpenAPI URL
-
-- http://localhost:8000/docs
-
-## Health endpoint
-
-- http://localhost:8000/api/v1/health
-- http://localhost:8000/api/v1/health/ready (configuration and dependency diagnostics)
-
-## Stop and rebuild
-
-```bash
+```sh
 docker compose build backend frontend
-docker compose up -d --wait --wait-timeout 180
+docker compose up -d --force-recreate --wait --wait-timeout 180
 docker compose ps
 ```
 
-Routine rebuilds recreate containers using the new images. Supabase data remains in the hosted database; if the optional local database is used, its named volume is preserved. The backend upgrades Alembic to head before startup. To rebuild without cache:
+Recreate containers after configuration changes; frontend API URL changes require
+a frontend rebuild. Rebuild the backend after changing image-baked embeddings,
+speech weights or optional reranker configuration. Embedding changes also require
+a compatible Qdrant reindex. Ordinary updates do not require deleting volumes.
+Hosted PostgreSQL remains external; `docker compose down -v` deletes optional
+local named volumes and must not be used as a routine update step.
 
-```bash
-docker compose build --no-cache
-```
+## Architecture and documentation
 
-## Documents, Vision, LangChain and RAG boundaries
+Domain services own their contracts and persistence. Chat owns turns and
+publication; Learner owns concepts/evidence/mastery; RAG owns ingestion/retrieval;
+Events owns schedules; Notifications owns inbox delivery. Orchestration calls
+public facades rather than writing another domain's tables. Shared Documents,
+Vision and Speech capabilities keep local processing independent of the LLM.
 
-- `backend/app/documents/`: shared file detection and component format readers for document consumers, with embedded image extraction through Vision. Read [Mentra Documents](./backend/app/documents/README.md) for the public API, supported formats and library choices.
-- `backend/app/vision/`: reusable stateless OCR and PDF rasterization providers. Read [Mentra Vision](./backend/app/vision/README.md).
-- `backend/app/langchain/`: `ModelFactory` constructs the configured OpenAI-compatible chat model; the shared `MentraLLM` handles invocations, source-specific prompt composition, and structured-output validation. Workflow services select a trusted `PromptSource`; prompt modules live under `backend/app/langchain/prompts/` and own their versions. The application injects the same component into chat and Student Profile evaluation. Learner tools are scoped to the authenticated internal `learner_id`.
-- `backend/app/rag/`: the framework-independent source service owns private uploads, versioned extraction/chunking, scoped dense/lexical retrieval, optional local reranking, and source lifecycle. A separate durable worker shares the private materials volume with the API. LangChain receives bounded source packets and owns answer generation; it never constructs embeddings or Qdrant clients in chat code. Read [RAG setup and contracts](./docs/rag.md) and [verification evidence](./docs/rag-verification.md).
+| Documentation | Scope |
+| --- | --- |
+| [Setup](docs/SETUP.md), [identity/PostgreSQL](docs/identity-and-postgresql.md) | Environment, migrations, native development and identity |
+| [Persistent chat](docs/persistent-chat.md), [context summaries](backend/app/chat/SUMMARIES.md) | Storage, synchronization, attachments and model context |
+| [History and memory](docs/history-management.md) | Exact history recovery and durable user memories |
+| [Chat assessments](docs/chat-assessments.md), [interactions](docs/chat-interactions.md) | Generation, local answers, submission and grading |
+| [Learning Progress](docs/learning-progress.md), [Events](docs/events.md), [Notifications](docs/notifications.md) | Understanding, agenda, capture and reminder delivery |
+| [Web search/research](docs/web-search.md), [voice](docs/voice-input.md) | Provider tools and CPU transcription |
+| [RAG](docs/rag.md), [Documents](backend/app/documents/README.md), [Vision](backend/app/vision/README.md) | Source processing and retrieval |
+| [LangChain](backend/app/langchain/README.md), [logging](docs/backend-logging.md) | Model/tool orchestration and diagnostics |
+| [Backend standards](backend/standards.md), [frontend standards](frontend/standards.md) | Contributor conventions |
 
-Switch compatible chat providers by changing `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY`. `EMBEDDING_MODEL` and `EMBEDDING_DEVICE` configure the independent local embedding service. The local embedding model is baked into the backend image; changing it requires an image rebuild and Qdrant reindex. Readiness verifies configuration, the local embedding model, and Qdrant without invoking the chat model. Qdrant connectivity is checked by readiness rather than liveness, so an outage does not prevent the backend health endpoint from responding.
-
-Chat renders user and assistant Markdown with shared Prism code blocks. Library sources reuse the same formatting, with extracted/original views, authenticated downloads and responsive Light/Dark styling. See [code rendering and visual evidence](./docs/code-rendering.md).
-
-## Persistence and identity
-
-Read [PostgreSQL and identity setup](./docs/identity-and-postgresql.md) for migrations, native Python setup, trusted external providers, and PostgreSQL tests. [Frontend authentication](./docs/frontend-auth.md) describes browser session configuration and end-to-end tests. Learner-owned data uses internal `learner_id` UUIDs; services and LangChain access it through repository-backed learner contracts.
-
-GitHub Actions can apply Alembic revisions to Supabase PostgreSQL on `main` pushes after the repository secret `SUPABASE_DATABASE_URL` is configured. See the [schema deployment instructions](./docs/identity-and-postgresql.md#deploying-schema-updates-from-github).
-
-Read [Student Profile and calibration](./docs/student-profile.md) for the separate high-level profile, API contracts, conservative adaptation, and the EduVerse provisioning request. Neither onboarding nor its AI evaluator writes granular concept mastery.
-
-## History, memory and Events
-
-[History management](docs/history-management.md) provides bounded conversation lookup and evidence-backed user memory. Memory admission and manual management use separate contracts from Events; their preferences do not control each other.
-
-The [Events backend foundation](docs/events.md) is composed as `HistoryManagement.events`. It stores one-off date-only or timed events, enforces owner/context isolation and revisioned writes, and retains one reminder ledger per event. A ledger records scheduling state; it does not deliver a notification. Event completion does not change learner mastery.
-
-AI event tools/admission, durable proposals, standalone Notifications, reminder delivery, and the Progress Events/Learning UI remain unimplemented. The LangGraph dependency/security gate is unresolved and production dependencies are unchanged. Follow the [Events implementation tracker](Mentra_Events_Implementation_Plan.md) for verified increments and remaining acceptance gates.
-
-The repository migration head is `20261009_0008`: Events foundation (`0007`) and additive reminder-ledger retention (`0008`) follow Library, persistent chat and memory revisions. Repository head does not prove that a deployed database has been upgraded.
-
-## Engineering standards
-
-Backend workflow tracing, terminal output, settings, and the one-connection recipe for new modules are documented in [backend logging](docs/backend-logging.md). Upgrade to migration `20261010_0014` before running the updated API or workers.
-
-- [Backend contributor standards](./backend/standards.md)
-- [Frontend contributor standards](./frontend/standards.md)
-- [Teammate setup guide](./docs/SETUP.md)
-
-The frontend shared API client is in `frontend/src/services/api.ts`. Backend errors use a consistent `{ "error": { "code": "...", "message": "..." } }` structure; validation errors may include field details.
+Implementation plans and dated verification reports preserve design/rollout
+history; they are not a current feature checklist or proof of the deployed state.
+Pinned dependencies live in `backend/requirements.txt` and frontend manifests.
 
 ## Verification
 
-The 2026-10-09 Events re-pass passed all **333 backend tests** in the rebuilt Python 3.12 image, **40 focused local tests**, and frontend build/theme checks. See [Events verification](docs/events.md#verification-and-deployment-boundary). These runs used disposable PostgreSQL resources and did not migrate or deploy the application; earlier browser/runtime reports retain their original scope and dates.
+Use an explicit, disposable `TEST_DATABASE_URL`; tests never fall back to the
+application database. Backend fixtures apply migrations in isolated schemas.
+See the setup guide for test commands and limitations of image-only test runs.
+Frontend checks include production build, `npm run check:theme`, and Playwright
+mock/real API configurations. Dated `*-verification.md` reports describe their
+original run and scope, rather than a continuously updated total test count.
 
-See the [full-stack verification report](./docs/student-profile-verification.md) for PostgreSQL tests, browser checks, Docker image/runtime checks, and external-provider limits. Build/start commands and migration diagnostics are in the [setup guide](./docs/SETUP.md).
+Combined service logs are available with:
+
+```sh
+docker compose logs -f backend rag-worker assessment-worker events-worker
+```
+
+Daily JSON diagnostics are persisted at `logs/backend/backend-YYYY-MM-DD.log`.
+`LOG_PARAMETER_DETAILS=false` disables detailed parameter shapes.

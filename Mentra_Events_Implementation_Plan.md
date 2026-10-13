@@ -1,5 +1,7 @@
 # Mentra Events Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 **Status:** Implementation started on 2026-10-09. The first Events backend increment (manual CRUD/lifecycle, preferences, temporal preview, owned persistence, receipts and sync) is implemented and verified in isolation. Full delivery is incomplete: safe graph dependency selection, automatic capture/confirmation, Notifications/worker and the Progress frontend remain open. See section 12 and `docs/events.md` for actual evidence and limits.
 
 **Scope:** A reusable events submodule inside history management, separate event storage and tools, automatic capture, durable LangGraph human confirmation, manual management in Progress, a standalone reusable Notifications module with in-app delivery, strictly one reminder per event, and a learner-backed Learning tab. This plan supplements the implemented memory module; it does not merge the two domains.

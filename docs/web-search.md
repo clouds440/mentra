@@ -1,10 +1,10 @@
 # Web search
 
-Mentra exposes one optional LLM tool: `web_search(query, website?)`. The backend connects directly to [You.com's hosted free MCP](https://you.com/docs/agents/mcp-server) at `https://api.you.com/mcp?profile=free&tools=you-search`. No You.com account, API key, OAuth or payment method is needed for this free profile. There is no paid fallback. You.com currently advertises 100 queries per day; its quota identity/reset semantics are not guaranteed by Mentra.
+Mentra exposes two optional LLM tools. Authenticated `web_research` is described below; ordinary search remains `web_search(query, website?)`. The backend connects directly to [You.com's hosted free MCP](https://you.com/docs/agents/mcp-server) at `https://api.you.com/mcp?profile=free&tools=you-search`. No You.com account, API key, OAuth or payment method is needed for this free profile. There is no paid fallback. The provider advertised 100 queries per day at the dated 2026-10-11 review; its quota identity/reset semantics are not guaranteed by Mentra.
 
 ## Configuration and enablement
 
-The supported backend runtime is Python 3.12 (the existing Docker image). The official SDK is pinned to `mcp==2.3.0`, with `httpx2==2.13.1` and compatible `sse-starlette==3.0.3`. The SDK requires the Uvicorn pin to move from 0.30.6 to 0.31.1; existing FastAPI and LangChain pins are retained. These dependencies resolved together and `pip check` passed in the actual backend runtime. The SDK's Python 3.14 dependency constraints differ; use Python 3.12 for native backend installation too.
+The supported backend runtime is Python 3.12 (the existing Docker image). The official SDK is pinned to `mcp==2.3.0`, with `httpx2==2.13.1` and compatible `sse-starlette==3.0.3`. Uvicorn is pinned to 0.31.1; current FastAPI/LangChain dependencies are recorded in `backend/requirements.txt`. These dependencies resolved together and `pip check` passed in the actual backend runtime. The SDK's Python 3.14 dependency constraints differ; use Python 3.12 for native backend installation too.
 
 Run the additive Alembic migration through `python -m app.db.migrate` before starting the backend. Configure:
 
@@ -59,7 +59,7 @@ Focused tests: `python -m unittest tests.test_web_search tests.test_web_search_p
 
 Final verification on 2026-10-11: 97 affected backend checks passed in Python 3.12 against dedicated PostgreSQL, including SDK contracts, cache expiry/capacity, quotas, migration round trips, canonical chat and recovery. The 507-test broad run found a service persistence import violating the architecture boundary and a historical Events migration snapshot including newly added tables; both were corrected and their checks included in the passing focused run. The two affected browser scenarios passed, including mobile citations, successful/failed favicon loading, canonical reload and repeated-query cache reuse. Production frontend build and theme checks passed. A final live keyless search negotiated MCP `2025-11-25` and returned five in-scope sources. Local rollout completed: rebuilt backend/frontend images, recreated all five application services, and enabled keyless search with Asia/Karachi temporal context and a 120-second cache. Startup applied revision `20261011_0017`; learner and chat-message counts remained unchanged (one each). All five services were running; backend and frontend were healthy and returned HTTP 200. The same 97 affected checks passed in the rebuilt production backend image, and `pip check` passed. The collapsed desktop account drawer was visually verified at 280px, with expanded/mobile drawers matching their capsule. Sidebar branding now uses capitalized Mentra and the empty-chat accent color.
 
-## Additional You.com capabilities (discussion only)
+## Additional You.com capabilities (dated review)
 
 Reviewed the [You.com onboarding guidance](https://you.com/SKILL.md), [API comparison](https://you.com/docs/choose-the-right-api), [MCP contract](https://you.com/docs/agents/mcp-server) and [pricing](https://us-west-2.you.com/pricing) on 2026-10-11. The onboarding document configures a developer's agent host; it does not need to be installed in order for Mentra's backend integration to work.
 
@@ -68,14 +68,14 @@ Reviewed the [You.com onboarding guidance](https://you.com/SKILL.md), [API compa
 | Search | Current external evidence that Mentra's own LLM explains and cites | Implemented through keyless free MCP |
 | Contents | Read a specific public article, documentation page or search source when snippets cannot support the answer | Most useful next addition; separate bounded URL-read capability |
 | Answer | A provider-written answer from one search pass | Optional benchmark; Mentra already owns tutoring and synthesis, so treat any returned answer as external evidence |
-| Research | Multi-source comparisons, literature surveys and explicitly requested research reports | Separate user-requested workflow with effort/cost limits and background execution for long tiers |
+| Research | Multi-source comparisons and requested research reports | Implemented as the separately configured bounded `web_research` tool below |
 | Finance Research | Financial coursework and sourced company/filing case studies | Add only for a concrete finance-learning requirement; no automatic personalized advice workflow |
 
-The free MCP profile includes search/discovery only, with 100 queries/day. An API key can authenticate the same MCP server using Bearer authorization; key authentication and MCP are compatible. Authenticated contents/research/finance require a profile and allowlist permitting those tools. There is no `you-answer` MCP tool; Answer uses REST. Current implementation deliberately strips credentials and fixes the free profile, so supplying a key alone does not enable authenticated usage.
+At the dated review, the free MCP profile exposed search/discovery and advertised 100 queries/day; Mentra maintains its own conservative configured quota. An API key can authenticate the same MCP server using Bearer authorization; key authentication and MCP are compatible. Authenticated contents/research/finance require a profile and allowlist permitting those tools. There is no `you-answer` MCP tool; Answer uses REST. Current implementation deliberately strips credentials and fixes the free profile, so supplying a key alone does not enable authenticated usage.
 
-Stay on free MCP for this initial module. For production capacity or Contents, introduce an explicitly configured authenticated provider mode behind the existing public facade, retaining cache/date/citation contracts. Keep the key in backend secrets, set spend/usage limits, and stop when credits are unavailable rather than silently purchasing more or changing modes. A fallback consuming account credits must be explicitly enabled.
+Ordinary search stays on free MCP. For production capacity or Contents, introduce an explicitly configured authenticated provider mode behind the existing public facade, retaining cache/date/citation contracts. Keep the key in backend secrets, set spend/usage limits, and stop when credits are unavailable rather than silently purchasing more or changing modes. A fallback consuming account credits must be explicitly enabled.
 
-Current public pricing advertises $100 signup credit (20,000 plain searches at $5/1,000), rather than the earlier $10 offer. An actual $10 account grant would cover approximately 2,000 plain searches. Verify the account's awarded balance and any grant terms in its dashboard; credits are a finite balance, not the recurring free MCP allowance. Contents, extraction and research consume that balance too. These additional capabilities and authenticated mode are proposed, not implemented or activated.
+Provider credit grants/prices are account-specific and can change; check the configured account before budgeting usage. Authenticated research is implemented separately below. Contents, Answer and Finance are possible extensions, not enabled capabilities in this module.
 
 ## Authenticated web research
 

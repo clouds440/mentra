@@ -53,10 +53,7 @@ lock. It commits nonblocking acquisition probes before waiting, avoiding snapsho
 deadlocks with concurrent index builds, and bounds acquisition to 300 seconds. Startup
 checks the Alembic revision and fails clearly if migrations are missing; it never creates
 tables. For subsequent changes, generate and review an Alembic revision, then upgrade.
-The repository head is `20261009_0008`: baseline learner/identity tables (`0001`),
-persistent standalone browser sessions (`0002`), separate profile/calibration
-(`0003`), Library/ingestion (`0004`), persistent conversations (`0005`), memory
-(`0006`), Events foundation (`0007`) and additive reminder-ledger retention (`0008`).
+The repository head is `20261013_0018`. Later revisions extend the original identity/profile/Library/chat/memory/Events foundations with proposals, notifications, assessment workflows, web search and private conversation summaries.
 Compare the actual database revision with this head before starting the API;
 repository migration files do not imply a database was already upgraded.
 The initial revision includes native UUIDs, UTC timestamps, JSONB, unique/check/foreign-key
@@ -121,9 +118,7 @@ Global concept registry/curation operations remain trusted administrative operat
 The frontend provides `/login` and `/register`, restores cookie sessions, guards existing
 workspace routes, and revokes sessions on sidebar sign-out. Mandatory high-level profile
 onboarding is enforced separately; calibration is optional. Conversations and turns
-are now persisted per account; see [persistent chat](persistent-chat.md). Manual
-Events APIs are implemented while the Progress UI remains a placeholder;
-granular learner API wiring and EduVerse's embedding/login UI are separate work. See
+are now persisted per account; see [persistent chat](persistent-chat.md). Events APIs, semantic chat capture, proposals, reminder delivery, Notifications and Learning Progress are implemented. EduVerse's external embedding/login UI remains a separate integration responsibility. See
 [Student Profile](student-profile.md) for signed EduVerse provisioning with an initial
 profile, which can satisfy the required information step directly.
 

@@ -1,5 +1,7 @@
 # Mentra Learner Model --- Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 **Status:** Learner Engine implemented and verified with synthetic end-to-end scenarios. Production accuracy remains unmeasured. External product workflows remain in their own implementation plans.\
 **Audience:** Human developers and AI coding agents\
 **Scope:** Learner Model / Learner Engine only\

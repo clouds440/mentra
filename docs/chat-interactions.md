@@ -40,18 +40,9 @@ dependencies. ChoiceCard supplies LLM-answer submission; MCQAssessment and
 AnswerSheet reuse the same controls. Backend app.interactions owns shared choice
 schemas and option-answer validation; chat-specific IDs/receipts stay in app.chat.
 
-MCQAssessment shows one question, progress, Back and Save & next. Each explicitly
-saved answer set goes through `PUT /assessments/attempts/{id}/draft`, with ownership,
-revision and option validation. Exact retries are idempotent. Refresh restores the
-saved answers and resumes at the first unanswered question. Unsaved control edits
-remain local until Submit selection or Save answer; the UI retains them on errors.
-The MCQ controls appear immediately in the generated message. Creating an interactive
-quiz atomically saves the same immutable questions/private key in the existing
-Assessments database, regardless of the auto-add setting for written drafts.
-The first answer save starts an idempotent attempt; rendering/reopening alone does
-not create attempts. Written worksheets retain their existing draft/add policy.
+MCQAssessment shows one question with progress, Back and immediate Next. Selections stay in owner/session memory until final Submit; advancing does not write the database. Refresh can discard an unsubmitted local draft. Final submission creates/reuses the durable attempt and atomically saves the complete answer set before queuing evaluation. Rendering/reopening alone does not create attempts. Interactive generation saves immutable questions/private keys in Assessments; written worksheets retain their draft/add policy.
 
-Finish uses the shared complete-submission API and durable worker. Correct-option
+The last action is Submit, with no redundant Finish Quiz button. It uses the shared complete-submission API and durable worker. Submitted answers remain visible while evaluation runs, and the composer displays the evaluating indicator. Correct-option
 IDs, model answers and rubrics remain private until feedback. The worker grades
 MCQ IDs deterministically against the private key; written questions retain their
 existing LLM grading. Typed and reviewed OCR answers may use exact option IDs (including letter IDs)

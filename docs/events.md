@@ -1,9 +1,6 @@
-# Events implementation: first backend increment
+# Events, capture and reminder delivery
 
-Implementation began on 2026-10-09. This increment provides manual event storage
-and authenticated APIs. Automatic extraction, proposals/LangGraph, Notifications,
-reminder delivery, and the Progress frontend are still unimplemented. A pending
-reminder ledger is a schedule record, not a delivered notification.
+Events provides owned schedules, manual APIs, semantic capture from chat, durable review proposals and in-app reminder delivery. The Progress Events tab exposes the agenda; Notifications owns the inbox. The dated verification section below records the original foundation rehearsal, rather than the current deployment status.
 
 ## Structure and integration
 
@@ -86,39 +83,22 @@ the database rejects rearming. A late-created upcoming event gets one immediate
 eligible schedule. Past events get a skipped schedule. Disabling reminders fences
 already due ledgers; re-enabling skips times missed while disabled even if no
 worker ran, preserving future due schedules. An ordinary title edit cannot revive
-a skipped reminder. Global notification preferences and publication will be added
-by the separate Notifications module, not inferred from this event preference.
+a skipped reminder. Global inbox publication preferences are enforced by the separate Notifications module, independently of event capture/reminder preferences.
 
 Capacity is 1,000 saved events per owner, with explicit `CAPACITY` errors. Manual
-capture is independent of the automatic-event switch. Automatic enforcement will
-be implemented with the event tools; this increment does not claim AI capture.
+capture is independent of the automatic-event switch. Automatic capture and writes enforce the account's automatic-event preference and ownership checks.
 
-## Dependency gate discovered during rehearsal
+## Chat capture and confirmation
 
-The real backend image runs Python 3.12 with `langchain-core==0.3.86` and
-`langchain-openai==0.3.35`. In disposable containers:
+Persistent chat examines first-party announcements before generating its answer. Complete, unambiguous events can be auto-saved; missing/conflicting details and DST ambiguity remain review proposals. Capture uses the account timezone, or validated browser timezone when needed, never an invented host timezone. Date-plus-clock extraction is normalized before admission. Project/presentation events use the supported `other` kind with a descriptive title.
 
-1. `langgraph==0.6.11` / saver `2.0.25` resolves without upgrading those packages,
-   but selects checkpoint `2.1.2`.
-2. `langgraph==0.6.11` / checkpoint `3.0.1` / saver `3.0.4` installs and has
-   `delete_thread`, but its serializer lacks `allowed_msgpack_modules` hardening.
-3. Patched `langgraph==1.0.10` / saver `3.0.4` cannot resolve with the current
-   LangChain/provider pins: its prebuilt package requires core 1.x while the
-   provider requires core below 1.0.
+An announcement does not authorize an unsolicited practice assessment. Explicit requests for practice remain available through assessment tools. Retries recover prior capture outcomes instead of duplicating events. Automatic capture is on by default, can be disabled, and is bounded to three events and 25 seconds per turn.
 
-The [upstream checkpoint advisory](https://github.com/langchain-ai/langgraph/security/advisories/GHSA-g48c-2wqr-h844)
-identifies affected graph releases through 1.0.9 and describes strict serializer
-controls. The [prebuilt 1.0.8 metadata](https://pypi.org/pypi/langgraph-prebuilt/1.0.8/json)
-declares core 1.x. Neither an unsafe old candidate nor an untested framework
-upgrade was added to production requirements. Phase 0 remains open; the graph
-adapter, durable interruption/restart/resume and saver cleanup rehearsal still
-need a safe compatible selection or an explicitly documented framework migration.
+`/api/v1/event-proposals` supports owned listing (optionally by conversation), detail reads and revision-fenced `POST /{id}/decisions` approval/dismissal. Confirmation uses the minimal LangGraph interrupt/resume adapter and PostgreSQL checkpointer; Events remains the authority for proposals and saved events. Checkpoint schema is owned by migrations. Runtime pins live in `backend/requirements.txt`; the earlier incompatible dependency rehearsal is historical, not an open runtime gate.
 
-`backend/testing/event_dependencies.py` is a reproducible **disposable-container**
-rehearsal, guarded by `MENTRA_DISPOSABLE_REHEARSAL=1`. It installs candidates only
-in that container and refuses to proceed without strict serializer support. It
-must never run during application startup. Graph runtime/cleanup assertions have
-not passed and are not claimed as implemented behavior.
+## Reminder publication
+
+`events-worker` processes due schedules. Inbox publication and the lifetime ledger outcome commit together: successful publications mark delivery and save a receipt; disabled publication is skipped. Notifications preferences are independent of automatic event capture. There is no email/push delivery contract. See [Notifications](notifications.md).
 
 ## Verification and deployment boundary
 
@@ -171,7 +151,4 @@ session advisory lock without blocking, commits failed probes before waiting,
 and times out after 300 seconds. Tests cover competing fresh schemas and timeout
 cleanup; the migration lock identity and existing schema revisions are preserved.
 
-Remaining rollout work: AI admission/tools, safe durable confirmation, generic
-Notifications, event reminder producer/worker, complete Events/Learning UI, chat
-references/proposals, account purge/retention/performance gates and deployed
-end-to-end/browser verification. The original plan remains the delivery contract.
+The verification counts above describe the dated foundation increment. They do not establish current deployment or exhaust later capture/proposal/worker/UI behavior. Current contracts are described above and in linked operational docs; the [historical implementation plan](../Mentra_Events_Implementation_Plan.md) preserves the original rollout record.

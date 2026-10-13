@@ -1,5 +1,7 @@
 # Mentra History Management and User Memory Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 **Status:** Implemented and verified on 2026-10-08; both Docker images rebuilt. Application database deployment was not performed.  
 **Codebase inspection date:** 2026-10-08.  
 **Scope:** A standalone history-management module, two LLM tool families, evidence-backed persistent user memory, Settings UI, complete chat integration, verification, and Docker image builds.

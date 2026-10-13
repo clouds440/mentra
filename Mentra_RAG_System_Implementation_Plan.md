@@ -1,5 +1,7 @@
 # Mentra RAG System Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 **Status:** End-to-end baseline implemented in the working tree; isolated verification recorded in `docs/rag-verification.md`. Application rollout is not performed.
 **Reviewed:** 2026-10-08 against the current repository and primary upstream documentation.
 **Scope:** End-to-end learner-owned study materials: ingestion, retrieval, provenance, lifecycle, evaluation, authenticated APIs, and fully wired Library/chat frontend workflows.

@@ -24,7 +24,7 @@ These standards describe the current Python and FastAPI codebase. Update them wh
 - Web result caching is owner-scoped, short-lived and globally capacity/size bounded in operational persistence. Cache hits preserve original retrieval/source dates and never consume search admission. Repository failures cross the facade through a domain error, without persistence-library imports in services.
 - `history_management/`: on-demand history and user memory, with the separate provider-independent `events/` domain and `repositories/events/` persistence adapter. Compose services in the factory; keep memory, Events and learner authority independent.
 
-LangChain may consume RAG capabilities, but RAG should not become inseparably coupled to LangChain. The expected future existence of learner modeling, assessments, OCR, document processing, embeddings, vector retrieval, LLM providers, and adaptive learning justifies clean boundaries—not empty abstraction layers or fake implementations today.
+LangChain may consume RAG capabilities, but RAG should not become inseparably coupled to LangChain. Learner modeling, assessments, OCR, document processing, embeddings and LLM providers are implemented domain capabilities. Preserve their public boundaries instead of adding parallel persistence or orchestration shortcuts.
 
 Chat models are constructed through the Mentra model factory in `langchain/`; compatible providers are configured through environment variables, not hard-coded SDK clients in callers. Embedding inference and Qdrant access belong in `rag/` and remain independent of chat configuration. Local embedding model files must be baked into the backend image, and vector collections must track/validate the embedding model identity as well as vector configuration.
 
@@ -81,7 +81,7 @@ Run affected tests against dedicated PostgreSQL and rehearse upgrade/downgrade/r
 
 > Do not add a dependency for something that can be implemented clearly and safely in a few lines, but also do not reimplement complex, security-sensitive, or well-solved infrastructure merely to avoid a dependency. Every dependency should have a reason to exist.
 
-Resolve new graph/checkpoint dependencies against the existing LangChain/provider pins in a disposable actual-runtime image. Require serializer hardening and durable restart/resume/cleanup evidence before adopting a saver. `testing/event_dependencies.py` is disposable-only and must never run on application startup. The Events graph gate remains open; see [rehearsal evidence](../docs/events.md#dependency-gate-discovered-during-rehearsal).
+Resolve new graph/checkpoint dependencies against the existing LangChain/provider pins in a disposable actual-runtime image. Require serializer hardening and durable restart/resume/cleanup evidence before adopting a saver. `testing/event_dependencies.py` is disposable-only and must never run on application startup. The Events confirmation adapter now uses the pinned LangGraph/PostgreSQL checkpointer with explicit serializer configuration and migration-owned schema; see [current Events contracts](../docs/events.md#chat-capture-and-confirmation).
 
 ## Events contracts
 
@@ -89,7 +89,7 @@ Resolve new graph/checkpoint dependencies against the existing LangChain/provide
 - Preserve explicit IANA zones and date-only versus aware-instant modes. Normalize instant comparisons to UTC, including DST folds; never use host timezone aliases or turn a date-only value into a browser-local midnight. Keep preview and saved reminder eligibility consistent; reject gaps/skipped dates and expose fold choices.
 - Manual mutations use request UUID/payload receipts and expected revisions. Recover committed or deleted outcomes before revalidating mutable dependencies; retries must not resurrect deleted events. Preserve owned composite FKs as the transactional fence.
 - One event has one lifetime reminder ledger. Unrelated edits preserve its due instant; explicit scheduling edits can update an undelivered schedule. Reopen skips missed reminders and only rearms future undelivered ones. Delivered outcomes are immutable; direct ledger deletion is prohibited while the event exists. Parent deletion owns the purge.
-- Source-chat deletion detaches evidence transactionally and retains saved events. A pending ledger is not delivery evidence; AI proposals, Notifications and worker delivery remain future implementation scope. See [Events contracts](../docs/events.md) and the [delivery plan](../Mentra_Events_Implementation_Plan.md).
+- Source-chat deletion detaches evidence transactionally and retains saved events. A pending ledger is not delivery evidence; AI proposals and worker publication use separate Events and Notifications contracts; delivery is recorded transactionally with the ledger outcome. See [Events contracts](../docs/events.md) and the [delivery plan](../Mentra_Events_Implementation_Plan.md).
 
 ## Learner Engine
 

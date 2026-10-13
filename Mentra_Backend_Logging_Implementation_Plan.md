@@ -1,5 +1,7 @@
 # Backend workflow logging implementation plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 Status: implemented and verified, October 10, 2026. Runtime logging and module connections are implemented. Verification used isolated PostgreSQL and mocked providers; the application database has not been migrated or deployed.
 
 Daily-file extension: API and workers now append JSON records to a shared `logs/backend/backend-YYYY-MM-DD.log` for each UTC day. Compose bind-mounts the host directory; OS locking protects complete records across processes and containers. Files remain until explicitly archived/deleted. File errors produce throttled structured terminal warnings and are retried without failing business operations. Four file-specific tests passed on Windows; all 22 file/workflow logging tests passed in Python 3.12 Docker. Two independent containers wrote 200 intact, unique large records into one shared host file. These changes require a rebuild/recreation before they run in existing containers.

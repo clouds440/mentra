@@ -24,4 +24,4 @@ New modules outside this list work through `connect_module()` without editing th
 
 Generated examples and the local benchmark are in [logging examples](logging-examples/). The benchmark compares the same bounded nested mock workflow with a no-op sink and JSON formatting to memory. It excludes real terminal backpressure, DB/provider latency and external services. The implementation keeps synchronous output; it does not claim bounded latency from a slow terminal.
 
-Application deployment and application database migration are separate from isolated verification. The source requires schema revision `20261010_0014` before startup.
+Application deployment and application database migration are separate from isolated verification. Correlation storage was introduced at `20261010_0014`; current source requires the complete migration chain through `20261013_0018` before startup.

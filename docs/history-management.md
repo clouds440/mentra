@@ -1,11 +1,8 @@
 # History management and user memory
 
-The standalone `app.history_management` module provides on-demand conversation retrieval and evidence-backed persistent user memory. Canonical transcripts remain in `app.chat`; there is no second transcript or growing injected user summary.
+The standalone `app.history_management` module provides on-demand conversation retrieval and evidence-backed persistent user memory. Canonical transcripts remain in `app.chat`; there is no second transcript. Chat owns separate private rolling summaries for prompt compaction; these are not evidence-backed user memories.
 
-It also composes the separate manual Events service as `HistoryManagement.events`.
-Events owns its contracts, preferences and PostgreSQL adapter; memory tools do not
-write events. See [Events foundation and rollout boundary](events.md). The current
-Progress page remains a placeholder and no reminder-delivery worker is implemented.
+It also composes Events as `HistoryManagement.events`. Events owns schedules/proposals and its PostgreSQL adapter; memory tools do not write events. The Progress UI provides Learning and Events tabs, and the Events worker publishes into independent Notifications. See [Events](events.md) and [Notifications](notifications.md).
 
 ## User interface
 
@@ -19,7 +16,7 @@ History citations use `H` tokens, memory citations use `M` tokens, and Library c
 
 ## Tools and boundaries
 
-`history_lookup` accepts current/selected/all-chat scope, keywords, a maximum of three windows, optional timezone-aware date bounds, and current-chat sequence pagination. Cross-chat searches require keywords. Source messages retain roles, timestamps and exchange status, including failed questions. Candidates use PostgreSQL full-text search with indexed trigram fallback and a two-second per-statement database timeout for broad terms. Expansion takes one additional read query and avoids messages already available to the model.
+`history_lookup` additionally supports exact current-chat `message_id` retrieval and `content_offset` continuation. Ownership, deletion and future-sequence fences apply; partially delivered originals remain recoverable. Summaries never authorize evidence writes. It accepts current/selected/all-chat scope, keywords, a maximum of three windows, optional timezone-aware date bounds, and current-chat sequence pagination. Cross-chat searches require keywords. Source messages retain roles, timestamps and exchange status, including failed questions. Candidates use PostgreSQL full-text search with indexed trigram fallback and a two-second per-statement database timeout for broad terms. Expansion takes one additional read query and avoids messages already available to the model.
 
 `user_memory` supports keyword recall and evidence-backed remember/revise proposals. Recall returns at most five active, unexpired facts plus relevant current profile fields through the profile facade. The model cannot select the owner. Writes accept only exact spans from owned user messages visible to that session or returned by its history tool. Assistant messages, documents and arbitrary unseen IDs cannot become personal evidence.
 
@@ -31,9 +28,9 @@ The public contracts import without SQLAlchemy or LangChain. The factory compose
 
 ## Durable execution and budgets
 
-Persistent generation passes the canonical current user-message ID, turn ID, attempt and visible message IDs. The model/tool loop preserves complete AIMessage/ToolMessage groups and is bounded to six calls, two write proposals and five model invocations. Tool execution is serialized to preserve admission order and deterministic reference/budget handling. Reads themselves batch window expansion; repeated queries reuse turn-local results. Library retrieval runs once per turn.
+Persistent generation passes canonical user-message/turn IDs, attempt and visible message IDs. Complete AIMessage/ToolMessage groups are preserved; admission remains ordered while independent read tools can run concurrently. Default main-loop limits are six tool calls, two writes and five model invocations; the retrieval allowance is bounded separately. Conservative same-turn caching reuses equivalent reads without bypassing current authorization or source revisions.
 
-History is trimmed once after system instructions, tool schemas, current Library context and output capacity are known. Prompt accounting uses the existing local approximate strategy plus explicit protocol/result reserves. It is not an exact tokenizer guarantee for arbitrary compatible providers; configure the actual context window. Tool results use a conservative cumulative 3000 UTF-8-byte ceiling, with lower per-result content limits. Complete tool groups are retained, and the configured output reserve is also enforced as the provider's `max_tokens`.
+Tool packets default to a shared 3,200-token/12,800-byte ceiling. RAG-planned turns allow eight calls and 4,800 tokens/19,200 bytes for targeted refinements; admission still reduces these allowances to fit the selected total input limit. RAG prefetch warms private cache entries and injects no passages unless retrieval is requested. Chat answering uses 8,192 input tokens, a bounded 12,288-token recovery allowance, 1,800 recent-history tokens and separate private summaries. Assessment workflows retain their 16k limit. The offline counter avoids request-time downloads, and output reserve is enforced as provider `max_tokens`. See [summary policy](../backend/app/chat/SUMMARIES.md) and [cache policy](Tool_Cache_Policy.md).
 
 Writes hold no locks during model verification. Database mutations share chat's owner lock, fence running turn attempts and leases, and record content-free operation receipts. The receipt key derives from turn ID and normalized proposal, not provider call ID. A retry cannot duplicate a saved operation or re-run its verifier unnecessarily. Manual saves have a separate request UUID and payload fingerprint. Expected revisions fence manual edits and conflict resolution. Final assistant publication rechecks owned memory revisions and source-chat existence under the same lock; changed/deleted references produce a retry message instead of publishing obsolete tool-backed claims.
 
@@ -66,7 +63,7 @@ Current maintenance retention is 90 days for untouched candidates/receipts. No a
 | `MEMORY_FACT_DAYS` | 180 |
 | `MEMORY_PREFERENCE_DAYS` | 365 |
 
-Explicit evidence-backed deadlines can shorten automatic freshness; manual confirmation can clear an expiry. Access does not refresh confirmation. Existing `CHAT_HISTORY_TOKEN_BUDGET`, `CHAT_CONTEXT_WINDOW_TOKENS`, and `CHAT_OUTPUT_TOKEN_RESERVE` remain the prompt controls.
+Explicit evidence-backed deadlines can shorten automatic freshness; manual confirmation can clear an expiry. Access does not refresh confirmation. Chat input, recovery, recent history and summary controls are documented in [persistent chat](persistent-chat.md); assessment context remains separately bounded.
 
 Automatic freshness is measured from the supporting user statement's timestamp, not the day an old statement is retrieved. Already expired AI proposals are rejected. A new explicit statement can reaffirm the same AI-origin fact, while inferred candidates still require manual confirmation. A manual correction refreshes applicability unless an explicit expiry is supplied, and retires the old claim/source hashes so an AI retry cannot recreate the outdated assertion. Manual entry of an existing pending statement confirms it as a user assertion; entry of a conflicting statement still requires review.
 

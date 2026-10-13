@@ -1,5 +1,7 @@
 # Mentra Web Search Module Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 Status: implemented and verified on 2026-10-11, including bounded cross-turn caching, dated evidence, clickable citations, favicons and visible search activity. Local images were rebuilt, all five application services recreated, revision `20261011_0017` applied and keyless search enabled with a 120-second cache. Current runtime decisions and verification are recorded in [web-search.md](docs/web-search.md). The implementation amendments below supersede older assumptions in this specification.
 
 Prepared and reviewed: 2026-10-11. Provider: You.com hosted free MCP. Initial public capability: `web_search(query, website?)`.

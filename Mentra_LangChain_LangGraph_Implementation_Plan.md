@@ -1,5 +1,7 @@
 # Mentra LangChain + LangGraph Module — Full Implementation Plan
 
+> Status note (2026-10-13): This is a historical architecture/rollout plan. Original checklists and dated verification describe their original increments, not the current feature state. Use [README](README.md) and its linked operational docs for implemented behavior; repository source is authoritative.
+
 **Status:** Implementation resumed at the user's request on 2026-10-09. The live tracker distinguishes wired code, verified checks and remaining scope. End-to-end completion has not been achieved.
 **Audience:** Human developers and AI coding agents
 **Scope:** LangChain + LangGraph orchestration module

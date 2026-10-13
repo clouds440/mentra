@@ -41,11 +41,18 @@ All routes below are under `/api/v1`, require an authenticated onboarded identit
 | `GET /rag/chunks/{id}` | Owned canonical published passage with source/lifecycle checks. |
 | `GET /documents/{id}/versions/{version}/source` | Private authenticated original download, without cacheable public URLs. |
 | `GET .../chunks` | Paginated canonical source passages; optional exact generation binds old citations. |
-| `POST /chat` | Existing role/content chat plus source selection; returns sources, allowlisted citations, retrieval status/warning and effective scope. |
+| `POST /chat` | Deprecated stateless compatibility endpoint with role/content and source selection; persistent clients use `/conversations/turns`. |
 
 `STANDARD` delegates relevance to Learner, including intentionally query-matched dormant knowledge. `SOURCE_SPECIFIC` and `CROSS_CONTEXT` validate every requested identity and never broaden an empty selection. Archived use requires explicit consent plus a document/context scope. `CONCEPT_FOCUSED` searches canonical tags; untagged material is not implicitly excluded in ordinary chat. Context reassignment takes effect immediately because Qdrant is filtered by exact authoritative active generation IDs, rather than relying on stale context payloads.
 
 The internal `search_assessment` contract takes server-approved study document IDs and reuses these checks. It is not an ordinary HTTP/chat mode and does not invent an assessment workflow. `create_rag_tools` binds identity/selection/consent in server orchestration; models can request passages but cannot choose an owner or expand their source scope. Chunk tools only resolve passages returned within that workflow and recheck lifecycle on access.
+
+Persistent chat may prefetch to warm the revision-aware candidate cache. Passages,
+citations and prefetch failures remain private until the agent requests
+`search_study_material`; delivery rechecks current ownership and source eligibility.
+General questions can answer directly without retrieval. Selected study materials
+clear after one successful response. Optional failures go to the agent rather
+than a deterministic Response limitations banner. See [cache policy](Tool_Cache_Policy.md).
 
 Dense candidates and PostgreSQL full-text candidates share the same owner/generation scope and use deterministic RRF. Full-text ranking is not BM25. Canonical hydration and a final policy recheck establish eligibility. Whole chunks are packed under a tokenizer budget with duplicate/per-document limits. Source markers such as `[[S1]]` become buttons only when allowlisted by the server. Consulted sources remain distinct from cited claims; returned passages alone do not prove answer support.
 

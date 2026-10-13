@@ -1,5 +1,11 @@
 # Assessments through chat
 
+## Interactive submission and code
+
+Choices remain in owner/session memory while moving between questions; only final Submit saves the answer set and queues evaluation. No separate Finish Quiz action is needed. Submitted answers stay visible during evaluation, with status in the composer.
+
+Generation instructions require fenced Markdown code blocks (with a language when known) in questions/answers containing code. Shared Markdown and Prism components render these fields, including result cards; raw executable HTML is never accepted.
+
 ## Restoring interactive results
 
 Answers and grades remain in owner-scoped assessment attempts linked to their
@@ -7,8 +13,7 @@ assessment ID. Chat cards read fresh attempt history when reopened. Generic
 cards restore the latest meaningful attempt; an unused empty retry does not hide
 saved results. Explicit attempt cards keep their historical association, and an
 intentional retry can remain active in the current owner session. No grade copy
-is written into chat messages. “View in assessments” belongs to the card title
-row, separate from Back, Next, Submit and correction controls.
+is written into chat messages. Result actions, including View in assessments, use compact buttons in one wrapping footer row. Question/answer/feedback blocks stay readable without excessive padding.
 
 Students can request a quiz or mock paper in a normal conversation. The
 `assessment_generate` tool creates a chat-scoped draft and returns a public card.

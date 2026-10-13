@@ -34,9 +34,9 @@ The supported settings in `.env.example` are:
 | `BACKEND_PORT` | `8000` | Backend listener and published host port |
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | Primary allowed browser origin |
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins |
-| `DATABASE_URL` | `postgresql://mentra:mentra_local@postgres:5432/mentra` | Standard PostgreSQL connection URL; use `127.0.0.1` for native Python |
+| `DATABASE_URL` | *(required)* | Complete hosted PostgreSQL URL, including SSL options; optional local-db profile described below |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | See `.env.example` | Local Compose PostgreSQL settings |
-| `AUTH_SESSION_SECONDS` | `3600` | Standalone bearer session lifetime |
+| `AUTH_SESSION_SECONDS` | `3600` | Native bearer session lifetime; standalone browser cookie sessions persist without this server expiry |
 | `AUTH_COOKIE_SECURE` | `false` | Require HTTPS for the session cookie; automatically enabled outside development/test |
 | `AUTH_COOKIE_SAME_SITE` | `lax` | Cookie SameSite policy: `lax`, `strict`, or `none` (HTTPS required for `none`) |
 | `AUTH_EXTERNAL_PROVIDERS` | `{}` | JSON map of trusted issuers, audiences, public keys, and subject claims |
@@ -58,7 +58,7 @@ The supported settings in `.env.example` are:
 
 The frontend port is currently fixed at host port `5173` (container port `80`). If you change `BACKEND_PORT`, also update `VITE_API_URL` and the CORS origins to match the ports/origin you use.
 
-To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY` to the compatible provider's values. DeepSeek and Groq use this same adapter; no application-code change is required. AI configuration is validated at startup, without making a model request. Qdrant is connected and its collection is initialized or validated by the readiness check, so a Qdrant outage does not prevent the lightweight liveness endpoint from responding.
+To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY` to the compatible provider's values. DeepSeek and Groq use this same adapter; no application-code change is required. AI configuration is validated when a model is requested and reported by readiness, without a paid readiness request. Missing credentials do not prevent lightweight API startup. Qdrant is connected and its collection is initialized or validated by the readiness check, so a Qdrant outage does not prevent the lightweight liveness endpoint from responding.
 
 Embeddings are independent of the chat provider. `BAAI/bge-small-en-v1.5` runs locally in the backend container; it is downloaded while building the image, uses CPU by default, and does not call an external embedding API. Changing `EMBEDDING_MODEL` requires rebuilding the backend image and reindexing the Qdrant collection. Mentra checks the collection's dimension, distance metric, model, and resolved model revision; it will not recreate or mix incompatible indexes.
 
@@ -70,7 +70,7 @@ From the repository root:
 docker compose up --build -d --wait --wait-timeout 180
 ```
 
-Compose starts `postgres`, `backend`, `rag-worker`, and `frontend`. PostgreSQL must become healthy before backend migrations run; startup checks the migrated revision. The RAG worker uses the backend image and shares its private materials volume. The backend container is `mentra-backend`; the frontend container is `mentra-frontend`. The frontend waits for the backend health check before starting.
+Compose starts `backend`, `frontend`, `rag-worker`, `assessment-worker` and `events-worker`. Workers use the backend image; the RAG worker shares its private materials volume. Startup applies migrations and checks the schema revision against the configured PostgreSQL database. Local PostgreSQL is opt-in: run `docker compose --profile local-db up -d postgres` and explicitly set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra` for containers. The frontend waits for backend liveness.
 
 ## 5. Verify the app
 
@@ -87,11 +87,7 @@ Guests are redirected to `/login`. Create an account at `/register` using only a
 
 Chat requests use the configured AI endpoint. Account-owned conversations and messages are persisted in PostgreSQL by migration `20261008_0005`; the browser caches individual records in IndexedDB and synchronizes changes. RAG material uploads, document readers, and Vision are available. See [persistent chat](persistent-chat.md), [RAG](rag.md), [Student Profile setup](student-profile.md), and [frontend authentication](frontend-auth.md).
 
-Manual Events APIs are available under `/api/v1/events` after upgrading the backend.
-Memory management is available in `/settings?tab=memories`. Progress remains a
-placeholder; AI event tools, proposals, Notifications and reminder delivery are
-unimplemented. See [history/memory](history-management.md), [Events contracts and
-verification](events.md) and the [remaining delivery plan](../Mentra_Events_Implementation_Plan.md).
+Events are available in `/progress?tab=events`, with manual APIs, upfront semantic chat capture and durable proposals. Learning Progress and Assessments are implemented; `/notifications` exposes the independent inbox populated by the Events worker. Memory management lives in `/settings?tab=memories`. See [Events](events.md), [Notifications](notifications.md), [Learning Progress](learning-progress.md) and [history/memory](history-management.md).
 
 ## 6. Update Docker images
 
@@ -111,7 +107,7 @@ docker compose up -d --force-recreate --wait --wait-timeout 180
 docker compose ps
 ```
 
-PostgreSQL uses the `mentra_postgres` named volume. `docker compose down` preserves it; `docker compose down -v` deletes it.
+The optional local-db profile uses the `mentra_postgres` named volume; hosted PostgreSQL remains outside Compose. `docker compose down` preserves it; `docker compose down -v` deletes it.
 
 An image rebuild alone does not update an existing container. The `up` command recreates
 containers when their image/configuration changes and applies Alembic migrations before
@@ -127,16 +123,22 @@ docker compose exec backend python -m alembic -c /app/alembic.ini check
 docker compose exec backend python -m pip check
 ```
 
-The repository migration head is `20261009_0008`: Library (`0004`), persistent chat
-(`0005`), memory (`0006`), Events foundation (`0007`) and reminder-ledger retention
-(`0008`) follow the identity/profile revisions. Check `current` against repository
-head; documentation alone does not establish the deployed revision. Migrations
+The repository migration head is `20261013_0018`, including proposals, notifications, assessments, web search and conversation summaries after the original identity/Library/chat/memory/Events foundations. Check `current` against repository head; documentation alone does not establish the deployed revision. Migrations
 must preserve existing non-feature records; rehearse upgrade/downgrade on a
 dedicated test database before release. API liveness and AI configuration checks
 do not prove the paid provider can generate a response. Insufficient provider balance
 leaves completed calibration answers saved, estimates unknown, and evaluation retry
 available in Settings. See the [verification report](student-profile-verification.md)
 and [profile contracts](student-profile.md) for testing and supported integration behavior.
+
+## Chat and optional capability settings
+
+- Chat input: `CHAT_INPUT_TOKENS=8192`, `CHAT_RECOVERY_INPUT_TOKENS=12288`, `CHAT_HISTORY_TOKEN_BUDGET=1800`, `CHAT_OUTPUT_TOKEN_RESERVE=2048`. Assessment workflows retain their separate 16k context. `CHAT_SUMMARY_ENABLED=true` enables incremental database-backed summaries; see [context compaction](../backend/app/chat/SUMMARIES.md).
+- Vision requires a model/endpoint that accepts images. Chat sends up to three images with the question; CPU OCR provides fallback extraction. CPU voice settings and image-baked weights are described in [voice input](voice-input.md).
+- Enable keyless search with `WEB_SEARCH_ENABLED=true`. `YOU_WEB_SEARCH_API_KEY` separately enables authenticated research, which can consume credits; it never authenticates ordinary free MCP search. See [web tools](web-search.md).
+- `LOG_PARAMETER_DETAILS=true` records bounded parameter shapes, presence and timing, not payload values. Daily files live in `logs/backend`; see [logging](backend-logging.md).
+
+`.env.example` and `app.core.config.Settings` are the complete configuration references. Provider secrets belong only in backend settings, never `VITE_*` variables.
 
 ## Troubleshooting
 
@@ -145,8 +147,7 @@ lock and waits at most 300 seconds. A timeout means another migration runner may
 still own the lock; inspect its status before retrying. Use a session-capable
 PostgreSQL connection, not a transaction pooler. Never print connection URLs or
 credentials into shared logs. Tests require a separate explicit `TEST_DATABASE_URL`
-and temporary schemas, never the application's database. The latest Events tests
-verified an isolated image/database; no application migration was applied by that run.
+and temporary schemas, never the application's database. Dated verification reports describe their own isolated resources, not the current deployed schema or service status.
 
 - **Docker connection error:** Start Docker Desktop or the Docker Engine, then retry `docker compose up --build`.
 - **Port already in use:** Free ports `5173` and `8000`. If changing the backend port, update `BACKEND_PORT`, `VITE_API_URL`, and the CORS origins in `.env`, then rebuild.

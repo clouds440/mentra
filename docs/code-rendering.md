@@ -10,7 +10,14 @@ The Library source viewer uses the same renderer, with extracted/original contro
 
 Chunker identity is now `block-token-v2` because new chunks retain language metadata. Existing published generations and citations remain usable; filename metadata provides highlighting for old coding-file chunks. Jobs captured under the old configuration require a new reindex generation. No database migration is required because spans already use JSON storage.
 
-## Verification
+Assessment question/answer fields use the same Markdown/Prism renderer; generation
+prompts require fenced code blocks when they contain code. Code blocks allow
+scrolling to continue into chat when their own vertical range is exhausted.
+Assistant answers reveal from top to bottom after rich rendering, rather than
+flashing raw Markdown first. The response-level copy action produces plain text;
+the code toolbar continues to copy exact source.
+
+## Verification (original renderer rollout)
 
 The full backend suite passed 231 tests; workflow checks verify source filename/media and language metadata. Processing checks retain exact content, offsets and languages across chunk splits. The complete Chromium suite passed 30 checks against production-built assets, including auth/profile regressions, RAG workflows and code rendering. Code tests exercise user/assistant TSX/Python, mobile long lines, unknown-language safety, clipboard copy, original-fetch reuse, HTML JavaScript/CSS, Markdown documents and continuous split code. Theme checks and TypeScript/Vite production builds passed. Docker backend/frontend images were rebuilt; application services were not restarted.
 

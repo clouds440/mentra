@@ -47,3 +47,13 @@ their retrieval time and receive a fresh current clock. Historical W markers are
 renamed only in prompt projections. `web_search` is a versioned prompt fragment.
 Validated website origins supply activity badges and optional favicons. See
 [web search](../../../docs/web-search.md).
+
+Authenticated `web_research` is a separate bounded tool enabled by the backend's
+`YOU_WEB_SEARCH_API_KEY`; ordinary search keeps its keyless free MCP transport.
+Private chat summaries and answering budgets are documented in
+[context compaction](../chat/SUMMARIES.md). Upfront semantic event capture uses
+the Events facade before answering; it does not authorize unsolicited practice.
+
+Model/tool calls participate in correlated metadata-only traces. Logs record
+timing, parameter presence/types/counts and sanitized outcomes, not query or
+response bodies. See [logging](../../../docs/backend-logging.md).
