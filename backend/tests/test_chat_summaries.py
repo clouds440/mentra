@@ -72,6 +72,93 @@ class SummaryTests(unittest.TestCase):
         asyncio.run(ConversationSummaries(self.chats, llm).refresh(self.owner, cid))
         llm.ainvoke.assert_not_called()
 
+    def test_long_chat_of_short_messages_compacts_actual_oldest_backlog(self):
+        cid, _ = self.conversation(500, 'ok')
+        llm = AsyncMock()
+        llm.ainvoke.return_value = AIMessage(content='A compact history of completed exchanges.')
+        service = ConversationSummaries(self.chats, llm)
+        asyncio.run(service.refresh(self.owner, cid))
+        llm.ainvoke.assert_called_once()
+        messages = llm.ainvoke.call_args.args[1]['messages']
+        self.assertEqual(messages[0]['sequence'], 1)
+        self.assertLess(messages[-1]['sequence'], 1000)
+        self.assertEqual(messages[-1]['role'], 'assistant')
+
+    def test_summary_read_failure_is_optional_but_owner_failure_is_not(self):
+        cid, _ = self.conversation()
+        service = ConversationSummaries(self.chats, AsyncMock())
+        service.repository.load = lambda *args: (_ for _ in ()).throw(RuntimeError('offline'))
+        self.assertIsNone(asyncio.run(service.load(self.owner, cid)))
+        service.repository.load = lambda *args: (_ for _ in ()).throw(AppError('CHAT_NOT_FOUND', 'Unavailable', 404))
+        with self.assertRaises(AppError):
+            asyncio.run(service.load(self.owner, cid))
+
+    def test_stopped_response_does_not_launch_summary(self):
+        from app.chat.service import ConversationService
+        request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='Explain a concept')
+        async def run():
+            service = ConversationService(self.chats, summary_llm=AsyncMock())
+            service.summaries.refresh = AsyncMock()
+            async def generate(history, selection, scope):
+                self.chats.stop_turn(self.owner, scope['conversation_id'], scope['turn_id'], scope['attempt'])
+                return dict(content='Too late')
+            result = await service.send(self.owner, request, generate, with_scope=True)
+            self.assertEqual(result['turn']['state'], 'FAILED')
+            service.summaries.refresh.assert_not_called()
+            await service.close()
+        asyncio.run(run())
+
+    def test_output_truncated_by_provider_does_not_advance_summary(self):
+        cid, _ = self.conversation(6, 'A long historical requirement. '*100)
+        llm = AsyncMock()
+        llm.ainvoke.return_value = AIMessage(content='A cut-off summary', response_metadata={'finish_reason':'length'})
+        service = ConversationSummaries(self.chats, llm)
+        asyncio.run(service.refresh(self.owner, cid))
+        self.assertEqual(service.repository.load(self.owner, cid)['through_sequence'], 0)
+        self.assertIsNone(asyncio.run(service.load(self.owner, cid)))
+
+    def test_schema_expansion_restores_tool_result_capacity(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        from app.langchain.history_orchestration import tool_reply
+        identifier = str(uuid4())
+        scope = dict(conversation_id=str(uuid4()), user_sequence=3, current_user_message_id=identifier,
+            history_references=[], memory_references=[], visible_ids=[], evidence_ids=set())
+        llm = AsyncMock()
+        async def answer(*args, **kwargs):
+            budget = scope['_tool_budget']
+            before = budget.max_result_tokens
+            self.assertEqual(scope['_chat_input_limit'], 8192)
+            self.assertTrue(scope['_admit_schemas']([SimpleNamespace(name='expanded')]))
+            self.assertEqual(scope['_chat_input_limit'], 12288)
+            self.assertGreater(budget.max_result_tokens, before)
+            self.assertGreater(budget.max_result_bytes, before*4)
+            return AIMessage(content='A normal response')
+        llm.ainvoke_messages.side_effect = answer
+        def schemas(tools):
+            return 9000 if any(getattr(tool, 'name', '') == 'expanded' for tool in tools) else 6000 if tools else 0
+        with patch('app.langchain.history_orchestration.count_tokens_approximately', return_value=100), patch('app.langchain.token_policy.schema_tokens', side_effect=schemas):
+            asyncio.run(tool_reply(llm, [HumanMessage(id=identifier, content='A question')], None, self.owner, scope, (), {}))
+
+    def test_matched_history_message_precedes_large_neighbor(self):
+        cid, _ = self.conversation(text='neighbor '*400)
+        page = self.chats.history(self.owner, cid)
+        answer = page['items'][-1]
+        windows = ChatReadFacade(self.chats).lookup(self.owner, cid, 3, HistoryLookup(query='completed answer'))
+        scope = dict(visible_ids=[], evidence_ids=set(), history_references=[])
+        packet = HistoryManagement._lookup_result(scope, windows)
+        self.assertEqual(packet['windows'][0]['messages'][0]['id'], answer['id'])
+
+    def test_partial_history_is_not_marked_fully_visible(self):
+        identifier = str(uuid4())
+        body = HistoryLookup(message_id=identifier)
+        scope = dict(visible_ids=[], evidence_ids=set(), history_references=[])
+        result = HistoryManagement._lookup_result(scope, [dict(conversation_id=str(uuid4()), title='Code',
+            messages=[dict(id=identifier, role='user', sequence=1, content='code '*10000)])], body)
+        self.assertTrue(result['windows'][0]['messages'][0]['truncated'])
+        self.assertNotIn(identifier, scope['visible_ids'])
+        self.assertGreater(result['windows'][0]['messages'][0]['next_content_offset'], 0)
+
     def test_newer_summary_between_read_and_claim_avoids_paid_call(self):
         from app.chat.summaries import displaced
         cid, _ = self.conversation(6, 'A long historical requirement. '*100)
@@ -140,7 +227,9 @@ class SummaryTests(unittest.TestCase):
         llm.ainvoke.side_effect = RuntimeError('offline')
         service = ConversationSummaries(self.chats, llm)
         asyncio.run(service.refresh(self.owner, cid))
+        service.candidates = AsyncMock(wraps=service.candidates)
         asyncio.run(service.refresh(self.owner, cid))
+        service.candidates.assert_not_awaited()
         self.assertEqual(llm.ainvoke.call_count, 1)
         self.assertEqual(self.repo.load(self.owner, cid)['content'], 'previous valid summary')
 
@@ -172,6 +261,23 @@ class SummaryTests(unittest.TestCase):
         values = batch(rows)
         self.assertEqual(values[-1]['sequence'], 2)
         self.assertIn('retrieve by ID', values[0]['content'])
+
+    def test_batch_avoids_repeatedly_tokenizing_growing_payload(self):
+        from unittest.mock import patch
+        rows = [dict(id=str(uuid4()), sequence=n, role='user' if n%2 else 'assistant', content='ok')
+            for n in range(1, 301)]
+        scanned = 0
+        def measure(messages):
+            nonlocal scanned
+            scanned += sum(len(message.content) for message in messages)
+            return count_messages(messages)
+        with patch('app.chat.summaries.count_messages', side_effect=measure):
+            values = batch(rows)
+        self.assertTrue(values)
+        self.assertEqual(values[-1]['role'], 'assistant')
+        self.assertLess(scanned, 180000)
+        import json
+        self.assertLessEqual(count_messages([HumanMessage(content=json.dumps(values, ensure_ascii=False))]), 5000)
 
     def test_chat_and_assessment_budgets_are_separate(self):
         config = Settings()

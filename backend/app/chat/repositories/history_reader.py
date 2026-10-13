@@ -83,6 +83,7 @@ class ChatReadFacade:
                             exchange_status=row['exchange_status'] or 'UNKNOWN', created_at=row['created_at'].isoformat()))
                 if items:
                     windows.append(dict(conversation_id=hit['conversation_id'], title=hit['title'], messages=items,
+                        matched_message_id=hit['id'],
                         next_before_sequence=min(x['sequence'] for x in items), next_after_sequence=max(x['sequence'] for x in items)))
             return windows
 

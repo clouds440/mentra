@@ -202,13 +202,13 @@ class ChatRepository:
                 workflow_logger.set_outcome('skipped', code='CHAT_STALE_ATTEMPT')
                 from app.core.observability.context import current
                 current.get().outcome = 'skipped'
-                return
+                return False
             row = session.execute(select(c).where(c.c.id == job['conversation_id'], c.c.learner_id == owner).with_for_update()).mappings().one()
             if row['deleted_at'] is not None:
                 workflow_logger.set_outcome('skipped', code='CHAT_DELETED')
                 from app.core.observability.context import current
                 current.get().outcome = 'skipped'
-                return
+                return False
             values = dict(state='FAILED' if error else 'SUCCEEDED', error=error, lease_until=None)
             conversation_values = dict()
             sequence = row['message_count']
@@ -242,6 +242,8 @@ class ChatRepository:
                 ChatEvidenceRepository.queue(session, owner, job)
             session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now(), **conversation_values))
             self._change(session, owner, row['id'], state)
+
+        return True
 
     def stop_turn(self, owner, conversation_id, turn_id, attempt):
         """Fence publication first; cancellation must never overwrite a finished turn."""
@@ -338,13 +340,15 @@ class ChatRepository:
             rows = session.execute(query.order_by(m.c.sequence.desc()).limit(max(1, min(limit, 1000)))).mappings().all()
             return [dict(row) for row in reversed(rows)]
 
-    def summary_rows(self, owner, conversation_id, after):
+    def summary_rows(self, owner, conversation_id, after, before=None):
         with self.sessions() as session:
             self._conversation(session, owner, conversation_id)
             # Read oldest unsummarized completed exchanges so long chats cannot skip gaps.
-            rows = session.execute(select(m).join(t, and_(t.c.conversation_id == m.c.conversation_id,
+            query = (select(m).join(t, and_(t.c.conversation_id == m.c.conversation_id,
                 t.c.learner_id == m.c.learner_id, or_(t.c.user_sequence == m.c.sequence, t.c.assistant_sequence == m.c.sequence)))
                 .where(m.c.learner_id == owner, m.c.conversation_id == conversation_id, m.c.sequence > after,
-                    t.c.state == 'SUCCEEDED', m.c.metadata['response_stopped'].as_boolean().is_not(True))
-                .order_by(m.c.sequence).limit(256)).mappings().all()
+                    t.c.state == 'SUCCEEDED', m.c.metadata['response_stopped'].as_boolean().is_not(True)))
+            if before is not None:
+                query = query.where(m.c.sequence < before)
+            rows = session.execute(query.order_by(m.c.sequence).limit(512)).mappings().all()
             return [dict(row) for row in rows]

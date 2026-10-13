@@ -129,10 +129,11 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     recent_reserve = min(history_target,
         max(0, count_tokens_approximately(conversation) - current_cost))
     minimum = system_cost + current_cost + recent_reserve + 1056
-    input_limit = settings.chat_input_tokens if minimum <= settings.chat_input_tokens else max(settings.chat_input_tokens, settings.chat_recovery_input_tokens)
+    input_limit = settings.chat_input_tokens if minimum + 600 <= settings.chat_input_tokens else max(settings.chat_input_tokens, settings.chat_recovery_input_tokens)
     scope['_chat_input_limit'] = input_limit
     result_space = max(0, input_limit - system_cost - current_cost - recent_reserve - 1056)
-    budget.max_result_tokens = min(budget.max_result_tokens, result_space)
+    result_token_ceiling, result_byte_ceiling = budget.max_result_tokens, budget.max_result_bytes
+    budget.max_result_tokens = min(result_token_ceiling, result_space)
     budget.max_result_bytes = min(budget.max_result_bytes, budget.max_result_tokens * 4)
     available = min(max(history_target + image_allowance, current_cost + recent_reserve),
         input_limit - system_cost - budget.max_result_tokens - 800)
@@ -159,7 +160,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         if total + 1024 > input_limit and total + 1024 <= settings.chat_recovery_input_tokens:
             input_limit = settings.chat_recovery_input_tokens
             scope['_chat_input_limit'] = input_limit
-        return total + 1024 <= input_limit
+        admitted = total + 1024 <= input_limit
+        if admitted:
+            remaining = max(0, input_limit - total - 1024)
+            budget.max_result_tokens = min(result_token_ceiling, budget.result_tokens + remaining)
+            budget.max_result_bytes = min(result_byte_ceiling, budget.result_characters + remaining*4)
+        return admitted
     scope['_admit_schemas'] = admit_schemas
 
     async def completed(response):

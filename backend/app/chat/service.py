@@ -102,8 +102,8 @@ class ConversationService:
                 await asyncio.gather(generation, watcher, return_exceptions=True)
             if activity_sink is not None:
                 await activity_sink.flush()
-            await run_in_threadpool(self.repository.finish, owner, job, response, None)
-            if self.summaries:
+            published = await run_in_threadpool(self.repository.finish, owner, job, response, None)
+            if self.summaries and published:
                 task = asyncio.create_task(self.summaries.refresh(owner, job['conversation_id']))
                 self.tasks.add(task)
                 task.add_done_callback(self.tasks.discard)
