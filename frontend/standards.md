@@ -37,6 +37,9 @@ Create folders to meet a real architectural need, not to imitate a large project
 
 ## Components
 
+- Chat assessment cards read canonical attempt history without page caching. Restore the latest meaningful attempt rather than allowing an unused empty retry to hide saved feedback; respect explicitly pinned attempts and deliberate retries held in the current owner session. Results remain owned by assessment persistence, never duplicated into chat metadata. Keep “View in assessments” in the card title row, separate from question and submission controls.
+- `useChatScroll` owns restored-history positioning, prepend preservation and new-message anchoring. Stable exchange groups let the latest sent user message sit at the top while the answer fills a viewport-sized minimum; never append a separate tail spacer or re-anchor on answer completion. Respect manual scrolling and clear the temporary minimum on restored history. The disclaimer stays at the bottom of the conversation region above the composer.
+
 - Keep components focused and composable; avoid large components that combine unrelated presentation and behavior.
 - Use semantic HTML and preserve keyboard access, visible focus, and disabled behavior.
 - Do not spread backend calls throughout presentation components; use `services/`.

@@ -1,3 +1,4 @@
+import { useChatScroll } from '../hooks/useChatScroll';
 ﻿import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { FileText, X } from 'lucide-react';
@@ -66,22 +67,14 @@ export function ChatPage() {
     staged.current = staged.current.filter(file => file.id !== identifier);
     setFiles([...staged.current]);
   }
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const prependRef = useRef<number | null>(null);
-  const bottomRef = useRef(true);
+  const scroll = useChatScroll(id, view.messages, view.loading, view.busy, chatStore.hasPending(id));
   const knownMessages = useRef<{ id: string; sequence: number | null }>({ id, sequence: null });
   const [revealing, setRevealing] = useState<Set<string>>(new Set());
-  // Image/Markdown resizing can emit scroll events without user scrolling.
-  // Only actual scroll gestures should turn off following the latest message.
-  const userScrollUntil = useRef(0);
-
   // Reset before the new workspace becomes interactive, so the first keystroke
   // cannot be erased by a deferred navigation/account effect.
   useLayoutEffect(() => { setDraftId(crypto.randomUUID()); setDraft(''); setValidation(null); setSelection({ mode: 'STANDARD' }); }, [newChatKey, identity?.learner_id]);
   useLayoutEffect(() => {
-    setDraft(''); setValidation(null); setStopping(false); bottomRef.current = true;
-    prependRef.current = null;
-    userScrollUntil.current = 0;
+    setDraft(''); setValidation(null); setStopping(false);
     if (conversationId) void chatStore.open(conversationId, true);
     else setSelection({ mode: 'STANDARD' });
   }, [conversationId]);
@@ -104,35 +97,15 @@ export function ChatPage() {
   }, [selectedDocument, newChatKey]);
 
   useLayoutEffect(() => {
-    const container = scrollContainerRef.current; if (!container) return;
     if (knownMessages.current.id !== id) {
       knownMessages.current = { id, sequence: null }; setRevealing(new Set());
     }
+    if (view.loading || !view.messages.length) return;
     const previous = knownMessages.current.sequence;
     const answers = previous === null || view.loading ? [] : view.messages.filter(message => message.role === 'assistant' && message.sequence > previous);
     if (!view.loading) knownMessages.current.sequence = Math.max(previous ?? 0, ...view.messages.map(message => message.sequence));
     if (answers.length) setRevealing(current => new Set([...current, ...answers.map(message => message.id)]));
-    if (prependRef.current !== null) { container.scrollTop += container.scrollHeight - prependRef.current; prependRef.current = null; }
-    else if (bottomRef.current && answers.length) {
-      const answer = container.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(answers[0].id)}"]`);
-      if (answer) {
-        // Start a fresh answer at its top, without moving the document/header.
-        container.scrollTop += answer.getBoundingClientRect().top - container.getBoundingClientRect().top - 24;
-        bottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      }
-    }
-    else if (bottomRef.current) container.scrollTop = container.scrollHeight;
   }, [id, view.messages, view.busy, view.loading]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const observer = new ResizeObserver(() => {
-      if (bottomRef.current && prependRef.current === null) container.scrollTop = container.scrollHeight;
-    });
-    if (container.firstElementChild) observer.observe(container.firstElementChild);
-    return () => observer.disconnect();
-  }, [id, view.loading, !!view.messages.length]);
 
   async function sendMessage() {
     const content = draft.trim() || (files.length ? 'Please help me understand the attached files.' : ''); if (!content || view.busy || sending.current || view.loading) return;
@@ -149,7 +122,7 @@ export function ChatPage() {
         saved.push(item.saved);
       }
       if (signal.aborted) return;
-      setDraft(''); bottomRef.current = true;
+      setDraft(''); scroll.anchorNextSend();
       staged.current.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
       staged.current = []; setFiles([]);
       const request = chatStore.send(id, content, selection, false, saved);
@@ -167,25 +140,30 @@ export function ChatPage() {
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
       ) : view.messages.length === 0 ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState onChooseSuggestion={setDraft} /></div> : (
-        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6 lg:pt-8"
-          ref={scrollContainerRef} role="log" aria-live="polite" tabIndex={0}
-          onWheel={() => { userScrollUntil.current = performance.now() + 1500; }}
-          onTouchMove={() => { userScrollUntil.current = performance.now() + 1500; }}
-          onPointerDown={event => { if (event.target === event.currentTarget) userScrollUntil.current = performance.now() + 1500; }}
-          onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) userScrollUntil.current = performance.now() + 1500; }}
-          onScroll={() => { const el = scrollContainerRef.current; if (el && performance.now() < userScrollUntil.current) bottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
+        <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none] px-4 pb-4 pt-16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6 lg:pt-8"
+          ref={scroll.container} role="log" aria-live="polite" tabIndex={0}
+          onWheel={scroll.noteUserScroll}
+          onTouchMove={scroll.noteUserScroll}
+          onPointerDown={event => { if (event.target === event.currentTarget) scroll.noteUserScroll(); }}
+          onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) scroll.noteUserScroll(); }}
+          onScroll={scroll.onScroll}>
           <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 pb-6">
             {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
-              onClick={() => { prependRef.current = scrollContainerRef.current?.scrollHeight ?? null; bottomRef.current = false; void chatStore.older(id); }}>
+              onClick={() => { const done = scroll.preparePrepend(); void chatStore.older(id).finally(done); }}>
               {view.loading ? <Spinner className="h-4 w-4" /> : 'Load earlier messages'}
             </button>}
-            {view.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
-            {view.busy && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
+            {scroll.groups.map((group, index) => <div key={group.key} data-user-sequence={group.userSequence}
+              data-latest-turn={scroll.anchor !== null && group.userSequence === scroll.anchor || undefined} ref={scroll.anchor !== null && group.userSequence === scroll.anchor ? scroll.latest : undefined}
+              className={`flex flex-col gap-8 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
+              {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
+              {view.busy && index === scroll.groups.length - 1 && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
+            </div>)}
             {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
-              onClick={() => { bottomRef.current = true; void chatStore.open(id, true); }}>Back to latest messages</button>}
+              onClick={() => { scroll.showLatest(); void chatStore.open(id, true); }}>Back to latest messages</button>}
           </div>
         </div>
       )}
+      <p className="shrink-0 px-4 pb-1 pt-1 text-center text-[10px] leading-4 text-subtle" aria-label="Chat disclaimer">Mentra can make mistakes. Check important information.</p>
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         <div className="mx-auto w-full max-w-[52rem]">
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
@@ -203,7 +181,6 @@ export function ChatPage() {
                 <button type="button" disabled={uploading} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface text-foreground shadow-sm hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" aria-label={`Remove ${item.file.name}`} onClick={() => removeStaged(item.id)}><X size={12} aria-hidden="true" /></button>
               </li>)}</ul>}
             </>} />
-          <p className="mt-2.5 text-center text-[10px] text-subtle">Mentra can make mistakes. Check important information.</p>
         </div>
       </div>
     </section>

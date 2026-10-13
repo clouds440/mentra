@@ -31,7 +31,8 @@ async function workspace(page: Page, running = false, populated = false, stream 
   const file = {id:'image-file', filename:'study.png', size_bytes:1024};
   const items: Record<string, unknown>[] = Array.from({length:40}, (_, i) => ({id:`message-${i}`, conversation_id:conversation.id, sequence:i+1, role:i % 2 ? 'assistant' : 'user', content:`${i === 39 ? 'Latest answer' : 'Earlier question and explanation'} ${'Learning takes practice. '.repeat(20)}`, created_at:conversation.created_at, ...(i === 38 ? {attachments:[file]} : {})}));
   let state = running ? 'RUNNING' : 'SUCCEEDED';
-  const snapshot = () => ({conversation, items, has_more:false, next_cursor:null, turn:{id:'polish-turn', state, attempt:1, user_sequence:39, selection, error:state === 'FAILED' ? 'Response stopped.' : null}});
+  let turnId = 'polish-turn', userSequence = 39;
+  const snapshot = () => ({conversation, items, has_more:false, next_cursor:null, turn:{id:turnId, state, attempt:1, user_sequence:userSequence, selection, error:state === 'FAILED' ? 'Response stopped.' : null}});
   const context = {context_id:'context-1', name:'A broader learning context with a longer descriptive name', status:'ACTIVE'};
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -39,13 +40,20 @@ async function workspace(page: Page, running = false, populated = false, stream 
     if (path.includes('/turns/') && path.endsWith('/events')) {
       const after = Number(new URL(route.request().url()).searchParams.get('after') ?? 0);
       const chunks = stream.match(/[\s\S]{1,1500}/g) ?? [''];
-      const events = chunks.map((chunk, index) => ({schema_version:1, conversation_id:conversation.id, turn_id:'polish-turn', attempt:1, sequence:index+1, step_id:stream ? 'response-stream' : 'planning', status:'running', tool_name:null, user_message:stream ? 'Writing your response' : 'Planning your request', ...(chunk ? {token_delta:chunk} : {})}));
+      const events = chunks.map((chunk, index) => ({schema_version:1, conversation_id:conversation.id, turn_id:turnId, attempt:1, sequence:index+1, step_id:stream ? 'response-stream' : 'planning', status:'running', tool_name:null, user_message:stream ? 'Writing your response' : 'Planning your request', ...(chunk ? {token_delta:chunk} : {})}));
       return route.fulfill({contentType:'text/event-stream', body:events.filter(event => event.sequence > after).map(event => 'event: activity\ndata: '+JSON.stringify(event)+'\n\n').join('')});
     }
     let body: unknown = [];
     if (path.endsWith('/auth/me')) body = {learner_id:'polish-user', username:'learner', user_id:null, provider:null};
     else if (path.endsWith('/student-profile')) body = {learner_id:'polish-user', details:{education_level:'college', field_of_study:'Physics', learning_goal:'Understand motion', learning_preference:'balanced', explanation_depth:'standard'}, estimates:Object.fromEntries(['overall_proficiency','reasoning','quantitative','comprehension','domain_familiarity'].map(key => [key,{value:null, confidence:0, evidence_count:0}])), onboarding_phase:'complete', calibration_status:'skipped', evaluation_status:'not_started', version:1, context_version:1};
     else if (path.endsWith('/conversations/sync')) body = {reset:false, cursor:1, has_more:false, conversations:[conversation], deleted_ids:[], list_cursor:null};
+    else if (path.endsWith('/conversations/turns')) {
+      const request = route.request().postDataJSON();
+      turnId = request.client_turn_id; userSequence = ++conversation.message_count;
+      state = 'RUNNING'; conversation.revision++;
+      items.push({id:`sent-${turnId}`, conversation_id:conversation.id, sequence:userSequence, role:'user', content:request.content, created_at:conversation.created_at});
+      body = snapshot();
+    }
     else if (path.endsWith('/stop')) { expect(route.request().postDataJSON()).toEqual({attempt:1}); state='FAILED'; conversation.revision++; items.push({id:'stopped', conversation_id:conversation.id, sequence:41, role:'assistant', content:'Response stopped. Ready when you are.', created_at:conversation.created_at}); body = snapshot(); }
     else if (path.endsWith('/status')) {
       const url = new URL(route.request().url());
@@ -65,10 +73,11 @@ async function workspace(page: Page, running = false, populated = false, stream 
     await route.fulfill({json:body});
   });
   return {
+    startWithAnswer() { items.shift(); },
     complete(content: string, warnings: Record<string, unknown>[] = []) {
       state = 'SUCCEEDED'; conversation.revision++; conversation.message_count++;
-      items.push({id:'formatted-answer', conversation_id:conversation.id, sequence:41, role:'assistant', content, created_at:conversation.created_at, tool_warnings:warnings,
-        interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]});
+      items.push({id:`formatted-answer-${conversation.message_count}`, conversation_id:conversation.id, sequence:conversation.message_count, role:'assistant', content, created_at:conversation.created_at, tool_warnings:warnings,
+        ...(userSequence === 39 ? {interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]} : {})});
     },
   };
 }
@@ -114,15 +123,15 @@ for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390
     await expect(page.getByRole('heading', {name:'Formatted answer'})).toHaveCount(0);
     const geometry = async () => page.evaluate(() => ({
       documentHeight:document.documentElement.scrollHeight, viewport:innerHeight, windowScroll:scrollY,
-      headerTop:document.querySelector('header')!.getBoundingClientRect().top,
-      headerHeight:document.querySelector('header')!.getBoundingClientRect().height,
+      headerTop:document.querySelector('[aria-label="Workspace controls"]')!.getBoundingClientRect().top,
+      headerHeight:document.querySelector('[aria-label="Workspace controls"]')!.getBoundingClientRect().height,
       chatHeight:document.querySelector('[aria-label="Conversation"]')!.clientHeight,
       chatContent:document.querySelector('[aria-label="Conversation"]')!.scrollHeight,
       composerBottom:document.querySelector('[aria-label="Message Mentra"]')!.getBoundingClientRect().bottom,
     }));
     const during = await geometry();
     expect(during.documentHeight).toBeLessThanOrEqual(during.viewport + 1);
-    expect(during.headerTop).toBe(0); expect(during.headerHeight).toBe(48);
+    expect(during.headerTop).toBe(0);
     expect(during.chatContent).toBeGreaterThan(during.chatHeight);
     expect(during.composerBottom).toBeLessThanOrEqual(during.viewport);
     const chat = page.getByRole('log');
@@ -233,6 +242,70 @@ test('global scrollbars are thin, transparent and arrowless in both themes', asy
       expect(style.clip).toBe('padding-box');
     }
   }
+});
+
+for (const size of [{width:1280,height:900}, {width:390,height:844}, {width:390,height:420}]) test(`new messages anchor the exchange without response jumps or tail spacers at ${size.width}x${size.height}`, async ({page}, info) => {
+  await page.setViewportSize(size);
+  const state = await workspace(page);
+  await page.goto('/chat/polish-chat');
+  const log = page.getByRole('log'), composer = page.getByRole('form', {name:'Message Mentra'});
+  const disclaimer = page.getByLabel('Chat disclaimer');
+  await expect(log).toBeVisible();
+  const notice = await disclaimer.boundingBox(), input = await composer.boundingBox(), pane = await log.boundingBox();
+  expect(notice!.y).toBeGreaterThanOrEqual(pane!.y + pane!.height);
+  expect(notice!.y + notice!.height).toBeLessThanOrEqual(input!.y);
+  const position = async () => log.evaluate(el => {
+    const latest = el.querySelector<HTMLElement>('[data-latest-turn="true"]')!;
+    return {top:latest.getBoundingClientRect().top-el.getBoundingClientRect().top, inset:parseFloat(getComputedStyle(el).paddingTop), height:latest.clientHeight, available:parseFloat(el.style.getPropertyValue('--latest-turn-height')), remaining:el.scrollHeight-el.scrollTop-el.clientHeight};
+  });
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Explain gravity simply.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByLabel('Current activity')).toBeVisible();
+  await expect.poll(async () => Math.abs((await position()).top-(await position()).inset)).toBeLessThan(2);
+  const before = await position();
+  expect(before.remaining).toBeLessThan(Math.max(0, before.height-before.available)+2);
+  state.complete('Gravity pulls objects together.');
+  await expect(page.getByRole('article',{name:'Mentra response'}).last()).toContainText('Gravity pulls objects together.');
+  expect(Math.abs((await position()).top-before.top)).toBeLessThan(2);
+  const short = await position();
+  expect(short.remaining).toBeLessThan(Math.max(0, short.height-short.available)+2);
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Explain gravity in more detail.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByLabel('Current activity')).toBeVisible();
+  state.complete('## A detailed explanation\n\n'+ 'Gravity attracts masses. '.repeat(220));
+  await expect(page.getByRole('article',{name:'Mentra response'}).last()).toContainText('A detailed explanation');
+  const after = await position();
+  expect(Math.abs(after.top-after.inset)).toBeLessThan(2);
+  expect(after.height).toBeGreaterThan(after.available);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  await page.screenshot({path:info.outputPath('anchored-exchange.png'), animations:'disabled'});
+  await page.reload();
+  await expect.poll(() => log.evaluate(el => el.scrollHeight-el.scrollTop-el.clientHeight)).toBeLessThan(2);
+  await expect(page.locator('[data-latest-turn="true"]')).toHaveCount(0);
+});
+
+test('history pages beginning with an answer never acquire a temporary exchange minimum', async ({page}) => {
+  const state = await workspace(page); state.startWithAnswer();
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByRole('article',{name:'Mentra response'}).first()).toBeVisible();
+  await expect(page.locator('[data-latest-turn="true"]')).toHaveCount(0);
+  await expect.poll(() => page.getByRole('log').evaluate(el => el.scrollHeight-el.scrollTop-el.clientHeight)).toBeLessThan(2);
+});
+
+test('reading earlier messages takes priority over a pending answer', async ({page}) => {
+  const state = await workspace(page);
+  await page.goto('/chat/polish-chat');
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('A question while I review our earlier conversation.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByLabel('Current activity')).toBeVisible();
+  const log = page.getByRole('log');
+  const anchored = await log.evaluate(el => el.scrollTop);
+  await log.hover(); await page.mouse.wheel(0, -1000);
+  await expect.poll(() => log.evaluate(el => el.scrollTop)).toBeLessThan(anchored-100);
+  const reading = await log.evaluate(el => el.scrollTop);
+  state.complete('## The new answer\n\n'+'Here is more detail. '.repeat(240));
+  await expect(page.getByRole('article',{name:'Mentra response'}).last()).toContainText('The new answer');
+  expect(Math.abs(await log.evaluate(el => el.scrollTop)-reading)).toBeLessThan(2);
 });
 
 test('floating shell controls leave the full viewport available to chat', async ({page}, info) => {

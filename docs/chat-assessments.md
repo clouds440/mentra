@@ -1,5 +1,15 @@
 # Assessments through chat
 
+## Restoring interactive results
+
+Answers and grades remain in owner-scoped assessment attempts linked to their
+assessment ID. Chat cards read fresh attempt history when reopened. Generic
+cards restore the latest meaningful attempt; an unused empty retry does not hide
+saved results. Explicit attempt cards keep their historical association, and an
+intentional retry can remain active in the current owner session. No grade copy
+is written into chat messages. “View in assessments” belongs to the card title
+row, separate from Back, Next, Submit and correction controls.
+
 Students can request a quiz or mock paper in a normal conversation. The
 `assessment_generate` tool creates a chat-scoped draft and returns a public card.
 Question IDs, private grading keys, rubrics, and source provenance are stored

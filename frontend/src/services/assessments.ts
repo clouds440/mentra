@@ -9,7 +9,7 @@ export const assessments = {
   list: (signal: AbortSignal, offset = 0) => apiRequest<{ items: Assessment[]; next_offset: number | null }>(`${base}?offset=${offset}`, { signal }),
   generate: (request: AssessmentGeneration, signal: AbortSignal) => apiRequest<Assessment>(base, { method: 'POST', signal, body: JSON.stringify(request) }),
   detail: (id: string, signal: AbortSignal) => apiRequest<Assessment>(`${base}/${id}`, { signal }),
-  attempts: (id: string, signal: AbortSignal) => apiRequest<AssessmentAttempt[]>(`${base}/${id}/attempts`, { signal }),
+  attempts: (id: string, signal: AbortSignal) => apiRequest<AssessmentAttempt[]>(`${base}/${id}/attempts`, { signal, cache:'no-store' }),
   start: (id: string, operation: string, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/${id}/attempts`, { method: 'POST', signal, body: JSON.stringify({ client_request_id: operation }) }),
   attempt: (id: string, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${id}`, { signal }),
   saveDraft: (attempt: AssessmentAttempt, answers: Record<string, string>, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/draft`, { method: 'PUT', signal, body: JSON.stringify({ expected_revision: attempt.revision, answers }) }),

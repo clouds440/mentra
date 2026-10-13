@@ -10,6 +10,7 @@ async function workspace(page: Page, failFirst = false, loseReply = false, codeA
   const items = [{id:'question',conversation_id:conversation.id,sequence:1,role:'user',content:'Give me a code quiz.',created_at:date},
     {id:'reply',conversation_id:conversation.id,sequence:2,role:'assistant',content:'Your quiz is ready.',assessment_cards:[card],created_at:date}];
   let attempt: Record<string, any> | null = null, starts = 0, signedIn = true;
+  let unusedRetry: Record<string, unknown> | null = null;
   const submissions: Record<string, any>[] = [], writes: string[] = [];
   let release!: () => void;
   let hold: Promise<void> | null = null;
@@ -32,7 +33,7 @@ async function workspace(page: Page, failFirst = false, loseReply = false, codeA
     else if (path.endsWith('/assessment-quiz/attempts') && request.method() === 'POST') {
       starts++;
       attempt = {id:'attempt-quiz',assessment_id:assessment.id,revision:1,state:'draft',attempt_number:1,answers:{},grades:null,extraction:null,error:null,evidence_status:'none',created_at:date,grade_revision:1,grade_history:[]}; body = attempt;
-    } else if (path.endsWith('/assessment-quiz/attempts')) body = attempt ? [attempt] : [];
+    } else if (path.endsWith('/assessment-quiz/attempts')) body = attempt ? [...(unusedRetry ? [unusedRetry] : []), attempt] : [];
     else if (path.endsWith('/attempt-quiz/submission')) {
       const payload = request.postDataJSON(); submissions.push(payload); entered?.();
       if (hold) await hold;
@@ -51,6 +52,8 @@ async function workspace(page: Page, failFirst = false, loseReply = false, codeA
   return {assessment,quiz,writes,submissions,starts:() => starts,attempt:() => attempt,
     hold() { hold = new Promise<void>(resolve => {release=resolve;}); requested = new Promise<void>(resolve => {entered=resolve;}); },
     requested:() => requested, release:() => {release();hold=null;},
+    unusedRetry() { unusedRetry = {...attempt!,id:'unused-retry',attempt_number:2,revision:1,state:'draft',answers:{},grades:null,evidence_status:'none'}; },
+    pinAttempt() { Object.assign(card, {attempt_id:'attempt-quiz'}); },
     grade() { attempt = {...attempt!,revision:3,state:'graded',evidence_status:'applied',grades:assessment.questions.map(q => ({question_id:q.id,score:2,confidence:1,feedback:codeAnswers ? 'Correct.\n\n```python\nprint(2)\n```' : 'Correct.',concept_grades:{},misconceptions:[],outcome:'correct',correct_answer:'A supported explanation.'}))}; },
   };
 }
@@ -144,7 +147,25 @@ test('logout clears unsent quiz choices from session memory', async ({page}) => 
   await expect(state.quiz.getByRole('radio').first()).not.toBeChecked();
 });
 
-test('completed quiz actions share a compact wrapping footer', async ({page}, testInfo) => {
+for (const pinned of [false, true]) test(`saved grades survive reload and later navigation despite an empty retry (${pinned ? 'pinned' : 'assessment'} card)`, async ({page}) => {
+  const state = await workspace(page); await answerAll(page);
+  await state.quiz.getByRole('button',{name:'Submit',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Quiz answers'})).toBeVisible();
+  state.grade();
+  await expect(page.getByText('Final result: 6/6',{exact:true})).toBeVisible({timeout:10_000});
+  state.unusedRetry();
+  if (pinned) state.pinAttempt();
+  await page.reload();
+  await expect(page.getByText('Final result: 6/6',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Interactive quiz'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Start a new chat'}).click();
+  await page.getByRole('link',{name:'Local quiz chat',exact:true}).click();
+  await expect(page.getByText('Final result: 6/6',{exact:true})).toBeVisible();
+  expect(state.starts()).toBe(1);
+  expect(state.submissions).toHaveLength(1);
+});
+
+test('assessment navigation stays in the header apart from quiz and correction controls', async ({page}, testInfo) => {
   const state = await workspace(page); await answerAll(page);
   await state.quiz.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(page.getByRole('region',{name:'Quiz answers'})).toBeVisible();
@@ -152,9 +173,9 @@ test('completed quiz actions share a compact wrapping footer', async ({page}, te
   const correction = page.getByRole('button',{name:'Correct answers or transcription',exact:true});
   await expect(correction).toBeVisible({timeout:10_000});
   const footer = correction.locator('..');
-  await expect(footer.getByRole('button')).toHaveCount(3);
+  await expect(footer.getByRole('button')).toHaveCount(2);
   await expect(footer.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
-  const view = footer.getByRole('button',{name:'View in assessments',exact:true});
+  const view = page.getByLabel('Assessment header').getByRole('button',{name:'View in assessments',exact:true});
   await expect(view).toBeVisible();
   const desktop = await footer.getByRole('button').evaluateAll(elements => elements.map(element => ({top:element.getBoundingClientRect().top,height:element.getBoundingClientRect().height})));
   expect(new Set(desktop.map(value => value.top)).size).toBe(1);
@@ -165,7 +186,7 @@ test('completed quiz actions share a compact wrapping footer', async ({page}, te
   await footer.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   const mobile = await footer.getByRole('button').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
-  expect(new Set(mobile).size).toBeGreaterThan(1);
+  expect(mobile.length).toBe(2);
   await page.screenshot({path:testInfo.outputPath('quiz-footer-mobile.png')});
   await view.click();
   await expect(page).toHaveURL(/\/assessments\?assessment=assessment-quiz$/);

@@ -8,9 +8,13 @@ import { assessments } from '../../services/assessments';
 import type { AssessmentAttempt, ChatAssessmentCardData } from '../../types/assessments';
 import { MCQAssessment } from './MCQAssessment';
 import { AnswerSheet } from './AssessmentWorkspace';
+import { useAuth } from '../auth/AuthProvider';
+import { assessmentSession } from '../../stores/assessmentSession';
 
 export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardData }) {
   const navigate = useNavigate();
+  const { identity } = useAuth();
+  const owner = identity?.learner_id;
   const [card, setCard] = useState(initial);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
   const [ready, setReady] = useState(false);
@@ -25,13 +29,19 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
     const controller = new AbortController();
     const load = initial.id ? assessments.draft(initial.id, controller.signal) : assessments.detail(initial.assessment_id!, controller.signal).then(assessment => ({ ...initial, assessment }));
     void load.then(async value => {
+      const candidates = !value.deleted && !initial.attempt_id && value.assessment_id
+        ? await assessments.attempts(value.assessment_id, controller.signal) : [];
+      // An unused retry must not hide saved feedback when reopening a chat.
+      // Keep a deliberately started retry in this session, and preserve pinned
+      // attempt cards rather than silently replacing historical results.
       const selected = value.deleted ? null : initial.attempt_id ? await assessments.attempt(initial.attempt_id, controller.signal) :
-        value.assessment_id ? (await assessments.attempts(value.assessment_id, controller.signal))[0] ?? null : null;
+        candidates.find(item => item.state !== 'draft' || Object.keys(item.answers).length > 0
+          || !!assessmentSession.draft(owner, `${value.assessment_id}:${item.id}`)) ?? candidates[0] ?? null;
       if (selected && selected.assessment_id!==value.assessment_id) throw new Error('This attempt does not belong to this assessment.');
       if (!controller.signal.aborted) { setCard(value); setAttempt(selected); setReady(true); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessment.'); });
     return () => { controller.abort(); active.current?.abort(); };
-  }, [initial.id, initial.assessment_id, initial.attempt_id, reload]);
+  }, [owner, initial.id, initial.assessment_id, initial.attempt_id, reload]);
   async function save(answer = false) {
     if (lock.current) return;
     lock.current = true;
@@ -55,10 +65,12 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   const actions = <>
     {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy} onClick={() => void save()}>Add to assessments</Button>}
     {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
-    {card.assessment_id && !card.deleted && <Button size="sm" variant="secondary" onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}
   </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
-    <h2 className="font-medium text-heading">{card.assessment.title}</h2>
+    <div className="flex items-start justify-between gap-3" aria-label="Assessment header">
+      <h2 className="min-w-0 flex-1 break-words font-medium text-heading">{card.assessment.title}</h2>
+      {card.assessment_id && !card.deleted && <Button className="shrink-0" size="sm" variant="secondary" disabled={!ready} onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}
+    </div>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => setReload(value => value+1)}>Refresh</button></p>}
     {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} actions={actions} /> :
