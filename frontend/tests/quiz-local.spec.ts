@@ -188,6 +188,7 @@ test('assessment results render question, answer and feedback code through Prism
   await page.screenshot({path:testInfo.outputPath('compact-code-feedback-desktop.png')});
   await page.setViewportSize({width:390,height:844});
   await expect.poll(() => page.getByRole('complementary',{name:'Main navigation'}).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+  await expect.poll(() => page.getByRole('textbox',{name:'Ask Mentra anything'}).evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBeTruthy();
   await result.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({path:testInfo.outputPath('compact-code-feedback-mobile.png')});

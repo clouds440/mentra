@@ -52,8 +52,19 @@ export function ChatComposer({
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    textarea.style.height = '0px';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
+    const resize = () => {
+      textarea.style.height = '0px';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
+    };
+    resize();
+    let width = textarea.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (textarea.clientWidth === width) return;
+      width = textarea.clientWidth;
+      resize();
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
   }, [value]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
