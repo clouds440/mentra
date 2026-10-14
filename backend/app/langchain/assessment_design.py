@@ -1,5 +1,5 @@
 """Request-led outlines, separate from content generation and grading keys."""
-from app.assessments.schemas import AssessmentDesign
+from app.assessments.schemas import AssessmentDesign, limit_sections
 from app.assessments.blueprint import flatten_sections, balance_outline_marks
 from .prompts import PromptSource
 from .generation_recovery import invoke_generated, GenerationMismatch
@@ -7,6 +7,7 @@ from .generation_recovery import invoke_generated, GenerationMismatch
 
 async def design_assessment(llm, request, sources, profile, original=None, learner_context=None):
     def validate(result):
+        result.sections = limit_sections(result.sections)
         if request.result_style != 'marks' and request.total_marks is None:
             for section in result.sections:
                 if not section.questions: section.part_marks = [1 for _ in section.part_marks]

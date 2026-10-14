@@ -48,6 +48,17 @@ class PaperInfo(Contract):
     instructions: str = 'Answer all questions. Show your working where appropriate. Marks are shown for each part.'
     sections: list[PaperSection] = Field(min_length=1)
 
+def limit_sections(sections, limit=20):
+    remaining, result = limit, []
+    for original in sections:
+        if remaining <= 0: break
+        section = original.model_copy(deep=True)
+        if section.questions: section.questions = section.questions[:remaining]; section.question_count = len(section.questions)
+        else: section.question_count = min(section.question_count, remaining)
+        remaining -= section.question_count
+        result.append(section)
+    return result
+
 class AssessmentDesign(Contract):
     title: str
     instructions: str = 'Answer all questions. Show your working where appropriate.'
@@ -78,6 +89,8 @@ class GenerationRequest(Contract):
     @model_validator(mode='before')
     @classmethod
     def format_aliases(cls, value):
+        if isinstance(value, dict) and isinstance(value.get('count'), int) and value['count'] > 20:
+            value = dict(value, count=20)
         if isinstance(value, dict) and isinstance(value.get('question_format'), str):
             aliases = {'mock_exam':'mock_paper','exam_paper':'mock_paper','exam':'mock_paper','multiple_choice':'mcq',
                        'true/false':'true_false','true-false':'true_false','short_answers':'short_answer','multi_select':'multiple_select'}
@@ -90,6 +103,11 @@ class GenerationRequest(Contract):
         targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
         if targets > 1 or bool(targets) != bool(self.revision_instructions):
             raise ValueError('Revisions require exactly one source assessment and instructions.')
+        if sum(section.question_count for section in self.paper_sections) > 20:
+            self.paper_sections = limit_sections(self.paper_sections)
+            if self.total_marks is not None:
+                self.total_marks = sum(sum(part.marks for question in section.questions for part in question.parts)
+                    if section.questions else section.question_count*sum(section.part_marks) for section in self.paper_sections)
         if self.paper_sections and self.count is not None and sum(section.question_count for section in self.paper_sections) != self.count:
             raise ValueError('Section question counts must equal the requested count.')
         return self
@@ -191,7 +209,7 @@ class QuestionGrade(Contract):
     score: float = Field(ge=0)
     confidence: float = Field(ge=0, le=1)
     feedback: str = Field(min_length=1, max_length=2000)
-    concept_grades: dict[str, ConceptGrade]
+    concept_grades: dict[str, ConceptGrade] = Field(default_factory=dict)
     misconceptions: list[str] = Field(default_factory=list, max_length=3)
 
 class GradedAssessment(Contract):

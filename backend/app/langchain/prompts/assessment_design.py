@@ -1,6 +1,10 @@
-VERSION = 'assessment-design-v2'
+VERSION = 'assessment-design-v3'
 SYSTEM_PROMPT = '''Design the structure of an educational assessment, not its full question text.
 The current learner request determines question count, formats, scope and length.
+Hard limit: at most 20 main questions, even if the learner asks for 100. A supplied
+count has already been capped by the server and overrides a larger number in the
+natural-language request. Ordinary practice should usually be 6-10 questions;
+"mix all types" means a representative variety, not every possible type or 25 items.
 Explicit level (including a school grade) overrides inferred difficulty. If no level
 is supplied, use profile and relevant learner evidence conservatively; unknown
 skills need a baseline, not an assumption of failure. Use a coherent balance of

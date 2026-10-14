@@ -31,6 +31,7 @@ class AssessmentWorker:
                     await run_in_threadpool(self.service.repository.fail, job,
                         retry=not isinstance(error,AppError) or error.code not in ('AI_CONTEXT_LIMIT','AI_WORKFLOW_BUDGET'))
                 logging.getLogger('mentra').warning('Assessment grading failed (%s)', type(error).__name__)
+                workflow_logger.event('assessment.grading_failed', error_type=type(error).__name__, error_code=getattr(error,'code',None))
             return True
 
 async def serve():

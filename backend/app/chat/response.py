@@ -42,7 +42,13 @@ class ChatResponse(BaseModel):
         # card once; different revised versions have different assessment IDs.
         unique = {}
         for card in cards:
-            unique[card['assessment']['id']] = card
+            if card.get('generation_job_id'):
+                key = ('generation', card['generation_job_id'])
+            elif isinstance(card.get('assessment'), dict) and card['assessment'].get('id'):
+                key = ('assessment', card['assessment']['id'])
+            else:
+                raise ValueError('Assessment cards require an assessment or generation job ID.')
+            unique[key] = card
         return list(unique.values())
 
 

@@ -20,9 +20,10 @@ class GenerationMismatch(ValueError):
 
 async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict, *,
                            output_schema: type[Generated],
-                           validate: Callable[[Generated], None] | None = None) -> Generated:
+                           validate: Callable[[Generated], None] | None = None,
+                           maximum_attempts: int = 2) -> Generated:
     feedback = None
-    for attempt in range(2):
+    for attempt in range(maximum_attempts):
         inputs = dict(payload, repair_feedback=feedback) if feedback else payload
         try:
             result = await llm.ainvoke(source, inputs, output_schema=output_schema)

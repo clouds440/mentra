@@ -187,7 +187,7 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         fail[0] = False
         self.service.generation_jobs.retry(self.owner,job['id']); await worker.run_once()
         self.assertEqual(self.service.generation_jobs.get(self.owner,job['id'])['state'],'completed')
-        self.assertEqual(offsets.count(0),1); self.assertEqual(offsets.count(3),1)
+        self.assertEqual(offsets.count(0),1); self.assertEqual(offsets.count(6),2)
         with self.db.sessions() as session:
             self.assertEqual(len(session.execute(select(assessments).where(assessments.c.learner_id==self.owner)).all()),1)
         another = await self.service.queue_generation(self.owner,self.request(count=2,question_format='written'))
@@ -210,7 +210,7 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
             if schema.__name__ != 'GradedAssessment': return model
             async def invoke(messages):
                 payload = json.loads(messages[-1].content); key = payload['questions'][0]['id']; seen.append(key)
-                if key == str(value.questions[4].id) and fail[0]: raise RuntimeError('interrupted grading')
+                if key == str(value.questions[5].id) and fail[0]: raise RuntimeError('interrupted grading')
                 return await model.ainvoke(messages)
             return SimpleNamespace(ainvoke=invoke)
         self.factory.with_structured_output=scripted
@@ -222,4 +222,4 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         fail[0]=False; await worker.run_once()
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'graded')
         self.assertEqual(seen.count(str(value.questions[0].id)),1)
-        self.assertEqual(seen.count(str(value.questions[2].id)),1)
+        self.assertEqual(seen.count(str(value.questions[5].id)),2)

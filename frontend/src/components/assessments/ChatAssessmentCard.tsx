@@ -38,7 +38,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
       // attempt cards rather than silently replacing historical results.
       const selected = value.deleted ? null : initial.attempt_id ? await assessments.attempt(initial.attempt_id, controller.signal) :
         candidates.find(item => item.state !== 'draft' || Object.keys(item.answers).length > 0
-          || !!assessmentSession.draft(owner, `${value.assessment_id}:${item.id}`)) ?? candidates[0] ?? null;
+          || Object.values(assessmentSession.draft(owner, `${value.assessment_id}:${item.id}`)?.answers ?? {}).some(answer=>answer.trim())) ?? candidates[0] ?? null;
       if (selected && selected.assessment_id!==value.assessment_id) throw new Error('This attempt does not belong to this assessment.');
       if (!controller.signal.aborted) { setCard(value); setAttempt(selected); setReady(true); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessment.'); });
@@ -66,7 +66,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   const InlineAnswers = isMCQ ? MCQAssessment : AnswerSheet;
   const actions = <>
     {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy && !answerAction} onClick={() => void save()}>Add to assessments</Button>}
-    {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
+    {!card.deleted && (!attempt && !isMCQ || attempt?.state === 'graded') && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Start new attempt' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
   </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
     <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:gap-3" aria-label="Assessment header">

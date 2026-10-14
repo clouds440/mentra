@@ -4,7 +4,7 @@ from app.assessments.schemas import GeneratedAssessment, GradedAssessment, Asses
 from app.learner.schemas import EvidenceSubmissionRequest, LearnerContextRequest
 from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
-from .generation_recovery import invoke_generated, validate_questions
+from .generation_recovery import invoke_generated, validate_questions, GenerationMismatch
 
 
 from app.core.logging import workflow_logger
@@ -83,43 +83,83 @@ class AssessmentWorkflows:
                 learner_context=learner_context.model_dump(mode='json'))
         else:
             question_plan, paper = blueprint(request)
+        if not paper: question_plan = question_plan[:min(request.count or 20,20)]
         async def save_progress():
             if checkpoint:
                 await checkpoint(dict(schema_version=1, plan=question_plan, paper=paper.model_dump(mode='json') if paper else None,
                     questions=[question.model_dump(mode='json') for question in questions], title=title, source_signature=source_signature))
         await save_progress()
-        # Bound output per call instead of asking for ten long rubrics at once.
-        while len(questions) < len(question_plan):
-            batch_count = min(3, len(question_plan)-len(questions))
-            batch_plan = question_plan[len(questions):len(questions)+batch_count]
+        import asyncio
+        from .token_policy import output_budget
+        from app.core.config import settings
+        config=getattr(getattr(self.llm,'model_factory',None),'_settings',settings)
+        reserve=output_budget(PromptSource.ASSESSMENT_GENERATION,config)
+        weights={'mcq':350,'true_false':200,'short_answer':250,'multiple_select':450,
+            'numerical':300,'fill_blank':250,'matching':400,'ordering':400,'essay':1000,'proof':1200,'case_study':1100}
+        expected_output=600+sum(weights.get(item['question_type'],600) for item in question_plan)
+        context_size=sum(len(item.get('context',''))+len(item.get('brief','')) for item in question_plan)+len(request.instructions)
+        long_revision=bool(revision and sum(len(q['prompt']) for q in revision['questions'])>6000)
+        split=expected_output>reserve*.95 or context_size>max(2000,config.chat_context_window_tokens-reserve-6000) or long_revision
+        batch_size=(3 if long_revision else 6) if split else len(question_plan)
+        workflow_logger.event('assessment.generation_plan', parts=len(question_plan), batch_size=batch_size,
+            concurrent_batches=min(2,(len(question_plan)+batch_size-1)//batch_size))
+        async def generate_batch(offset, prior):
+            batch_plan = question_plan[offset:offset+batch_size]
+            batch_count = len(batch_plan)
             generated = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GENERATION,
             dict(topic=request.topic, question_format=request.question_format, question_plan=batch_plan,
                 paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
                     sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None, instructions=request.instructions,
-                count=batch_count, question_offset=len(questions), purpose=request.purpose, targets=targets,
+                count=batch_count, question_offset=offset, purpose=request.purpose, targets=targets,
+                assessment_overview=[dict(number=item.get('number',i+1),question_type=item['question_type'],brief=item.get('brief','')[:200]) for i,item in enumerate(question_plan)],
                 recommendations=[item.model_dump(mode='json') for item in recommendations if item.concept_id in concepts],
                 verification=[item.model_dump(mode='json') for item in verification if item.concept_id in concepts], sources=prompt_sources,
                 profile=profile_context.model_dump(mode='json') if profile_context else None,
                 learner_context=learner_context.model_dump(mode='json'), level=request.level, result_style=request.result_style,
-                previous_prompts=[question.prompt[:250] for question in questions],
+                previous_prompts=[question.prompt[:250] for question in prior],
                 revision_instructions=request.revision_instructions,
                 original_overview=[dict(number=index, excerpt=q['prompt'][:160], truncated=len(q['prompt'])>160)
                     for index,q in enumerate(revision['questions'],1)] if revision else None,
                 original_questions=[dict(prompt=q['prompt'], marks=q['marks'], difficulty=q['difficulty'], concept_ids=q['concept_ids'], options=q.get('options', []))
-                    for q in revision['questions'][len(questions):len(questions)+batch_count]] if revision else None), output_schema=GeneratedAssessment,
+                    for q in revision['questions'][offset:offset+batch_count]] if revision else None), output_schema=GeneratedAssessment,
+                maximum_attempts=1 if batch_count>6 else 2,
                 validate=lambda result: validate_questions(result, count=batch_count,
                     question_format=request.question_format, concepts=None,
                     tokens={source['token'] for source in sources}, grounded=request.grounded,
-                    previous=[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in questions], plan=batch_plan))
-            title = title or generated.title
-            for question, planned in zip(generated.questions, batch_plan):
-                for key, value in planned.items():
-                    if key in type(question).model_fields:
-                        setattr(question, key, value)
-            from .assessment_concepts import resolve_question_concepts
-            await resolve_question_concepts(self.learner, owner, request, generated.questions, targets)
-            questions.extend(generated.questions)
-            await save_progress()
+                    previous=[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior], plan=batch_plan))
+            return generated, batch_plan
+        # Independent outline batches overlap; only ordered prefixes are checkpointed.
+        # This keeps refresh/retry deterministic even when a later call finishes first.
+        while len(questions) < len(question_plan):
+            prior=list(questions)
+            offsets=range(len(questions),min(len(question_plan),len(questions)+batch_size*2),batch_size)
+            tasks=[(offset,asyncio.create_task(generate_batch(offset,prior))) for offset in offsets]
+            try:
+                for offset,task in tasks:
+                    generated,batch_plan=await task
+                    try:
+                        validate_questions(generated,count=len(batch_plan),question_format=request.question_format,concepts=None,
+                            tokens={source['token'] for source in sources},grounded=request.grounded,
+                            previous=[q.prompt.casefold().strip()+'|'+q.context.casefold().strip() for q in questions],plan=batch_plan)
+                    except GenerationMismatch:
+                        generated,batch_plan=await generate_batch(offset,list(questions))
+                    title = title or generated.title
+                    for question, planned in zip(generated.questions, batch_plan):
+                        for key,value in planned.items():
+                            if key in type(question).model_fields: setattr(question,key,value)
+                    from .assessment_concepts import resolve_question_concepts
+                    await resolve_question_concepts(self.learner,owner,request,generated.questions,targets)
+                    questions.extend(generated.questions)
+                    await save_progress()
+            except AppError as error:
+                if error.code=='ASSESSMENT_INVALID_GENERATION' and batch_size>6:
+                    batch_size=6
+                    workflow_logger.event('assessment.generation_fallback',batch_size=batch_size)
+                else: raise
+            finally:
+                for _,task in tasks:
+                    if not task.done(): task.cancel()
+                await asyncio.gather(*(task for _,task in tasks),return_exceptions=True)
         generated = GeneratedAssessment(title=title, questions=questions, paper=paper)
         return generated, sources
 
@@ -143,7 +183,7 @@ class AssessmentWorkflows:
             try:
                 check_input(MentraLLM.messages(self.llm, PromptSource.ASSESSMENT_GRADING, payload),
                             PromptSource.ASSESSMENT_GRADING, tools=[GradedAssessment])
-                fits = len(proposed) <= 2
+                fits = len(proposed) <= 5
             except AppError:
                 fits = False
             if not fits and current:
@@ -172,13 +212,8 @@ class AssessmentWorkflows:
             if not batch: continue
             from .generation_recovery import GenerationMismatch
             def validate_batch(result):
-                by_id = {question['id']:question for question in batch}
-                if len(result.questions) != len(batch) or {grade.question_id for grade in result.questions} != set(by_id):
-                    raise GenerationMismatch('grade_question_ids_must_match_batch')
-                for grade in result.questions:
-                    question = by_id[grade.question_id]
-                    if grade.score > question['marks'] or set(grade.concept_grades) != set(question['concept_ids']) or any(value.max_score != question['marks'] for value in grade.concept_grades.values()):
-                        raise GenerationMismatch('grade_marks_and_concept_ids_must_match_question')
+                from app.assessments.grade_alignment import align_grades
+                align_grades(result,batch)
             partial = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GRADING,
                 dict(questions=batch, answers={q['id']:attempt['answers'][q['id']] for q in batch},
                      result_style=assessment.get('preferences', {}).get('result_style','marks'),

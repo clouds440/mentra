@@ -174,7 +174,7 @@ test('assessment navigation stays in the header apart from quiz and correction c
   await expect(correction).toBeVisible({timeout:10_000});
   const footer = correction.locator('..');
   await expect(footer.getByRole('button')).toHaveCount(2);
-  await expect(footer.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
+  await expect(footer.getByRole('button',{name:'Start new attempt',exact:true})).toBeVisible();
   const view = page.getByLabel('Assessment header').getByRole('button',{name:'View in assessments',exact:true});
   await expect(view).toBeVisible();
   const desktop = await footer.getByRole('button').evaluateAll(elements => elements.map(element => ({top:element.getBoundingClientRect().top,height:element.getBoundingClientRect().height})));

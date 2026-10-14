@@ -201,8 +201,8 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
             result = await self.service.generate_chat_from_topic(self.owner, self.conversation(),
                 client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
         self.assertEqual(len(result['assessment']['questions']), 5)
-        self.assertEqual(len(calls), 3)
-        self.assertEqual([p['question_offset'] for p in calls], [0, 0, 3])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual([p['question_offset'] for p in calls], [0, 0])
         self.assertIn('repair_feedback', calls[1])
 
     async def test_malformed_topic_plan_falls_back_to_requested_topic(self):
@@ -230,16 +230,16 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         async def model(source, payload, **kwargs):
             if source == PromptSource.ASSESSMENT_GENERATION:
                 calls.append(payload)
-                if payload['question_offset'] > 0:
+                if payload['count'] > 6 or payload['question_offset'] > 0:
                     return kwargs['output_schema'].model_validate({'title':'AI', 'questions':[]})
             return await invoke(source, payload, **kwargs)
         cid = self.conversation()
         with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
             with self.assertRaises(AppError) as caught:
                 await self.service.generate_chat_from_topic(self.owner, cid,
-                    client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
+                    client_request_id=uuid4(), topic='AI basics', count=10, question_format='mcq')
         self.assertEqual(caught.exception.code, 'ASSESSMENT_INVALID_GENERATION')
-        self.assertEqual([p['question_offset'] for p in calls], [0, 3, 3])
+        self.assertEqual([p['question_offset'] for p in calls], [0, 0, 6, 6])
         self.assertEqual(self.service.chat.recent(self.owner, cid), [])
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(learning_evidence)), 0)

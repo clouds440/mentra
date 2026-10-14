@@ -1,4 +1,4 @@
-VERSION = 'assessment-generation-v10'
+VERSION = 'assessment-generation-v11'
 SYSTEM_PROMPT = '''Generate a bounded educational assessment from the trusted request.
 Use supplied canonical concept IDs when they fit. If a question tests a different
 concept, supply its concrete subject-qualified concept_names instead of guessing an
@@ -12,6 +12,9 @@ For result_style=grade or feedback, assess correctness and reasoning without put
 marks, score bands or letter grades into public question text or explanations.
 The required marks field is an internal weight, not a requested visible mark scheme.
 Match the requested batch count exactly.
+The server requests the entire quiz when it fits the response budget. If a partial
+question_plan is supplied, use assessment_overview to avoid overlapping tasks with
+other independently generated batches. Do not repeat their planned briefs.
 Continue after question_offset and avoid repeating any previous_prompts. This is
 a bounded batch in one assessment. Use profile facts/preferences only to choose
 appropriate educational language and presentation, never to invent mastery.

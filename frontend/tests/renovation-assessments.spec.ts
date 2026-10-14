@@ -22,6 +22,8 @@ async function chat(page: Page, paper = false, generation = false) {
   const card: ChatAssessmentCardData = {id:'flex-draft',assessment_id:value.id,conversation_id:'polish-chat',assessment:value};
   let attempt: Record<string, unknown> | null = null;
   const submissions: Record<string, unknown>[] = [];
+  const retries: Record<string, unknown>[] = [];
+  let starts=0;
   const job: GenerationJob = {id:'flex-job',state:'running',title:value.title,completed_parts:1,total_parts:4,result:null,error:null,can_retry:false};
   await page.route('**/api/v1/conversations/polish-chat/status*', route => route.fulfill({json:{conversation:{id:'polish-chat',title:'Flexible assessment',revision:8,message_count:2,selection:{mode:'STANDARD'},created_at:created,updated_at:created},items:[{id:'request',conversation_id:'polish-chat',sequence:1,role:'user',content:'Practice mechanics.',created_at:created},{id:'reply',conversation_id:'polish-chat',sequence:2,role:'assistant',content:'Your practice session.',created_at:created,assessment_cards:[generation ? {id:job.id,generation_job_id:job.id,title:value.title} : card]}],turn:{id:'turn',state:'SUCCEEDED',attempt:1,user_sequence:1,selection:{mode:'STANDARD'}},has_more:false,next_cursor:null}}));
   await page.route('**/api/v1/assessments/**', async route => {
@@ -31,8 +33,12 @@ async function chat(page: Page, paper = false, generation = false) {
     else if (path.endsWith('/generation-jobs/flex-job/retry')) { job.state='running'; job.can_retry=false; job.error=null; body=job; }
     else if (path.endsWith('/generation-jobs/flex-job')) body=job;
     else if (path.endsWith('/flex-assessment/attempts') && route.request().method()==='POST') {
+      starts++;
       attempt={id:'flex-attempt',assessment_id:value.id,revision:1,state:'draft',attempt_number:1,answers:{},grades:null,extraction:null,error:null,evidence_status:'none',created_at:created,grade_revision:1,grade_history:[]}; body=attempt;
     } else if (path.endsWith('/flex-assessment/attempts')) body=attempt ? [attempt] : [];
+    else if (path.endsWith('/flex-attempt/retry')) {
+      retries.push(route.request().postDataJSON()); attempt={...attempt,state:'submitted',revision:Number(attempt?.revision)+1,error:null,retry_pending:false}; body=attempt;
+    }
     else if (path.endsWith('/flex-attempt/draft')) {
       const payload=route.request().postDataJSON(); attempt={...attempt,answers:payload.answers,revision:2}; body=attempt;
     }
@@ -45,7 +51,7 @@ async function chat(page: Page, paper = false, generation = false) {
     await route.fulfill({json:body});
   });
   await page.goto('/chat/polish-chat');
-  return {value,card,job,submissions};
+  return {value,card,job,submissions,retries,starts:()=>starts,setAttempt:(value:Record<string,unknown>)=>{attempt=value;}};
 }
 
 for (const width of [390,1280]) test(`mixed interactive practice keeps typed and multiple-choice answers at ${width}`, async ({page},info) => {
@@ -142,6 +148,55 @@ test('simple grading shows correctness and feedback without marks or letter grad
   await page.reload();
   const feedback=page.getByRole('region',{name:'Assessment feedback'});
   await expect(feedback).toBeVisible();
+  await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(1);
+  await feedback.getByRole('button',{name:'List view',exact:true}).click();
   await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(4);
   await expect(feedback).not.toContainText(/marks|8\/8|2\/2|Practice grade|A ≥/i);
+});
+
+test('retry evaluation preserves the same submitted attempt and answers', async ({page}) => {
+  const state=await chat(page);
+  const answers={q1:'a',q2:'true',q3:'Inertia resists change in motion.',q4:'["a","b"]'};
+  state.setAttempt({id:'flex-attempt',assessment_id:state.value.id,revision:3,state:'failed',attempt_number:1,
+    answers,grades:null,extraction:null,error:'Grading is temporarily unavailable.',retry_pending:false,
+    evidence_status:'pending',created_at:created,grade_revision:1,grade_history:[]});
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Retry evaluation',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Start new attempt',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('group',{name:'Your answer'}).filter({hasText:'Inertia resists change in motion.'})).toBeVisible();
+  await page.getByRole('button',{name:'Retry evaluation',exact:true}).click();
+  await expect(page.getByRole('status').filter({hasText:'Evaluating your answers'})).toBeVisible();
+  expect(state.retries).toHaveLength(1);
+  expect(state.retries[0]).toMatchObject({expected_revision:3});
+  expect(state.starts()).toBe(0);
+  expect(state.submissions).toHaveLength(0);
+  await expect(page.getByRole('group',{name:'Your answer'}).filter({hasText:'Inertia resists change in motion.'})).toBeVisible();
+});
+
+test('results default to colored numbered navigation with an optional list view', async ({page},info) => {
+  await page.setViewportSize({width:390,height:844});
+  const state=await chat(page);
+  state.setAttempt({id:'flex-attempt',assessment_id:state.value.id,revision:3,state:'graded',attempt_number:1,
+    answers:{q1:'a',q2:'false',q3:'An incomplete explanation',q4:'["a","b"]'},
+    grades:state.value.questions.map((q,i)=>({question_id:q.id,score:i===1?0:i===2?1:2,confidence:1,
+      feedback:`Feedback for question ${i+1}`,concept_grades:{},misconceptions:[],outcome:i===1?'wrong':i===2?'partial':'correct'})),
+    extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]});
+  await page.reload();
+  const feedback=page.getByRole('region',{name:'Assessment feedback'});
+  const navigation=feedback.getByRole('navigation',{name:'Result questions'});
+  await expect(navigation.getByRole('button')).toHaveCount(4);
+  await expect(navigation.getByRole('button',{name:'Question 1: correct',exact:true})).toHaveClass(/bg-success/);
+  await expect(navigation.getByRole('button',{name:'Question 2: incorrect',exact:true})).toHaveClass(/bg-danger/);
+  await navigation.getByRole('button',{name:'Question 2: incorrect',exact:true}).click();
+  const wrong=feedback.getByRole('region',{name:'Question 2 feedback',exact:true});
+  await expect(wrong).toHaveClass(/bg-danger/);
+  await expect(wrong.getByRole('group',{name:'Your answer'})).toContainText('False');
+  await feedback.getByRole('button',{name:'Next result',exact:true}).click();
+  await expect(feedback.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();
+  await feedback.getByRole('button',{name:'Previous result',exact:true}).click();
+  await feedback.getByRole('button',{name:'List view',exact:true}).click();
+  await expect(feedback.getByRole('group',{name:'Your answer'})).toHaveCount(4);
+  await page.screenshot({path:info.outputPath('assessment-results-mobile.png')});
+  await feedback.getByRole('button',{name:'Question view',exact:true}).click();
+  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
 });
