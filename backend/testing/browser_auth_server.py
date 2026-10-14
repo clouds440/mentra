@@ -46,8 +46,10 @@ from app.api.routes.student_profile import router as profile_router
 async def lifespan(application):
     database = PostgresSandbox(seed_learners=False)
     application.state.test_database = database
+    from app.db.admission import Admission
+    application.state.work_admission = Admission(database.sessions, settings=settings)
     application.state.auth_service = AuthService(
-        PostgresIdentityRepository(database.sessions), ExternalTokenVerifier({}))
+        PostgresIdentityRepository(database.sessions), ExternalTokenVerifier({}), admission=application.state.work_admission)
     application.state.student_profile_service = StudentProfileService(
         PostgresStudentProfileRepository(database.sessions), TestProfileEvaluator())
     storage = tempfile.TemporaryDirectory()
@@ -55,12 +57,12 @@ async def lifespan(application):
     vector = QdrantVectorStore(settings.model_copy(update={'qdrant_url':'http://test', 'qdrant_api_key':'test', 'qdrant_collection':'browser'}),
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
     application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
-        embedding, vector, FileStorage(storage.name), settings)
+        embedding, vector, FileStorage(storage.name), settings, admission=application.state.work_admission)
     llm = MentraLLM(HistoryChatFactory())
     from app.langchain.concept_identity import ConceptIdentityResolver
     application.state.learner_service = LearnerEngine(database.repository, generated_concept_resolver=ConceptIdentityResolver(llm))
     application.state.chat_service = ChatService(llm)
-    application.state.conversation_service = ConversationService(ChatRepository(database.sessions))
+    application.state.conversation_service = ConversationService(ChatRepository(database.sessions), admission=application.state.work_admission)
     application.state.history_management = create_history_management(database.sessions, llm, application.state.student_profile_service)
     from app.notifications.factory import create_notifications
     application.state.notifications_service = create_notifications(database.sessions)
@@ -74,7 +76,7 @@ async def lifespan(application):
     from app.chat.attachments import AttachmentService
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
-    application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions))
+    application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions), admission=application.state.work_admission)
     from app.web_search import WebSearchService
     from app.web_search.repositories.postgres import UsageRepository
     from testing.web_search_provider import BrowserSearchProvider
@@ -111,6 +113,10 @@ async def lifespan(application):
 
 app = FastAPI(lifespan=lifespan)
 register_exception_handlers(app)
+from app.core.http_limits import JsonBodyLimit
+from app.core.http_privacy import PrivateApiResponses
+app.add_middleware(JsonBodyLimit)
+app.add_middleware(PrivateApiResponses)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin],
                    allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 app.include_router(auth_router, prefix='/api/v1')

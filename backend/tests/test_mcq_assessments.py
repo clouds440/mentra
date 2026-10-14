@@ -8,6 +8,40 @@ from tests import test_assessments as fixtures
 
 class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
     setUp=fixtures.AssessmentTests.setUp
+    async def test_long_model_answers_have_bounded_feedback_without_changing_grades(self):
+        assessment = await self.service.generate(self.owner, self.request.model_copy(update={'question_format': 'mcq'}))
+        attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))
+        self.service.submit(self.owner, str(attempt.id), SubmitAnswers(expected_revision=attempt.revision,
+            client_request_id=uuid4(), answers={str(q.id): 'a' if i == 0 else 'b' for i, q in enumerate(assessment.questions)}))
+        job = self.service.repository.claim()
+        for question in job['assessment']['questions']:
+            question['model_answer'] = 'x' * 3000
+        grades = await self.service.workflows.grade(job)
+        self.assertTrue(all(len(grade.feedback) == 2000 for grade in grades.questions))
+        self.assertEqual(sum(grade.score for grade in grades.questions), assessment.questions[0].marks)
+        self.assertTrue(all(len(q['model_answer']) == 3000 for q in job['assessment']['questions']))
+
+    async def test_failed_grading_retry_preserves_submission_and_is_idempotent(self):
+        from app.assessments.schemas import RetryGrading
+        assessment = await self.service.generate(self.owner, self.request.model_copy(update={'question_format': 'mcq'}))
+        attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))
+        submit = SubmitAnswers(expected_revision=attempt.revision, client_request_id=uuid4(),
+            answers={str(q.id): 'a' for q in assessment.questions})
+        self.service.submit(self.owner, str(attempt.id), submit)
+        job = self.service.repository.claim()
+        self.service.repository.fail(job, retry=False)
+        failed = self.service.repository.attempt(self.owner, str(attempt.id))
+        retry = RetryGrading(expected_revision=failed.revision, client_request_id=uuid4())
+        with self.assertRaises(AppError):
+            self.service.repository.retry_grading(self.other, str(attempt.id), retry)
+        recovered = self.service.repository.retry_grading(self.owner, str(attempt.id), retry)
+        self.assertEqual(recovered.id, failed.id)
+        self.assertEqual(recovered.answers, failed.answers)
+        self.assertEqual(recovered.grade_revision, failed.grade_revision)
+        self.assertEqual(self.service.repository.retry_grading(self.owner, str(attempt.id), retry).revision, recovered.revision)
+        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertEqual(self.service.submit(self.owner, str(attempt.id), submit).state, 'graded')
+
     async def test_generation_partial_persistence_submission_results_and_evidence(self):
         request=self.request.model_copy(update={'question_format':'mcq','count':5})
         assessment=await self.service.generate(self.owner,request)

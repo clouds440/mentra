@@ -255,26 +255,50 @@ class AssessmentRepository:
             session.execute(update(t).where(t.c.id==identifier).values(**values))
             return self.attempt_public(dict(row,**values))
 
+    def retry_grading(self, owner, identifier, body):
+        with self.transactions.write(owner) as tx:
+            row = self._attempt(tx._session, owner, identifier)
+            if row['retry_request_id'] == str(body.client_request_id):
+                return self.attempt_public(row)
+            if row['state'] != 'failed' or row['revision'] != body.expected_revision:
+                raise AppError('REVISION_CONFLICT', 'Only the current failed attempt can be retried.', 409)
+            if not row['submission_id'] or row['manual_retries'] >= 3:
+                raise AppError('ASSESSMENT_RETRY_LIMIT', 'Start a new attempt to continue.', 409)
+            values = dict(state='submitted', revision=row['revision'] + 1, worker_attempts=0,
+                retry_at=None, claim_id=None, claim_until=None, error=None,
+                retry_request_id=str(body.client_request_id), manual_retries=row['manual_retries'] + 1,
+                log_context=workflow_logger.envelope())
+            tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
+            return self.attempt_public(dict(row, **values))
+
     def claim(self):
         now = self.clock()
         with self.sessions.begin() as session:
             session.execute(update(t).where(t.c.state == 'grading', t.c.claim_until <= now, t.c.worker_attempts >= 3).values(
                 state='failed', error='Grading could not complete. Please retry this assessment.', claim_id=None,
                 claim_until=None, retry_at=None, revision=t.c.revision+1))
-            candidate = session.execute(select(t.c.id, t.c.learner_id).where(t.c.worker_attempts < 3,
+            eligible_rows = select(t.c.id, t.c.learner_id, t.c.created_at,
+                func.row_number().over(partition_by=t.c.learner_id, order_by=(t.c.created_at, t.c.id)).label('owner_rank')).where(t.c.worker_attempts < 3,
                 or_(t.c.state == 'submitted', and_(t.c.state == 'grading', t.c.claim_until <= now),
-                    and_(t.c.state == 'failed', t.c.retry_at <= now))).order_by(t.c.created_at).limit(1)).first()
-        if not candidate: return None
-        identifier, owner = candidate
-        with self.transactions.write(owner) as tx:
-            row = self._attempt(tx._session, owner, identifier)
-            eligible = row['state'] == 'submitted' or (row['state'] == 'grading' and row['claim_until'] and row['claim_until'] <= now) or (row['state'] == 'failed' and row['retry_at'] and row['retry_at'] <= now)
-            if not eligible or row['worker_attempts'] >= 3: return None
-            token = str(uuid4())
-            tx._session.execute(update(t).where(t.c.id == identifier).values(state='grading', claim_id=token,
-                claim_until=now+timedelta(seconds=120), worker_attempts=row['worker_attempts']+1))
-            return dict(owner=owner, id=identifier, claim_id=token, attempt=dict(row, worker_attempts=row['worker_attempts']+1),
-                assessment=self._assessment(tx._session, owner, row['assessment_id']), profile_context_version=row['profile_context_version'])
+                    and_(t.c.state == 'failed', t.c.retry_at <= now))).subquery()
+            candidates = session.execute(select(eligible_rows.c.id, eligible_rows.c.learner_id)
+                .order_by(eligible_rows.c.owner_rank, eligible_rows.c.created_at, eligible_rows.c.id).limit(32)).all()
+        for identifier, owner in candidates:
+            with self.transactions.try_write(owner) as tx:
+                if tx is None:
+                    continue
+                row = tx._session.execute(select(*ATTEMPT_COLUMNS).where(t.c.id == identifier, t.c.learner_id == owner)).mappings().first()
+                if not row:
+                    continue
+                eligible = row['state'] == 'submitted' or (row['state'] == 'grading' and row['claim_until'] and row['claim_until'] <= now) or (row['state'] == 'failed' and row['retry_at'] and row['retry_at'] <= now)
+                if not eligible or row['worker_attempts'] >= 3:
+                    continue
+                token = str(uuid4())
+                tx._session.execute(update(t).where(t.c.id == identifier).values(state='grading', claim_id=token,
+                    claim_until=now+timedelta(seconds=120), worker_attempts=row['worker_attempts']+1))
+                return dict(owner=owner, id=identifier, claim_id=token, attempt=dict(row, worker_attempts=row['worker_attempts']+1),
+                    assessment=self._assessment(tx._session, owner, row['assessment_id']), profile_context_version=row['profile_context_version'])
+        return None
 
     def complete(self, job, grades, apply_evidence):
         with self.transactions.write(job['owner']) as tx:

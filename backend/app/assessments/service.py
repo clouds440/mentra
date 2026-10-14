@@ -14,8 +14,9 @@ from app.core.logging import workflow_logger
                'outcome': lambda value: 'deferred' if value.state in ('submitted','grading') else 'success'},
 })
 class AssessmentService:
-    def __init__(self, repository, workflows, reader=None):
+    def __init__(self, repository, workflows, reader=None, admission=None):
         self.repository, self.workflows = repository, workflows
+        self.admission = admission
         self.reader = reader or create_document_reader(isolated=True)
         self.paper_graph = EventConfirmationGraph(repository.sessions.kw['bind'], 'assessment-transcription-v1')
         from .chat import ChatAssessments
@@ -24,6 +25,12 @@ class AssessmentService:
     async def generate_chat(self, owner, conversation, request):
         previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
         if previous: return previous
+        if self.admission:
+            async with self.admission.async_reserve('model', owner, capacity=16, owner_capacity=2, seconds=300):
+                return await self._generate_chat(owner, conversation, request)
+        return await self._generate_chat(owner, conversation, request)
+
+    async def _generate_chat(self, owner, conversation, request):
         claim = await run_in_threadpool(self.repository.claim_generation, owner, request)
         try:
             previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
@@ -57,6 +64,12 @@ class AssessmentService:
     async def generate(self, owner, request):
         previous = await run_in_threadpool(self.repository.replay, owner, request)
         if previous: return previous
+        if self.admission:
+            async with self.admission.async_reserve('model', owner, capacity=16, owner_capacity=2, seconds=300):
+                return await self._generate(owner, request)
+        return await self._generate(owner, request)
+
+    async def _generate(self, owner, request):
         claim = await run_in_threadpool(self.repository.claim_generation, owner, request)
         try:
             # Recheck after acquiring the claim: another request may have saved
@@ -173,4 +186,6 @@ class AssessmentService:
 def create_assessments(sessions, llm, learner, rag=None, profile=None):
     from .repositories.postgres import AssessmentRepository
     from app.langchain.assessment_workflows import AssessmentWorkflows
-    return AssessmentService(AssessmentRepository(sessions), AssessmentWorkflows(llm, learner, rag, profile))
+    from app.db.admission import Admission
+    from app.core.config import settings
+    return AssessmentService(AssessmentRepository(sessions), AssessmentWorkflows(llm, learner, rag, profile), admission=Admission(sessions, settings=settings))

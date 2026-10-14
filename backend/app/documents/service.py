@@ -16,7 +16,8 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class DocumentReader:
-    def __init__(self, engines: list[FormatReader], vision, *, isolated: bool = False):
+    def __init__(self, engines: list[FormatReader], vision, *, isolated: bool = False,
+                 cpu_seconds=120, memory_bytes=1024 ** 3):
         self._engines = {}
         for engine in engines:
             for kind in engine.formats:
@@ -24,6 +25,7 @@ class DocumentReader:
                     raise ValueError(f'Duplicate or unknown document format: {kind}')
                 self._engines[kind] = engine
         self._vision, self._isolated = vision, isolated
+        self.cpu_seconds, self.memory_bytes = cpu_seconds, memory_bytes
 
     @cached_property
     def version(self):
@@ -42,7 +44,10 @@ class DocumentReader:
         available = {key: engine.available() for key, engine in engines.items()}
         formats = [kind for kind, engine in self._engines.items() if available[id(engine)]]
         vision = self._vision.capabilities()
-        return dict(formats=formats, image_ocr=vision.image_ocr, scanned_pdf_ocr=vision.pdf_page_ocr, parser_revision=self.version)
+        return dict(formats=formats, image_ocr=vision.image_ocr, scanned_pdf_ocr=vision.pdf_page_ocr, parser_revision=self.version,
+            ocr_languages=['eng'], isolated=self._isolated,
+            resource_limits=dict(max_wall_seconds=600, cpu_seconds=self.cpu_seconds, memory_bytes=self.memory_bytes),
+            content_limitations=['OCR is English-only.', 'Office extraction may omit unsupported embedded content; preserve per-file warnings.'])
 
     def detect(self, path: Path, filename: str) -> str:
         return MEDIA[detect_format(Path(path), filename, self.capabilities()['formats'])]
@@ -67,7 +72,8 @@ class DocumentReader:
             raise DocumentReadError('This media type is unsupported by the document parser.')
         if self._isolated:
             with workflow_logger.step('app.documents.readers.' + kind, 'isolated.parse', input=dict(format=kind, max_pages=max_pages)) as step:
-                result = read_isolated(Path(path), kind, max_pages, timeout)
+                result = read_isolated(Path(path), kind, max_pages, timeout,
+                    cpu_seconds=self.cpu_seconds, memory_bytes=self.memory_bytes)
                 step.result(dict(block_count=len(result['blocks']), warning_count=len(result['warnings'])), 'success')
                 return result
         return self.read_in_process(Path(path), kind, max_pages)

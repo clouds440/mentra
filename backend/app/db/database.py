@@ -18,7 +18,13 @@ def build_engine(database_url: str, **options):
 
 @lru_cache
 def get_engine():
-    return build_engine(settings.database_url)
+    url = postgres_url(settings.database_url)
+    query = url.query.get('options', '')
+    statement_ms = settings.database_worker_statement_ms if settings.database_role == 'worker' else settings.database_api_statement_ms
+    options = f'{query} -cstatement_timeout={statement_ms} -clock_timeout={settings.database_lock_ms}'
+    return build_engine(settings.database_url, pool_size=settings.database_pool_size,
+        max_overflow=settings.database_pool_overflow, pool_timeout=settings.database_pool_timeout,
+        connect_args=dict(connect_timeout=settings.database_connect_timeout, options=options.strip()))
 
 
 def get_session_factory():

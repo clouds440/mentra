@@ -32,7 +32,8 @@ class AssessmentWorkflows:
             if inferred:
                 ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
                 known = list(dict.fromkeys(item.concept_id for item in [*ranked['recommendations'], *ranked['verification']]))[:10]
-                known_names = [(await run_in_threadpool(self.learner.get_concept, identifier)).canonical_name for identifier in known]
+                known_concepts = await run_in_threadpool(self.learner.get_concepts, known)
+                known_names = [known_concepts[identifier].canonical_name for identifier in known]
                 try:
                     plan = await invoke_generated(self.llm, PromptSource.ASSESSMENT_TARGETS,
                         dict(topic=request.topic, count=request.count, purpose=request.purpose,
@@ -51,7 +52,8 @@ class AssessmentWorkflows:
             concepts = [concept.id for concept in resolved]
         ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
         recommendations, verification = ranked['recommendations'], ranked['verification']
-        targets = [dict(id=identifier, name=(await run_in_threadpool(self.learner.get_concept, identifier)).canonical_name) for identifier in concepts]
+        target_concepts = await run_in_threadpool(self.learner.get_concepts, concepts)
+        targets = [dict(id=identifier, name=target_concepts[identifier].canonical_name) for identifier in concepts]
         questions = []
         title = None
         profile_context = await run_in_threadpool(self.profile.prompt_context, owner) if self.profile else None
@@ -109,7 +111,7 @@ class AssessmentWorkflows:
                 correct = attempt['answers'][question['id']] == question['correct_option_id']
                 score = question['marks'] if correct else 0
                 grades.append(QuestionGrade(question_id=question['id'], score=score, confidence=1,
-                    feedback=('Correct. ' if correct else 'Incorrect. ') + question['model_answer'],
+                    feedback=(('Correct. ' if correct else 'Incorrect. ') + question['model_answer'])[:2000],
                     concept_grades={identifier:ConceptGrade(score=score, max_score=question['marks'], confidence=1)
                         for identifier in question['concept_ids']}))
         for batch in batches:

@@ -23,10 +23,13 @@ class StateService:
 
     def load(self, learner_id: str, concept_ids: list[str]):
         states = self.repository.states_for_concepts(learner_id, concept_ids)
-        for key, state in list(states.items()):
-            if not self.current(state):
-                with self.repository.transaction(learner_ids=[learner_id]) as repository:
-                    current = repository.get_state(learner_id, key)
+        stale = [key for key, state in states.items() if not self.current(state)]
+        for start in range(0, len(stale), 32):
+            batch = stale[start:start + 32]
+            with self.repository.transaction(learner_ids=[learner_id]) as repository:
+                current_states = repository.states_for_concepts(learner_id, batch)
+                for key in batch:
+                    current = current_states.get(key)
                     states[key] = (current if self.current(current) else
                                    self.evidence.recompute(learner_id, key, repository))
         return states

@@ -9,5 +9,6 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.operation(outcome='success')
 def create_rag_service(learner, embedding, vector_store):
+    from app.db.admission import Admission
     return RAGService(RAGRepository(get_session_factory()), learner, embedding, vector_store,
-                      FileStorage(settings.rag_storage_dir), settings)
+                      FileStorage(settings.rag_storage_dir), settings, admission=Admission(get_session_factory(), settings=settings))

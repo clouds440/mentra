@@ -32,7 +32,10 @@ class EventProposalService:
                 if not admission.supported or not admission.first_party or not admission.actual_event:
                     return dict(outcome='rejected',reason='This statement does not support a personal event.')
                 supported=admission.complete_unambiguous and admission.timezone_supported and admission.confidence>=.95
-            except Exception:
+            except Exception as error:
+                from app.langchain.tool_execution import LIFECYCLE_CODES
+                if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
+                    raise
                 supported=False
         result=await run_in_threadpool(self.repository.create,owner,body,scope)
         if supported and body.action=='create' and result['outcome']=='awaiting_confirmation':
@@ -46,7 +49,10 @@ class EventProposalService:
                 else:approved=claim['proposal']
                 event=await run_in_threadpool(self.events.detail,owner,str(approved.event_id))
                 return dict(outcome='saved',event=event)
-            except (ValidationError,AppError):
+            except (ValidationError,AppError) as error:
+                from app.langchain.tool_execution import LIFECYCLE_CODES
+                if isinstance(error, AppError) and (error.code in LIFECYCLE_CODES or error.status_code >= 500):
+                    raise
                 # A failed automatic gate leaves a reviewable domain proposal.
                 await run_in_threadpool(self.repository.release,owner,proposal['id'])
                 latest=await run_in_threadpool(self.repository.detail,owner,proposal['id'])
@@ -77,12 +83,14 @@ class EventProposalService:
         scope['_event_practice_requested'] = captured.practice_requested
         results = []
         for item in captured.events:
-            body = EventManage(message_id=source['id'], quote=item.quote, candidate=item.candidate)
             try:
+                body = EventManage(message_id=source['id'], quote=item.quote, candidate=item.candidate)
                 result = await self.admit(owner, body, scope, capture_admission=item.admission)
             except Exception as error:
-                from app.langchain.tool_execution import failure
-                result = failure(error, write=True, execution_started=True)
+                from app.langchain.tool_execution import failure, LIFECYCLE_CODES
+                if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
+                    raise
+                result = failure(error, write=True, execution_started=True).model_dump(mode='json')
             results.append(result)
         return results
 

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     log_event_max_bytes: int = Field(default=32768, ge=8192, le=1048576)
     log_health_requests: bool = False
     log_poll_requests: bool = False
+    log_retention_days: int = Field(default=14, ge=1, le=365)
+    log_max_file_bytes: int = Field(default=64 * 1024 * 1024, ge=65536)
+    log_queue_bytes: int = Field(default=8 * 1024 * 1024, ge=65536)
+    log_shutdown_seconds: float = Field(default=2, gt=0, le=10)
     log_parameter_details: bool = True
     app_env: str = "development"
     backend_host: str = "0.0.0.0"
@@ -23,8 +27,25 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     database_url: str = ""
+    database_role: Literal['api', 'worker'] = 'api'
+    database_pool_size: int = Field(default=5, ge=1, le=100)
+    database_pool_overflow: int = Field(default=5, ge=0, le=100)
+    database_pool_timeout: float = Field(default=5, gt=0, le=60)
+    database_connect_timeout: int = Field(default=5, ge=1, le=60)
+    database_api_statement_ms: int = Field(default=30000, ge=100, le=300000)
+    database_worker_statement_ms: int = Field(default=120000, ge=100, le=1800000)
+    database_lock_ms: int = Field(default=5000, ge=100, le=60000)
     auth_session_seconds: int = Field(default=3600, ge=60, le=86400)
+    auth_persistent_session_seconds: int = Field(default=30 * 86400, ge=86400, le=365 * 86400)
     auth_cookie_secure: bool = False
+    auth_global_capacity: int = Field(default=16, ge=1, le=64)
+    auth_owner_capacity: int = Field(default=8, ge=1, le=32)
+    auth_account_minute_limit: int = Field(default=20, ge=1, le=100)
+    auth_client_minute_limit: int = Field(default=60, ge=1, le=1000)
+    work_global_capacity: int = Field(default=16, ge=1, le=100)
+    work_owner_capacity: int = Field(default=2, ge=1, le=10)
+    parse_global_capacity: int = Field(default=4, ge=1, le=32)
+    parse_owner_capacity: int = Field(default=1, ge=1, le=4)
     auth_cookie_same_site: Literal['lax', 'strict', 'none'] = 'lax'
     auth_external_providers: dict[str, ExternalProviderSettings] = Field(default_factory=dict)
     ai_provider: str = "openai_compatible"
@@ -62,6 +83,8 @@ class Settings(BaseSettings):
     memory_preference_days: int = Field(default=365, ge=1, le=3650)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"
+    embedding_worker_timeout: float = Field(default=10, gt=0, le=60)
+    embedding_initialization_timeout: float = Field(default=45, gt=0, le=120)
     qdrant_url: str = ""
     qdrant_api_key: str = ""
     qdrant_collection: str = ""
@@ -72,10 +95,13 @@ class Settings(BaseSettings):
     rag_max_chunks: int = Field(default=5000, ge=1)
     rag_storage_quota_bytes: int = Field(default=512 * 1024 * 1024, ge=1024)
     rag_parser_timeout: int = Field(default=120, ge=1, le=600)
+    document_cpu_seconds: int = Field(default=120, ge=1, le=600)
+    document_memory_bytes: int = Field(default=1024 ** 3, ge=64 * 1024 ** 2)
     rag_job_lease_seconds: int = Field(default=300, ge=30)
     rag_hybrid_enabled: bool = True
     rag_reranker_path: str = ''
     rag_reranker_timeout: float = Field(default=5, gt=0, le=30)
+    rag_inference_wait_seconds: float = Field(default=2, gt=0, le=10)
     speech_model: Literal['tiny', 'base', 'small'] = 'base'
     speech_model_path: str = ''
     speech_cpu_threads: int = Field(default=2, ge=1, le=16)

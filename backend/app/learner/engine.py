@@ -67,6 +67,27 @@ class LearnerEngine:
     def get_concept(self, concept_id: str) -> Concept:
         return self.concepts.get(concept_id)
 
+    def canonical_concept_ids(self, concept_ids: list[str]) -> dict[str, str]:
+        identifiers = list(dict.fromkeys(concept_ids))
+        if len(identifiers) > 1024:
+            raise LearnerError('Resolve at most 1024 concept IDs at once')
+        result = self.repository.canonical_ids(identifiers)
+        from app.learner.exceptions import ConceptNotFoundError
+        for identifier in identifiers:
+            if identifier not in result:
+                raise ConceptNotFoundError(identifier)
+        return result
+
+    def get_concepts(self, concept_ids: list[str]) -> dict[str, Concept]:
+        if len(concept_ids) > 1024:
+            raise LearnerError('Read at most 1024 concepts at once')
+        result = self.repository.canonical_concepts(concept_ids)
+        from app.learner.exceptions import ConceptNotFoundError
+        for identifier in concept_ids:
+            if identifier not in result:
+                raise ConceptNotFoundError(identifier)
+        return result
+
     def get_related_concepts(self, concept_id: str, relation_type: str | None = None, limit: int = 20) -> list[Concept]:
         return self.repository.list_related_concepts(self.get_concept(concept_id).id, relation_type, min(50, limit))
 
@@ -141,6 +162,11 @@ class LearnerEngine:
 
     def get_related_contexts(self, learner_id: str, query: str) -> list[LearningContextSummary]:
         return [summary(c) for c in self.contexts.select(learner_id, query=query) if c.status != 'ACTIVE']
+
+    def get_context_page(self, learner_id, offset=0, limit=100, status=None):
+        if offset < 0 or not 1 <= limit <= 100 or status not in (None, 'ACTIVE', 'RELATED', 'DORMANT', 'ARCHIVED'):
+            raise LearnerError('Invalid context page')
+        return [summary(c) for c in self.repository.page_for_learner(learner_id, offset, limit, status)]
 
     def submit_evidence(self, request: EvidenceSubmissionRequest) -> EvidenceSubmissionResult:
         return self.evidence.submit(request)

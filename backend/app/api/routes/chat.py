@@ -38,4 +38,6 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse, response_model_exclude_unset=True, summary="Legacy stateless chat", deprecated=True)
 async def chat(request: ChatRequest, http_request: Request, identity=Depends(require_onboarded_identity)) -> ChatResponse:
-    return await generate_reply([(message.role, message.content) for message in request.messages], request.retrieval, http_request, identity)
+    from app.db.admission import request_capacity
+    async with request_capacity(http_request, getattr(identity, 'learner_id', None), 'model', capacity=16, owner_capacity=2):
+        return await generate_reply([(message.role, message.content) for message in request.messages], request.retrieval, http_request, identity)

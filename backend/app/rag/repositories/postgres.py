@@ -59,6 +59,7 @@ class RAGRepository:
             if existing:
                 if existing['request_hash'] != request_hash:
                     raise AppError('RAG_IDEMPOTENCY_CONFLICT', 'This upload key was already used for different material.', 409)
+                self._document(session, owner, existing['document_id'])
                 return dict(document_id=existing['document_id'], generation_id=existing['generation_id'], job_id=existing['id'], duplicate=True)
             if document_id is None:
                 latest = versions.alias('latest_upload')
@@ -120,7 +121,8 @@ class RAGRepository:
         ids = list(by_id)
 
         def recent(table, count, active_ids=()):
-            ranked = select(table, func.row_number().over(partition_by=table.c.document_id,
+            columns = [column for column in table.c if column.name != 'extracted_content']
+            ranked = select(*columns, func.row_number().over(partition_by=table.c.document_id,
                 order_by=(table.c.created_at.desc(), table.c.id.desc())).label('_position')).where(
                     table.c.learner_id == owner, table.c.document_id.in_(ids)).subquery()
             condition = ranked.c._position <= count
@@ -416,7 +418,8 @@ class RAGRepository:
 
     def eligible(self, owner, context_ids, document_ids, include_archived):
         with self.sessions() as session:
-            query = select(documents).where(documents.c.learner_id == owner, documents.c.deleted_at.is_(None),
+            query = select(documents.c.id, documents.c.context_ids, documents.c.concept_ids,
+                documents.c.active_generation_id, documents.c.revision).where(documents.c.learner_id == owner, documents.c.deleted_at.is_(None),
                 documents.c.active_generation_id.is_not(None))
             if not include_archived:
                 query = query.where(documents.c.archived.is_(False))
@@ -506,6 +509,12 @@ class RAGRepository:
     def storage_keys(self):
         with self.sessions() as session:
             return set(session.execute(select(versions.c.storage_key)).scalars())
+
+    def referenced_storage_keys(self, keys):
+        if not keys:
+            return set()
+        with self.sessions() as session:
+            return set(session.scalars(select(versions.c.storage_key).where(versions.c.storage_key.in_(keys))))
 
     def index_health(self, owner=None, limit=100):
         """Bounded operator metadata; never returns source names or content."""

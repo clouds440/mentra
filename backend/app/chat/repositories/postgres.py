@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from hashlib import sha256
 import json
 from uuid import uuid4, UUID
-from sqlalchemy import select, update, delete, and_, or_
+from sqlalchemy import select, update, delete, and_, or_, text
 from sqlalchemy.dialects.postgresql import insert
 from app.core.exceptions import AppError
 from .tables import conversations as c, messages as m, turns as t, sync_state as ss, changes as ch
@@ -116,7 +116,8 @@ class ChatRepository:
                     result['active'] = dict(conversation=dict(row), **self._page(session, owner, active))
             return result
 
-    def begin_turn(self, owner, request):
+    @staticmethod
+    def _request_hash(request):
         conversation_id, turn_id = str(request.conversation_id), str(request.client_turn_id)
         content = request.content
         selection = request.retrieval.model_dump(mode='json')
@@ -127,6 +128,26 @@ class ChatRepository:
             fingerprint = sha256((fingerprint + request.interaction_response.model_dump_json()).encode()).hexdigest()
         if request.timezone:
             fingerprint = sha256((fingerprint + request.timezone).encode()).hexdigest()
+        return fingerprint
+
+    def replay_turn(self, owner, request):
+        with self.sessions() as session:
+            row = session.execute(select(t).where(t.c.id == str(request.client_turn_id))).mappings().first()
+            if not row:
+                return None
+            if row['learner_id'] != owner or row['request_hash'] != self._request_hash(request):
+                raise AppError('CHAT_IDEMPOTENCY_CONFLICT', 'This send identifier is already in use.', 409)
+            if row['state'] == 'RUNNING' and row['lease_until'] < now() or request.retry and row['state'] == 'FAILED':
+                return None
+            return self.status(owner, str(request.conversation_id), str(request.client_turn_id), True)
+
+    def begin_turn(self, owner, request, *, log_context=None):
+        log_context = log_context or workflow_logger.envelope()
+        conversation_id, turn_id = str(request.conversation_id), str(request.client_turn_id)
+        content = request.content
+        selection = request.retrieval.model_dump(mode='json')
+        attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))
+        fingerprint = self._request_hash(request)
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             existing = session.execute(select(t).where(t.c.id == turn_id)).mappings().first()
@@ -147,7 +168,7 @@ class ChatRepository:
                 if conversation['message_count'] != existing['user_sequence']:
                     raise conflict()
                 attempt = existing['attempt'] + 1
-                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),log_context=workflow_logger.envelope()))
+                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),log_context=log_context))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
                 return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'], title_revision=conversation['revision']+1)
@@ -191,7 +212,7 @@ class ChatRepository:
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
                 role='user', content=content, metadata={**interaction_metadata, **({'timezone':request.timezone} if request.timezone else {}), **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
-                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=workflow_logger.envelope()))
+                user_sequence=sequence, state='RUNNING', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=log_context))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))
             self._change(session, owner, conversation_id, state)
             return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence, title_revision=conversation['revision']+1)
@@ -273,6 +294,20 @@ class ChatRepository:
 
     def status(self, owner, conversation_id, turn_id=None, incremental=False, after=None):
         with self.sessions.begin() as session:
+            session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'))
+            row = self._conversation(session, owner, conversation_id)
+            query = select(t).where(t.c.learner_id == owner, t.c.conversation_id == conversation_id)
+            if turn_id:
+                query = query.where(t.c.id == turn_id)
+            turn = session.execute(query.order_by(t.c.user_sequence.desc()).limit(1)).mappings().first()
+            expired = turn and turn['state'] == 'RUNNING' and turn['lease_until'] < now()
+            if not expired:
+                return self._status_page(session, owner, conversation_id, row, turn, incremental, after)
+        # Lease expiry is a mutation; recheck under the owner lock before changing it.
+        return self._status_locked(owner, conversation_id, turn_id, incremental, after)
+
+    def _status_locked(self, owner, conversation_id, turn_id=None, incremental=False, after=None):
+        with self.sessions.begin() as session:
             # Consistent locking order across every writer.
             state = self._sync_lock(session, owner)
             row = self._conversation(session, owner, conversation_id)
@@ -286,16 +321,19 @@ class ChatRepository:
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=row['revision'], updated_at=row['updated_at']))
                 self._change(session, owner, conversation_id, state)
                 turn = dict(turn, state='FAILED', error='Generation interrupted. Retry this message.')
-            if after is not None:
-                page = self._page(session, owner, conversation_id, after=after)
-                incremental = True
-            elif incremental and turn:
-                rows = session.execute(select(m).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
-                    m.c.sequence.in_([turn['user_sequence'], turn['assistant_sequence']])).order_by(m.c.sequence)).mappings().all()
-                page = dict(items=[self._public_message(item) for item in rows], has_more=False, next_cursor=None)
-            else:
-                page = self._page(session, owner, conversation_id)
-            return dict(conversation=row, turn={k:v for k,v in turn.items() if k != 'log_context'} if turn else None, incremental=incremental, **page)
+            return self._status_page(session, owner, conversation_id, row, turn, incremental, after)
+
+    def _status_page(self, session, owner, conversation_id, row, turn, incremental, after):
+        if after is not None:
+            page = self._page(session, owner, conversation_id, after=after)
+            incremental = True
+        elif incremental and turn:
+            rows = session.execute(select(m).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
+                m.c.sequence.in_([turn['user_sequence'], turn['assistant_sequence']])).order_by(m.c.sequence)).mappings().all()
+            page = dict(items=[self._public_message(item) for item in rows], has_more=False, next_cursor=None)
+        else:
+            page = self._page(session, owner, conversation_id)
+        return dict(conversation=row, turn={k:v for k,v in turn.items() if k != 'log_context'} if turn else None, incremental=incremental, **page)
 
     def edit(self, owner, conversation_id, revision, title=None, remove=False):
         with self.sessions.begin() as session:

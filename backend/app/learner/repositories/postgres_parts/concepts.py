@@ -100,6 +100,25 @@ class ConceptsStore(PostgresRepositoryBase):
                 return session.execute(select(concept_redirect.c.target_id).where(concept_redirect.c.source_id == concept_id)).scalar_one_or_none() or concept_id
         return self._remember('canonical', concept_id, read)
 
+    def related_concepts_for_sources(self, source_ids, limit=20, min_confidence=0):
+        edges = select(concept_relation.c.source_concept_id.label('source'), concept_relation.c.target_concept_id.label('related')).where(
+            concept_relation.c.source_concept_id.in_(source_ids), concept_relation.c.confidence >= min_confidence).union(
+            select(concept_relation.c.target_concept_id, concept_relation.c.source_concept_id).where(
+                concept_relation.c.target_concept_id.in_(source_ids), concept_relation.c.confidence >= min_confidence)).subquery()
+        ranked = select(edges.c.source, concept, func.row_number().over(partition_by=edges.c.source,
+            order_by=func.lower(concept.c.canonical_name)).label('_rank')).join(concept, edges.c.related == concept.c.id).where(concept.c.status == 'ACTIVE').subquery()
+        result = {key: [] for key in source_ids}
+        with self._session() as session:
+            for row in session.execute(select(ranked).where(ranked.c._rank <= limit).order_by(ranked.c.source, ranked.c._rank)).mappings():
+                result[row['source']].append(self._concept_from_row(row))
+        return result
+
+    def canonical_ids(self, concept_ids):
+        with self._session() as session:
+            rows = session.execute(select(concept.c.id, func.coalesce(concept_redirect.c.target_id, concept.c.id)).outerjoin(
+                concept_redirect, concept_redirect.c.source_id == concept.c.id).where(concept.c.id.in_(concept_ids)))
+            return dict(rows.all())
+
     def save_candidate(self, candidate_id, proposed_name, normalized_name, context_id, metadata, *, learner_id):
         with self._session() as session:
             stmt = insert(candidate_concept).values(id=candidate_id, proposed_name=proposed_name, normalized_name=normalized_name,

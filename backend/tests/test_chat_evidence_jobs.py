@@ -36,3 +36,27 @@ class EvidenceJobTests(unittest.TestCase):
         self.chat.edit(self.owner,str(self.conversation),revision,remove=True)
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(jobs)),0)
+
+    def test_busy_owner_is_skipped_without_waiting(self):
+        from app.db.owner_transactions import OwnerTransactions
+        from time import monotonic
+        with OwnerTransactions(self.db.sessions).write(self.owner):
+            started = monotonic()
+            self.assertIsNone(ChatEvidenceRepository(self.db.sessions).claim())
+            self.assertLess(monotonic() - started, 1)
+        self.assertIsNotNone(ChatEvidenceRepository(self.db.sessions).claim())
+
+    def test_exhausted_crashed_claim_becomes_terminal(self):
+        from datetime import datetime, timedelta, timezone
+        from sqlalchemy import update
+        repository = ChatEvidenceRepository(self.db.sessions)
+        job = repository.claim()
+        with self.db.sessions.begin() as session:
+            session.execute(update(jobs).where(jobs.c.turn_id == job['turn_id']).values(
+                attempts=3, claim_until=datetime.now(timezone.utc) - timedelta(seconds=1)))
+        self.assertIsNone(repository.claim())
+        with self.db.sessions() as session:
+            row = session.execute(select(jobs)).mappings().one()
+        self.assertEqual(row['state'], 'failed')
+        self.assertIsNone(row['claim_id'])
+        self.assertIsNone(row['retry_at'])

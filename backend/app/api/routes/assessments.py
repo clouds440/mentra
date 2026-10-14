@@ -4,6 +4,7 @@ from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
 from pydantic import BaseModel, ConfigDict, Field
+from app.assessments.schemas import RetryGrading
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
@@ -55,8 +56,15 @@ async def submit(identifier: UUID, body: SubmitAnswers, request: Request, identi
 @router.post('/attempts/{identifier}/source', response_model=Attempt)
 async def source(identifier: UUID, request: Request, expected_revision: int = Form(ge=1), file: UploadFile = File(...), identity=Depends(require_onboarded_identity)):
     try:
-        return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), expected_revision, file.file, file.filename)
+        from app.db.admission import request_capacity
+        async with request_capacity(request, identity.learner_id, 'parse', seconds=600):
+            return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), expected_revision, file.file, file.filename)
     finally: await file.close()
+
+@router.post('/attempts/{identifier}/retry', response_model=Attempt)
+async def retry(identifier: UUID, body: RetryGrading, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.repository.retry_grading,
+        identity.learner_id, str(identifier), body)
 
 @router.post('/attempts/{identifier}/corrections', response_model=Attempt)
 async def correct(identifier: UUID, body: SubmitAnswers, request: Request, identity=Depends(require_onboarded_identity)):

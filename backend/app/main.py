@@ -19,7 +19,7 @@ from app.langchain.model_factory import model_factory
 from app.learner.factory import create_learner_engine
 from app.auth.factory import create_auth_service
 from app.student_profile.factory import create_student_profile_service
-from app.rag.embeddings import SentenceTransformerEmbeddingService
+from app.rag.embedding_process import ProcessEmbeddingService as SentenceTransformerEmbeddingService
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.vector_store import VectorStore
 from app.rag.factory import create_rag_service
@@ -46,19 +46,24 @@ def create_app() -> FastAPI:
                     except AppError:
                         logger.warning('Speech model warmup unavailable; voice requests may retry initialization.')
                 embedding_service = SentenceTransformerEmbeddingService(settings)
+                application.state.embedding_service = embedding_service
                 vector_store: VectorStore = QdrantVectorStore(settings, embedding_service)
                 application.state.llm = MentraLLM(model_factory)
+                from app.db.admission import Admission
+                application.state.work_admission = Admission(get_session_factory(), settings=settings)
+                from app.db.health import readiness
+                application.state.database_health_probe = lambda: readiness(get_session_factory())
                 application.state.learner_service = create_learner_engine(application.state.llm)
                 application.state.auth_service = create_auth_service()
                 application.state.student_profile_service = create_student_profile_service(model_factory, application.state.llm)
-                application.state.embedding_service = embedding_service
                 application.state.vector_store = vector_store
                 application.state.rag_service = create_rag_service(application.state.learner_service, embedding_service, vector_store)
                 application.state.model_factory = model_factory
                 application.state.chat_service = ChatService(application.state.llm)
                 from app.web_search.factory import create_web_search
                 application.state.web_search_service = create_web_search(get_session_factory(), settings)
-                application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()), summary_llm=application.state.llm)
+                application.state.conversation_service = ConversationService(ChatRepository(get_session_factory()), summary_llm=application.state.llm,
+                    admission=application.state.work_admission)
                 application.state.history_management = create_history_management(get_session_factory(), application.state.llm,
                     application.state.student_profile_service, application.state.learner_service)
                 from app.notifications.factory import create_notifications
@@ -72,7 +77,8 @@ def create_app() -> FastAPI:
                 from app.langchain.orchestration_service import OrchestrationService
                 from app.chat.attachments import AttachmentService
                 from app.chat.repositories.attachments import AttachmentRepository
-                application.state.attachment_service = AttachmentService(AttachmentRepository(get_session_factory()))
+                application.state.attachment_service = AttachmentService(AttachmentRepository(get_session_factory()),
+                    admission=application.state.work_admission)
                 application.state.orchestration_service = OrchestrationService(application.state.chat_service,
                     rag=application.state.rag_service, learner=application.state.learner_service,
                     history=application.state.history_management, attachments=application.state.attachment_service,
@@ -92,6 +98,9 @@ def create_app() -> FastAPI:
                 application.state.rag_service.close()
             if vector_store is not None:
                 vector_store.close()
+            close_embedding = getattr(getattr(application.state, 'embedding_service', None), 'close', None)
+            if callable(close_embedding):
+                await run_in_threadpool(close_embedding)
             workflow_logger.event('process.stopped')
 
     app = ObservedFastAPI(
@@ -101,6 +110,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_exception_handlers(app)
+    from app.core.http_limits import JsonBodyLimit
+    app.add_middleware(JsonBodyLimit)
+    from app.core.http_privacy import PrivateApiResponses
+    app.add_middleware(PrivateApiResponses)
 
     app.add_middleware(MaterialUploadLimit, maximum=settings.rag_max_upload_bytes)
     from app.speech.upload_limit import SpeechUploadLimit

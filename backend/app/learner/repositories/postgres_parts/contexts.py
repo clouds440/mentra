@@ -27,6 +27,14 @@ class ContextsStore(PostgresRepositoryBase):
             return [self._context_from_row(row) for row in session.execute(select(contexts).where(
                 contexts.c.learner_id == learner_id).order_by(order, contexts.c.last_activity_at.desc(), contexts.c.id)).mappings()]
 
+    def page_for_learner(self, learner_id, offset, limit, status=None):
+        query = select(contexts).where(contexts.c.learner_id == learner_id)
+        if status is not None:
+            query = query.where(contexts.c.status == status)
+        with self._session() as session:
+            return [self._context_from_row(row) for row in session.execute(query.order_by(contexts.c.id)
+                .offset(offset).limit(limit)).mappings()]
+
     def save_context(self, value):
         now = utcnow()
         values = self._owned_values(value)
@@ -67,3 +75,11 @@ class ContextsStore(PostgresRepositoryBase):
     def get_concept_context_ids(self, concept_id, *, learner_id):
         with self._session() as session:
             return list(session.execute(select(links.c.context_id).where(links.c.concept_id == concept_id, links.c.learner_id == learner_id)).scalars())
+
+    def concept_context_ids_batch(self, concept_ids, learner_id):
+        result = {key: [] for key in concept_ids}
+        with self._session() as session:
+            for concept_id, context_id in session.execute(select(links.c.concept_id, links.c.context_id).where(
+                links.c.concept_id.in_(concept_ids), links.c.learner_id == learner_id)):
+                result[concept_id].append(context_id)
+        return result

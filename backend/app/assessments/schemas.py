@@ -93,14 +93,18 @@ class PublicQuestionGrade(QuestionGrade):
 class StartAttempt(Contract):
     client_request_id: UUID
 
+class RetryGrading(Contract):
+    client_request_id: UUID
+    expected_revision: int = Field(ge=1)
+
 class SaveDraftAnswers(Contract):
     expected_revision: int = Field(ge=1)
-    answers: dict[str, str] = Field(max_length=10)
+    answers: dict[Annotated[str, Field(max_length=100)], Annotated[str, Field(max_length=8000)]] = Field(max_length=10)
 
 class SubmitAnswers(Contract):
     expected_revision: int = Field(ge=1)
     client_request_id: UUID
-    answers: dict[str, str]
+    answers: dict[Annotated[str, Field(max_length=100)], Annotated[str, Field(max_length=8000)]] = Field(max_length=10)
     transcription_confirmed: bool = False
     assistance: Literal['unknown', 'independent', 'assisted'] = 'unknown'
 

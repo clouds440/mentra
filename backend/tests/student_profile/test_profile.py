@@ -40,6 +40,30 @@ def details(**changes):
 
 
 class StudentProfileTests(unittest.TestCase):
+    def test_existing_profile_read_needs_no_write_transaction(self):
+        initial = self.service.get(A)
+        with patch.object(self.repository, 'transaction', side_effect=AssertionError('Read must not acquire a write lock')):
+            self.assertEqual(self.service.get(A), initial)
+            self.assertIsNone(self.service.prompt_context(A))
+
+    def test_profile_edits_share_the_producer_owner_lock(self):
+        from app.db.owner_transactions import OwnerTransactions
+        from threading import Event
+        initial = self.fill_details()
+        started = Event()
+        def edit():
+            started.set()
+            return self.service.update_details(A, ProfileUpdate(expected_version=initial.version,
+                details=details(preferred_name='Updated')))
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with OwnerTransactions(self.db.sessions).write(A):
+                future = pool.submit(edit)
+                self.assertTrue(started.wait(1))
+                import time
+                time.sleep(.05)
+                self.assertFalse(future.done())
+            self.assertEqual(future.result(timeout=3).details.preferred_name, 'Updated')
+
     def test_preferred_name_is_current_owned_optional_and_preserves_learning_state(self):
         initial = self.fill_details(preferred_name='  Ayesha   Noor  ')
         self.assertEqual(initial.details.preferred_name, 'Ayesha Noor')

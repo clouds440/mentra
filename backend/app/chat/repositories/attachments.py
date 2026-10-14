@@ -31,12 +31,13 @@ class AttachmentRepository:
     def bind(session, owner, identifiers, conversation_id):
         if not identifiers:
             return []
-        rows = session.execute(select(attachments).where(attachments.c.learner_id == owner,
+        rows = session.execute(select(attachments.c.id, attachments.c.conversation_id, attachments.c.filename,
+            attachments.c.size_bytes, attachments.c.created_at, func.substr(attachments.c.data, 1, 12).label('header')).where(attachments.c.learner_id == owner,
             attachments.c.id.in_(identifiers))).mappings().all()
         if len(rows) != len(set(identifiers)) or any(row['conversation_id'] not in (None, conversation_id) for row in rows):
             raise AppError('CHAT_ATTACHMENT_NOT_FOUND', 'An attachment is unavailable for this conversation.', 404)
-        image_count = sum(row['data'].startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff', b'GIF87a', b'GIF89a'))
-            or row['data'][:4] == b'RIFF' and row['data'][8:12] == b'WEBP' for row in rows)
+        image_count = sum(row['header'].startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff', b'GIF87a', b'GIF89a'))
+            or row['header'][:4] == b'RIFF' and row['header'][8:12] == b'WEBP' for row in rows)
         if image_count > 3:
             raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
         if any(row['conversation_id'] is None and row['created_at'] < datetime.now(timezone.utc) - timedelta(days=1) for row in rows):
@@ -45,9 +46,12 @@ class AttachmentRepository:
             attachments.c.id.in_(identifiers)).values(conversation_id=conversation_id))
         return [dict(id=row['id'], filename=row['filename'], size_bytes=row['size_bytes']) for row in rows]
 
-    def read(self, owner, identifier, conversation_id):
+    def read(self, owner, identifier, conversation_id, *, metadata_only=False):
         with self.sessions() as session:
-            row = session.execute(select(attachments).join(conversations, attachments.c.conversation_id == conversations.c.id).where(
+            columns = [attachments.c.id, attachments.c.filename, attachments.c.size_bytes,
+                attachments.c.extraction.is_not(None).label('ready'), attachments.c.extraction_error,
+                attachments.c.extraction['warnings'].label('warnings'), attachments.c.library_result] if metadata_only else [attachments]
+            row = session.execute(select(*columns).join(conversations, attachments.c.conversation_id == conversations.c.id).where(
                 attachments.c.id == identifier, attachments.c.learner_id == owner,
                 attachments.c.conversation_id == conversation_id, conversations.c.deleted_at.is_(None))).mappings().first()
             if not row:
@@ -75,10 +79,10 @@ class AttachmentRepository:
                 .values(library_result=result))
 
     def detail(self, owner, identifier, conversation_id):
-        row = self.read(owner, identifier, conversation_id)
+        row = self.read(owner, identifier, conversation_id, metadata_only=True)
         return dict(id=row['id'], filename=row['filename'], size_bytes=row['size_bytes'],
-            ready=row['extraction'] is not None, error=row['extraction_error'],
-            warnings=row['extraction']['warnings'] if row['extraction'] else [], library_result=row['library_result'])
+            ready=row['ready'], error=row['extraction_error'],
+            warnings=row['warnings'] or [], library_result=row['library_result'])
 
     def remove(self, owner, identifier):
         with self.sessions.begin() as session:
@@ -86,3 +90,19 @@ class AttachmentRepository:
             # Only unsent uploads can be removed independently of their transcript.
             session.execute(delete(attachments).where(attachments.c.id == identifier,
                 attachments.c.learner_id == owner, attachments.c.conversation_id.is_(None)))
+
+    def cleanup_unsent(self, limit=100):
+        from app.db.owner_transactions import OwnerTransactions
+        cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+        with self.sessions() as session:
+            candidates = session.execute(select(attachments.c.id, attachments.c.learner_id).where(
+                attachments.c.conversation_id.is_(None), attachments.c.created_at < cutoff)
+                .order_by(attachments.c.created_at).limit(max(1, min(limit, 100)))).all()
+        removed = 0
+        for identifier, owner in candidates:
+            with OwnerTransactions(self.sessions).try_write(owner) as tx:
+                if tx is not None:
+                    removed += tx._session.execute(delete(attachments).where(attachments.c.id == identifier,
+                        attachments.c.learner_id == owner, attachments.c.conversation_id.is_(None),
+                        attachments.c.created_at < cutoff)).rowcount
+        return removed

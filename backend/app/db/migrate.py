@@ -19,8 +19,12 @@ def migration_config(connection=None) -> Config:
 
 def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
     if engine is None:
-        from app.db.database import get_engine
-        engine = get_engine()
+        from app.db.database import build_engine
+        from app.core.config import settings
+        from sqlalchemy.pool import NullPool
+        # DDL/replays have their own lock deadline, not the interactive SQL budget.
+        engine = build_engine(settings.database_url, poolclass=NullPool,
+            connect_args={'connect_timeout': settings.database_connect_timeout})
     with engine.connect() as connection:
         from sqlalchemy import text
         # A blocking SELECT holds a transaction snapshot while waiting. Another

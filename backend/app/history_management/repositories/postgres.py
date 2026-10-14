@@ -336,7 +336,7 @@ class MemoryRepository:
             self._revision(session, owner, identifier, values['revision'], 'manual')
             return self._public(dict(row, **values))
 
-    def maintain(self, owner, limit=100):
+    def maintain(self, owner, limit=100, *, prune_receipts=True):
         from datetime import timedelta
         with self.sessions.begin() as session:
             self._lock(session, owner)
@@ -345,10 +345,18 @@ class MemoryRepository:
             if candidates:
                 session.execute(update(rc).where(rc.c.learner_id == owner, rc.c.memory_id.in_(candidates)).values(memory_id=None, outcome='rejected'))
                 session.execute(delete(m).where(m.c.learner_id == owner, m.c.id.in_(candidates)))
-            keys = list(session.scalars(select(rc.c.operation_key).where(rc.c.learner_id == owner, rc.c.created_at < old).limit(limit)))
+            keys = list(session.scalars(select(rc.c.operation_key).where(rc.c.learner_id == owner, rc.c.created_at < old).limit(limit))) if prune_receipts else []
             if keys:
                 session.execute(delete(rc).where(rc.c.learner_id == owner, rc.c.operation_key.in_(keys)))
             return dict(expired_candidates=len(candidates), expired_receipts=len(keys))
+
+    def maintain_batch(self):
+        from datetime import timedelta
+        with self.sessions() as session:
+            owners = list(session.scalars(select(m.c.learner_id).where(m.c.status != 'active', m.c.origin == 'ai',
+                m.c.pinned.is_(False), m.c.confirmed_at.is_(None), m.c.updated_at < now() - timedelta(days=90))
+                .group_by(m.c.learner_id).order_by(func.min(m.c.updated_at)).limit(5)))
+        return sum(self.maintain(owner, 20, prune_receipts=False)['expired_candidates'] for owner in owners)
 
     def remove(self, owner, identifier, revision):
         with self.sessions.begin() as session:

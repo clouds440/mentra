@@ -1,7 +1,7 @@
 import re
 from datetime import datetime,timezone,timedelta
 from uuid import uuid4
-from sqlalchemy import select,update,and_,or_
+from sqlalchemy import select,update,and_,or_,func
 from app.db.owner_transactions import OwnerTransactions
 from app.chat.repositories.tables import messages,turns,conversations
 from app.core.exceptions import AppError
@@ -38,18 +38,38 @@ class ChatEvidenceRepository:
 
     def claim(self):
         now=datetime.now(timezone.utc)
+        self.sweep_exhausted(now)
         with self.sessions() as session:
-            candidate=session.execute(select(jobs.c.turn_id,jobs.c.learner_id).where(jobs.c.attempts<3,or_(jobs.c.state=='queued',and_(jobs.c.state=='running',jobs.c.claim_until<=now),and_(jobs.c.state=='failed',jobs.c.retry_at<=now))).order_by(jobs.c.created_at).limit(1)).first()
-        if not candidate:return None
-        turn_id,owner=candidate
-        with self.transactions.write(owner) as tx:
-            row=tx._session.execute(select(jobs).where(jobs.c.turn_id==turn_id,jobs.c.learner_id==owner)).mappings().first()
-            if not row or row['state'] in ('applied','ignored') or row['attempts']>=3 or row['claim_until'] and row['claim_until']>now:return None
-            if row['state']=='failed' and (not row['retry_at'] or row['retry_at']>now):return None
-            source=self.source(tx._session,owner,turn_id,row['attempt'])
-            claim=str(uuid4())
-            tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id).values(state='running',claim_id=claim,claim_until=now+timedelta(seconds=90),attempts=row['attempts']+1))
-            return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],profile_context_version=row['profile_context_version'],**source)
+            eligible = select(jobs.c.turn_id, jobs.c.learner_id, jobs.c.created_at,
+                func.row_number().over(partition_by=jobs.c.learner_id, order_by=(jobs.c.created_at, jobs.c.turn_id)).label('owner_rank')).where(
+                jobs.c.attempts<3,or_(jobs.c.state=='queued',and_(jobs.c.state=='running',jobs.c.claim_until<=now),and_(jobs.c.state=='failed',jobs.c.retry_at<=now))).subquery()
+            candidates = session.execute(select(eligible.c.turn_id, eligible.c.learner_id).order_by(
+                eligible.c.owner_rank, eligible.c.created_at, eligible.c.turn_id).limit(32)).all()
+        for turn_id, owner in candidates:
+            with self.transactions.try_write(owner) as tx:
+                if tx is None:
+                    continue
+                row=tx._session.execute(select(jobs).where(jobs.c.turn_id==turn_id,jobs.c.learner_id==owner)).mappings().first()
+                if not row or row['state'] in ('applied','ignored') or row['attempts']>=3 or row['claim_until'] and row['claim_until']>now:
+                    continue
+                if row['state']=='failed' and (not row['retry_at'] or row['retry_at']>now):
+                    continue
+                source=self.source(tx._session,owner,turn_id,row['attempt'])
+                claim=str(uuid4())
+                tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id).values(state='running',claim_id=claim,claim_until=now+timedelta(seconds=90),attempts=row['attempts']+1))
+                return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],profile_context_version=row['profile_context_version'],**source)
+        return None
+
+    def sweep_exhausted(self, now):
+        with self.sessions() as session:
+            candidates = session.execute(select(jobs.c.turn_id, jobs.c.learner_id).where(
+                jobs.c.state == 'running', jobs.c.attempts >= 3, jobs.c.claim_until <= now).limit(32)).all()
+        for turn_id, owner in candidates:
+            with self.transactions.try_write(owner) as tx:
+                if tx is not None:
+                    tx._session.execute(update(jobs).where(jobs.c.turn_id == turn_id, jobs.c.learner_id == owner,
+                        jobs.c.state == 'running', jobs.c.attempts >= 3, jobs.c.claim_until <= now).values(
+                            state='failed', claim_id=None, claim_until=None, retry_at=None))
 
     def complete(self,job,apply):
         with self.transactions.write(job['owner']) as tx:

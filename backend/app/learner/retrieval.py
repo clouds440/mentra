@@ -86,10 +86,14 @@ class RetrievalService:
         if request.include_related and concepts and len(concepts) < request.max_concepts:
             seen = {c.id for c in concepts}
             owned_contexts = {c.id: c for c in self.repository.list_for_learner(request.learner_id)}
+            related_by_source = self.repository.related_concepts_for_sources([c.id for c in concepts],
+                limit=request.max_concepts, min_confidence=.8)
+            related_context_ids = self.repository.concept_context_ids_batch(
+                list({c.id for values in related_by_source.values() for c in values}), request.learner_id)
             for concept in list(concepts):
-                for related in self.repository.list_related_concepts(concept.id, limit=request.max_concepts, min_confidence=0.8):
+                for related in related_by_source[concept.id]:
                     if related.id not in seen and len(concepts) < request.max_concepts:
-                        related_contexts = [owned_contexts[key] for key in self.repository.get_concept_context_ids(related.id, learner_id=request.learner_id)
+                        related_contexts = [owned_contexts[key] for key in related_context_ids[related.id]
                                             if key in owned_contexts]
                         accessible = [c for c in related_contexts if c.status != 'ARCHIVED' or c.id in context_ids]
                         if not accessible:
@@ -117,7 +121,7 @@ class RetrievalService:
         ids = [c.id for c in concepts]
         states = self.states.load(learner_id, ids)
         misconceptions = self.repository.misconceptions_for_concepts(learner_id, ids)
-        factors = self.repository.context_factors(learner_id, contexts)
+        factors = self.repository.context_factors(learner_id, contexts, ids)
         now = self.clock()
         items = []
         for concept in concepts:

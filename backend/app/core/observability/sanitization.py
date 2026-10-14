@@ -30,16 +30,18 @@ def error_metadata(error):
                            function=trace.tb_frame.f_code.co_name, line=trace.tb_lineno))
         trace = trace.tb_next
     value = dict(type=type(error).__name__, frames=frames)
-    from .payloads import redact
     try:
-        reason = str(error)
+        reason = 'Operation failed; inspect exception type and code.'
         if type(error).__name__.endswith('ValidationError') and callable(getattr(error,'errors',None)):
             details=error.errors()
-            value['validation']=[dict(location=list(item.get('loc',[])),type=item.get('type'),reason=redact(str(item.get('msg','')))) for item in details[:10]]
+            known = {'body', 'query', 'path', 'answers', 'questions', 'expected_revision', 'client_request_id',
+                     'title', 'content', 'concept_ids', 'context_ids', 'password', 'username', 'token'}
+            value['validation']=[dict(location=[part if isinstance(part, int) or part in known else 'field'
+                for part in item.get('loc', [])], type=item.get('type'), reason='Validation failed.') for item in details[:10]]
             reason='Input validation failed; see field locations and validation types.'
         if type(error).__module__.startswith(('sqlalchemy', 'psycopg')):
             reason = 'Database operation failed; inspect exception type and SQLSTATE.'
-        value['reason'] = redact(reason[:2048])[:1024]
+        value['reason'] = reason
     except Exception:
         value['reason'] = 'Exception message unavailable.'
     status = getattr(error, 'status_code', None)
@@ -55,7 +57,7 @@ def error_metadata(error):
     cause = error.__cause__ or (error.__context__ if not error.__suppress_context__ else None)
     if cause is not None and cause is not error:
         try:
-            value['cause'] = dict(type=type(cause).__name__, reason=redact(str(cause)[:1024]))
+            value['cause'] = dict(type=type(cause).__name__)
         except Exception:
             value['cause'] = dict(type=type(cause).__name__)
     return value

@@ -1,7 +1,7 @@
 """Transactional identity provisioning and sessions through SQLAlchemy 2.x."""
 from hashlib import blake2b
 from uuid import uuid4
-from sqlalchemy import select, update, text, or_
+from sqlalchemy import select, update, text, or_, delete
 from app.auth.errors import AccountExistsError, AuthenticationError
 from app.auth.models import Account, AuthenticatedIdentity
 from .tables import learner, mentra_account, external_identity, auth_session
@@ -83,3 +83,12 @@ class PostgresIdentityRepository:
         with self.sessions.begin() as session:
             session.execute(update(auth_session).where(auth_session.c.token_digest == token_digest,
                 auth_session.c.revoked_at.is_(None)).values(revoked_at=now))
+
+    def cleanup_sessions(self, now, limit=100):
+        from datetime import timedelta
+        cutoff = now - timedelta(days=7)
+        dead = or_(auth_session.c.revoked_at < cutoff, auth_session.c.expires_at < cutoff)
+        with self.sessions.begin() as session:
+            ids = select(auth_session.c.session_id).where(dead).order_by(auth_session.c.created_at)
+            ids = ids.limit(max(1, min(100, limit))).with_for_update(skip_locked=True)
+            return session.execute(delete(auth_session).where(auth_session.c.session_id.in_(ids), dead)).rowcount

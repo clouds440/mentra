@@ -6,6 +6,7 @@ from threading import BoundedSemaphore
 from collections import OrderedDict
 import time
 import logging
+from contextlib import contextmanager
 from uuid import uuid4
 from app.core.exceptions import AppError
 from app.core.read_cache import ReadCache, normalized_query
@@ -31,10 +32,11 @@ from app.core.logging import workflow_logger
 })
 class RAGService:
     def __init__(self, repository, learner: LearnerService, embedding: EmbeddingService, vector_store: VectorStore,
-                 storage: PrivateSourceStorage, settings: Settings, *, parser: DocumentParser | None = None):
+                 storage: PrivateSourceStorage, settings: Settings, *, parser: DocumentParser | None = None, admission=None):
         self.repository, self.learner, self.embedding = repository, learner, embedding
         self.vector_store, self.storage, self.settings = vector_store, storage, settings
         self.parser = parser or NativeDocumentParser()
+        self.admission = admission
         self._inference = BoundedSemaphore(1)
         self._query_cache = OrderedDict()
         self._candidate_cache = ReadCache(capacity=128, ttl=120)
@@ -46,6 +48,24 @@ class RAGService:
     def close(self):
         if self.reranker:
             self.reranker.close()
+        if hasattr(self.storage, 'close'):
+            self.storage.close()
+
+    def _canonical_tags(self, identifiers):
+        identifiers = list(dict.fromkeys(identifiers))
+        result = {}
+        for start in range(0, len(identifiers), 512):
+            result.update(self.learner.canonical_concept_ids(identifiers[start:start + 512]))
+        return result
+
+    @contextmanager
+    def _inference_slot(self):
+        if not self._inference.acquire(timeout=self.settings.rag_inference_wait_seconds):
+            raise EmbeddingModelError('Embedding capacity is busy.')
+        try:
+            yield
+        finally:
+            self._inference.release()
 
     def config(self):
         return dict(parser=self.parser.version, chunker=CHUNKER_VERSION, embedding=self.embedding.model_name,
@@ -67,12 +87,22 @@ class RAGService:
         return ids
 
     def accept_upload(self, owner, file, filename, title, context_ids, key, document_id=None, expected_revision=None):
+        if self.admission:
+            with self.admission.reserve('upload', owner, capacity=4, owner_capacity=1, seconds=180,
+                rate_keys=[('owner', owner, 30)]):
+                return self._accept_upload(owner, file, filename, title, context_ids, key, document_id, expected_revision)
+        return self._accept_upload(owner, file, filename, title, context_ids, key, document_id, expected_revision)
+
+    def _accept_upload(self, owner, file, filename, title, context_ids, key, document_id=None, expected_revision=None):
         filename = Path(filename.replace('\\', '/')).name[:200] or 'material'
         title = title.strip() or filename
         if len(title) > 200 or not 1 <= len(key) <= 120:
             raise AppError('RAG_INVALID_UPLOAD', 'Title or upload key exceeds the limit.', 422)
         contexts = self.validate_contexts(owner, context_ids)
-        blob = self.storage.store(file, self.settings.rag_max_upload_bytes)
+        with self.storage.staged_store(file, self.settings.rag_max_upload_bytes) as blob:
+            return self._publish_upload(owner, filename, title, contexts, key, document_id, expected_revision, blob)
+
+    def _publish_upload(self, owner, filename, title, contexts, key, document_id, expected_revision, blob):
         retained = False
         try:
             blob['media_type'] = self.parser.detect(self.storage.path(blob['storage_key']), filename)
@@ -104,7 +134,10 @@ class RAGService:
         contexts = self.validate_contexts(owner, context_ids)
         if not extracted.get('blocks') or not extracted.get('reader_revision'):
             raise AppError('RAG_EMPTY_EXTRACTION', 'This file has no extracted content to save.', 422)
-        blob = self.storage.store(source, self.settings.rag_max_upload_bytes)
+        with self.storage.staged_store(source, self.settings.rag_max_upload_bytes) as blob:
+            return self._publish_extracted(owner, filename, title, contexts, key, extracted, blob)
+
+    def _publish_extracted(self, owner, filename, title, contexts, key, extracted, blob):
         retained = False
         try:
             blob['media_type'] = extracted['media_type']
@@ -177,7 +210,7 @@ class RAGService:
         self._source_policy(owner, doc, include_archived)
         return row
 
-    def _eligible(self, owner, request):
+    def _eligible(self, owner, request, *, candidate_documents=None):
         if request.context_ids == [] or request.document_ids == []:
             return [], []
         if request.include_archived and not (request.context_ids or request.document_ids):
@@ -200,7 +233,8 @@ class RAGService:
         ids = [c.context_id for c in contexts if request.include_archived or c.status != 'ARCHIVED']
         if not ids:
             return [], []
-        return ids, self.repository.eligible(owner, ids, request.document_ids, request.include_archived)
+        document_ids = request.document_ids if candidate_documents is None else candidate_documents
+        return ids, self.repository.eligible(owner, ids, document_ids, request.include_archived)
 
     def search(self, owner: str, request: SearchRequest) -> RetrievalResult:
         request = request.model_copy(deep=True)
@@ -218,7 +252,9 @@ class RAGService:
         # Resolve redirects before filtering: an old canonical ID must not
         # eliminate material tagged with its current canonical concept.
         if request.concept_ids:
-            request.concept_ids = [self.learner.get_concept(c).id for c in request.concept_ids]
+            canonical = self._canonical_tags([*request.concept_ids, *(c for doc in docs for c in doc['concept_ids'])])
+            request.concept_ids = [canonical[c] for c in request.concept_ids]
+            docs = [dict(doc, concept_ids=[canonical[c] for c in doc['concept_ids']]) for doc in docs]
         # Current canonical tags apply to every chunk of a material. Restrict
         # candidates before ranking so unrelated sources cannot crowd them out.
         if request.concept_ids:
@@ -242,7 +278,7 @@ class RAGService:
         warnings = []
         try:
             if cached_candidates is None:
-                with self._inference:
+                with self._inference_slot():
                     cache_key = (owner, self.embedding.model_name, self.embedding.model_version,
                         self.embedding.dimension, self.embedding.max_tokens, normalized_query(request.query))
                     cached = self._query_cache.get(cache_key)
@@ -260,9 +296,15 @@ class RAGService:
                 mark('embedding')
                 matches = self.vector_store.query_chunks(owner, generation_ids, vector, 80)
                 mark('dense')
-                lexical = self.repository.lexical(owner, generation_ids, request.query, 80) if self.settings.rag_hybrid_enabled else []
+                lexical = []
+                if self.settings.rag_hybrid_enabled:
+                    try:
+                        lexical = self.repository.lexical(owner, generation_ids, request.query, 80)
+                    except Exception:
+                        warnings.append('Lexical retrieval was unavailable. Results use dense retrieval only.')
                 mark('lexical')
-                self._candidate_cache.put(candidate_key, (matches, lexical))
+                if not warnings:
+                    self._candidate_cache.put(candidate_key, (matches, lexical))
             else:
                 matches, lexical = cached_candidates
                 diagnostics.query_cache_hit = diagnostics.candidate_cache_hit = True
@@ -271,7 +313,15 @@ class RAGService:
             diagnostics.dense_candidates = len(matches)
             mark('candidates')
         except (VectorStoreError, EmbeddingModelError) as exc:
-            raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from exc
+            if not self.settings.rag_hybrid_enabled:
+                raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from exc
+            try:
+                lexical = self.repository.lexical(owner, generation_ids, request.query, 80)
+            except Exception:
+                raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from None
+            matches = []
+            warnings.append('Dense retrieval was unavailable. Results use lexical retrieval only.')
+            mark('lexical')
         dense = [m.id for m in matches]
         dense_ranks = {key: index + 1 for index, key in enumerate(dense)}
         lexical_ranks = {}
@@ -284,6 +334,9 @@ class RAGService:
             score_type = 'rrf'
         mark('fusion')
         rows = {r['id']: r for r in self.repository.hydrate(owner, [key for key, _ in ranked], generation_ids)}
+        if request.concept_ids:
+            canonical_rows = self._canonical_tags([c for row in rows.values() for c in row['concept_ids']])
+            rows = {key: dict(row, concept_ids=[canonical_rows[c] for c in row['concept_ids']]) for key, row in rows.items()}
         diagnostics.hydrated_candidates = len(rows)
         diagnostics.rejected_candidates = len(ranked) - len(rows)
         mark('hydration')
@@ -322,9 +375,11 @@ class RAGService:
             if len(result) == request.limit:
                 break
         # Re-authorize immediately before handing content to orchestration.
-        _, current = self._eligible(owner, request)
+        _, current = self._eligible(owner, request, candidate_documents=list({r.source.document_id for r in result}))
         if request.concept_ids:
-            current = [doc for doc in current if wanted.intersection(doc['concept_ids'])]
+            current_ids = self._canonical_tags([*request.concept_ids, *(c for doc in current for c in doc['concept_ids'])])
+            wanted = {current_ids[c] for c in request.concept_ids}
+            current = [doc for doc in current if wanted.intersection(current_ids[c] for c in doc['concept_ids'])]
         current_generations = {d['active_generation_id'] for d in current}
         result = [r for r in result if r.source.generation_id in current_generations]
         current_by_generation = {d['active_generation_id']: d for d in current}

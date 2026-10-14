@@ -31,11 +31,11 @@ class EduVerseStudentTokenResponse(TokenResponse):
 from app.core.logging import workflow_logger
 
 @workflow_logger.operation(outcome='success')
-def provision_eduverse_student(request: EduVerseStudentRequest, auth_service, profile_service):
+def provision_eduverse_student(request: EduVerseStudentRequest, auth_service, profile_service, *, client_key=None):
     # Verify subject equality before identity/session provisioning. Existing issuer,
     # audience, algorithm, keys and expiry rules are reused, not platform SDKs.
     session = auth_service.external_login(ExternalLoginRequest(provider='eduverse', token=request.token),
-                                          expected_subject=request.student_id)
+                                          expected_subject=request.student_id, client_key=client_key)
     profile, initialized = profile_service.initialize_external(session.learner_id, request.profile, 'eduverse')
     # The HTTP adapter hands off this session only once initialization is committed.
     # A failure is safely retryable: identity mapping and initialization are idempotent.

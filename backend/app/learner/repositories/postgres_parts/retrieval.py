@@ -71,11 +71,14 @@ class RetrievalStore(PostgresRepositoryBase):
         with self._session() as session:
             return [self._concept_from_row(row) for row in session.execute(stmt).mappings()]
 
-    def context_factors(self, learner_id, selected_contexts):
+    def context_factors(self, learner_id, selected_contexts, concept_ids=None):
         relevance = {c.id: c.relevance_score if c.relevance_score is not None else 0.5 for c in selected_contexts}
         result = {}
         with self._session() as session:
-            for row in session.execute(select(links).where(links.c.learner_id == learner_id, links.c.context_id.in_(relevance))).mappings():
+            query = select(links).where(links.c.learner_id == learner_id, links.c.context_id.in_(relevance))
+            if concept_ids is not None:
+                query = query.where(links.c.concept_id.in_(concept_ids))
+            for row in session.execute(query).mappings():
                 factor = dict(importance=row['importance'], relevance=relevance[row['context_id']], target_difficulty=row['target_difficulty'])
                 old = result.get(row['concept_id'])
                 if old is None or (factor['importance'] * factor['relevance'], factor['target_difficulty']) > (

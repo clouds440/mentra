@@ -13,7 +13,7 @@ def register(body: RegisterRequest, request: Request, response: Response, servic
     cookie = wants_cookie_session(request)
     if cookie:
         require_cookie_origin(request)
-    return session_response(service.register(body, persistent=cookie), response, cookie)
+    return session_response(service.register(body, persistent=cookie, client_key=request.client.host if request.client else 'unknown'), response, cookie)
 
 
 @router.post('/login', response_model=TokenResponse | IdentityResponse)
@@ -21,7 +21,7 @@ def login(body: LoginRequest, request: Request, response: Response, service=Depe
     cookie = wants_cookie_session(request)
     if cookie:
         require_cookie_origin(request)
-    return session_response(service.login(body, persistent=cookie), response, cookie)
+    return session_response(service.login(body, persistent=cookie, client_key=request.client.host if request.client else 'unknown'), response, cookie)
 
 
 @router.post('/external', response_model=TokenResponse | IdentityResponse)
@@ -29,7 +29,7 @@ def external_login(body: ExternalLoginRequest, request: Request, response: Respo
     cookie = wants_cookie_session(request)
     if cookie:
         require_cookie_origin(request)
-    return session_response(service.external_login(body), response, cookie)
+    return session_response(service.external_login(body, client_key=request.client.host if request.client else 'unknown'), response, cookie)
 
 
 @router.get('/me', response_model=IdentityResponse)

@@ -355,7 +355,9 @@ class EventPersistenceTests(unittest.TestCase):
         with self.db.engine.connect() as connection:
             command.downgrade(migration_config(connection), '20261009_0007')
             connection.commit()
-        self.assertEqual(self.service.detail(self.owner, event['id'])['revision'], 1)
+        # Read only historical columns: the current application requires head.
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(events.c.revision).where(events.c.id == event['id'])), 1)
         with self.service.repository.transactions.write(self.owner) as uow:
             uow._session.execute(update(reminders).where(reminders.c.event_id == event['id'])
                 .values(state='delivered', delivered_at=NOW, receipt_id=str(uuid4())))
@@ -435,7 +437,8 @@ class EventPersistenceTests(unittest.TestCase):
         # Compare the pre-Events schema only: later migrations intentionally add
         # tables/columns that do not exist at revision 0006.
         later_tables = {'chat_activity', 'chat_attachment', 'chat_evidence_job', 'chat_assessment_draft',
-                        'web_search_guard', 'web_search_call', 'web_search_cache'}
+                        'web_search_guard', 'web_search_call', 'web_search_cache', 'chat_summary',
+                        'work_admission', 'request_rate', 'worker_health'}
         later_columns = {('chat_turn', 'attachment_ids'), ('rag_document_version', 'extracted_content'),
                          ('chat_turn', 'log_context'), ('rag_job', 'log_context')}
         def snapshots():

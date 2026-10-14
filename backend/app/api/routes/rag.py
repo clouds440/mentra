@@ -38,10 +38,7 @@ class ConceptTags(BaseModel):
 def list_contexts(offset: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=100),
                   status: str | None = Query(default=None, pattern='^(ACTIVE|RELATED|DORMANT|ARCHIVED)$'),
                   service=Depends(rag), identity=Depends(require_onboarded_identity)):
-    contexts = sorted(service.context_summaries(identity.learner_id), key=lambda context: context.context_id)
-    if status:
-        contexts = [context for context in contexts if context.status == status]
-    return contexts[offset:offset + limit]
+    return service.learner.get_context_page(identity.learner_id, offset, limit, status)
 
 
 @router.post('/learning-contexts')

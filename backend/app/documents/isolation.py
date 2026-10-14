@@ -10,12 +10,12 @@ from app.documents.errors import DocumentReadError
 from app.core.logging import workflow_logger
 
 @workflow_logger.operation(outcome='success')
-def read_isolated(path, kind, max_pages, timeout):
-    process = subprocess.Popen([sys.executable, '-m', 'app.documents.worker', str(path), kind, str(max_pages)],
+def read_isolated(path, kind, max_pages, timeout, *, cpu_seconds=120, memory_bytes=1024 ** 3):
+    process = subprocess.Popen([sys.executable, '-m', 'app.documents.worker', str(path), kind, str(max_pages), str(cpu_seconds), str(memory_bytes)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=os.name != 'nt')
     try:
         output, _error = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
+    except BaseException as exc:
         if os.name != 'nt':
             try:
                 os.killpg(process.pid, signal.SIGKILL)
@@ -26,7 +26,9 @@ def read_isolated(path, kind, max_pages, timeout):
             if process.poll() is None:
                 process.kill()
         process.communicate()
-        raise DocumentReadError('Parsing exceeded the time limit. Split the material into smaller files.') from exc
+        if isinstance(exc, subprocess.TimeoutExpired):
+            raise DocumentReadError('Parsing exceeded the time limit. Split the material into smaller files.') from exc
+        raise
     try:
         result = json.loads(output)
     except (ValueError, UnicodeError) as exc:

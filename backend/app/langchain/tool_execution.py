@@ -37,6 +37,9 @@ class ToolFailure(BaseModel):
 def failure(error, *, write=False, attempts=0, required=False, execution_started=False):
     code = error.code if isinstance(error, AppError) else 'TOOL_INTERNAL_ERROR'
     status = getattr(error, 'status_code', None) or getattr(getattr(error, 'response', None), 'status_code', None)
+    from app.db.errors import database_busy
+    if database_busy(error):
+        code, status = 'DATABASE_BUSY', 503
     category, retryable = 'internal_error', False
     if isinstance(error, ValidationError):
         code, category = ('TOOL_INVALID_RESULT', 'invalid_result') if execution_started else ('TOOL_INVALID_ARGUMENTS', 'invalid_arguments')
@@ -99,6 +102,8 @@ def outcome_status(result):
 
 
 def remember_failure(scope, name, receipt):
+    if isinstance(receipt, ToolFailure):
+        receipt = receipt.model_dump(mode='json')
     warnings = scope.setdefault('tool_warnings', [])
     warning = dict(tool_name=name, code=receipt.get('code', 'TOOL_UNAVAILABLE'),
                    message=receipt.get('reason', 'This capability was unavailable.')[:240],

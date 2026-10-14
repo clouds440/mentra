@@ -77,6 +77,7 @@ suppression = Table('hm_event_suppression', metadata, owner(True),
 
 reminders = Table('hm_event_reminder', metadata, owner(True),
     Column('event_id', Uuid(as_uuid=False), primary_key=True), Column('due_at', DateTime(timezone=True)),
+    Column('retry_at', DateTime(timezone=True)),
     Column('schedule_version', BigInteger, nullable=False), Column('state', Text, nullable=False),
     Column('delivered_at', DateTime(timezone=True)), Column('receipt_id', Uuid(as_uuid=False)), event_fk(),
     CheckConstraint("state IN ('pending','skipped','cancelled','delivered') AND schedule_version >= 1", name='event_reminder_state'),

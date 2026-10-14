@@ -22,7 +22,7 @@ def _error_response(
     return JSONResponse(
         status_code=status_code,
         content=payload.model_dump(mode="json", exclude_none=True),
-        headers=headers,
+        headers={'Cache-Control': 'no-store', **(headers or {})},
     )
 
 
@@ -86,6 +86,8 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    from app.db.errors import register_database_handlers
+    register_database_handlers(app)
     app.add_exception_handler(AppError, handle_app_error)
     app.add_exception_handler(StarletteHTTPException, handle_http_error)
     app.add_exception_handler(RequestValidationError, handle_validation_error)

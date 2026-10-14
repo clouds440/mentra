@@ -62,11 +62,26 @@ class ParameterTests(unittest.TestCase):
             def fail(self,password): raise ValueError('Invalid date; password='+password)
         with self.assertRaises(ValueError): Service().fail('opaque-credential-123')
         end=next(x for x in self.handler.items if x['event']=='step.completed')
-        self.assertIn('Invalid date',end['error']['reason'])
+        self.assertIn('inspect exception type',end['error']['reason'])
         self.assertTrue(end['error']['frames'])
         self.assertNotIn('opaque-credential-123',json.dumps(self.handler.items))
 
     def test_returned_tool_failure_retains_safe_reason_without_response_content(self):
         value=capture({'outcome':'failed','reason':'Missing required date','content':'PRIVATE RESPONSE'})
-        self.assertEqual(value['failure_reason'],'Missing required date')
+        self.assertEqual(value['failure_reason'],'Action failed; inspect outcome and code.')
         self.assertNotIn('PRIVATE RESPONSE',json.dumps(value))
+
+    def test_arbitrary_personal_details_are_not_serialized_from_exception_or_cause(self):
+        from app.core.observability.sanitization import error_metadata
+        marker = 'LearnerMedicalOrAcademicDetail123'
+        try:
+            try:
+                raise ValueError(marker)
+            except ValueError as cause:
+                raise RuntimeError(marker) from cause
+        except RuntimeError as error:
+            value = error_metadata(error)
+        self.assertNotIn(marker, json.dumps(value))
+        self.assertEqual(value['type'], 'RuntimeError')
+        self.assertEqual(value['cause']['type'], 'ValueError')
+        self.assertTrue(value['frames'])

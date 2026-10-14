@@ -16,8 +16,7 @@ class StudentProfileService:
         self.calibration = CalibrationService(repository, self.evidence, clock=clock)
 
     def get(self, learner_id):
-        with self.repository.transaction(learner_id) as store:
-            return store.profile()
+        return self.repository.read_profile(learner_id)
 
     def update_details(self, learner_id, request: ProfileUpdate):
         request = ProfileUpdate.model_validate(request.model_dump(exclude_unset=True))

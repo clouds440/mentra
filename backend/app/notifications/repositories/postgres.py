@@ -25,11 +25,17 @@ class NotificationRepository:
         with self.sessions() as session: return self._preferences(session, owner)
 
     def _change(self, session, owner, identifier=None, deleted=False):
+        return self._change_many(session, owner, [identifier], deleted)
+
+    def _change_many(self, session, owner, identifiers, deleted=False):
+        if not identifiers:
+            return None
         session.execute(insert(s).values(learner_id=owner, revision=0, floor=0).on_conflict_do_nothing())
         row = session.execute(select(s).where(s.c.learner_id == owner)).mappings().one()
-        revision, floor = row['revision'] + 1, max(0, row['revision'] + 1 - 10000)
+        revision, floor = row['revision'] + len(identifiers), max(0, row['revision'] + len(identifiers) - 10000)
         session.execute(update(s).where(s.c.learner_id == owner).values(revision=revision, floor=floor))
-        session.execute(c.insert().values(learner_id=owner, revision=revision, notification_id=identifier, deleted=deleted))
+        session.execute(c.insert(), [dict(learner_id=owner, revision=row['revision'] + index + 1,
+            notification_id=identifier, deleted=deleted) for index, identifier in enumerate(identifiers)])
         if floor > row['floor']:
             session.execute(delete(c).where(c.c.learner_id == owner, c.c.revision <= floor))
         return revision
@@ -67,9 +73,9 @@ class NotificationRepository:
         old = list(session.execute(select(n.c.id).where(n.c.learner_id == owner,
             n.c.created_at < self.clock() - timedelta(days=90),
             or_(n.c.read_at.is_not(None), n.c.dismissed_at.is_not(None))).limit(100)).scalars())
-        for identifier in old:
-            session.execute(delete(n).where(n.c.id == identifier, n.c.learner_id == owner))
-            self._change(session, owner, identifier, True)
+        if old:
+            session.execute(delete(n).where(n.c.id.in_(old), n.c.learner_id == owner))
+            self._change_many(session, owner, old, True)
         if session.scalar(select(func.count()).select_from(n).where(n.c.learner_id == owner)) >= 1000:
             raise AppError('NOTIFICATION_CAPACITY', 'The notification inbox is full.', 409)
         identifier, stamp = str(uuid4()), self.clock()
@@ -115,9 +121,9 @@ class NotificationRepository:
     def remove_target(self, transaction, target_kind, target_id):
         session, owner = transaction._session, transaction.owner
         ids = list(session.execute(select(n.c.id).where(n.c.learner_id == owner, n.c.target_kind == target_kind, n.c.target_id == target_id)).scalars())
-        for identifier in ids:
-            session.execute(delete(n).where(n.c.learner_id == owner, n.c.id == identifier))
-            self._change(session, owner, identifier, True)
+        if ids:
+            session.execute(delete(n).where(n.c.learner_id == owner, n.c.id.in_(ids)))
+            self._change_many(session, owner, ids, True)
 
     def sync(self, owner, after):
         with self.sessions.begin() as session:

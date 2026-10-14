@@ -37,20 +37,20 @@ class ProfileEvidenceService:
             store.save_evidence(evidence, new=True)
             return evidence.id
 
-    async def evaluate(self, learner_id: str, evidence_id: str):
+    def _claim(self, learner_id, evidence_id):
         now = self.clock()
         with self.repository.transaction(learner_id) as store:
             profile, evidence = store.profile(), store.evidence(evidence_id)
             if evidence is None:
                 raise conflict('This evidence is not available for your profile.')
             if evidence.status in {'applied', 'superseded'}:
-                return profile
+                return profile, None
             if evidence.context_version != profile.context_version:
                 evidence.status = 'superseded'
                 store.save_evidence(evidence)
-                return profile
+                return profile, None
             if evidence.status == 'evaluating' and evidence.claimed_at and evidence.claimed_at > now - timedelta(minutes=2):
-                return profile
+                return profile, None
             token = str(uuid4())
             evidence.status, evidence.evaluation_token, evidence.claimed_at = 'evaluating', token, now
             store.save_evidence(evidence)
@@ -58,6 +58,14 @@ class ProfileEvidenceService:
                 profile.evaluation_status, profile.updated_at = 'evaluating', now
                 profile = store.save_profile(profile)
             context = context_packet(profile)
+        return profile, (evidence, context, token)
+
+    async def evaluate(self, learner_id: str, evidence_id: str):
+        from app.core.observability.timing import run_in_threadpool
+        profile, claim = await run_in_threadpool(self._claim, learner_id, evidence_id)
+        if claim is None:
+            return profile
+        evidence, context, token = claim
         try:
             evaluation = await asyncio.wait_for(self.evaluator.evaluate(evidence, context), timeout=45)
             evaluation = AIEvaluation.model_validate(evaluation)
@@ -66,15 +74,21 @@ class ProfileEvidenceService:
             validate_evaluation(evaluation, evidence)
         except (EvaluationUnavailable, asyncio.TimeoutError, ValidationError):
             workflow_logger.set_outcome('degraded', code='PROFILE_EVALUATION_UNAVAILABLE')
-            with self.repository.transaction(learner_id) as store:
-                profile, saved = store.profile(), store.evidence(evidence_id)
-                if saved.evaluation_token == token and saved.status == 'evaluating':
-                    saved.status = 'failed' if saved.context_version == profile.context_version else 'superseded'
-                    store.save_evidence(saved)
-                    if saved.context_version == profile.context_version and saved.input.source_type == 'onboarding_calibration':
-                        profile.evaluation_status, profile.updated_at = 'failed', self.clock()
-                        profile = store.save_profile(profile)
-                return profile
+            return await run_in_threadpool(self._fail, learner_id, evidence_id, token)
+        return await run_in_threadpool(self._apply, learner_id, evidence_id, token, evaluation)
+
+    def _fail(self, learner_id, evidence_id, token):
+        with self.repository.transaction(learner_id) as store:
+            profile, saved = store.profile(), store.evidence(evidence_id)
+            if saved.evaluation_token == token and saved.status == 'evaluating':
+                saved.status = 'failed' if saved.context_version == profile.context_version else 'superseded'
+                store.save_evidence(saved)
+                if saved.context_version == profile.context_version and saved.input.source_type == 'onboarding_calibration':
+                    profile.evaluation_status, profile.updated_at = 'failed', self.clock()
+                    profile = store.save_profile(profile)
+            return profile
+
+    def _apply(self, learner_id, evidence_id, token, evaluation):
         with self.repository.transaction(learner_id) as store:
             profile, saved = store.profile(), store.evidence(evidence_id)
             if saved.evaluation_token != token or saved.status != 'evaluating':

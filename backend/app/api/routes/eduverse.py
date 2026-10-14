@@ -13,7 +13,8 @@ def provision_student(body: EduVerseStudentRequest, request: Request, response: 
     cookie = wants_cookie_session(request)
     if cookie:
         require_cookie_origin(request)
-    token, profile, initialized = provision_eduverse_student(body, auth, profiles)
+    token, profile, initialized = provision_eduverse_student(body, auth, profiles,
+        client_key=request.client.host if request.client else 'unknown')
     identity = session_response(token, response, cookie)
     response.status_code = 201 if initialized else 200
     contract = EduVerseStudentResponse if cookie else EduVerseStudentTokenResponse

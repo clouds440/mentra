@@ -29,8 +29,9 @@ class LimitedStream(httpx2.AsyncByteStream):
 
 
 class BoundedTransport(httpx2.AsyncBaseTransport):
-    def __init__(self):
-        self.inner = httpx2.AsyncHTTPTransport(retries=0)
+    def __init__(self, inner=None):
+        self.inner = inner or httpx2.AsyncHTTPTransport(retries=0)
+        self._owns_inner = inner is None
         self.received = 0
 
     async def handle_async_request(self, request):
@@ -51,7 +52,8 @@ class BoundedTransport(httpx2.AsyncBaseTransport):
         return httpx2.Response(response.status_code, headers=headers, stream=LimitedStream(response, self))
 
     async def aclose(self):
-        await self.inner.aclose()
+        if self._owns_inner:
+            await self.inner.aclose()
 
 
 def result_payload(result):
@@ -80,13 +82,15 @@ class YouMCPProvider:
         self.failures = 0
         self.cooldown_until = 0.0
         self._contract_lock = asyncio.Lock()
+        self._transport = httpx2.AsyncHTTPTransport(retries=0)
+        self._closed = False
 
     async def search(self, request: SearchInput):
-        if monotonic() < self.cooldown_until:
+        if self._closed or monotonic() < self.cooldown_until:
             raise ProviderError()
         try:
             # SDK context managers enter and leave in this same task. No background session sharing.
-            async with httpx2.AsyncClient(transport=BoundedTransport(), timeout=20, follow_redirects=False, trust_env=False) as client:
+            async with httpx2.AsyncClient(transport=BoundedTransport(self._transport), timeout=20, follow_redirects=False, trust_env=False) as client:
                 async with streamable_http_client(ENDPOINT, http_client=client, max_sse_event_size=MAX_RESPONSE_BYTES) as streams:
                     async with ClientSession(streams[0], streams[1]) as session:
                         initialized = await session.initialize()
@@ -132,5 +136,5 @@ class YouMCPProvider:
             raise ProviderError(status) from None
 
     async def close(self):
-        # HTTP resources belong to individual search contexts and close on cancellation.
-        pass
+        self._closed = True
+        await self._transport.aclose()

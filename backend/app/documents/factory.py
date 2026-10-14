@@ -17,4 +17,6 @@ def create_document_reader(*, vision=None, engines=None, isolated=True) -> Docum
     vision = vision if vision is not None else create_vision_service()
     engines = engines if engines is not None else [TextReader(), PDFReader(vision), DOCXReader(vision),
         PPTXReader(vision), ImageReader(vision), HTMLReader(vision), CodeReader()]
-    return DocumentReader(engines, vision, isolated=isolated)
+    from app.core.config import settings
+    return DocumentReader(engines, vision, isolated=isolated,
+        cpu_seconds=settings.document_cpu_seconds, memory_bytes=settings.document_memory_bytes)

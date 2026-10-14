@@ -63,7 +63,7 @@ class HeuristicMasteryPolicy:
                 return replace(base, estimate_confidence=min(state.estimate_confidence or 0, 0.4),
                                verification_required=True)
             return base
-        data['last_independent_at'] = evidence.occurred_at.isoformat()
+        data['last_independent_at'] = evidence.occurred_at.astimezone(timezone.utc).isoformat()
         item = evidence.item_id or evidence.source_id or evidence.id
         recent = dict(data.get('recent_items', {}))
         order = list(data.get('recent_item_order', recent))
@@ -95,7 +95,7 @@ class HeuristicMasteryPolicy:
         data['raw_success'] += weight * outcome
         data['squares'] += weight * outcome**2
         band = difficulty_band(difficulty)
-        data[f'{band}_last_at'] = evidence.occurred_at.isoformat()
+        data[f'{band}_last_at'] = evidence.occurred_at.astimezone(timezone.utc).isoformat()
         band_weight = data.get(f'{band}_weight', 0)
         band_scale = min(1, max(0, (self.max_effective_weight - weight) / band_weight)) if band_weight else 1
         contributions = dict(weight=weight, success=weight * outcome,

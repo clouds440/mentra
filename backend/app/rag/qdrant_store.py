@@ -205,6 +205,7 @@ class QdrantVectorStore(VectorStore):
             self._client = QdrantClient(
                 url=self._settings.qdrant_url,
                 api_key=self._settings.qdrant_api_key,
+                timeout=5,
             )
         return self._client
 

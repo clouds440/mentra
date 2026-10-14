@@ -40,6 +40,43 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached(self):
+        self.ready()
+        with patch.object(self.vector, 'query_chunks', side_effect=VectorStoreError('offline')):
+            result = self.search()
+            self.assertEqual(result.status, 'degraded')
+            self.assertTrue(result.chunks)
+            self.assertEqual(result.chunks[0].score_type, 'rrf')
+            self.assertIsNone(result.chunks[0].dense_rank)
+        healthy = self.search()
+        self.assertFalse(healthy.diagnostics.candidate_cache_hit)
+        self.assertEqual(healthy.status, 'ok')
+        from app.core.read_cache import ReadCache
+        self.service._candidate_cache = ReadCache()
+        with patch.object(self.repo, 'lexical', side_effect=RuntimeError('offline')):
+            result = self.search()
+            self.assertEqual(result.status, 'degraded')
+            self.assertTrue(result.chunks)
+        with patch.object(self.repo, 'lexical', side_effect=RuntimeError()), patch.object(self.vector, 'query_chunks', side_effect=VectorStoreError('offline')):
+            with self.assertRaises(AppError) as error:
+                self.search()
+            self.assertEqual(error.exception.code, 'RAG_UNAVAILABLE')
+
+    def test_merged_tags_remain_searchable_with_old_and_new_ids_and_warm_cache(self):
+        accepted = self.ready()
+        source = self.learner.register_concept('Original decorators')
+        target = self.learner.register_concept('Canonical decorators')
+        document = self.repo.get_document(self.owner, accepted['document_id'])
+        self.service.tag_document(self.owner, document['id'], [source.canonical_name], document['revision'])
+        before = self.service.search(self.owner, SearchRequest(query='decorators', concept_ids=[source.id]))
+        self.assertTrue(before.chunks)
+        self.learner.merge_concepts(source.id, target.id)
+        for concept_id in [source.id, target.id]:
+            result = self.service.search(self.owner, SearchRequest(query='decorators', concept_ids=[concept_id]))
+            self.assertTrue(result.chunks)
+            self.assertEqual(result.chunks[0].concept_ids, [target.id])
+            self.assertEqual(result.chunks[0].source.chunk_id, before.chunks[0].source.chunk_id)
+
     def test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata(self):
         accepted = self.ready()
         with patch.object(self.vector, 'query_chunks', wraps=self.vector.query_chunks) as dense, \

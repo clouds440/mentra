@@ -43,6 +43,14 @@ COPY scripts ./scripts
 COPY alembic.ini ./
 COPY alembic ./alembic
 
+RUN groupadd --gid 10001 mentra \
+    && useradd --uid 10001 --gid mentra --create-home --shell /usr/sbin/nologin mentra \
+    && mkdir -p /var/lib/mentra/materials /var/log/mentra /app/logs/backend \
+    && chown -R mentra:mentra /var/lib/mentra /var/log/mentra /app/logs /home/mentra /opt/mentra/huggingface
+
+ENV HOME=/home/mentra
+USER 10001:10001
+
 EXPOSE 8000
 
 CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --no-access-log --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]

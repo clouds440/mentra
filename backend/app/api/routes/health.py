@@ -17,6 +17,17 @@ async def health_check() -> dict[str, str]:
 def readiness_check(request: Request) -> JSONResponse:
     checks: dict[str, dict[str, object]] = {}
     is_ready = True
+    probe = getattr(request.app.state, 'database_health_probe', None)
+    try:
+        if probe is None:
+            raise RuntimeError('Not initialized')
+        worker_status = probe()
+        checks['database'] = {'status': 'ok'}
+        checks['workers'] = {'status': 'ok' if all(value == 'ok' for value in worker_status.values()) else 'error', 'roles': worker_status}
+        is_ready = all(value == 'ok' for value in worker_status.values())
+    except Exception:
+        checks['database'] = {'status': 'error', 'message': 'Database readiness is unavailable.'}
+        is_ready = False
 
     configured_model_factory = getattr(request.app.state, "model_factory", None)
     if configured_model_factory is None:
@@ -28,7 +39,7 @@ def readiness_check(request: Request) -> JSONResponse:
             model_factory.validate_configuration()
             checks["ai"] = {"status": "ok"}
         except ModelConfigurationError as exc:
-            checks["ai"] = {"status": "error", "message": str(exc)}
+            checks["ai"] = {"status": "error", "message": "Model configuration is unavailable."}
             is_ready = False
 
     configured_embedding_service = getattr(
@@ -51,7 +62,7 @@ def readiness_check(request: Request) -> JSONResponse:
                 "dimension": embedding_service.dimension,
             }
         except EmbeddingModelError as exc:
-            checks["embedding"] = {"status": "error", "message": str(exc)}
+            checks["embedding"] = {"status": "error", "message": "Embedding model is unavailable."}
             is_ready = False
 
     configured_vector_store = getattr(request.app.state, "vector_store", None)
@@ -64,13 +75,13 @@ def readiness_check(request: Request) -> JSONResponse:
     else:
         vector_store: VectorStore = configured_vector_store
         try:
-            vector_store.ensure_collection()
+            vector_store.validate_collection()
             checks["qdrant"] = {
                 "status": "ok",
                 "collection": vector_store.collection_name,
             }
         except VectorStoreError as exc:
-            checks["qdrant"] = {"status": "error", "message": str(exc)}
+            checks["qdrant"] = {"status": "error", "message": "Retrieval index is unavailable."}
             is_ready = False
 
     return JSONResponse(

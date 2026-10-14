@@ -124,3 +124,33 @@ class EventCaptureTests(unittest.TestCase):
         service.events.preferences = Mock(return_value=dict(automatic_events=False, timezone=None))
         self.assertEqual(asyncio.run(service.capture(owner, scope)), [])
         llm.ainvoke.assert_not_called()
+
+    def test_partial_capture_retains_saved_event_and_serializes_failure(self):
+        owner, service, llm, scope = self.setup_capture()
+        llm.ainvoke.return_value.events.append(llm.ainvoke.return_value.events[0].model_copy())
+        service.admit = AsyncMock(side_effect=[dict(outcome='saved', event=dict(id='saved')), TimeoutError()])
+        result = asyncio.run(service.capture(owner, scope))
+        self.assertEqual(result[0]['event']['id'], 'saved')
+        self.assertEqual(result[1]['outcome'], 'unavailable')
+        self.assertEqual(result[1]['effect_certainty'], 'unknown')
+
+    def test_capture_propagates_lifecycle_errors(self):
+        from app.core.exceptions import AppError
+        owner, service, _, scope = self.setup_capture()
+        service.admit = AsyncMock(side_effect=AppError('CHAT_STALE_ATTEMPT', 'Stopped.', 409))
+        with self.assertRaises(AppError):
+            asyncio.run(service.capture(owner, scope))
+
+    def test_automatic_gate_propagates_stale_claim(self):
+        from app.core.exceptions import AppError
+        from unittest.mock import patch
+        owner, service, _, scope = self.setup_capture()
+        with patch.object(service.repository, 'claim', side_effect=AppError('CHAT_STALE_ATTEMPT', 'Stopped.', 409)):
+            with self.assertRaises(AppError):
+                asyncio.run(service.capture(owner, scope))
+
+    def test_failure_warning_accepts_typed_receipt(self):
+        from app.langchain.tool_execution import failure, remember_failure
+        scope = {}
+        remember_failure(scope, 'event_manage', failure(TimeoutError(), write=True))
+        self.assertEqual(scope['tool_warnings'][0]['effect_certainty'], 'unknown')

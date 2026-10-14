@@ -55,6 +55,31 @@ class NotificationTests(unittest.TestCase):
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(receipts)), 1)
 
+    def test_blocked_owner_does_not_starve_other_owner(self):
+        from unittest.mock import patch
+        from app.history_management.repositories.events.tables import reminders
+        blocked = [self.event() for _ in range(50)]
+        other = self.events.create(self.other, EventCreate(title='Other quiz', kind='quiz', timezone='UTC',
+            starts_at=self.now+timedelta(hours=3), client_request_id=uuid4()))['event']
+        publish = self.service.publish
+
+        def capacity(uow, draft):
+            if uow.owner == self.owner:
+                raise AppError('NOTIFICATION_CAPACITY', 'Full.', 409)
+            return publish(uow, draft)
+
+        with patch.object(self.service, 'publish', side_effect=capacity):
+            self.assertEqual(self.events.repository.deliver_reminders(), 1)
+            self.assertEqual(self.events.repository.deliver_reminders(), 0)
+        self.assertEqual(len(self.service.inbox(self.other)['items']), 1)
+        with self.db.sessions() as session:
+            row = session.execute(select(reminders).where(reminders.c.event_id == blocked[0]['id'])).mappings().one()
+            self.assertEqual(row['state'], 'pending')
+            self.assertEqual(row['due_at'], self.now)
+            self.assertGreater(row['retry_at'], self.now)
+        self.now += timedelta(seconds=31)
+        self.assertEqual(self.events.repository.deliver_reminders(), 50)
+
     def test_second_producer_idempotency_survives_inbox_cleanup(self):
         result = self.publish()
         with self.repository.transactions.write(self.owner) as tx:
@@ -62,6 +87,30 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(self.publish()['outcome'], 'already_delivered')
         self.assertEqual(self.service.inbox(self.owner)['items'], [])
         with self.assertRaises(AppError): self.publish(self.draft(producer='unregistered'))
+
+    def test_pruning_batches_tombstones_and_preserves_lifetime_receipts(self):
+        from sqlalchemy import event
+        self.publish()
+        identifiers = [str(uuid4()) for _ in range(100)]
+        with self.db.sessions.begin() as session:
+            session.execute(inbox.insert(), [dict(id=identifier, learner_id=self.owner, kind='assessment_ready',
+                title='Old', body='', target_kind='none', revision=1, created_at=self.now-timedelta(days=91), read_at=self.now)
+                for identifier in identifiers])
+        statements = []
+        def record(*args):
+            statements.append(args[2])
+        event.listen(self.db.engine, 'before_cursor_execute', record)
+        try:
+            self.publish(self.draft(delivery_key='second'))
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', record)
+        self.assertLess(len(statements), 25)
+        page = self.service.sync(self.owner, 1)
+        self.assertEqual({row['notification_id'] for row in page['items'] if row['deleted']}, set(identifiers))
+        self.assertTrue(page['has_more'])
+        self.assertEqual(len(self.service.sync(self.owner, page['cursor'])['items']), 1)
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(receipts)), 2)
 
     def test_disabled_interval_is_never_backfilled(self):
         self.event()

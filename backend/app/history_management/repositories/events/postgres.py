@@ -1,5 +1,5 @@
 """Bounded, owner-serialized event writes; no provider calls or memory writes."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from hashlib import sha256
 import json
 from uuid import UUID, uuid4
@@ -258,7 +258,7 @@ class EventRepository:
                 due, state = ledger['due_at'], ledger['state']
             if due != ledger['due_at'] or state != ledger['state']:
                 session.execute(update(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier)
-                                .values(due_at=due, state=state, schedule_version=ledger['schedule_version']+1))
+                                .values(due_at=due, retry_at=None, state=state, schedule_version=ledger['schedule_version']+1))
         self._audit(session, owner, identifier, values['revision'], changed_fields)
         revision = self._change(session, owner, 'event', identifier)
         return self._record_receipt(session, owner, operation, fingerprint, identifier, 'updated', revision)
@@ -299,8 +299,12 @@ class EventRepository:
         from app.notifications.schemas import NotificationDraft
         now = self.clock()
         with self.sessions() as session:
-            due = session.execute(select(rm.c.learner_id, rm.c.event_id).where(
-                rm.c.state == 'pending', rm.c.due_at <= now).order_by(rm.c.due_at, rm.c.event_id)
+            eligible = select(rm.c.learner_id, rm.c.event_id, rm.c.due_at,
+                func.row_number().over(partition_by=rm.c.learner_id, order_by=(rm.c.due_at, rm.c.event_id)).label('owner_rank')).where(
+                rm.c.state == 'pending', rm.c.due_at <= now,
+                or_(rm.c.retry_at.is_(None), rm.c.retry_at <= now)).subquery()
+            due = session.execute(select(eligible.c.learner_id, eligible.c.event_id).order_by(
+                eligible.c.owner_rank, eligible.c.due_at, eligible.c.event_id)
                 .limit(max(1, min(100, limit)))).all()
         processed = 0
         if due:
@@ -314,7 +318,7 @@ class EventRepository:
                     session = uow._session
                     row = session.execute(select(e).where(e.c.learner_id == owner, e.c.id == identifier)).mappings().first()
                     ledger = session.execute(select(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier).with_for_update()).mappings().first()
-                    if not row or not ledger or ledger['state'] != 'pending' or ledger['due_at'] > self.clock():
+                    if not row or not ledger or ledger['state'] != 'pending' or ledger['due_at'] > self.clock() or ledger['retry_at'] and ledger['retry_at'] > self.clock():
                         continue
                     if row['status'] != 'scheduled' or row['cutoff_at'] <= self.clock() or not self._preferences(session, owner)['reminders_enabled']:
                         values = dict(state='skipped')
@@ -334,6 +338,9 @@ class EventRepository:
                 if current.get():
                     current.get().outcome = 'degraded'
                 # Preserve the pending ledger for retry after inbox capacity recovers.
+                with self.transactions.write(owner) as uow:
+                    uow._session.execute(update(rm).where(rm.c.learner_id == owner, rm.c.event_id == identifier,
+                        rm.c.state == 'pending', rm.c.due_at <= now).values(retry_at=self.clock() + timedelta(seconds=30)))
         return processed
 
     def _rows(self, session, owner, identifiers, stamp=None):

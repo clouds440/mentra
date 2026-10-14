@@ -4,19 +4,35 @@ import logging
 import math
 from pathlib import Path
 from threading import Lock
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-from contextvars import copy_context
+import multiprocessing as mp
 
 
 from app.core.logging import workflow_logger
 
+
+def _rerank_worker(connection, path):
+    engine = LocalReranker(path, 5)
+    try:
+        while True:
+            message = connection.recv()
+            if message is None:
+                break
+            try:
+                connection.send(engine._rank(*message))
+            except Exception:
+                connection.send(None)
+    except (EOFError, BrokenPipeError):
+        pass
+    finally:
+        connection.close()
+
 @workflow_logger.connect_module(default_outcome='success')
 class LocalReranker:
-    def __init__(self, path, timeout):
+    def __init__(self, path, timeout, *, worker_target=_rerank_worker):
         self.path, self.timeout = Path(path), timeout
         self._model = None
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rag-reranker')
-        self._future = None
+        self._process = self._connection = None
+        self._target = worker_target
         self._lock = Lock()
         self._closed = False
 
@@ -49,26 +65,55 @@ class LocalReranker:
         return scores
 
     def rank(self, query, passages):
-        with self._lock:
+        if not self._lock.acquire(blocking=False):
+            return None
+        try:
             if self._closed:
                 return None
             if not passages:
                 return []
-            if self._future is not None and not self._future.done():
+            cold = self._process is None or not self._process.is_alive()
+            if cold:
+                self._stop()
+                context = mp.get_context('spawn')
+                self._connection, child = context.Pipe()
+                self._process = context.Process(target=self._target, args=(child, str(self.path)), daemon=True)
+                self._process.start()
+                child.close()
+            self._connection.send((query, passages))
+            # Cold model loading has a separate bounded initialization allowance.
+            if not self._connection.poll(max(30, self.timeout) if cold else self.timeout):
+                self._stop()
+                workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
                 return None
-            self._future = self._executor.submit(copy_context().run, self._rank, query, passages)
-            future = self._future
-        try:
-            return future.result(timeout=self.timeout)
-        except (TimeoutError, ValueError, OSError, RuntimeError, ImportError):
-            workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
-            return None
+            return self._connection.recv()
         except Exception:
+            self._stop()
             workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
-            logging.getLogger('mentra').exception('Optional RAG reranker failed.')
             return None
+        finally:
+            self._lock.release()
+
+    def _stop(self, graceful=False):
+        if self._process is not None:
+            if graceful and self._process.is_alive():
+                try:
+                    self._connection.send(None)
+                    self._process.join(timeout=2)
+                except (EOFError, BrokenPipeError, OSError):
+                    pass
+            if self._process.is_alive():
+                self._process.terminate()
+            self._process.join(timeout=2)
+            if self._process.is_alive():
+                self._process.kill()
+                self._process.join(timeout=2)
+            self._process.close()
+        if self._connection is not None:
+            self._connection.close()
+        self._process = self._connection = None
 
     def close(self):
         with self._lock:
             self._closed = True
-            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._stop(graceful=True)

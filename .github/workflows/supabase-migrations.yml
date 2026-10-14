@@ -21,7 +21,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Verify backend before live migration
+    uses: ./.github/workflows/backend-tests.yml
   migrate:
+    needs: verify
     name: Upgrade Supabase schema with Alembic
     runs-on: ubuntu-latest
     defaults:

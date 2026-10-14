@@ -10,6 +10,16 @@ from tests.test_web_search import Usage, NOW, PAYLOAD
 
 
 class ResearchTests(unittest.IsolatedAsyncioTestCase):
+    async def test_http_pool_is_reused_and_closed_by_provider_lifecycle(self):
+        provider = YouResearchProvider('test-key', transport=httpx.MockTransport(lambda request:
+            httpx.Response(200, json={'output': {'content': 'Report', 'sources': []}})))
+        client = provider._client
+        for _ in range(2):
+            await provider.search(SearchInput(query='Research releases'))
+            self.assertIs(provider._client, client)
+            self.assertFalse(client.is_closed)
+        await provider.close()
+        self.assertTrue(client.is_closed)
     async def test_authenticated_contract_and_scope(self):
         seen = []
         async def handle(request):

@@ -250,19 +250,21 @@ class AuthenticationTests(unittest.TestCase):
             cookie = response.headers['set-cookie']
             self.assertIn('HttpOnly', cookie)
             self.assertIn('SameSite=lax', cookie)
-            self.assertIn('Max-Age=34560000', cookie)
+            from http.cookies import SimpleCookie
+            parsed = SimpleCookie(cookie)
+            self.assertTrue(2591990 <= int(parsed['mentra_session']['max-age']) <= 2592000)
             self.assertIn('Path=/api/v1', cookie)
             token = client.cookies.get('mentra_session')
             with self.db.engine.connect() as connection:
                 session = connection.execute(select(auth_session)).mappings().one()
-            self.assertIsNone(session['expires_at'])
+            self.assertEqual(session['expires_at'], self.now + timedelta(days=30))
             self.assertEqual(session['token_digest'], token_digest(token))
-            later = self.now + timedelta(days=730)
+            later = self.now + timedelta(days=12)
             with patch.object(self.service, 'clock', return_value=later):
                 restored = client.get('/api/v1/auth/me')
                 self.assertEqual(restored.status_code, 200)
                 self.assertEqual(restored.json(), response.json())
-                self.assertIn('Max-Age=34560000', restored.headers['set-cookie'])
+                self.assertIn('Max-Age=', restored.headers['set-cookie'])
                 self.assertEqual(client.post('/api/v1/auth/logout').status_code, 204)
                 self.assertIsNone(client.cookies.get('mentra_session'))
                 with self.assertRaises(AuthenticationError):
@@ -315,7 +317,10 @@ class AuthenticationTests(unittest.TestCase):
     def test_persistent_session_migration_downgrade_preserves_and_revokes_sessions(self):
         request = RegisterRequest(username='alice', password='a long unique passphrase')
         response = self.service.register(request, persistent=True)
-        self.assertIsNone(response.expires_at)
+        # Rehearse an actual legacy unbounded session, not a new-policy session.
+        from sqlalchemy import update
+        with self.db.sessions.begin() as session:
+            session.execute(update(auth_session).values(expires_at=None))
         with self.db.engine.begin() as connection:
             command.downgrade(migration_config(connection), '20261007_0001')
         with self.assertRaises(AuthenticationError):
@@ -324,3 +329,16 @@ class AuthenticationTests(unittest.TestCase):
         upgrade(self.db.engine)
         with self.db.engine.connect() as connection:
             command.check(migration_config(connection))
+
+    def test_new_persistent_sessions_expire_but_legacy_sessions_are_preserved(self):
+        response = self.service.register(RegisterRequest(username='alice', password='a long unique passphrase'), persistent=True)
+        self.assertEqual(response.expires_at, self.now + timedelta(days=30))
+        with patch.object(self.service, 'clock', return_value=self.now + timedelta(days=30)):
+            with self.assertRaises(AuthenticationError):
+                self.service.authenticate(response.access_token)
+        from sqlalchemy import update
+        with self.db.sessions.begin() as session:
+            session.execute(update(auth_session).values(expires_at=None))
+        with patch.object(self.service, 'clock', return_value=self.now + timedelta(days=730)):
+            self.assertEqual(self.service.authenticate(response.access_token).learner_id, response.learner_id)
+        self.assertEqual(self.repository.cleanup_sessions(self.now + timedelta(days=730)), 0)

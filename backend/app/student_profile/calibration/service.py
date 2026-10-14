@@ -66,7 +66,7 @@ class CalibrationService:
             attempt.answers[question.id] = request.option_id
             return public_attempt(store.save_attempt(attempt))
 
-    async def complete(self, learner_id, attempt_id, request):
+    def _complete_transaction(self, learner_id, attempt_id, request):
         with self.repository.transaction(learner_id) as store:
             profile, attempt = store.profile(), self._owned(store, attempt_id)
             evidence = store.source_evidence('onboarding_calibration', attempt.id)
@@ -93,6 +93,11 @@ class CalibrationService:
                 profile.onboarding_phase, profile.calibration_status = 'complete', 'completed'
                 profile.evaluation_status, profile.updated_at = 'pending', self.clock()
                 profile = store.save_profile(profile)
+        return profile, evidence
+
+    async def complete(self, learner_id, attempt_id, request):
+        from app.core.observability.timing import run_in_threadpool
+        profile, evidence = await run_in_threadpool(self._complete_transaction, learner_id, attempt_id, request)
         if evidence.status in {'pending', 'evaluating'}:
             profile = await self.evidence_service.evaluate(learner_id, evidence.id)
         return CalibrationResult(profile=profile, evidence_id=evidence.id)
@@ -116,9 +121,14 @@ class CalibrationService:
             profile.updated_at = self.clock()
             return store.save_profile(profile)
 
-    async def retry_evaluation(self, learner_id):
+    def _retry_evidence(self, learner_id):
         with self.repository.transaction(learner_id) as store:
             profile, evidence = store.profile(), store.latest_calibration_evidence()
             if evidence is None or evidence.context_version != profile.context_version:
                 raise conflict('Complete a calibration assessment before evaluating it.')
-        return await self.evidence_service.evaluate(learner_id, evidence.id)
+        return evidence.id
+
+    async def retry_evaluation(self, learner_id):
+        from app.core.observability.timing import run_in_threadpool
+        evidence_id = await run_in_threadpool(self._retry_evidence, learner_id)
+        return await self.evidence_service.evaluate(learner_id, evidence_id)

@@ -41,3 +41,14 @@ class OwnerTransactions:
                             {'timeout':f'{self.timeout_ms}ms'})
             lock_owner(session, owner)
             yield OwnedUnitOfWork(owner, session)
+
+    @contextmanager
+    def try_write(self, owner: str):
+        """Worker queues skip busy owners without reversing owner-first lock order."""
+        from app.chat.repositories.tables import sync_state
+        with self.sessions.begin() as session:
+            session.execute(text("SELECT set_config('lock_timeout', :timeout, true), set_config('statement_timeout', :timeout, true)"),
+                            {'timeout': f'{self.timeout_ms}ms'})
+            row = session.execute(select(sync_state).where(sync_state.c.learner_id == owner)
+                                  .with_for_update(skip_locked=True)).first()
+            yield OwnedUnitOfWork(owner, session) if row else None

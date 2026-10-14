@@ -77,14 +77,32 @@ class ChatImageTests(unittest.TestCase):
         reader.read.return_value = DocumentContent('png', 'image/png', [dict(text='Original text', method='ocr')], [], 'ocr-v1')
         service = AttachmentService(repository, reader)
         rag = Mock()
+        rag.validate_contexts.return_value = ['context']
+        rag.accept_extracted.return_value = dict(document_id='document')
+        rag.get_document.return_value = dict(context_ids=['context'])
         service.add_to_library('owner', 'file', 'chat', ['context'], rag)
         self.assertEqual(rag.accept_extracted.call_args.kwargs['extracted']['blocks'][0]['text'], 'Original text')
         service.extract('owner', 'file', 'chat')
         reader.read.assert_called_once()
 
+    def test_library_replay_revalidates_deletion_and_context_changes(self):
+        repository, rag = Mock(), Mock()
+        repository.read.return_value = dict(library_result=dict(document_id='document'))
+        rag.validate_contexts.return_value = ['new-context']
+        rag.get_document.return_value = dict(context_ids=['old-context'])
+        service = AttachmentService(repository, Mock())
+        with self.assertRaises(AppError) as error:
+            service.add_to_library('owner', 'file', 'chat', ['new-context'], rag)
+        self.assertEqual(error.exception.code, 'CHAT_LIBRARY_CONTEXT_CHANGED')
+        rag.get_document.side_effect = AppError('RAG_NOT_FOUND', 'Deleted', 404)
+        with self.assertRaises(AppError) as error:
+            service.add_to_library('owner', 'file', 'chat', ['new-context'], rag)
+        self.assertEqual(error.exception.code, 'CHAT_LIBRARY_TARGET_DELETED')
+        rag.accept_extracted.assert_not_called()
+
     def test_three_image_limit_is_enforced_before_binding(self):
         session = Mock()
-        rows = [dict(id=str(i), data=raster(), conversation_id=None, filename='photo.png', size_bytes=10) for i in range(4)]
+        rows = [dict(id=str(i), header=raster()[:12], conversation_id=None, filename='photo.png', size_bytes=10) for i in range(4)]
         session.execute.return_value.mappings.return_value.all.return_value = rows
         with self.assertRaises(AppError) as error:
             AttachmentRepository.bind(session, 'owner', [str(i) for i in range(4)], 'chat')

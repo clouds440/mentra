@@ -150,6 +150,8 @@ class DurableOrchestrationTests(unittest.TestCase):
         with self.assertRaises(AppError): service.extract(self.other, file['id'], job['conversation_id'])
         rag = Mock()
         rag.accept_extracted.return_value = dict(document_id='doc', job_id='job', generation_id='gen', duplicate=False)
+        rag.validate_contexts.return_value = ['context']
+        rag.get_document.return_value = dict(context_ids=['context'])
         result = service.add_to_library(self.owner, file['id'], job['conversation_id'], ['context'], rag)
         self.assertEqual(result['document_id'], 'doc')
         self.assertEqual(rag.accept_extracted.call_args.kwargs['extracted']['blocks'][0]['page'], 2)

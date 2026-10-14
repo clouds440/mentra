@@ -15,6 +15,8 @@ from app.langchain.repositories import checkpoint_tables
 from app.assessments.repositories import tables as assessment_tables
 from app.langchain.repositories import evidence_tables
 from app.web_search.repositories import tables as web_search_tables
+from app.db import admission as admission_tables
+from app.db import health as health_tables
 
 config = context.config
 

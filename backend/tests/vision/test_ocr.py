@@ -132,6 +132,9 @@ class VisionOCRTests(unittest.TestCase):
             parser = NativeDocumentParser(create_document_reader(vision=vision, isolated=False))
             result = parser.capabilities()
             self.assertEqual(result['formats'][:6], ['txt', 'pdf', 'docx', 'pptx', 'png', 'jpg'])
-            self.assertEqual(set(result), {'formats', 'image_ocr', 'scanned_pdf_ocr', 'parser_revision'})
+            self.assertTrue({'formats', 'image_ocr', 'scanned_pdf_ocr', 'parser_revision'}.issubset(result))
+            self.assertEqual(result['ocr_languages'], ['eng'])
+            self.assertEqual(result['resource_limits']['cpu_seconds'], 120)
+            self.assertTrue(result['content_limitations'])
             self.assertEqual(parser.version,
                 'documents-native-vision-v3:pypdf=test;python-docx=test;python-pptx=test;beautifulsoup4=test;Pillow=pillow;tesseract=tesseract version;pdftoppm=poppler version')

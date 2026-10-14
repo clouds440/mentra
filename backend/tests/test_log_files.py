@@ -20,6 +20,28 @@ def event_record(day, event='test.completed'):
 
 
 class DailyLogTests(unittest.TestCase):
+    def test_blocked_writer_has_bounded_queue_and_shutdown(self):
+        from threading import Event
+        from time import monotonic
+        blocked = Event()
+        with tempfile.TemporaryDirectory() as directory:
+            sink = DailyFileHandler(directory, queued=True, queue_bytes=4096, shutdown_seconds=.05)
+            with patch.object(sink, '_write', side_effect=lambda *args: blocked.wait(2)):
+                for _ in range(100):
+                    sink.handle(event_record(datetime.now(timezone.utc).date().isoformat()))
+                self.assertLessEqual(sink._pending_bytes, 4096)
+                started = monotonic()
+                sink.close()
+                self.assertLess(monotonic() - started, .5)
+                blocked.set()
+
+    def test_daily_file_size_is_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sink = DailyFileHandler(directory, max_file_bytes=1024)
+            for _ in range(100):
+                sink.handle(event_record(datetime.now(timezone.utc).date().isoformat()))
+            self.assertLessEqual(sum(path.stat().st_size for path in Path(directory).glob('*.log')), 1024)
+
     def test_midnight_restart_and_json_format(self):
         with tempfile.TemporaryDirectory() as directory:
             sink = DailyFileHandler(directory)

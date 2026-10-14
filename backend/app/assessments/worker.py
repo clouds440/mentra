@@ -35,6 +35,7 @@ async def serve():
     from app.langchain.llm import MentraLLM
     from app.learner.factory import create_learner_engine
     from app.core.config import settings
+    settings.database_role = 'worker'
     from .service import create_assessments
     import signal
     from app.core.logging import configure_logging
@@ -47,8 +48,16 @@ async def serve():
     stopping = asyncio.Event()
     for name in (signal.SIGTERM, signal.SIGINT): signal.signal(name, lambda *_:stopping.set())
     async def consume(consumer):
+        from time import monotonic
+        from app.db.health import heartbeat
+        from starlette.concurrency import run_in_threadpool
+        last_heartbeat = 0
         while not stopping.is_set():
-            try: await consumer.run_once()
+            try:
+                if monotonic() - last_heartbeat > 30:
+                    await run_in_threadpool(heartbeat, get_session_factory(), 'assessment')
+                    last_heartbeat = monotonic()
+                await consumer.run_once()
             except Exception as error:
                 logging.getLogger('mentra').warning('Worker queue unavailable (%s)', type(error).__name__)
             try: await asyncio.wait_for(stopping.wait(), 2)

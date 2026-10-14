@@ -104,15 +104,16 @@ class IngestionWorker:
             if row['id'] != row['active_generation_id']:
                 self.service.vector_store.delete_chunks(row['learner_id'], row['document_id'], row['id'])
                 self.repository.mark_reconciled(row['id'])
-        self.service.storage.sweep_unknown(self.repository.storage_keys(), age)
+        self.service.storage.sweep_unknown_batch(self.repository.referenced_storage_keys, age)
 
 
 def main():
     from app.core.config import settings
+    settings.database_role = 'worker'
     from app.core.logging import configure_logging
     from app.db.database import init_db
     from app.learner.factory import create_learner_engine
-    from app.rag.embeddings import SentenceTransformerEmbeddingService
+    from app.rag.embedding_process import ProcessEmbeddingService as SentenceTransformerEmbeddingService
     from app.rag.qdrant_store import QdrantVectorStore
     from app.rag.factory import create_rag_service
     configure_logging('rag-worker')
@@ -131,6 +132,8 @@ def main():
     last_sweep = 0.0
     try:
         while not stopping:
+            from app.db.health import heartbeat
+            heartbeat(worker.repository.sessions, 'rag')
             if not worker.run_once():
                 time.sleep(1)
             if time.monotonic() - last_sweep > 60:
@@ -142,6 +145,7 @@ def main():
     finally:
         worker.service.close()
         vector_store.close()
+        embedding.close()
 
 
 if __name__ == '__main__':

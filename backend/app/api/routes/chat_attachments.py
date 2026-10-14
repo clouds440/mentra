@@ -20,7 +20,9 @@ class LibraryAdmission(BaseModel):
 @router.post('')
 async def upload(request: Request, file: UploadFile = File(...), identity=Depends(require_onboarded_identity)):
     try:
-        return await run_in_threadpool(request.app.state.attachment_service.upload, identity.learner_id, file.file, file.filename)
+        from app.db.admission import request_capacity
+        async with request_capacity(request, identity.learner_id, 'parse'):
+            return await run_in_threadpool(request.app.state.attachment_service.upload, identity.learner_id, file.file, file.filename)
     finally:
         await file.close()
 

@@ -30,7 +30,8 @@ test('registration uses real auth, HTTP-only cookies, refresh, and return visits
   const session = cookies.find((cookie) => cookie.name === 'mentra_session');
   expect(session?.httpOnly).toBe(true);
   expect(session?.sameSite).toBe('Lax');
-  expect(session?.expires).toBeGreaterThan(Date.now() / 1000 + 365 * 86400);
+  expect(session?.expires).toBeGreaterThan(Date.now() / 1000 + 29 * 86400);
+  expect(session?.expires).toBeLessThanOrEqual(Date.now() / 1000 + 30 * 86400);
   expect(await page.evaluate(() => document.cookie)).not.toContain('mentra_session');
   expect(await page.evaluate(() => ({ ...localStorage }))).not.toHaveProperty('access_token');
   await page.reload();
