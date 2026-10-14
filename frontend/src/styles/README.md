@@ -25,8 +25,10 @@ glyphs. Shared workspace classes define headers, 16px panels, filters, tabs,
 statuses and action rows. Ordinary panels have no blur or large shadow.
 `shadow-panel` provides optional lift; `shadow-overlay` is reserved for overlays.
 
-Hover/focus lasts 100–150ms; overlays enter in 130–160ms. Keep answers immediately
-readable and avoid animated layout dimensions. The working logo stays instance-scoped.
+Hover/focus lasts 100–150ms; overlays enter in 130–160ms. New completed answers
+reveal as one rendered Markdown surface with a feathered downward mask over 900ms.
+History and reduced-motion answers appear immediately. Reserve the final layout
+and avoid animated dimensions. The working logo stays instance-scoped.
 
 Run `npm run check:theme` for theme behavior checks and `npm run build` for
 TypeScript validation and the production bundle. The behavior checks use a

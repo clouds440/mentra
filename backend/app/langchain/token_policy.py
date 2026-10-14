@@ -54,7 +54,7 @@ def count_messages(messages):
 def output_budget(source, config=settings):
     if source.value == 'chat_summary':
         return 600
-    if source.value == 'assessment_generation':
+    if source.value in ('assessment_generation', 'assessment_design'):
         return min(config.assessment_generation_output_tokens, config.chat_context_window_tokens // 2)
     if source.value in ('assessment_grading', 'assessment_transcription'):
         return min(config.assessment_grading_output_tokens, config.chat_context_window_tokens // 2)

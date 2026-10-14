@@ -17,6 +17,12 @@ is written into chat messages. Result actions, including View in assessments, us
 
 Students can request a quiz or mock paper in a normal conversation. The
 `assessment_generate` tool creates a chat-scoped draft and returns a public card.
+An empty tool argument set is valid: “give me an assessment” queues a learner-data
+selection step for topic and format, followed by request-led design. Account education
+level and learning evidence supply defaults; higher/lower requested levels override
+those defaults without a gate. “Simple grading” provides correctness and feedback
+without per-question marks or a letter-grade scale. All explicit structure, count,
+marks, timing and result choices are retained. See [Assessment engine](Assessment_Engine.md).
 Question IDs, private grading keys, rubrics, and source provenance are stored
 once. Private keys never enter chat responses or the browser.
 
@@ -73,7 +79,7 @@ durable grading worker serves chat and the Assessments page, returns per-questio
 feedback, and admits only sufficiently reliable learner evidence. Formal grading
 exchanges are excluded from informal chat evidence to avoid double counting.
 
-Generation supports 1–10 questions from a topic, with optional concept names.
+Generation supports request-led question counts and mixed formats, with optional concept names.
 Chat creates or reuses an owned topic context when none was supplied. Both chat
 and direct generation allow new targets without a student confirmation gate;
 the legacy confirmation flag remains only for request/replay compatibility.
@@ -81,15 +87,17 @@ Learner owns all canonical identity decisions. Exact aliases reuse IDs; uncertai
 matches remain separate targets rather than merging unrelated learner history.
 Malformed or unavailable semantic advice falls back to deterministic resolution,
 and proposed IDs outside the candidate set or invalid equivalences are ignored.
-Existing candidate discards, ownership checks and cancellation remain enforced.
+Previously discarded candidate records are preserved; generation can register a separate
+identity instead of reviving those records. Ownership checks and cancellation remain enforced.
 These separately identified concepts can be reviewed/merged using the learner
 lifecycle; generation alone never claims or writes learner mastery.
 
 Target planning and question batches each have one bounded output repair attempt
 inside the shared model/time budget. An invalid topic plan falls back to the
 requested topic. Only a failed question batch is regenerated; valid earlier batches
-remain intact. Counts, formats, private answer keys, duplicate prompts, concept IDs
-and source citations are checked before saving. Invalid model output is distinct
+remain intact. Counts, formats, private answer keys, duplicate prompts with identical context
+and source citations are checked before saving. Generated concept names are resolved
+permissively rather than rejecting questions for unfamiliar IDs. Invalid model output is distinct
 from invalid tool inputs; domain replay/leases still prevent duplicate assessments.
 Multiple independent files are not automatically combined into one answer sheet;
 use a single document/PDF or choose one file. Vision accuracy depends on the

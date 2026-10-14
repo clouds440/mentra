@@ -4,6 +4,7 @@ import { chatStore } from '../../stores/chatStore';
 import { ThinkingIndicator } from './ChatMessage';
 import { WebsiteIcon, safeWebsite } from '../webSearch/WebsiteIcon';
 import type { WebsiteIdentity } from '../../types/webSearch';
+import { useActivityFeedback } from './useActivityFeedback';
 import { activityLabel } from './activityLabels';
 
 interface Activity {
@@ -30,8 +31,9 @@ function valid(value: unknown): value is Activity {
     && (v.token_delta === undefined || v.token_delta === null || typeof v.token_delta === 'string' && v.token_delta.length <= 2000);
 }
 
-export function ChatActivity({ conversationId, turnId, attempt }: { conversationId: string; turnId?: string; attempt?: number }) {
+export function ChatActivity({ conversationId, turnId, attempt, stopping = false }: { conversationId: string; turnId?: string; attempt?: number; stopping?: boolean }) {
   const [current, setCurrent] = useState<Activity>();
+  const label = useActivityFeedback(current, !!turnId);
   useEffect(() => {
     setCurrent(undefined);
     if (!turnId || !attempt) return;
@@ -53,8 +55,16 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
           cursor = data.sequence;
           // Keep activity live; publish answer content only after the canonical
           // message and its interactive cards are ready to reveal together.
-          setCurrent(previous => ({ ...data, websites: data.websites?.length ? data.websites
-            : data.status === 'completed' && data.tool_name === 'web_search' && previous?.tool_name === 'web_search' ? previous.websites : [] }));
+          if (activityLabel(data) === null) return;
+          setCurrent(previous => {
+            const websites = data.websites?.length ? data.websites
+              : data.status === 'completed' && data.tool_name === 'web_search' && previous?.tool_name === 'web_search' ? previous.websites : [];
+            if (previous && previous.status === data.status && activityLabel(previous) === activityLabel(data)
+              && JSON.stringify(previous.websites ?? []) === JSON.stringify(websites ?? [])) return previous;
+            // Token deltas advance the recovery cursor, but never enter UI state.
+            const { token_delta: _delta, token_reset: _reset, ...feedback } = data;
+            return { ...feedback, websites };
+          });
         });
       } catch { /* Existing canonical status polling remains available during connection failures. */ }
       if (!controller.signal.aborted && !terminal) timer = setTimeout(() => void connect(), 2000);
@@ -67,7 +77,7 @@ export function ChatActivity({ conversationId, turnId, attempt }: { conversation
       <WebsiteIcon website={site} /><span className="break-all">{site.domain}</span>
     </span>)}</span>;
   return <div aria-label="Current activity">
-    <ThinkingIndicator label={activityLabel(current)} />
+    <ThinkingIndicator label={stopping ? 'Stopping this response' : label} />
     {current && <div className="ml-11">{sites(current)}</div>}
   </div>;
 }

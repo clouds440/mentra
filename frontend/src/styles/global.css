@@ -442,8 +442,36 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .assessment-feedback .code-block { margin: 0.5rem 0; }
 .assessment-feedback .markdown-content > :first-child { margin-top: 0; }
 .assessment-feedback .markdown-content > :last-child { margin-bottom: 0; }
+.quiz-question fieldset > label {
+  padding: 10px 12px;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.quiz-question fieldset > label:has(:checked) {
+  background: rgb(var(--accent) / .07);
+  border-color: rgb(var(--accent));
+}
+.quiz-question fieldset > label:has(:focus-visible) { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+@media (hover: hover) {
+  .quiz-question fieldset > label:hover { background: rgb(var(--hover)); }
+}
 
 /* Animate only active marks; the PNG alpha masks color to the logo itself. */
+/* Brighten existing text without fading it or restarting on label updates. */
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .activity-label {
+    background-image: linear-gradient(100deg, rgb(var(--subtle)) 35%, rgb(var(--heading)) 50%, rgb(var(--subtle)) 65%);
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: activity-label-shimmer 2.8s ease-in-out infinite;
+  }
+}
+@keyframes activity-label-shimmer {
+  0%, 12% { background-position: 100% 0; }
+  88%, 100% { background-position: 0% 0; }
+}
+
 .mentra-logo-shimmer {
   mask-size: contain;
   mask-position: center;
@@ -480,11 +508,25 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   100% { background-position: 0% 0; opacity: 0; }
 }
 
-/* Finished answers are readable immediately; saved history never replays. */
+/* One soft downward sweep across the complete answer, independent of its length.
+   Reserve the final layout immediately; animate only the mask, never text or height.
+   The fixed feather stays subtle even on very long answers. Saved history stays still. */
 @media (prefers-reduced-motion: no-preference) {
-  .chat-response-reveal { animation: chat-response-reveal 120ms ease-out; }
+  .chat-response-reveal {
+    mask-size: 100% calc(200% + 128px);
+    mask-repeat: no-repeat;
+    animation: chat-response-reveal 900ms cubic-bezier(.25, .46, .45, .94);
+    /* Drop the mask completely after the sweep, keeping menus/shadows unclipped. */
+    mask-image: none;
+  }
 }
 @keyframes chat-response-reveal {
-  from { opacity: .85; }
-  to { opacity: 1; }
+  from {
+    mask-image: linear-gradient(to bottom, #000 calc(50% - 32px), transparent calc(50% + 32px));
+    mask-position: 0 100%;
+  }
+  to {
+    mask-image: linear-gradient(to bottom, #000 calc(50% - 32px), transparent calc(50% + 32px));
+    mask-position: 0 0%;
+  }
 }

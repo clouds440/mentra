@@ -182,8 +182,8 @@ for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390
     await expect(final.getByRole('button', {name:'Copy code'})).toBeVisible();
     await expect(final.getByLabel('Interactive question')).toBeVisible();
     await expect(final).toHaveClass(/chat-response-reveal/);
-    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0.12s');
-    await expect.poll(() => final.evaluate(el => getComputedStyle(el).clipPath), {timeout:1500, intervals:[50]}).toBe('none');
+    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0.9s');
+    await expect.poll(() => final.evaluate(el => getComputedStyle(el).maskImage), {timeout:1500, intervals:[50]}).toBe('none');
     const heading = await final.getByRole('heading', {name:'Formatted answer'}).boundingBox();
     const chatBounds = await chat.boundingBox();
     expect(heading!.y).toBeGreaterThanOrEqual(chatBounds!.y);

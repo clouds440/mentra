@@ -26,6 +26,26 @@ x-runtime-settings: &runtime-settings
   PARSE_GLOBAL_CAPACITY: ${PARSE_GLOBAL_CAPACITY:-4}
   PARSE_OWNER_CAPACITY: ${PARSE_OWNER_CAPACITY:-1}
 
+x-retrieval-settings: &retrieval-settings
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+  EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+  QDRANT_URL: ${QDRANT_URL:-}
+  QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+  QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
+  QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
+  RAG_STORAGE_DIR: /var/lib/mentra/materials
+  RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
+  RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
+  RAG_HYBRID_ENABLED: ${RAG_HYBRID_ENABLED:-true}
+  RAG_RERANKER_PATH: ${RAG_RERANKER_PATH:-}
+  RAG_RERANKER_TIMEOUT: ${RAG_RERANKER_TIMEOUT:-5}
+  RAG_MAX_PAGES: ${RAG_MAX_PAGES:-200}
+  RAG_MAX_CHUNKS: ${RAG_MAX_CHUNKS:-5000}
+  RAG_PARSER_TIMEOUT: ${RAG_PARSER_TIMEOUT:-120}
+  RAG_JOB_LEASE_SECONDS: ${RAG_JOB_LEASE_SECONDS:-300}
+  OMP_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+  MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
+
 x-model-settings: &model-settings
   AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
   AI_MODEL: ${AI_MODEL:-}
@@ -221,7 +241,7 @@ services:
     command: ["python", "-m", "app.assessments.worker"]
     stop_grace_period: 100s
     environment:
-      <<: [*database-budget, *runtime-settings, *model-settings]
+      <<: [*database-budget, *runtime-settings, *model-settings, *retrieval-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -234,6 +254,7 @@ services:
       LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
     volumes:
+      - mentra_materials:/var/lib/mentra/materials
       - ./logs/backend:/var/log/mentra
     depends_on:
       backend:

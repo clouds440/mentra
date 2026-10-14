@@ -39,6 +39,7 @@ class GeneratedConceptsRequest(LearnerSchema):
     context_id: str = Field(min_length=1, max_length=100)
     topic: str = Field(min_length=1, max_length=200)
     labels: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(min_length=1, max_length=10)
+    permissive: bool = False
 
 
 class ConceptSearchTerms(LearnerSchema):

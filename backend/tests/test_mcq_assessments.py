@@ -90,7 +90,8 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
         from app.chat.repositories.postgres import ChatRepository
         from app.chat.schemas import SendTurn
         from app.history_management.budgets import ToolBudget
-        self.assertEqual(GeneratePractice(context_id=self.request.context_id,topic='Equations').question_format,'written')
+        self.assertEqual(GeneratePractice(context_id=self.request.context_id,topic='Equations').question_format,'auto')
+        self.assertIsNone(GeneratePractice(context_id=self.request.context_id,topic='Equations').count)
         await self.service.generate(self.owner,self.request)
         cid=str(uuid4())
         ChatRepository(self.db.sessions).begin_turn(self.owner,SendTurn(conversation_id=cid,client_turn_id=uuid4(),expected_revision=0,content='Interactive quiz'))
@@ -139,7 +140,10 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
         from unittest.mock import patch
         invoke=self.service.workflows.llm.ainvoke
         async def wrong_format(source,payload,**kwargs):
-            return await invoke(source,dict(payload,question_format='mcq'),**kwargs)
+            altered = dict(payload,question_format='mcq')
+            if source.value == 'assessment_generation':
+                altered['question_plan'] = [dict(item, question_type='mcq', answer_mode='single_choice') for item in payload['question_plan']]
+            return await invoke(source,altered,**kwargs)
         with patch.object(self.service.workflows.llm,'ainvoke',side_effect=wrong_format):
             with self.assertRaises(AppError) as caught: await self.service.generate(self.owner,self.request)
         self.assertEqual(caught.exception.code,'ASSESSMENT_INVALID_GENERATION')

@@ -62,7 +62,9 @@ class ChatService:
                 sources.append(PromptSource.TOOL_RECOVERY)
                 context['missing_context'] = recovery_context
             if profile_context is not None:
+                from .response_style import response_style
                 context['student_profile'] = profile_context
+                context['response_style'] = response_style(profile_context)
             if document_context or image_context:
                 sources.append(PromptSource.CHAT_ATTACHMENTS)
                 context['chat_attachments'] = document_context or []

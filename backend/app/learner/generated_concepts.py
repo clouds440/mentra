@@ -75,6 +75,8 @@ class GeneratedConceptService:
     async def resolve(self, request: GeneratedConceptsRequest):
         from starlette.concurrency import run_in_threadpool
         await run_in_threadpool(self.contexts.require, request.learner_id, request.context_id)
+        if request.permissive:
+            return await run_in_threadpool(self.resolve_permissive, request)
         labels = list(dict.fromkeys(request.labels))
         resolutions = [await run_in_threadpool(self.concepts.resolve, ConceptResolutionRequest(
             learner_id=request.learner_id, context_id=request.context_id, label=label,
@@ -124,4 +126,34 @@ class GeneratedConceptService:
                 resolved_labels[label] = concept.id
         if not concepts:
             raise AppError('ASSESSMENT_TARGETS_REQUIRED', 'No usable practice targets were available.', 422)
+        return list(concepts.values())
+
+    def resolve_permissive(self, request):
+        """Assessment generation favors a usable ID over speculative merging.
+
+        Exact unambiguous identities are reused. Ambiguous aliases and previously
+        discarded candidates get a separate topic-qualified identity; old records
+        are not merged, reactivated, or rewritten. This creates no mastery evidence.
+        """
+        from .normalization import lookup_forms
+        from hashlib import sha256
+        concepts = {}
+        for label in dict.fromkeys(request.labels):
+            matches = {value.id: value for value in self.concepts.repository.find_exact_concepts(lookup_forms(label))}
+            scoped = {key: value for key, value in matches.items() if request.context_id in
+                self.concepts.repository.get_concept_context_ids(key, learner_id=request.learner_id)}
+            selected = scoped if len(scoped) == 1 else matches
+            if len(selected) == 1:
+                concept = next(iter(selected.values()))
+            else:
+                name = label
+                if matches or not normalize(label):
+                    suffix = sha256(f'{request.context_id}:{label}'.encode()).hexdigest()[:12]
+                    name = f'{request.topic}: {label}'[:176] + f' [{suffix}]'
+                # Register owns ontology locking and exact-name race recovery.
+                concept = self.concepts.register(name, description=f'Assessment target for {request.topic}')
+            with self.concepts.repository.transaction(learner_ids=[request.learner_id]) as repository:
+                self.contexts.require(request.learner_id, request.context_id, repository)
+                repository.add_context_concept(request.context_id, concept.id, learner_id=request.learner_id)
+            concepts[concept.id] = concept
         return list(concepts.values())

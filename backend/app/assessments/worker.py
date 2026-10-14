@@ -15,8 +15,12 @@ class AssessmentWorker:
             workflow_logger.event('job.claimed', job_id=str(job.get('id', job.get('turn_id', 'unknown'))), attempt=job.get('attempts', job.get('attempt', {}).get('worker_attempts', 1)) if isinstance(job.get('attempt'), dict) else job.get('attempts', job.get('attempt', 1)))
             try:
                 from app.langchain.workflow_budget import model_budget
-                with model_budget():
-                    grades = await asyncio.wait_for(self.service.workflows.grade(job), 90)
+                from time import monotonic
+                long_paper = job.get('long_paper', False)
+                async def checkpoint(grades):
+                    await run_in_threadpool(self.service.repository.checkpoint_grades, job, grades)
+                with model_budget(**dict(deadline=monotonic()+900, max_rounds=256, max_input_tokens=1_000_000, max_total_tokens=2_000_000) if long_paper else {}):
+                    grades = await asyncio.wait_for(self.service.workflows.grade(job, checkpoint=checkpoint), 900 if long_paper else 90)
                 await run_in_threadpool(self.service.repository.complete, job, grades,
                     lambda tx:self.service.workflows.evidence(job, grades, tx))
                 execution.outcome = 'success'
@@ -41,7 +45,18 @@ async def serve():
     from app.core.logging import configure_logging
     configure_logging('assessment-worker')
     init_db()
-    worker = AssessmentWorker(create_assessments(get_session_factory(), MentraLLM(ModelFactory(settings)), create_learner_engine()))
+    factory = ModelFactory(settings)
+    llm = MentraLLM(factory)
+    learner = create_learner_engine(llm)
+    from app.rag.embedding_process import ProcessEmbeddingService
+    from app.rag.qdrant_store import QdrantVectorStore
+    from app.rag.factory import create_rag_service
+    from app.student_profile.factory import create_student_profile_service
+    embedding = ProcessEmbeddingService(settings)
+    vectors = QdrantVectorStore(settings, embedding)
+    rag = create_rag_service(learner, embedding, vectors)
+    profile = create_student_profile_service(factory, llm)
+    worker = AssessmentWorker(create_assessments(get_session_factory(), llm, learner, rag, profile))
     from app.langchain.evidence_worker import ChatEvidenceWorker
     from app.langchain.repositories.evidence import ChatEvidenceRepository
     evidence_worker = ChatEvidenceWorker(ChatEvidenceRepository(get_session_factory()), worker.service.workflows.llm, worker.service.workflows.learner)
@@ -63,6 +78,10 @@ async def serve():
             try: await asyncio.wait_for(stopping.wait(), 2)
             except asyncio.TimeoutError: pass
     # Independent queues share the process, not a serial scheduling bottleneck.
-    await asyncio.gather(consume(worker), consume(evidence_worker))
+    from .generation_worker import AssessmentGenerationWorker
+    try:
+        await asyncio.gather(consume(worker), consume(evidence_worker), consume(AssessmentGenerationWorker(worker.service)))
+    finally:
+        rag.close(); vectors.close(); embedding.close()
 
 if __name__ == '__main__': asyncio.run(serve())

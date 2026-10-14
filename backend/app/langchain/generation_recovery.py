@@ -41,18 +41,28 @@ async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict
 
 
 def validate_questions(result: GeneratedAssessment, *, count: int, question_format: str,
-                       concepts: set[str], tokens: set[str], grounded: bool, previous: list[str]) -> None:
+                       concepts: set[str], tokens: set[str], grounded: bool, previous: list[str], plan=None) -> None:
     if len(result.questions) != count:
         raise GenerationMismatch('wrong_question_count')
     seen = {prompt.casefold().strip() for prompt in previous}
-    for question in result.questions:
-        if bool(question.options) != (question_format == 'mcq'):
+    for index, question in enumerate(result.questions):
+        expected = plan[index]['question_type'] if plan else question_format
+        choice = plan[index].get('answer_mode') in ('single_choice', 'multiple_choice') if plan and 'answer_mode' in plan[index] else expected in ('mcq', 'true_false')
+        if bool(question.options) != choice:
             raise GenerationMismatch('wrong_question_format')
+        if plan and plan[index].get('answer_mode') and question.answer_mode != plan[index]['answer_mode']:
+            raise GenerationMismatch('answer_mode_must_match_the_question_plan')
+        if expected == 'true_false' and ({option.id for option in question.options} != {'true', 'false'}
+            or {option.label.casefold() for option in question.options} != {'true', 'false'}):
+            raise GenerationMismatch('true_false_requires_true_and_false_options')
+        if plan and 'marks' in plan[index] and question.marks != plan[index]['marks']:
+            raise GenerationMismatch('marks_must_match_the_paper_plan')
         prompt = question.prompt.casefold().strip()
+        if plan: prompt += '|' + plan[index].get('context', '').casefold().strip()
         if prompt in seen:
             raise GenerationMismatch('duplicate_question')
         seen.add(prompt)
-        if set(question.concept_ids) - concepts:
+        if concepts is not None and set(question.concept_ids) - concepts:
             raise GenerationMismatch('unknown_concept_id')
         if set(question.source_tokens) - tokens:
             raise GenerationMismatch('unknown_source_token')

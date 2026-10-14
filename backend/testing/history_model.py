@@ -29,9 +29,36 @@ class HistoryChatFactory(TestChatFactory):
                     return schema(terms=data['labels'])
                 if schema.__name__ == 'ConceptIdentityMatches':
                     return schema(matches=[dict(label=label, concept_id=None, confidence=1) for label in data['labels']])
+                if schema.__name__ == 'AssessmentSelection':
+                    request, packet = data['request'], data['tools']
+                    contexts = packet.get('material_contexts') or packet['contexts']
+                    targets = packet['priorities']
+                    return schema(topic=request.get('topic') or (targets[0]['name'] if targets else contexts[0]['name'] if contexts else 'General reasoning and learning'),
+                        context_id=request.get('context_id') or (contexts[0]['context_id'] if contexts else None),
+                        question_format='mixed' if request['question_format']=='auto' else request['question_format'])
+                if schema.__name__ == 'AssessmentDesign':
+                    count = data.get('count') or (12 if data['question_format']=='mock_paper' else 4)
+                    kinds = ['mcq', 'true_false', 'short_answer', 'multiple_select', 'numerical', 'essay']
+                    paper = data['question_format']=='mock_paper'
+                    total_parts = count * (2 if paper else 1)
+                    marks = (data.get('total_marks') or total_parts*2) / total_parts
+                    questions = []
+                    for i in range(count):
+                        kind = 'written' if paper else kinds[i % len(kinds)] if data['question_format']=='mixed' else data['question_format']
+                        mode = 'multiple_choice' if kind=='multiple_select' else 'single_choice' if kind in ('mcq','true_false') else 'text'
+                        questions.append(dict(number=i+1, context='Use this shared case.' if paper else '', parts=[dict(path=[part] if paper else [], question_type=kind, answer_mode=mode, marks=marks, brief='A useful question') for part in (['a','b'] if paper else [''])]))
+                    return schema(title='Designed assessment', duration_minutes=data.get('duration_minutes') or 60, instructions='Answer all parts.', sections=[dict(title='Section A', question_count=count, questions=questions)])
                 if schema.__name__ == 'GeneratedAssessment':
                     revised = bool(data.get('revision_instructions'))
-                    return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=[dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset",0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=2, model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **(dict(options=[dict(id='a',label='A supported explanation.'),dict(id='b',label='An unsupported explanation.')],correct_option_id='a') if data.get('question_format')=='mcq' else {})) for index in range(data['count'])])
+                    questions = []
+                    for index in range(data['count']):
+                        plan = data.get('question_plan', [{}] * data['count'])[index]
+                        kind = plan.get('question_type', data.get('question_format'))
+                        options = dict(options=[dict(id='a', label='A supported explanation.'), dict(id='b', label='An unsupported explanation.')], correct_option_id='a') if kind == 'mcq' else dict(options=[dict(id='true', label='True'), dict(id='false', label='False')], correct_option_id='true') if kind == 'true_false' else {}
+                        if plan.get('answer_mode') == 'multiple_choice':
+                            options = dict(options=[dict(id='a',label='First correct choice'),dict(id='b',label='Second correct choice'),dict(id='c',label='Incorrect choice')], correct_option_ids=['a','b'])
+                        questions.append(dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset", 0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=plan.get('marks', 2), model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **options))
+                    return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=questions)
                 if schema.__name__ == 'GradedAssessment':
                     return schema(questions=[dict(question_id=question['id'], score=1, confidence=.95,
                         feedback='A useful partial explanation. Add the missing detail.',
@@ -77,7 +104,7 @@ class HistoryChatFactory(TestChatFactory):
             if results[-1].name == 'get_active_learning_contexts':
                 context = next(item for item in result['contexts'] if item['name']=='Algebra')
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',
-                    dict(context_id=context['context_id'],topic='Linear equations',count=5,question_format='mcq') if any(any(phrase in str(m.content).lower() for phrase in ('five question mcq', 'interactive quiz', 'clickable options', 'keep mixing up linear equations')) for m in messages if m.type=='human') else dict(context_id=context['context_id'],topic='Linear equations',count=2), 'assessment-generate')])
+                    dict(context_id=context['context_id'],topic='Linear equations',count=5,question_format='mcq') if any(any(phrase in str(m.content).lower() for phrase in ('five question mcq', 'interactive quiz', 'clickable options', 'keep mixing up linear equations')) for m in messages if m.type=='human') else dict(context_id=context['context_id'],topic='Linear equations',count=2,question_format='written'), 'assessment-generate')])
             if (results[-1].name or '').startswith('assessment_'):
                 if results[-1].name == 'assessment_generate' and not result.get('reason'):
                     return AIMessage(content='Your interactive quiz is ready. Choose an answer for each question, then submit to see your feedback.' if result.get('assessment_id') else 'Your practice questions are ready. You can answer here or upload an answer sheet.')

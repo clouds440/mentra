@@ -2,6 +2,136 @@ import { test, expect } from '@playwright/test';
 import { workspace } from './renovation-fixtures';
 import type { MaterialDocument } from '../src/types/rag';
 
+test('activity stays mounted through acknowledgement and coalesces safe feedback', async ({ page }) => {
+  await workspace(page, false, true);
+  let acknowledge: (() => void) | undefined;
+  await page.route('**/api/v1/conversations/turns', async route => {
+    await new Promise<void>(resolve => { acknowledge = resolve; }); await route.fallback();
+  });
+  const updates: { tool_name: string | null; status: string; step_id: string; user_message: string }[] = [
+    { tool_name: 'assessment_generate', status: 'running', step_id: 'questions', user_message: 'MCP assessment_generate private trace' },
+    { tool_name: 'assessment_generate', status: 'completed', step_id: 'questions', user_message: 'internal SQL complete' },
+    { tool_name: 'profile_context', status: 'running', step_id: 'profile', user_message: 'private profile_context' },
+    { tool_name: 'unknown_private_tool', status: 'running', step_id: 'unknown', user_message: 'private internal architecture' },
+  ];
+  await page.route('**/turns/*/events?*', async route => {
+    const url = new URL(route.request().url());
+    const turn = url.pathname.split('/').at(-2)!;
+    const after = Number(url.searchParams.get('after') ?? 0);
+    await route.fulfill({ contentType: 'text/event-stream', body: updates.map((item, index) => ({ ...item, schema_version: 1,
+      conversation_id: 'polish-chat', turn_id: turn, attempt: 1, sequence: index + 1 }))
+      .filter(item => item.sequence > after).map(item => `event: activity\ndata: ${JSON.stringify(item)}\n\n`).join('') });
+  });
+  await page.goto('/chat/polish-chat');
+  await page.getByLabel('Ask Mentra anything').fill('Give me a practice question.');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  const activity = page.getByLabel('Current activity');
+  await expect(activity).toContainText('Sending your message');
+  await expect.poll(() => !!acknowledge).toBe(true);
+  await activity.evaluate(el => {
+    const probe = { element: el, logo: el.querySelector('.mentra-logo'), removed: false, labels: [] as string[] };
+    (window as unknown as { activityProbe: typeof probe }).activityProbe = probe;
+    new MutationObserver(() => {
+      if (!probe.element.isConnected || !probe.logo?.isConnected) probe.removed = true;
+      probe.labels.push(probe.element.textContent ?? '');
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  acknowledge!();
+  await expect(activity).toContainText('Preparing your practice questions');
+  await expect(activity).not.toContainText(/private|SQL|MCP|profile_context|unknown_private_tool/);
+  updates.push({ tool_name: null, status: 'running', step_id: 'response-stream', user_message: 'Writing your response' });
+  await expect(activity).toContainText('Putting it together');
+  const probe = await page.evaluate(() => {
+    const value = (window as unknown as { activityProbe: { element: Element; logo: Element; removed: boolean; labels: string[] } }).activityProbe;
+    return { removed: value.removed, same: document.querySelector('[aria-label="Current activity"] .mentra-logo') === value.logo, labels: value.labels };
+  });
+  expect(probe.removed).toBe(false); expect(probe.same).toBe(true);
+  expect(probe.labels.join(' ')).not.toContain('Writing your answer');
+  expect(probe.labels.join(' ')).not.toContain('Creating your practice questions'); // Burst coalesced.
+  let stop: (() => void) | undefined;
+  await page.route('**/turns/*/stop', async route => {
+    await new Promise<void>(resolve => { stop = resolve; }); await route.fallback();
+  });
+  await page.getByRole('button', { name: 'Stop response', exact: true }).click();
+  await expect(activity).toContainText('Stopping this response');
+  await expect.poll(() => !!stop).toBe(true); stop!();
+  await expect(activity).toHaveCount(0);
+});
+
+for (const long of [false, true]) test(`completed Markdown reveals in one downward sweep (${long ? 'long' : 'short'})`, async ({ page }) => {
+  const state = await workspace(page, true);
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByLabel('Current activity')).toBeVisible();
+  await page.evaluate(() => {
+    const samples: { formatted: boolean; raw: boolean }[] = [];
+    (window as unknown as { revealSamples: typeof samples }).revealSamples = samples;
+    new MutationObserver(() => {
+      const answer = document.querySelector('[data-message-id="formatted-answer-41"]');
+      if (answer) samples.push({ formatted: !!answer.querySelector('h2 strong'), raw: /## Reveal|\*\*ready\*\*|```/.test(answer.textContent ?? '') });
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  state.complete('## Reveal **ready**\n\nA [formatted link](https://example.com).\n\n```python\nprint("ready")\n```\n\n' + (long ? 'A complete paragraph, already formatted.\n\n'.repeat(80) : 'A short answer.'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const answer = page.locator('[data-message-id="formatted-answer-41"]');
+  await expect(answer).toHaveClass(/chat-response-reveal/);
+  const sweep = await answer.evaluate(el => {
+    const animation = el.getAnimations().find(item => (item as CSSAnimation).animationName === 'chat-response-reveal')!;
+    animation.pause(); animation.currentTime = 0;
+    const start = getComputedStyle(el).maskPosition;
+    const height = el.getBoundingClientRect().height;
+    animation.currentTime = 450;
+    const middle = getComputedStyle(el).maskPosition;
+    animation.currentTime = 900;
+    return { duration: animation.effect!.getTiming().duration, start, middle, height, finalHeight: el.getBoundingClientRect().height, finalMask: getComputedStyle(el).maskImage };
+  });
+  expect(sweep.duration).toBe(900); expect(sweep.start).toBe('0px 100%');
+  expect(sweep.middle).not.toBe(sweep.start); expect(sweep.finalMask).toBe('none');
+  expect(sweep.finalHeight).toBe(sweep.height);
+  const samples = await page.evaluate(() => (window as unknown as { revealSamples: { formatted: boolean; raw: boolean }[] }).revealSamples);
+  expect(samples.length).toBeGreaterThan(0); expect(samples.every(item => item.formatted && !item.raw)).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(answer).toHaveCSS('animation-name', 'none');
+  await expect(answer).toHaveCSS('mask-image', 'none');
+  await page.reload();
+  await expect(answer).toBeVisible(); await expect(answer).not.toHaveClass(/chat-response-reveal/);
+});
+
+for (const mobile of [false, true]) test(`chat deletion modal supports cancellation, pending state and retry (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+  await workspace(page, false, true);
+  await page.setViewportSize({ width: mobile ? 390 : 1280, height: 844 });
+  let requests = 0;
+  let finish: (() => void) | undefined;
+  await page.route('**/api/v1/conversations/polish-chat?*', async route => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    requests++;
+    await new Promise<void>(resolve => { finish = resolve; });
+    await route.fulfill(requests === 1 ? { status: 500, json: { error: { message: 'Delete failed' } } } : { json: {} });
+  });
+  await page.goto('/chat/polish-chat');
+  if (mobile) await page.getByRole('button', { name: 'Open navigation menu' }).click();
+  const history = page.getByRole('region', { name: 'Conversation history' });
+  const trigger = history.getByRole('button', { name: /^Delete / });
+  await trigger.focus(); await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Delete chat?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0); await expect(trigger).toBeFocused();
+  expect(requests).toBe(0);
+  await trigger.click();
+  const remove = dialog.getByRole('button', { name: 'Delete chat', exact: true });
+  await remove.click();
+  await expect.poll(() => requests).toBe(1);
+  await expect(remove).toHaveAttribute('aria-busy', 'true');
+  await expect(remove.locator('svg')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await page.keyboard.press('Escape'); await expect(dialog).toBeVisible();
+  finish!();
+  await expect(dialog.getByRole('alert')).toContainText('Could not delete');
+  await expect(remove).toBeEnabled();
+  await remove.click(); await expect.poll(() => requests).toBe(2); finish!();
+  await expect(dialog).toHaveCount(0); await expect(page).toHaveURL(/\/$/);
+});
+
 test('New Chat handoff preserves the first editable draft', async ({ page }) => {
   await workspace(page, false, true);
   await page.goto('/chat/polish-chat');

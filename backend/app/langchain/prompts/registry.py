@@ -15,6 +15,8 @@ class PromptSource(StrEnum):
     MEMORY_VALIDATION = "memory_validation"
     CHAT_ATTACHMENTS = "chat_attachments"
     ASSESSMENT_GENERATION = 'assessment_generation'
+    ASSESSMENT_DESIGN = 'assessment_design'
+    ASSESSMENT_SELECTION = 'assessment_selection'
     ASSESSMENT_TARGETS = 'assessment_targets'
     CONCEPT_IDENTITY = 'concept_identity'
     ASSESSMENT_GRADING = 'assessment_grading'
@@ -50,6 +52,10 @@ def get_system_prompt(source: PromptSource) -> str:
         from .chat_attachments import SYSTEM_PROMPT
     elif source is PromptSource.ASSESSMENT_GENERATION:
         from .assessment_generation import SYSTEM_PROMPT
+    elif source is PromptSource.ASSESSMENT_DESIGN:
+        from .assessment_design import SYSTEM_PROMPT
+    elif source is PromptSource.ASSESSMENT_SELECTION:
+        from .assessment_selection import SYSTEM_PROMPT
     elif source is PromptSource.ASSESSMENT_TARGETS:
         from .assessment_targets import SYSTEM_PROMPT
     elif source is PromptSource.CONCEPT_IDENTITY:
@@ -95,6 +101,10 @@ def get_prompt_version(source: PromptSource) -> str:
         from .chat_attachments import VERSION
     elif source is PromptSource.ASSESSMENT_GENERATION:
         from .assessment_generation import VERSION
+    elif source is PromptSource.ASSESSMENT_DESIGN:
+        from .assessment_design import VERSION
+    elif source is PromptSource.ASSESSMENT_SELECTION:
+        from .assessment_selection import VERSION
     elif source is PromptSource.ASSESSMENT_TARGETS:
         from .assessment_targets import VERSION
     elif source is PromptSource.CONCEPT_IDENTITY:

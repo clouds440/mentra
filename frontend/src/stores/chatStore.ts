@@ -192,6 +192,9 @@ class ChatStore {
     const id = page.conversation.id, view = this.view(id);
     this.drafts.delete(id);
     const pendingAtPublication = this.pending.get(id);
+    // A poll started before Send can arrive after the next optimistic exchange.
+    // It must not retire the new indicator or replace it with the previous turn.
+    if (pendingAtPublication && view.busy && page.turn?.id !== pendingAtPublication.client_turn_id) return;
     if (this.deleted.has(id)) return;
     if (page.conversation.revision < view.revision) return;
     this.mergeChats([page.conversation]);
@@ -280,12 +283,13 @@ class ChatStore {
     this.pending.set(id, body);
     const started = performance.now();
     this.responseStarts.set(id, started);
-    this.setView(id, { busy: true, error: null, unsent: null });
-    await this.persist(() => cache.pending(body!, id));
-    if (!this.alive(signal)) return;
     const optimistic: StoredMessage = { id: body.client_turn_id, conversation_id: id, sequence: (this.chats.get(id)?.message_count ?? 0) + 1,
       role: 'user', content: body.content, attachments, created_at: new Date().toISOString() };
-    this.setView(id, { busy: true, error: null, olderWindow: false, messages: retry ? view.messages : [...view.messages, optimistic].slice(-200) });
+    // Publish the new exchange and its pending indicator together. Publishing
+    // busy first mounted activity under the previous exchange, then removed it.
+    this.setView(id, { busy: true, error: null, unsent: null, turn: null, olderWindow: false, messages: retry ? view.messages : [...view.messages, optimistic].slice(-200) });
+    await this.persist(() => cache.pending(body!, id));
+    if (!this.alive(signal)) return;
     try {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;
       performance.measure('mentra.chat.acknowledged', { start: started });

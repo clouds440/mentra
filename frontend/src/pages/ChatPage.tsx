@@ -158,7 +158,7 @@ export function ChatPage() {
               data-latest-turn={scroll.anchor !== null && group.userSequence === scroll.anchor || undefined} ref={scroll.anchor !== null && group.userSequence === scroll.anchor ? scroll.latest : undefined}
               className={`flex flex-col gap-8 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
               {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
-              {view.busy && index === scroll.groups.length - 1 && <ChatActivity key={`${id}-${view.turn?.id}-${view.turn?.attempt}`} conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} />}
+              {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} stopping={stopping} />}
             </div>)}
             {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
               onClick={() => { scroll.showLatest(); void chatStore.open(id, true); }}>Back to latest messages</button>}

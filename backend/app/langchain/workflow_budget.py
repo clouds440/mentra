@@ -13,6 +13,9 @@ class ModelBudget:
     input_tokens: int = 0
     output_reserved: int = 0
     answer_reserve: float = 20
+    max_rounds: int = 12
+    max_input_tokens: int = 65536
+    max_total_tokens: int = 98304
 
     @property
     def remaining(self):
@@ -23,7 +26,7 @@ class ModelBudget:
         return max(.001, self.remaining - self.answer_reserve)
 
     def reserve(self, tokens, output):
-        if monotonic() >= self.deadline or self.rounds >= 12 or self.input_tokens+tokens > 65536 or self.input_tokens+tokens+self.output_reserved+output > 98304:
+        if monotonic() >= self.deadline or self.rounds >= self.max_rounds or self.input_tokens+tokens > self.max_input_tokens or self.input_tokens+tokens+self.output_reserved+output > self.max_total_tokens:
             raise AppError('AI_WORKFLOW_BUDGET', 'The workflow reached its total model or time budget. Continue with a smaller request.', 422)
         self.rounds += 1
         self.input_tokens += tokens
@@ -34,11 +37,11 @@ current_budget = ContextVar('mentra_model_budget', default=None)
 
 
 @contextmanager
-def model_budget(*, deadline=None):
+def model_budget(*, deadline=None, **limits):
     if current_budget.get() is not None:
         yield current_budget.get()
         return
-    token = current_budget.set(ModelBudget(deadline=deadline) if deadline is not None else ModelBudget())
+    token = current_budget.set(ModelBudget(**({'deadline': deadline} if deadline is not None else {}), **limits))
     try:
         yield current_budget.get()
     finally:

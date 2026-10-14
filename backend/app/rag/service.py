@@ -155,6 +155,11 @@ class RAGService:
     def get_document(self, owner, document_id):
         return self.repository.get_document(owner, document_id)
 
+    def assessment_materials(self, owner, document_ids):
+        """Small owner-checked metadata packet; no version history or file bytes."""
+        return [dict(title=row['title'], context_ids=row['context_ids'])
+                for row in self.repository.document_metadata(owner, document_ids)]
+
     def search_document(self, owner: str, document_id: str, query: str, *, include_archived: bool = False, limit: int = 8) -> RetrievalResult:
         return self.search(owner, SearchRequest(query=query, mode='SOURCE_SPECIFIC',
             document_ids=[document_id], include_archived=include_archived, limit=limit))

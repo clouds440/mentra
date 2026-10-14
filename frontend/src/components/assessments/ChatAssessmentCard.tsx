@@ -10,6 +10,7 @@ import { MCQAssessment } from './MCQAssessment';
 import { AnswerSheet } from './AssessmentWorkspace';
 import { useAuth } from '../auth/AuthProvider';
 import { assessmentSession } from '../../stores/assessmentSession';
+import { AssessmentPaper } from './AssessmentPaper';
 
 export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardData }) {
   const navigate = useNavigate();
@@ -61,21 +62,21 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
     if (!signal.aborted) operation.current = crypto.randomUUID();
     return result;
   }
-  const isMCQ = !card.deleted && card.assessment.questions.every(q => !!q.options?.length);
-  const InlineAnswers = card.assessment.questions.every(q => !!q.options?.length) ? MCQAssessment : AnswerSheet;
+  const isMCQ = !card.deleted && !card.assessment.paper && card.assessment.questions.some(q => !!q.options?.length || (!!q.question_type && q.question_type !== 'written'));
+  const InlineAnswers = isMCQ ? MCQAssessment : AnswerSheet;
   const actions = <>
     {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy && !answerAction} onClick={() => void save()}>Add to assessments</Button>}
     {!card.deleted && (!attempt && !isMCQ || !!attempt && ['graded','failed'].includes(attempt.state)) && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Try again' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
   </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
-    <div className="flex items-start justify-between gap-3" aria-label="Assessment header">
+    <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:gap-3" aria-label="Assessment header">
       <h2 className="min-w-0 flex-1 break-words font-medium text-heading">{card.assessment.title}</h2>
       {card.assessment_id && !card.deleted && <Button className="shrink-0" size="sm" variant="secondary" disabled={!ready} onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}
     </div>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => setReload(value => value+1)}>Refresh</button></p>}
     {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} actions={actions} /> :
-      <ol className="space-y-4">{card.assessment.questions.map((question,index) => <li key={question.id}><p className="text-sm text-muted">Question {index+1} · {question.marks} marks</p><MarkdownContent content={question.prompt} /></li>)}</ol>}
+      <AssessmentPaper assessment={card.assessment} />}
     {(!ready && !error || !isMCQ && !attempt) && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     {!attempt && !isMCQ && <p className="text-xs text-muted">Ask questions or request changes in the chat before you begin. Revisions create a new version. When ready, send numbered answers or attach a document or handwritten image and ask Mentra to evaluate it.</p>}
   </section>;

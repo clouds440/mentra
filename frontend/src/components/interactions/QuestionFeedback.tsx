@@ -9,15 +9,15 @@ export const feedbackAppearance = {
 };
 
 /** Controlled feedback primitive, reusable without chat, assessment or API state. */
-export function QuestionFeedback({ label, prompt, answer, correctAnswer, outcome, score, maxScore, feedback, misconceptions = [] }: {
+export function QuestionFeedback({ label, prompt, answer, correctAnswer, outcome, score, maxScore, feedback, misconceptions = [], showMarks = true }: {
   label: string; prompt: string; answer: string; correctAnswer?: string | null;
-  outcome: FeedbackOutcome; score: number; maxScore: number; feedback: string; misconceptions?: string[];
+  outcome: FeedbackOutcome; score: number; maxScore: number; feedback: string; misconceptions?: string[]; showMarks?: boolean;
 }) {
   const style = feedbackAppearance[outcome];
   return <section aria-label={`${label} feedback`} className={`min-w-0 space-y-3 rounded-xl border p-3 ${style.panel}`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="text-sm font-semibold text-heading">{label}</h3>
-      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${style.color}`}><style.Icon aria-hidden="true" size={16} />{style.label}<span className="ml-1 tabular-nums">{score}/{maxScore}</span></span>
+      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${style.color}`}><style.Icon aria-hidden="true" size={16} />{style.label}{showMarks && <span className="ml-1 tabular-nums">{score}/{maxScore}</span>}</span>
     </div>
     <div className="min-w-0 break-words text-sm"><MarkdownContent content={prompt} /></div>
     <div className="min-w-0 space-y-2 rounded-lg bg-card/70 p-2.5 text-sm">

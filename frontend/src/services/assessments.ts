@@ -2,6 +2,9 @@ import { apiRequest } from './api';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData } from '../types/assessments';
 const base = '/api/v1/assessments';
 export const assessments = {
+  queue: (request: AssessmentGeneration, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/generation-jobs`, { method: 'POST', signal, body: JSON.stringify(request) }),
+  job: (id: string, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/generation-jobs/${id}`, { signal, cache: 'no-store' }),
+  retryJob: (id: string, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/generation-jobs/${id}/retry`, { method: 'POST', signal }),
   draft: (id: string, signal: AbortSignal) => apiRequest<ChatAssessmentCardData>(`${base}/chat-drafts/${id}`, { signal }),
   publish: (id: string, signal: AbortSignal) => apiRequest<ChatAssessmentCardData>(`${base}/chat-drafts/${id}/publish`, { method: 'POST', signal }),
   preferences: (signal: AbortSignal) => apiRequest<{ auto_add: boolean; revision: number }>(`${base}/preferences`, { signal }),

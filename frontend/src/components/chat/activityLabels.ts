@@ -9,6 +9,7 @@ export interface ActivityLabelInput {
 
 const toolLabels: Record<string, string> = {
   web_search: 'Searching the web',
+  web_research: 'Researching your question',
   present_choices: 'Preparing choices for you',
   event_lookup: 'Checking your events',
   event_manage: 'Preparing your event',
@@ -36,7 +37,7 @@ const toolLabels: Record<string, string> = {
 const messageLabels: Record<string, string> = {
   'Planning your request': 'Thinking',
   'Preparing your answer': 'Thinking',
-  'Writing your response': 'Writing your answer',
+  'Writing your response': 'Putting it together',
   'Reading documents': 'Reading your study material',
 };
 
@@ -46,31 +47,46 @@ const quietTools = new Set([
   'resolve_student_concept', 'enable_workflow_tools',
 ]);
 
-export function activityLabel(activity?: ActivityLabelInput): string {
+const completedLabels: Record<string, string> = {
+  web_search: 'Reviewing web results', web_research: 'Reviewing what I found',
+  search_study_material: 'Connecting the relevant details', get_study_source_chunk: 'Connecting the relevant details',
+  document_extract: 'Working with your attachment', history_lookup: 'Connecting our earlier discussion',
+  user_memory: 'Considering what you’ve shared', get_relevant_learner_context: 'Adapting to your progress',
+  get_study_recommendations: 'Choosing useful next steps', get_student_weaknesses: 'Choosing useful practice',
+  get_verification_candidates: 'Choosing what to review',
+  assessment_generate: 'Preparing your practice questions', assessment_revise: 'Preparing the revised questions',
+  assessment_question: 'Working through your question', assessment_status: 'Reviewing your practice progress',
+  assessment_answer: 'Preparing your feedback', assessment_lookup: 'Reviewing your practice questions',
+  event_lookup: 'Reviewing your schedule', event_manage: 'Reviewing the event details',
+  present_choices: 'Preparing your options',
+};
+
+/** null means routine/unknown activity: retain the last meaningful feedback. */
+export function activityLabel(activity?: ActivityLabelInput): string | null {
   if (!activity) return 'Thinking';
   if (activity.status === 'waiting') return 'Waiting for your input';
-  if (activity.status === 'cancelled') return 'Stopping this request';
-  if (quietTools.has(activity.tool_name ?? '')) return 'Thinking';
+  if (activity.status === 'cancelled') return 'Stopping this response';
+  if (activity.step_id === 'protocol-repair') return 'Taking another look';
+  if (quietTools.has(activity.tool_name ?? '')) return null;
   if (activity.status === 'failed' || activity.status === 'degraded') {
-    if (activity.tool_name === 'web_search') return 'Web search was limited; continuing with available information';
+    if (activity.tool_name === 'web_search' || activity.tool_name === 'web_research') return 'Web search was limited; continuing with available information';
     if (activity.tool_name === 'document_extract') return 'The attachment couldn’t be fully read';
     if (activity.tool_name === 'search_study_material' || activity.tool_name === 'get_study_source_chunk') return 'Study material couldn’t be fully checked';
     if (activity.tool_name === 'event_manage') return 'The event change couldn’t be confirmed';
     if (activity.tool_name === 'assessment_answer') return 'Your answers couldn’t be fully evaluated';
     if (activity.tool_name?.startsWith('assessment_')) return 'This practice step couldn’t be finished';
     if (activity.tool_name && Object.prototype.hasOwnProperty.call(toolLabels, activity.tool_name)) return 'Some information is unavailable; continuing with what I have';
-    return 'Thinking';
+    return null;
   }
   if (activity.status === 'retry_wait') return 'Trying again';
-  if (activity.step_id === 'response-stream') return 'Writing your answer';
-  if (activity.step_id === 'protocol-repair') return 'Taking another look';
+  if (activity.step_id === 'response-stream') return 'Putting it together';
   if (activity.tool_name === 'web_search') {
     if (activity.status === 'completed') return 'Reviewing web results';
     const websites = activity.websites ?? [];
     return websites.length === 1 ? `Searching ${websites[0].domain}` : 'Searching the web';
   }
-  if (activity.status === 'completed') return 'Thinking';
+  if (activity.status === 'completed') return completedLabels[activity.tool_name ?? ''] ?? null;
   return (activity.tool_name && Object.prototype.hasOwnProperty.call(toolLabels, activity.tool_name) ? toolLabels[activity.tool_name] : undefined)
     ?? (Object.prototype.hasOwnProperty.call(messageLabels, activity.user_message) ? messageLabels[activity.user_message] : undefined)
-    ?? 'Thinking';
+    ?? null;
 }

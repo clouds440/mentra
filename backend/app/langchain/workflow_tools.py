@@ -1,9 +1,11 @@
 """Narrow domain adapters. Identity and source consent stay server-bound."""
 from uuid import uuid5, NAMESPACE_URL
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_core.tools import StructuredTool
 from app.core.observability.timing import run_in_threadpool
-from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers
+from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, QuestionFormat, PaperSection
+from app.assessments.blueprint import question_reference
 from app.core.exceptions import AppError
 from .concurrent_reads import project_read
 from app.rag.schemas import SourceReference, SearchRequest, ChatSelection
@@ -17,11 +19,16 @@ class SearchStudy(BaseModel):
 class GeneratePractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
     context_id: str | None = Field(default=None, min_length=1, max_length=100, description='Existing owned learning context if relevant. Omit when none exists; the assessment workflow creates or reuses a topic context.')
-    topic: str = Field(min_length=1, max_length=200)
-    concept_names: list[str] = Field(default_factory=list, max_length=5, description='Concrete practice concepts inferred from the requested topic, preferably subject-qualified. Omit to let the assessment model select suitable concepts. Prior concept IDs or confirmation are not required.')
-    count: int = Field(default=3, ge=1, le=10)
+    topic: str | None = Field(default=None, min_length=1, max_length=200, description='Use the learner-specified topic when present. Omit for a general assessment request: the engine reads learner tools and chooses a useful topic.')
+    concept_names: list[str] = Field(default_factory=list, description='Concrete practice concepts inferred from the requested topic, preferably subject-qualified. Omit to let the assessment model select suitable concepts. Prior concept IDs or confirmation are not required.')
+    count: int | None = Field(default=None, ge=1, description='Honor an explicit main-question count. Otherwise omit: the assessment designer decides a suitable length from the exact learner request. Parts do not count as main questions.')
     grounded: bool = False
-    question_format: str = Field(default='written', pattern='^(written|mcq)$', description='Use mcq when you decide an interactive quiz is useful or the student asks for interactive, clickable, in-chat or one-question-at-a-time assessment. Ordinary quiz requests may use written answer sheets.')
+    question_format: QuestionFormat = Field(default='auto', description='Honor any explicit type; otherwise omit for the assessment engine to decide from the request and learner data. Supports mixed, mcq, true_false, short_answer, written, custom types and mock_paper. Interactive does not mean MCQ-only.')
+    level: str | None = Field(default=None, max_length=200, description='Explicit academic level, e.g. Grade 7, GCSE or undergraduate. Do not infer a school grade from ability scores.')
+    result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
+    duration_minutes: int | None = Field(default=None, ge=1)
+    total_marks: float | None = Field(default=None, gt=0)
+    paper_sections: list[PaperSection] = Field(default_factory=list, description='Optional explicitly requested exam structure. Sections can contain questions with shared context and leaf parts whose paths include a, a.ii etc. Omit to let the designer plan the paper from the exact learner request.')
 
 
 class AssessmentStatus(BaseModel):
@@ -36,7 +43,7 @@ class AnswerPractice(BaseModel):
         description='Continue this owned unfinished attempt. Omit to resume the latest unfinished typed-chat answer set or start a new attempt.')
     new_attempt: bool = Field(default=False, description='True only when the student explicitly asks to start over instead of continuing unfinished answers.')
     attachment_id: str | None = Field(default=None, max_length=100)
-    answers: dict[str, str] = Field(default_factory=dict, max_length=10,
+    answers: dict[str, str] = Field(default_factory=dict,
         description='For typed answers, question numbers mapped to verbatim excerpts of the current user message. Never solve or rewrite answers.')
 
 class FindPractice(BaseModel):
@@ -48,17 +55,23 @@ class RevisePractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
     draft_id: str | None = Field(default=None, min_length=1, max_length=100)
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
-    question_format: str | None = Field(default=None, pattern='^(written|mcq)$')
-    instructions: str = Field(min_length=1, max_length=2000,
+    question_format: QuestionFormat | None = None
+    instructions: str = Field(min_length=1,
         description='Verbatim requested changes from the current student message; never add changes they did not request.')
-    count: int | None = Field(default=None, ge=1, le=10)
+    count: int | None = Field(default=None, ge=1)
+    total_marks: float | None = Field(default=None, gt=0)
+    duration_minutes: int | None = Field(default=None, ge=1)
+    paper_sections: list[PaperSection] | None = None
+    level: str | None = Field(default=None, max_length=200)
+    result_style: Literal['marks', 'grade', 'feedback'] | None = None
 
 
 class ReadPracticeQuestion(BaseModel):
     model_config = ConfigDict(extra='forbid')
     draft_id: str | None = Field(default=None, min_length=1, max_length=100)
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
-    number: int = Field(ge=1, le=10)
+    number: int = Field(ge=1)
+    part: str | None = Field(default=None, description='Optional part path, e.g. a or a.ii for question 3(a)(ii).')
 
 
 def create_workflow_tools(owner, scope, budget):
@@ -108,12 +121,15 @@ def create_workflow_tools(owner, scope, budget):
             request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{body.model_dump_json()}")
             selection = scope.get('retrieval_selection') or ChatSelection()
             result = await service.generate_chat_from_topic(owner, scope['conversation_id'], client_request_id=request_id,
-                **body.model_dump(), document_ids=selection.document_ids or [])
+                **body.model_dump(), instructions=scope.get('current_answer_text', ''), document_ids=selection.document_ids or [])
             scope.setdefault('assessment_cards', []).append(result)
+            if result.get('generation_job_id'):
+                return dict(outcome='queued', generation_job_id=result['generation_job_id'], title=result['title'],
+                    next_step='The assessment is being built in the chat card, with saved progress. Do not claim it is finished or repeat its contents. The learner can continue chatting while it completes.')
             public = result['assessment']
             return dict(outcome='saved' if result['assessment_id'] else 'chat_draft', draft_id=result['id'],
                 assessment_id=result['assessment_id'], title=public['title'],
-                questions=[dict(number=i, prompt=q['prompt'][:500], marks=q['marks']) for i,q in enumerate(public['questions'],1)],
+                questions=[dict(number=question_reference(q,i), prompt=q['prompt'][:500], marks=q['marks']) for i,q in enumerate(public['questions'],1)],
                 next_step='Use the chat card to add, answer or upload work. Unsaved drafts stay in this conversation.')
 
         async def answer(draft_id=None, assessment_id=None, attachment_id=None, answers=None, attempt_id=None, new_attempt=False):
@@ -130,6 +146,8 @@ def create_workflow_tools(owner, scope, budget):
                 value = await run_in_threadpool(service.repository.detail, owner, assessment_id)
                 card = dict(id=None, conversation_id=scope['conversation_id'], assessment_id=str(value.id), assessment=value.model_dump(mode='json'))
             questions = card['assessment']['questions']
+            from app.assessments.blueprint import question_reference, normalize_reference
+            references = {question_reference(q, index): q for index, q in enumerate(questions, 1)}
             mapped = {}
             if attachment_id:
                 if answers or attachment_id not in scope.get('assessment_attachment_ids', []):
@@ -138,11 +156,12 @@ def create_workflow_tools(owner, scope, budget):
                     owner, attachment_id, scope['conversation_id'])
             else:
                 for number, text in (answers or {}).items():
-                    if not number.isdigit() or not 1 <= int(number) <= len(questions) or not text.strip() or len(text)>8000:
+                    reference = normalize_reference(number)
+                    if reference not in references or not text.strip():
                         raise AppError('ASSESSMENT_ANSWER_MAPPING', 'Use valid question numbers and answer text.', 422)
                     if text not in scope['current_answer_text']:
                         raise AppError('ASSESSMENT_ANSWER_PROVENANCE', 'Answers must quote the student message exactly.', 422)
-                    key = questions[int(number)-1]['id']
+                    key = references[reference]['id']
                     if key in mapped: raise AppError('ASSESSMENT_ANSWER_MAPPING', 'Repeated question number.', 422)
                     mapped[key] = text
                 if not mapped: raise AppError('ASSESSMENT_INCOMPLETE', 'Provide answers or an answer-sheet upload.', 422)
@@ -194,16 +213,15 @@ def create_workflow_tools(owner, scope, budget):
                 else:
                     import re
                     text = scope['current_answer_text']
-                    numbered = list(re.finditer(r'(?m)^\s*(?:Q(?:uestion)?\s*)?(\d{1,2})[.)]\s+', text))
+                    from app.assessments.blueprint import parse_numbered_answers
+                    numbered = parse_numbered_answers(text)
                     numbered_answers = {}
                     valid = bool(numbered)
-                    for index, match in enumerate(numbered):
-                        number = int(match.group(1))
-                        if not 1 <= number <= len(questions): valid=False; break
-                        key = questions[number-1]['id']
+                    for reference, answer_text in numbered:
+                        if reference not in references: valid=False; break
+                        key = references[reference]['id']
                         if key in numbered_answers: valid=False; break
-                        end = numbered[index+1].start() if index+1<len(numbered) else len(text)
-                        numbered_answers[key] = text[match.end():end].strip()
+                        numbered_answers[key] = answer_text
                     explicit = bool(re.search(r'\b(evaluate|grade|mark|submit|check)\b',text,re.I)) or text.lstrip().startswith(('1.', '1)'))
                     if attempt.state == 'draft' and valid and explicit and numbered_answers == mapped and len(mapped)==len(questions):
                         attempt = await run_in_threadpool(service.submit, owner, str(attempt.id), SubmitAnswers(
@@ -219,11 +237,11 @@ def create_workflow_tools(owner, scope, budget):
             cards = await run_in_threadpool(service.chat.recent, owner, scope['conversation_id'])
             saved = await run_in_threadpool(service.chat.find_saved, owner, query)
             return dict(chat_drafts=[dict(draft_id=card['id'], assessment_id=card['assessment_id'], title=card['assessment']['title'],
-                    questions=[dict(number=i,prompt=q['prompt'][:160],marks=q['marks']) for i,q in enumerate(card['assessment']['questions'],1)]) for card in cards],
+                    questions=[dict(number=question_reference(q,i),prompt=q['prompt'][:160],marks=q['marks']) for i,q in enumerate(card['assessment']['questions'],1)]) for card in cards],
                 saved_assessments=[dict(assessment_id=str(item.id),title=item.title,
-                    questions=[dict(number=i,prompt=q.prompt[:160]) for i,q in enumerate(item.questions,1)]) for item in saved])
+                    questions=[dict(number=question_reference(q,i),prompt=q.prompt[:160],marks=q.marks) for i,q in enumerate(item.questions,1)]) for item in saved])
 
-        async def question(number, draft_id=None, assessment_id=None):
+        async def question(number, draft_id=None, assessment_id=None, part=None):
             budget.call()
             if bool(draft_id) == bool(assessment_id):
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose exactly one assessment.', 422)
@@ -235,13 +253,23 @@ def create_workflow_tools(owner, scope, budget):
             else:
                 value = await run_in_threadpool(service.repository.detail, owner, assessment_id)
                 source = value.model_dump(mode='json')
-            if number > len(source['questions']):
+            from app.assessments.blueprint import question_reference
+            from app.assessments.blueprint import normalize_reference
+            target = normalize_reference(f'{number}({part})' if part else str(number))
+            matches = [q for i, q in enumerate(source['questions'], 1) if question_reference(q, i) == target]
+            if part is None and source.get('paper') and not matches:
+                parts = [q for q in source['questions'] if q.get('number') == number]
+                if parts:
+                    return dict(title=source['title'], number=number, context=parts[0].get('context',''),
+                        parts=[dict(reference=question_reference(q,number), prompt=q['prompt'], marks=q['marks'], options=q.get('options',[])) for q in parts],
+                        next_step='Discuss the requested question without revealing protected answers or starting an attempt.')
+            if len(matches) != 1:
                 raise AppError('ASSESSMENT_QUESTION_NOT_FOUND', 'Choose a question from this assessment.', 422)
-            value = source['questions'][number-1]
+            value = matches[0]
             return dict(title=source['title'], number=number, prompt=value['prompt'], marks=value['marks'], options=value.get('options', []),
                 next_step='Answer the student follow-up. Clarification does not save the draft or start an attempt.')
 
-        async def revise(instructions, draft_id=None, assessment_id=None, count=None, question_format=None):
+        async def revise(instructions, draft_id=None, assessment_id=None, count=None, question_format=None, total_marks=None, duration_minutes=None, paper_sections=None, level=None, result_style=None):
             budget.call(True)
             if bool(draft_id) == bool(assessment_id):
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose exactly one assessment to revise.', 422)
@@ -256,13 +284,23 @@ def create_workflow_tools(owner, scope, budget):
                 original = await run_in_threadpool(service.repository.detail, owner, assessment_id)
                 source = original.model_dump(mode='json')
             operation = uuid5(NAMESPACE_URL, f"chat-revise:{owner}:{scope['current_user_message_id']}:{draft_id}:{assessment_id}")
+            kinds = {q.get('question_type') or ('mcq' if q.get('options') else 'written') for q in source['questions']}
+            selected_format = question_format or ('mock_paper' if source.get('paper') else next(iter(kinds)) if len(kinds)==1 else 'mixed')
             result = await service.generate_chat(owner, scope['conversation_id'], GenerationRequest(
                 client_request_id=operation, context_id=source['context_id'], topic=source['title'],
-                count=count if count is not None else len(source['questions']), purpose=source['purpose'],
-                question_format=question_format or ('mcq' if all(q.get('options') for q in source['questions']) else 'written'),
+                count=count if count is not None else source['paper']['question_count'] if source.get('paper') else len(source['questions']), purpose=source['purpose'],
+                question_format=selected_format,
+                level=level if level is not None else source.get('preferences', {}).get('level'),
+                result_style=result_style or source.get('preferences', {}).get('result_style', 'marks'),
+                duration_minutes=duration_minutes or (source['paper']['duration_minutes'] if source.get('paper') else 60),
+                total_marks=total_marks if total_marks is not None else source['paper']['total_marks'] if source.get('paper') and selected_format=='mock_paper' else None,
+                paper_sections=paper_sections or [], instructions=instructions,
                 grounded=bool(source['sources']), document_ids=list(dict.fromkeys(str(s['document_id']) for s in source['sources'])),
                 revision_draft_id=draft_id, revision_assessment_id=assessment_id, revision_instructions=instructions))
             scope.setdefault('assessment_cards', []).append(result)
+            if result.get('generation_job_id'):
+                return dict(outcome='queued', generation_job_id=result['generation_job_id'], title=result['title'],
+                    next_step='The revised assessment is being built in its card. Original questions, attempts and grades remain unchanged.')
             return dict(outcome='saved' if result['assessment_id'] else 'chat_draft', draft_id=result['id'],
                 assessment_id=result['assessment_id'], title=result['assessment']['title'],
                 next_step='This is a new revised version. The original assessment and its attempts are preserved. The student may ask questions, revise again, or answer when ready.')
@@ -274,16 +312,18 @@ def create_workflow_tools(owner, scope, budget):
             if attempts:
                 scope.setdefault('assessment_cards', []).append(dict(id=None, conversation_id=scope['conversation_id'],
                     assessment_id=str(assessment.id), assessment=assessment.model_dump(mode='json'), attempt_id=str(attempts[0].id)))
-            numbers = {str(question.id):index for index,question in enumerate(assessment.questions,1)}
+            numbers = {str(question.id):question_reference(question,index) for index,question in enumerate(assessment.questions,1)}
+            show_marks = assessment.preferences.result_style == 'marks'
             return dict(assessment_id=str(assessment.id), title=assessment.title,
+                        result_style=assessment.preferences.result_style,
                         attempts=[dict(id=str(item.id), state=item.state, evidence_status=item.evidence_status,
                             grade_revision=item.grade_revision,
-                            score=sum(grade.score for grade in item.grades or []),
-                            max_score=sum(q.marks for q in assessment.questions),
+                            **(dict(score=sum(grade.score for grade in item.grades or []),
+                            max_score=sum(q.marks for q in assessment.questions)) if show_marks else {}),
                             results=[dict(question_id=grade.question_id, number=numbers[grade.question_id],
-                                score=grade.score, outcome=grade.outcome) for grade in item.grades or []],
-                            feedback=[dict(question_id=grade.question_id, number=numbers[grade.question_id], score=grade.score,
-                                marks=next(q.marks for q in assessment.questions if str(q.id)==grade.question_id),
+                                **(dict(score=grade.score) if show_marks else {}), outcome=grade.outcome) for grade in item.grades or []],
+                            feedback=[dict(question_id=grade.question_id, number=numbers[grade.question_id],
+                                **(dict(score=grade.score, marks=next(q.marks for q in assessment.questions if str(q.id)==grade.question_id)) if show_marks else {}),
                                 outcome=grade.outcome, answer=item.answers.get(grade.question_id, '')[:200],
                                 correct_answer=grade.correct_answer[:300] if grade.correct_answer else None,
                                 confidence=grade.confidence, feedback=grade.feedback[:300]) for grade in (item.grades or [])[:2]],
@@ -291,7 +331,7 @@ def create_workflow_tools(owner, scope, budget):
 
         tools.extend([
             StructuredTool.from_function(name='assessment_generate', args_schema=GeneratePractice,
-                description='Generate a requested quiz or mock paper in this chat. Default is an unsaved chat draft with an Add to assessments button; auto-add follows the student setting. Unknown concepts require review. Never exposes private answers.', coroutine=generate),
+                description='Generate a requested quiz or mock paper in this chat. Default is an unsaved chat draft with an Add to assessments button; auto-add follows the student setting. New or ambiguous concepts receive usable canonical IDs automatically. Never exposes private answers.', coroutine=generate),
             StructuredTool.from_function(name='assessment_answer', args_schema=AnswerPractice,
                 description='Prepare student answers for review and grading directly in chat. Choose either a current-chat draft ID or an owned saved assessment ID. Use a current attached document/image or verbatim numbered answers from the current user message. Partial typed answers resume unfinished typed work; attempt_id explicitly continues an unfinished attempt. Only when the student requests answering/evaluation. This adds a draft to assessments and shows an inline review/submit card; never invent answers. Ask which assessment when the target is ambiguous.', coroutine=answer),
             StructuredTool.from_function(name='assessment_lookup', args_schema=FindPractice,

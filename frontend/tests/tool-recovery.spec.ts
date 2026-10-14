@@ -47,7 +47,7 @@ test('current activity replaces earlier steps and never renders internal labels'
   await expect(page.locator('.mentra-logo[data-working="true"]')).toHaveCount(1);
   await expect(page.getByRole('complementary', {name:'Main navigation'}).locator('.mentra-logo')).toHaveAttribute('data-working', 'false');
   chat.step('profile_context', 'running', 'profile_context');
-  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity.getByRole('status')).toHaveText('Trying again');
   await expect(activity).not.toContainText('profile_context');
   await expect(activity).not.toContainText('Checking your learning preferences');
   chat.step('assessment_generate', 'running', 'Dispatching assessment_generate through MCP');
@@ -55,11 +55,11 @@ test('current activity replaces earlier steps and never renders internal labels'
   await expect(activity).not.toContainText('Trying again');
   await expect(activity).not.toContainText('assessment_generate');
   chat.step('assessment_generate', 'completed', 'Successfully completed assessment_generate');
-  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity.getByRole('status')).toHaveText('Preparing your practice questions');
   await expect(activity).not.toContainText('Creating your practice questions');
   await expect(activity).not.toContainText('completed');
   chat.step('new_internal_operation', 'running', 'Executing SQL repository internal operation');
-  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity.getByRole('status')).toHaveText('Preparing your practice questions');
   await expect(activity).not.toContainText('SQL');
   await expect(activity).not.toContainText('new_internal_operation');
   await expect(activity.getByRole('status')).toHaveCount(1);
@@ -80,7 +80,7 @@ test('important limits and review states are announced while routine profile rea
   chat.step('get_relevant_learner_context', 'running', 'Loading learner context packet');
   await expect(activity).toContainText('Checking your learning progress');
   chat.step('profile_context', 'running', 'Loading profile context packet');
-  await expect(activity.getByRole('status')).toHaveText('Thinking');
+  await expect(activity.getByRole('status')).toHaveText('Checking your learning progress');
 });
 
 test('retry progress is visible without automatic limitation banners after completion or refresh', async ({page}) => {

@@ -16,6 +16,7 @@ import { CopyResponse } from './CopyResponse';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
+const AssessmentGenerationCard = lazy(() => import('../assessments/AssessmentGenerationCard').then(module => ({ default: module.AssessmentGenerationCard })));
 
 interface MarkdownNode { type: string; value?: string; url?: string; children?: MarkdownNode[]; position?: { start: { offset?: number }; end: { offset?: number } } }
 function citationPlugin(tokens: string[], content: string) {
@@ -94,7 +95,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
             <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
-            {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
+            {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
@@ -122,7 +123,7 @@ export function ThinkingIndicator({ label = '' }: ThinkingIndicatorProps) {
         <MentraLogo working className="h-6 w-6" />
       </span>
       <span className="flex items-center gap-2">
-        {label}
+        <span className="activity-label">{label}</span>
         <span aria-hidden="true" className="flex gap-1">
           <i className="h-1 w-1 motion-safe:animate-pulse rounded-full bg-subtle" />
           <i className="h-1 w-1 motion-safe:animate-pulse rounded-full bg-subtle [animation-delay:150ms]" />

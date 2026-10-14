@@ -1,17 +1,36 @@
 import { Skeleton } from '../ui/Skeleton';
 import { Spinner } from '../ui/Spinner';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router-dom';
 import { chatStore, useChatList } from '../../stores/chatStore';
 import type { Conversation } from '../../types/conversations';
 import { cn } from '../../utils/cn';
 import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
+import { Dialog } from '../ui/Dialog';
 
 function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => void }) {
   const [editing, setEditing] = useState(false), [deleting, setDeleting] = useState(false);
   const [title, setTitle] = useState(chat.title);
+  const [deleteBusy, setDeleteBusy] = useState(false), [deleteError, setDeleteError] = useState('');
+  const deletePending = useRef(false);
+  const dialogId = useId();
   const { conversationId } = useParams(); const navigate = useNavigate();
+  const deleteConversation = async () => {
+    if (deletePending.current) return;
+    deletePending.current = true; setDeleteBusy(true); setDeleteError('');
+    try {
+      if (await chatStore.remove(chat.id)) {
+        setDeleting(false);
+        if (conversationId === chat.id) navigate('/');
+      } else setDeleteError('Could not delete this chat. Please try again.');
+    } catch {
+      setDeleteError('Could not delete this chat. Please try again.');
+    } finally {
+      deletePending.current = false; setDeleteBusy(false);
+    }
+  };
   const control = 'history-action grid h-7 w-7 shrink-0 place-items-center rounded-md text-subtle hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent';
   const rowControls = 'lg:opacity-0 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:pointer-events-auto lg:group-focus-within:opacity-100 lg:group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto motion-safe:transition-opacity';
   return <div className="group my-1 rounded-lg">
@@ -25,13 +44,17 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
         {chat.title}
       </NavLink>
       <div className={cn("absolute right-1 top-1/2 -translate-y-1/2 flex items-center", rowControls)}><button type="button" aria-label={`Rename ${chat.title}`} className={control} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
-      <button type="button" aria-label={`Delete ${chat.title}`} className={control} onClick={() => setDeleting(value => !value)}><Trash2 size={13} /></button></div>
+      <button type="button" aria-label={`Delete ${chat.title}`} className={control} onClick={() => { setDeleteError(''); setDeleting(true); }}><Trash2 size={13} /></button></div>
     </div>}
-    {deleting && <div className="mx-2 mb-2 rounded-lg border border-danger/20 bg-danger/[0.06] p-2 text-xs">
-      <p className="text-muted">Delete this conversation and its messages?</p>
-      <div className="mt-2 flex gap-3"><button type="button" className="text-danger" onClick={async () => { if (await chatStore.remove(chat.id) && conversationId === chat.id) navigate('/'); }}>Confirm deletion</button>
-        <button type="button" className="text-muted" onClick={() => setDeleting(false)}>Cancel</button></div>
-    </div>}
+    {deleting && <Dialog open busy={deleteBusy} onDismiss={() => setDeleting(false)} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`} className="max-w-sm">
+      <div className="flex items-center gap-2 text-heading"><Trash2 size={17} className="shrink-0 text-danger" aria-hidden="true" /><h2 id={`${dialogId}-title`} className="text-sm font-semibold">Delete chat?</h2></div>
+      <p id={`${dialogId}-description`} className="mt-3 break-words text-sm leading-6 text-muted">“{chat.title}” and its messages will be permanently deleted. This cannot be undone.</p>
+      {deleteError && <p role="alert" className="mt-3 text-xs text-danger">{deleteError}</p>}
+      <div className="mt-5 flex justify-end gap-2">
+        <Button autoFocus size="sm" variant="secondary" disabled={deleteBusy} onClick={() => setDeleting(false)}>Cancel</Button>
+        <Button size="sm" variant="danger" loading={deleteBusy} onClick={() => void deleteConversation()}>Delete chat</Button>
+      </div>
+    </Dialog>}
   </div>;
 }
 

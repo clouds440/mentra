@@ -218,7 +218,7 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_generation_hash_preserves_pre_revision_request_replays(self):
         from app.history_management.repositories.events.postgres import request_hash
-        payload = self.request.model_dump(mode='json',exclude={'revision_draft_id','revision_assessment_id','revision_instructions','question_format'})
+        payload = self.request.model_dump(mode='json',include={'client_request_id','context_id','topic','concept_names','confirm_new_concepts','count','purpose','grounded','document_ids'})
         self.assertEqual(request_hash(payload),request_hash(self.request.fingerprint_payload()))
         assessment = await self.service.generate(self.owner,self.request)
         self.assertEqual((await self.service.generate(self.owner,self.request)).id,assessment.id)

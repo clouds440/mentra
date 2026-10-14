@@ -2,12 +2,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, Query, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
-from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
+from app.assessments.schemas import GenerationRequest, AssessmentIntent, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
 from pydantic import BaseModel, ConfigDict, Field
 from app.assessments.schemas import RetryGrading
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
+
+@router.post('/generation-jobs')
+async def queue_generation(body: AssessmentIntent, request: Request, identity=Depends(require_onboarded_identity)):
+    return await request.app.state.assessment_service.queue_generation(identity.learner_id, body)
+
+@router.get('/generation-jobs/{identifier}')
+async def generation_job(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.generation_jobs.get, identity.learner_id, str(identifier))
+
+@router.post('/generation-jobs/{identifier}/retry')
+async def retry_generation(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.generation_jobs.retry, identity.learner_id, str(identifier))
 
 @router.put('/attempts/{identifier}/draft', response_model=Attempt)
 async def save_draft(identifier: UUID, body: SaveDraftAnswers,

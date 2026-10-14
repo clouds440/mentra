@@ -246,7 +246,7 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
             card = await self.service.generate_chat(self.owner,conversation,request)
         payloads = []
         async def capture(source,payload,**kwargs):
-            payloads.append(payload)
+            if source.value == 'assessment_generation': payloads.append(payload)
             return await invoke(source,payload,**kwargs)
         scope = dict(assessment_service=self.service,conversation_id=conversation,
             current_user_message_id=str(uuid4()),current_answer_text='Make the assessment easier')

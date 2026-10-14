@@ -81,6 +81,7 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     if re.search(r'\b(next|weakness|progress|practice target|recommend)\b', text) and learning: names.append('get_study_recommendations')
     if 'rag' in modules: names.append('search_study_material')
     if assessment:
+        names.extend(['get_study_recommendations', 'get_verification_candidates'])
         if re.search(r'\b(harder|easier|revise|change)\b', text): names.extend(['assessment_lookup', 'assessment_revise'])
         elif re.search(r'\b(grade|evaluate|mark|submit|answers?)\b', text): names.extend(['assessment_lookup', 'assessment_answer'])
         elif re.search(r'\b(generate|create|give|build|prepare|make|want|need)\b|\b(?:quiz|test) me\b', text): names.append('assessment_generate')

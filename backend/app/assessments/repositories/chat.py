@@ -80,6 +80,8 @@ class ChatAssessmentRepository:
                 raise AppError('ASSESSMENT_DRAFT_CAPACITY', 'Remove unused chats before generating more practice.', 409)
             payload = dict(id=str(uuid4()), learner_id=owner, context_id=request.context_id, title=generated.title,
                 purpose=request.purpose, revision=1, created_at=self.repository.clock().isoformat(),
+                paper=generated.paper.model_dump(mode='json') if generated.paper else None,
+                preferences=dict(level=request.level, result_style=request.result_style),
                 questions=[dict(q.model_dump(mode='json'), id=str(uuid4())) for q in generated.questions],
                 sources=sources, operation_id=str(request.client_request_id), fingerprint=fingerprint)
             row = dict(id=str(uuid4()), learner_id=owner, conversation_id=conversation, payload=payload,
@@ -88,7 +90,7 @@ class ChatAssessmentRepository:
             auto = session.scalar(select(preferences.c.auto_add).where(preferences.c.learner_id == owner))
             # Interactive work is a real assessment immediately; retain draft-first
             # policy for written worksheets unless the account opted into auto-add.
-            if auto or request.question_format == 'mcq': row = self._publish(session, owner, row)
+            if auto or request.question_format in ('mcq', 'true_false', 'short_answer', 'mixed'): row = self._publish(session, owner, row)
             return self.public(row)
 
     def _publish(self, session, owner, row):

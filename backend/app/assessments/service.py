@@ -21,8 +21,22 @@ class AssessmentService:
         self.paper_graph = EventConfirmationGraph(repository.sessions.kw['bind'], 'assessment-transcription-v1')
         from .chat import ChatAssessments
         self.chat = ChatAssessments(repository)
+        from .repositories.generation import GenerationJobs
+        self.generation_jobs = GenerationJobs(repository)
+
+    async def queue_generation(self, owner, request, conversation=None):
+        if request.grounded and not request.document_ids:
+            raise AppError('ASSESSMENT_SOURCES_REQUIRED', 'Select study documents to ground this assessment.', 422)
+        if request.context_id:
+            await run_in_threadpool(self.workflows.learner.get_context_summaries, owner, [request.context_id])
+        if conversation: await run_in_threadpool(self.chat.recent, owner, conversation)
+        if request.revision_instructions: await self._revision_source(owner, request, conversation)
+        return await run_in_threadpool(self.generation_jobs.enqueue, owner, request, conversation)
 
     async def generate_chat(self, owner, conversation, request):
+        if request.question_format == 'mock_paper' or request.count is None or request.count > 10:
+            job = await self.queue_generation(owner, request, conversation)
+            return dict(id=job['id'], generation_job_id=job['id'], title=request.topic)
         previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
         if previous: return previous
         if self.admission:
@@ -45,10 +59,15 @@ class AssessmentService:
             try: await run_in_threadpool(self.repository.release_generation, owner, request.client_request_id, claim)
             except Exception: workflow_logger.event('assessment.generation_cleanup_deferred', code='CLAIM_CLEANUP_UNAVAILABLE')
 
-    async def generate_chat_from_topic(self, owner, conversation, *, client_request_id, topic,
+    async def generate_chat_from_topic(self, owner, conversation, *, client_request_id, topic=None,
                                        context_id=None, **options):
         # Verify conversation ownership before creating any context or targets.
         await run_in_threadpool(self.chat.recent, owner, conversation)
+        if not topic or options.get('question_format') == 'auto':
+            from .schemas import AssessmentIntent
+            intent = AssessmentIntent(client_request_id=client_request_id, context_id=context_id, topic=topic, **options)
+            job = await self.queue_generation(owner, intent, conversation)
+            return dict(id=job['id'], generation_job_id=job['id'], title=topic or 'Your assessment')
         if context_id is None:
             from app.learner.schemas import ResolveLearningContextRequest
             context = await run_in_threadpool(self.workflows.learner.resolve_learning_context,
@@ -57,6 +76,9 @@ class AssessmentService:
         from .schemas import GenerationRequest
         request = GenerationRequest(client_request_id=client_request_id, context_id=context_id,
             topic=topic, confirm_new_concepts=False, **options)
+        if request.question_format == 'mock_paper' or request.count is None or request.count > 10:
+            job = await self.queue_generation(owner, request, conversation)
+            return dict(id=job['id'], generation_job_id=job['id'], title=topic)
         # Authorization is internal; keep legacy request fingerprints unchanged
         # so a retry can recover an assessment created before this behavior change.
         return await self.generate_chat(owner, conversation, request)
@@ -128,19 +150,18 @@ class AssessmentService:
         # Numbered segmentation is a suggestion only. Unknown handwriting/mapping
         # confidence always requires a complete reviewed answer map on submission.
         import re
-        text = document.text[:80000]
-        matches = list(re.finditer(r'(?m)^\s*(?:Q(?:uestion)?\s*)?(\d{1,2})[.):\s]+', text))
+        text = document.text
+        from .blueprint import question_reference, parse_numbered_answers
+        segments = parse_numbered_answers(text)
         answers = {}
         for index, question in enumerate(assessment.questions, 1):
-            match = next((item for item in matches if int(item.group(1)) == index), None)
-            if match:
-                position = matches.index(match)
-                end = matches[position+1].start() if position+1<len(matches) else len(text)
-                answers[str(question.id)] = text[match.end():end].strip()[:8000]
-            else: answers[str(question.id)] = text[:8000] if len(assessment.questions)==1 else ''
+            matches = [answer for reference, answer in segments if reference == question_reference(question, index)]
+            if len(matches) == 1:
+                answers[str(question.id)] = matches[0]
+            else: answers[str(question.id)] = text if len(assessment.questions)==1 else ''
         extracted = dict(answers=answers, text=text, blocks=document.blocks[:200], warnings=document.warnings,
             reader_revision=document.reader_revision, extraction_confidence=None, mapping_confidence=None,
-            requires_confirmation=True, handwriting_support='unverified', truncated=len(document.text)>80000)
+            requires_confirmation=True, handwriting_support='unverified', truncated=False)
         if not store:
             return extracted, data, filename
         return self.repository.store_extraction(owner, identifier, expected_revision, extracted, data, filename)
