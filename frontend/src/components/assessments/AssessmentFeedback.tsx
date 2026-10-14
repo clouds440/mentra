@@ -4,11 +4,12 @@ import { questionLabel, selectedAnswer } from './AssessmentPaper';
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, List, LayoutGrid } from 'lucide-react';
 import { Button } from '../ui';
+import { useQuestionNavigation } from './useQuestionNavigation';
 
 /** Join by immutable question ID; model response order never determines attribution. */
 export function AssessmentFeedback({ assessment, attempt }: { assessment: Assessment; attempt: AssessmentAttempt }) {
   const [view,setView]=useState<'question'|'list'>('question');
-  const [selected,setSelected]=useState(0);
+  const { index: selected, setIndex: setSelected, direction }=useQuestionNavigation();
   const grades = new Map(attempt.grades?.map(grade => [grade.question_id, grade]));
   const results = assessment.questions.flatMap((question, index) => {
     const grade = grades.get(question.id);
@@ -33,9 +34,9 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
     </div>
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">{view==='list' ? `All ${results.length} results` : `Question ${current+1} of ${results.length}`}</p><Button size="sm" variant="secondary" onClick={() => setView(value=>value==='list'?'question':'list')}>{view==='list' ? <LayoutGrid size={14} aria-hidden="true" /> : <List size={14} aria-hidden="true" />}{view==='list'?'Question view':'List view'}</Button></div>
     {view==='question' && <nav aria-label="Result questions" className="flex flex-wrap gap-1.5">{results.map(({question,index,outcome},position)=><button key={question.id} type="button" aria-label={`Question ${index+1}: ${feedbackAppearance[outcome].label.toLowerCase()}`} aria-current={position===current?'step':undefined} onClick={()=>setSelected(position)} className={`grid h-8 min-w-8 place-items-center rounded-md border px-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-accent ${outcome==='correct'?'border-success/40 bg-success/10 text-success':outcome==='wrong'?'border-danger/40 bg-danger/10 text-danger':'border-warning/40 bg-warning/10 text-warning'} ${position===current?'ring-2 ring-offset-1 ring-current':''}`}>{index+1}</button>)}</nav>}
-    {visible.map(({ question, index, grade, outcome }) => <QuestionFeedback key={question.id} label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')}
+    {visible.map(({ question, index, grade, outcome }) => <div key={question.id} className="question-transition" data-navigation={view==='question' ? direction : 'none'}><QuestionFeedback label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')}
       answer={selectedAnswer(question, attempt.answers[question.id])}
-      correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} />)}
+      correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} /></div>)}
     {view==='question' && results.length>1 && <div className="flex gap-2"><Button size="sm" variant="secondary" disabled={current===0} onClick={()=>setSelected(value=>value-1)}><ArrowLeft size={14} aria-hidden="true" />Previous result</Button><Button size="sm" variant="secondary" disabled={current===results.length-1} onClick={()=>setSelected(value=>value+1)}>Next result<ArrowRight size={14} aria-hidden="true" /></Button></div>}
   </section>;
 }

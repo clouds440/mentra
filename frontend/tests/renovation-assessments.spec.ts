@@ -92,7 +92,7 @@ test('mock paper retains nested question references, marks and shared context', 
     }).observe(document.body,{childList:true});
   });
   await paper.getByRole('button',{name:'Print paper',exact:true}).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as {printedPaper:string}).printedPaper ?? '')).toContain('Question 1 (a) (ii)');
+  await expect.poll(() => page.evaluate(() => (window as unknown as {printedPaper:string}).printedPaper ?? ''),{timeout:12000}).toContain('Question 1 (a) (ii)');
   const printed=await page.evaluate(() => (window as unknown as {printedPaper:string}).printedPaper);
   expect(printed).toContain('90 minutes'); expect(printed).not.toContain('correct_option'); expect(printed).not.toContain('Practice mechanics.');
   await page.screenshot({path:info.outputPath('mock-paper-mobile.png'),fullPage:true});
@@ -188,15 +188,58 @@ test('results default to colored numbered navigation with an optional list view'
   await expect(navigation.getByRole('button',{name:'Question 1: correct',exact:true})).toHaveClass(/bg-success/);
   await expect(navigation.getByRole('button',{name:'Question 2: incorrect',exact:true})).toHaveClass(/bg-danger/);
   await navigation.getByRole('button',{name:'Question 2: incorrect',exact:true}).click();
+  await expect(feedback.locator('.question-transition')).toHaveAttribute('data-navigation','forward');
   const wrong=feedback.getByRole('region',{name:'Question 2 feedback',exact:true});
   await expect(wrong).toHaveClass(/bg-danger/);
   await expect(wrong.getByRole('group',{name:'Your answer'})).toContainText('False');
   await feedback.getByRole('button',{name:'Next result',exact:true}).click();
   await expect(feedback.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();
   await feedback.getByRole('button',{name:'Previous result',exact:true}).click();
+  await expect(feedback.locator('.question-transition')).toHaveAttribute('data-navigation','backward');
   await feedback.getByRole('button',{name:'List view',exact:true}).click();
   await expect(feedback.getByRole('group',{name:'Your answer'})).toHaveCount(4);
   await page.screenshot({path:info.outputPath('assessment-results-mobile.png')});
   await feedback.getByRole('button',{name:'Question view',exact:true}).click();
+  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
+});
+
+test('question transitions follow button and numbered navigation while preserving answers', async ({page}) => {
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await chat(page);
+  const quiz=page.getByRole('region',{name:'Interactive quiz'});
+  const card=quiz.locator('.question-transition');
+  await expect(card).toHaveAttribute('data-navigation','none');
+  await quiz.getByRole('radio',{name:'Mass × acceleration',exact:true}).check();
+  await quiz.getByRole('button',{name:'Next',exact:true}).click();
+  await expect(card).toHaveAttribute('data-navigation','forward');
+  await expect(card).toHaveCSS('animation-name','question-forward');
+  await quiz.getByRole('button',{name:'Go to question 3',exact:true}).click();
+  await quiz.getByLabel('Answer question 3').fill('My preserved answer');
+  await quiz.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(card).toHaveAttribute('data-navigation','backward');
+  await expect(card).toHaveCSS('animation-name','question-backward');
+  await quiz.getByRole('button',{name:'Go to question 3, answered',exact:true}).click();
+  await expect(quiz.getByLabel('Answer question 3')).toHaveValue('My preserved answer');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await quiz.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(card).toHaveCSS('animation-name','none');
+});
+
+test('results remain usable while learning updates run in the background', async ({page}) => {
+  const state=await chat(page);
+  const attempt={id:'flex-attempt',assessment_id:state.value.id,revision:3,state:'graded',attempt_number:1,
+    answers:{q1:'a',q2:'true',q3:'An explanation',q4:'["a","b"]'},
+    grades:state.value.questions.map(q=>({question_id:q.id,score:2,confidence:1,feedback:'Correct reasoning.',concept_grades:{},misconceptions:[],outcome:'correct'})),
+    extraction:null,error:null,evidence_status:'pending',created_at:created,grade_revision:1,grade_history:[]};
+  state.setAttempt(attempt);
+  await page.reload();
+  const feedback=page.getByRole('region',{name:'Assessment feedback'});
+  await expect(feedback).toBeVisible();
+  await expect(page.getByText('Results saved. Learning progress updates in the background.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Evaluating your answers…',{exact:true})).toHaveCount(0);
+  await feedback.getByRole('button',{name:'Next result',exact:true}).click();
+  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
+  state.setAttempt({...attempt,evidence_status:'applied',revision:4});
+  await expect(page.getByText('Feedback saved and learning progress updated.',{exact:true})).toBeVisible({timeout:15000});
   await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
 });

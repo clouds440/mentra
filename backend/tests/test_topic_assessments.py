@@ -12,7 +12,7 @@ from app.learner.schemas import (GeneratedConceptsRequest, ResolveLearningContex
 from app.learner.repositories.tables.evidence import learning_evidence
 from app.assessments.service import create_assessments
 from app.assessments.schemas import StartAttempt, SubmitAnswers
-from app.assessments.worker import AssessmentWorker
+from testing.assessment_workers import run_assessment_pipeline
 from app.chat.repositories.postgres import ChatRepository
 from app.chat.schemas import SendTurn
 from app.langchain.llm import MentraLLM
@@ -65,7 +65,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))
         self.service.submit(self.owner, str(attempt.id), SubmitAnswers(expected_revision=attempt.revision,
             client_request_id=uuid4(), answers={str(question.id): 'a' for question in assessment.questions}))
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         result = self.service.repository.attempt(self.owner, str(attempt.id))
         self.assertEqual((result.state, result.evidence_status), ('graded', 'applied'))
 
@@ -178,7 +178,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))
         self.service.submit(self.owner, str(attempt.id), SubmitAnswers(expected_revision=attempt.revision,
             client_request_id=uuid4(), answers={str(q.id):'a' for q in assessment.questions}))
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         self.assertEqual(self.service.repository.attempt(self.owner, str(attempt.id)).evidence_status, 'applied')
 
     async def test_ai_basics_quiz_survives_malformed_synonym_expansion(self):

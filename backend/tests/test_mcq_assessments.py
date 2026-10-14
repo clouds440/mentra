@@ -1,7 +1,7 @@
 import unittest
 from uuid import uuid4
 from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, SaveDraftAnswers, GeneratedQuestion
-from app.assessments.worker import AssessmentWorker
+from testing.assessment_workers import run_assessment_pipeline
 from app.core.exceptions import AppError
 from pydantic import ValidationError
 from tests import test_assessments as fixtures
@@ -39,7 +39,7 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovered.answers, failed.answers)
         self.assertEqual(recovered.grade_revision, failed.grade_revision)
         self.assertEqual(self.service.repository.retry_grading(self.owner, str(attempt.id), retry).revision, recovered.revision)
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         self.assertEqual(self.service.submit(self.owner, str(attempt.id), submit).state, 'graded')
 
     async def test_generation_partial_persistence_submission_results_and_evidence(self):
@@ -60,7 +60,7 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AppError): self.service.submit(self.owner,str(attempt.id),invalid)
         submit=invalid.model_copy(update={'answers':{str(q.id):'a' if i<3 else 'b' for i,q in enumerate(assessment.questions)},'assistance':'independent'})
         self.service.submit(self.owner,str(attempt.id),submit)
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         result=self.service.repository.attempt(self.owner,str(attempt.id))
         self.assertEqual(result.state,'graded');self.assertEqual(result.evidence_status,'applied')
         self.assertEqual(sum(q.score for q in result.grades),6)
@@ -130,7 +130,7 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(AppError): self.service.submit(self.owner,str(attempt.id),body.model_copy(update={'transcription_confirmed':False}))
             submitted=self.service.submit(self.owner,str(attempt.id),body)
             self.assertEqual(submitted.answers,{ids[0]:'a',ids[1]:'b'})
-            self.assertTrue(await AssessmentWorker(self.service).run_once())
+            self.assertTrue(await run_assessment_pipeline(self.service))
             graded=self.service.repository.attempt(self.owner,str(attempt.id))
             self.assertEqual(graded.state,'graded'); self.assertEqual(graded.evidence_status,'applied')
             self.assertEqual(sum(q.score for q in graded.grades),2)

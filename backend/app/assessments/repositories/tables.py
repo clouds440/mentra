@@ -43,6 +43,16 @@ attempts = Table('assessment_attempt', metadata,
     Index('idx_assessment_grading_queue', 'state', 'retry_at', 'claim_until'),
     Index('idx_assessment_attempt_owner', 'learner_id', 'assessment_id'))
 
+evidence_jobs = Table('assessment_evidence_job', metadata,
+    Column('attempt_id', Uuid(as_uuid=False), ForeignKey('assessment_attempt.id', ondelete='CASCADE'), primary_key=True),
+    Column('grade_revision', Integer, primary_key=True),
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), nullable=False),
+    Column('state', Text, nullable=False), Column('attempts', Integer, nullable=False, server_default='0'),
+    Column('created_at', DateTime(timezone=True), nullable=False), Column('retry_at', DateTime(timezone=True)),
+    Column('claim_id', Uuid(as_uuid=False)), Column('claim_until', DateTime(timezone=True)),
+    CheckConstraint("state IN ('queued','running','applied','skipped','failed') AND attempts BETWEEN 0 AND 3 AND grade_revision >= 1", name='assessment_evidence_job_state'),
+    Index('idx_assessment_evidence_queue', 'state', 'retry_at', 'claim_until'))
+
 generation_claims = Table('assessment_generation_claim', metadata,
     Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
     Column('operation_id', Uuid(as_uuid=False), primary_key=True),

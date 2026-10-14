@@ -200,8 +200,11 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AppError): self.service.generation_jobs.update(old,state='completed',result={})
 
     async def test_grading_resumes_validated_batches_without_publishing_partial_feedback(self):
+        import asyncio
         from app.assessments.schemas import RetryGrading
-        value = await self.service.generate(self.owner,self.request(count=6,question_format='written'))
+        value = await self.service.generate(self.owner,self.request(count=20,question_format='written'))
+        from app.core.config import settings
+        self.factory._settings = settings.model_copy(update={'assessment_grading_output_tokens':4096})
         attempt = self.service.repository.start(self.owner,str(value.id),StartAttempt(client_request_id=uuid4()))
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers={str(q.id):'My answer.' for q in value.questions}))
         original = self.factory.with_structured_output; seen, fail = [], [True]
@@ -210,7 +213,9 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
             if schema.__name__ != 'GradedAssessment': return model
             async def invoke(messages):
                 payload = json.loads(messages[-1].content); key = payload['questions'][0]['id']; seen.append(key)
-                if key == str(value.questions[5].id) and fail[0]: raise RuntimeError('interrupted grading')
+                if key == str(value.questions[10].id) and fail[0]:
+                    await asyncio.sleep(.1)
+                    raise RuntimeError('interrupted grading')
                 return await model.ainvoke(messages)
             return SimpleNamespace(ainvoke=invoke)
         self.factory.with_structured_output=scripted
@@ -222,4 +227,4 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         fail[0]=False; await worker.run_once()
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'graded')
         self.assertEqual(seen.count(str(value.questions[0].id)),1)
-        self.assertEqual(seen.count(str(value.questions[5].id)),2)
+        self.assertEqual(seen.count(str(value.questions[10].id)),2)

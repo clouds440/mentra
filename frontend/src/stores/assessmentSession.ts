@@ -8,6 +8,7 @@ export interface QuizDraft {
   attempt: AssessmentAttempt | null;
 }
 const evaluating = (attempt: AssessmentAttempt) => ['submitted', 'grading'].includes(attempt.state) || attempt.state === 'failed' && !!attempt.retry_pending;
+const needsRefresh = (attempt: AssessmentAttempt) => evaluating(attempt) || attempt.state === 'graded' && attempt.evidence_status === 'pending';
 
 class AssessmentSession {
   private owner: string | null = null;
@@ -34,7 +35,7 @@ class AssessmentSession {
   }
   setOwner(owner: string | null) {
     if (owner === this.owner) {
-      for (const attempt of this.attempts.values()) if (evaluating(attempt)) this.poll(attempt.id);
+      for (const attempt of this.attempts.values()) if (needsRefresh(attempt)) this.poll(attempt.id);
       return;
     }
     this.controller.abort(); this.controller = new AbortController();
@@ -50,7 +51,7 @@ class AssessmentSession {
     if (!owner || owner !== this.owner) return;
     this.accept(attempt);
     const current = this.attempts.get(attempt.id)!;
-    if (evaluating(current)) this.poll(attempt.id);
+    if (needsRefresh(current)) this.poll(attempt.id);
     else { const timer = this.timers.get(attempt.id); if (timer) clearTimeout(timer); this.timers.delete(attempt.id); }
   }
   private poll(id: string, count = 0) {
@@ -67,8 +68,8 @@ class AssessmentSession {
       if (signal.aborted) return;
       this.timers.delete(id);
       const latest = this.attempts.get(id);
-      if (latest && evaluating(latest) && count < 90) this.poll(id, count + 1);
-    }, Math.min(1000 + count * 250, 5000)));
+      if (latest && needsRefresh(latest)) this.poll(id, count + 1);
+    }, this.attempts.get(id)?.state === 'graded' ? 10000 : Math.min(1000 + count * 250, 5000)));
   }
 }
 export const assessmentSession = new AssessmentSession();

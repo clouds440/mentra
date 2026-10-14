@@ -303,11 +303,11 @@ class AssessmentRepository:
                     continue
                 token = str(uuid4())
                 assessment = self._assessment(tx._session, owner, row['assessment_id'])
-                long_paper = bool(assessment.get('paper')) or len(assessment['questions']) > 10
+                from ..grading_progress import GRADING_LEASE_SECONDS
                 tx._session.execute(update(t).where(t.c.id == identifier).values(state='grading', claim_id=token,
-                    claim_until=now+timedelta(seconds=960 if long_paper else 120), worker_attempts=row['worker_attempts']+1))
+                    claim_until=now+timedelta(seconds=GRADING_LEASE_SECONDS), worker_attempts=row['worker_attempts']+1))
                 return dict(owner=owner, id=identifier, claim_id=token, attempt=dict(row, worker_attempts=row['worker_attempts']+1),
-                    assessment=assessment, profile_context_version=row['profile_context_version'], long_paper=long_paper)
+                    assessment=assessment, profile_context_version=row['profile_context_version'])
         return None
 
     def checkpoint_grades(self, job, grades):
@@ -319,17 +319,19 @@ class AssessmentRepository:
             tx._session.execute(update(t).where(t.c.id==job['id']).values(grading_progress=dict(
                 signature=grading_signature(job), grades=[grade.model_dump(mode='json') for grade in grades])))
 
-    def complete(self, job, grades, apply_evidence):
+    def complete(self, job, grades, apply_evidence=None):
         with self.transactions.write(job['owner']) as tx:
             row = self._attempt(tx._session, job['owner'], job['id'])
             if row['claim_id'] != job['claim_id'] or row['state'] != 'grading' or row['claim_until'] <= self.clock():
                 raise AppError('ATTEMPT_CLAIM_EXPIRED', 'Grading lease expired.', 409)
             # The evidence producer admits each observation independently and
             # withdraws obsolete evidence even when a corrected grade is uncertain.
-            receipt = apply_evidence(tx)
+            # The durable worker publishes results and its outbox atomically.
+            # Trusted composed callers may still request synchronous persistence.
+            receipt = apply_evidence(tx) if apply_evidence else None
             expected = sum(len(question.concept_grades) for question in grades.questions)
             accepted = sum(bool(item.get('accepted')) for item in receipt or [])
-            evidence_status = 'applied' if accepted == expected else 'partial' if accepted else 'unavailable'
+            evidence_status = ('applied' if accepted == expected else 'partial' if accepted else 'unavailable') if apply_evidence else 'pending'
             questions = {str(question['id']): question for question in job['assessment']['questions']}
             public_grades = []
             for grade in grades.questions:
@@ -340,15 +342,20 @@ class AssessmentRepository:
                     outcome='correct' if grade.score == question['marks'] else 'wrong' if grade.score == 0 else 'partial',
                     correct_answer=correct))
             tx._session.execute(update(t).where(t.c.id == job['id']).values(state='graded', grades=public_grades,
-                evidence_status=evidence_status, evidence_receipt=receipt,
+                evidence_status=evidence_status, evidence_receipt=receipt if apply_evidence else row.get('evidence_receipt'),
                 revision=row['revision']+1, claim_id=None, claim_until=None, retry_at=None, error=None, grading_progress={}))
+            if not apply_evidence:
+                from .tables import evidence_jobs
+                from sqlalchemy.dialects.postgresql import insert
+                tx._session.execute(insert(evidence_jobs).values(attempt_id=job['id'], learner_id=job['owner'],
+                    grade_revision=row['grade_revision'], state='queued', created_at=self.clock()).on_conflict_do_nothing())
 
-    def fail(self, job, *, retry=True):
+    def fail(self, job, *, retry=True, error=None):
         with self.transactions.write(job['owner']) as tx:
             row = self._attempt(tx._session, job['owner'], job['id'])
             if row['claim_id'] != job['claim_id']: return
-            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='failed', error='Grading is temporarily unavailable.',
-                retry_at=self.clock()+timedelta(seconds=5*2**row['worker_attempts']) if retry else None, claim_id=None, claim_until=None, revision=row['revision']+1))
+            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='failed', error=error or 'Grading is temporarily unavailable.',
+                retry_at=self.clock()+timedelta(seconds=5*2**row['worker_attempts']) if retry and row['worker_attempts'] < 3 else None, claim_id=None, claim_until=None, revision=row['revision']+1))
         workflow_logger.event('job.retry_scheduled' if retry and row['worker_attempts'] < 3 else 'job.failed', job_id=job['id'], attempt=row['worker_attempts'])
 
     def remove(self, owner, identifier):

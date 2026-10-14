@@ -440,6 +440,20 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 }
 
 .assessment-feedback .code-block { margin: 0.5rem 0; }
+/* Fast directional arrival; the current content is available immediately.
+   Animate only opacity/transform, with no timers or duplicate interactive DOM. */
+@media (prefers-reduced-motion: no-preference) {
+  .question-transition[data-navigation='forward'] { animation: question-forward 180ms cubic-bezier(.2,.65,.3,1); }
+  .question-transition[data-navigation='backward'] { animation: question-backward 180ms cubic-bezier(.2,.65,.3,1); }
+}
+@keyframes question-forward {
+  from { opacity: .55; transform: translateX(7px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes question-backward {
+  from { opacity: .55; transform: translateX(-7px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 .assessment-feedback .markdown-content > :first-child { margin-top: 0; }
 .assessment-feedback .markdown-content > :last-child { margin-bottom: 0; }
 .quiz-question fieldset > label {

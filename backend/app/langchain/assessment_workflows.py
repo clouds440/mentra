@@ -170,29 +170,15 @@ class AssessmentWorkflows:
         progress = attempt.get('grading_progress') or {}
         grades = [QuestionGrade.model_validate(value) for value in progress.get('grades', [])] if progress.get('signature') == grading_signature(job) else []
         completed_ids = {grade.question_id for grade in grades}
-        from .token_policy import check_input
-        from .llm import MentraLLM
-        batches, current = [], []
-        # A question/rubric/answer is indivisible. Never silently trim student work.
-        for question in assessment['questions']:
-            if question.get('options') or question['id'] in completed_ids: continue
-            proposed = [*current, question]
-            payload = dict(questions=proposed, answers={q['id']:attempt['answers'][q['id']] for q in proposed},
-                           result_style=assessment.get('preferences', {}).get('result_style','marks'),
-                           transcription_confirmed=attempt['extraction'] is not None)
-            try:
-                check_input(MentraLLM.messages(self.llm, PromptSource.ASSESSMENT_GRADING, payload),
-                            PromptSource.ASSESSMENT_GRADING, tools=[GradedAssessment])
-                fits = len(proposed) <= 5
-            except AppError:
-                fits = False
-            if not fits and current:
-                batches.append(current)
-                current = [question]
-            else:
-                current = proposed
-        if current:
-            batches.append(current)
+        import asyncio
+        from .grading_batches import plan_grading_batches, grading_payload, grading_output_tokens
+        from app.core.config import settings
+        grading_config = getattr(getattr(self.llm, 'model_factory', None), '_settings', settings)
+        pending = [q for q in assessment['questions'] if not q.get('options') and q['id'] not in completed_ids]
+        batches = plan_grading_batches(self.llm, assessment, attempt, pending)
+        workflow_logger.event('assessment.grading_plan', questions=len(assessment['questions']),
+            pending_written=len(pending), completed=len(grades), batches=len(batches),
+            batch_sizes=[len(batch) for batch in batches], concurrent_batches=len(batches))
         for question in assessment['questions']:
             if question.get('options') and question['id'] not in completed_ids:
                 from app.assessments.choice_answers import selected_options
@@ -207,21 +193,29 @@ class AssessmentWorkflows:
                     concept_grades={identifier:ConceptGrade(score=score, max_score=question['marks'], confidence=1)
                         for identifier in question['concept_ids']}))
         if checkpoint and grades: await checkpoint(grades)
-        for batch in batches:
-            batch = [q for q in batch if not q.get('options')]
-            if not batch: continue
-            from .generation_recovery import GenerationMismatch
+        async def grade_batch(batch):
             def validate_batch(result):
                 from app.assessments.grade_alignment import align_grades
                 align_grades(result,batch)
             partial = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GRADING,
-                dict(questions=batch, answers={q['id']:attempt['answers'][q['id']] for q in batch},
-                     result_style=assessment.get('preferences', {}).get('result_style','marks'),
-                     transcription_confirmed=attempt['extraction'] is not None), output_schema=GradedAssessment, validate=validate_batch)
+                grading_payload(assessment, attempt, batch), output_schema=GradedAssessment, validate=validate_batch,
+                output_tokens=grading_output_tokens(grading_config, batch))
             if len(partial.questions) != len(batch) or {q.question_id for q in partial.questions} != {q['id'] for q in batch}:
                 raise AppError('ASSESSMENT_INVALID_GRADE', 'A grading batch was incomplete.', 502)
-            grades.extend(partial.questions)
-            if checkpoint: await checkpoint(grades)
+            return partial.questions
+        tasks = [asyncio.create_task(grade_batch(batch)) for batch in batches]
+        order = {q['id']: index for index, q in enumerate(assessment['questions'])}
+        try:
+            # Persist whichever batch finishes first. A retry only evaluates the
+            # unfinished questions, even when the other call fails or times out.
+            for finished in asyncio.as_completed(tasks):
+                grades.extend(await finished)
+                grades.sort(key=lambda grade: order[grade.question_id])
+                if checkpoint: await checkpoint(grades)
+        finally:
+            for task in tasks:
+                if not task.done(): task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         result = GradedAssessment(questions=grades)
         expected = {question['id']: question for question in assessment['questions']}
         if len(result.questions) != len(expected) or {question.question_id for question in result.questions} != set(expected):

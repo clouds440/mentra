@@ -21,12 +21,13 @@ class GenerationMismatch(ValueError):
 async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict, *,
                            output_schema: type[Generated],
                            validate: Callable[[Generated], None] | None = None,
-                           maximum_attempts: int = 2) -> Generated:
+                           maximum_attempts: int = 2, output_tokens: int | None = None) -> Generated:
     feedback = None
     for attempt in range(maximum_attempts):
         inputs = dict(payload, repair_feedback=feedback) if feedback else payload
         try:
-            result = await llm.ainvoke(source, inputs, output_schema=output_schema)
+            result = await llm.ainvoke(source, inputs, output_schema=output_schema,
+                **({'output_tokens': output_tokens} if output_tokens is not None else {}))
             if validate:
                 validate(result)
             return result

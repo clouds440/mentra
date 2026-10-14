@@ -4,7 +4,7 @@ from io import BytesIO
 from uuid import uuid4
 from sqlalchemy import select, func
 from app.assessments.service import create_assessments
-from app.assessments.worker import AssessmentWorker
+from testing.assessment_workers import run_assessment_pipeline
 from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers
 from app.langchain.llm import MentraLLM
 from app.learner.engine import LearnerEngine
@@ -53,7 +53,7 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         answers={str(question.id):'A partial answer.' for question in assessment.questions}
         body=SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers=answers)
         self.service.submit(self.owner,str(attempt.id),body)
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         result=self.service.repository.attempt(self.owner,str(attempt.id))
         self.assertEqual(result.state,'graded'); self.assertEqual(result.evidence_status,'applied')
         self.assertEqual(self.service.submit(self.owner,str(attempt.id),body).state,'graded')
@@ -82,9 +82,9 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         extracted=self.service.upload_paper(self.owner,str(attempt.id),1,BytesIO(b'answers'),'answers.txt')
         self.assertEqual(extracted.state,'pending_transcription')
         self.assertIsNone(extracted.extraction['extraction_confidence'])
-        self.assertFalse(await AssessmentWorker(self.service).run_once())
+        self.assertFalse(await run_assessment_pipeline(self.service))
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=2,client_request_id=uuid4(),answers=extracted.extraction['answers'],transcription_confirmed=True))
-        await AssessmentWorker(self.service).run_once()
+        await run_assessment_pipeline(self.service)
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).evidence_status,'applied')
 
     async def test_delete_and_new_concepts_need_no_confirmation(self):
@@ -97,11 +97,11 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         assessment,attempt=await self.prepared()
         answers={str(question.id):'Original answer' for question in assessment.questions}
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers=answers))
-        await AssessmentWorker(self.service).run_once()
+        await run_assessment_pipeline(self.service)
         graded=self.service.repository.attempt(self.owner,str(attempt.id))
         corrected=self.service.repository.correct(self.owner,str(attempt.id),SubmitAnswers(expected_revision=graded.revision,client_request_id=uuid4(),answers={key:'Corrected answer' for key in answers}))
         self.assertEqual(corrected.grade_revision,2)
-        await AssessmentWorker(self.service).run_once()
+        await run_assessment_pipeline(self.service)
         final=self.service.repository.attempt(self.owner,str(attempt.id))
         self.assertEqual(final.state,'graded');self.assertEqual(len(final.grade_history),1)
         with self.db.sessions() as session:
@@ -112,7 +112,7 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         assessment, attempt = await self.prepared()
         answers = {str(question.id):'Original answer' for question in assessment.questions}
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers=answers))
-        await AssessmentWorker(self.service).run_once()
+        await run_assessment_pipeline(self.service)
         graded = self.service.repository.attempt(self.owner,str(attempt.id))
         self.service.repository.correct(self.owner,str(attempt.id),SubmitAnswers(expected_revision=graded.revision,client_request_id=uuid4(),answers={key:'Corrected' for key in answers}))
         job = self.service.repository.claim()
@@ -157,7 +157,7 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         assessment = await self.service.generate(self.owner,request)
         attempt = self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers={str(q.id):'Answer. '*1000 for q in assessment.questions}))
-        self.assertTrue(await AssessmentWorker(self.service).run_once())
+        self.assertTrue(await run_assessment_pipeline(self.service))
         graded = self.service.repository.attempt(self.owner,str(attempt.id))
         self.assertEqual(graded.state,'graded')
         self.assertEqual(len(graded.grades),10)
@@ -174,7 +174,7 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         attempt = self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
         answers = {str(question.id):'Original answer' for question in assessment.questions}
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers=answers))
-        await AssessmentWorker(self.service).run_once()
+        await run_assessment_pipeline(self.service)
         updated = profile.get(self.owner)
         self.assertEqual(updated.estimates.domain_familiarity.evidence_count,6)
         self.assertIsNotNone(updated.estimates.domain_familiarity.value)

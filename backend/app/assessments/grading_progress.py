@@ -1,6 +1,9 @@
 """Bind private grading checkpoints to an exact immutable assessment/answer revision."""
 from app.history_management.repositories.events.postgres import request_hash
 
+GRADING_TIMEOUT_SECONDS = 120
+GRADING_LEASE_SECONDS = 180
+
 
 def grading_signature(job):
     return request_hash(dict(questions=job['assessment']['questions'], answers=job['attempt']['answers'],

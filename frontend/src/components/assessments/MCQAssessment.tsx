@@ -11,6 +11,7 @@ import { assessmentSession } from '../../stores/assessmentSession';
 import { QuizAnswerReview } from './QuizAnswerReview';
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from 'lucide-react';
 import { questionKind, selectedIds, showsAssessmentMarks } from './AssessmentPaper';
+import { useQuestionNavigation } from './useQuestionNavigation';
 
 export function MCQAssessment({ assessment, initial, onChange, onStart, disabled = false, actions }: { assessment: Assessment; initial: AssessmentAttempt | null; onChange: (value: AssessmentAttempt) => void; onStart?: (signal: AbortSignal) => Promise<AssessmentAttempt>; disabled?: boolean; actions?: ReactNode }) {
   const { identity } = useAuth();
@@ -27,7 +28,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
     const answer = (restored?.answers ?? initial?.answers ?? {})[q.id];
     return answer && (q.options?.length ? selectedIds(q, answer).length > 0 && selectedIds(q, answer).every(id => q.options!.some(option => option.id === id)) : true) ? [[q.id, answer]] : [];
   })));
-  const [index, setIndex] = useState(() => Math.min(assessment.questions.length - 1, restored?.index ?? Math.max(0, assessment.questions.findIndex(q => !answers[q.id]))));
+  const { index, setIndex, direction } = useQuestionNavigation(() => Math.min(assessment.questions.length - 1, restored?.index ?? Math.max(0, assessment.questions.findIndex(q => !answers[q.id]))));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [assistance, setAssistance] = useState<'unknown' | 'independent' | 'assisted'>(restored?.assistance ?? initial?.assistance ?? 'unknown');
@@ -78,7 +79,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
       <div className="h-full rounded-full bg-accent" style={{ width: `${answered / assessment.questions.length * 100}%` }} />
     </div>
     <nav aria-label="Quiz questions" className="flex flex-wrap gap-1.5">{assessment.questions.map((q, i) => <button key={q.id} type="button" aria-label={`Go to question ${i+1}${answers[q.id]?.trim() ? ', answered' : ''}`} aria-current={index === i ? 'step' : undefined} disabled={disabled || busy} onClick={() => setIndex(i)} className={`grid h-8 min-w-8 place-items-center rounded-md border px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent ${index === i ? 'border-accent bg-accent/10 text-accent' : answers[q.id]?.trim() ? 'border-border-strong bg-active text-heading' : 'border-border text-muted hover:bg-hover'}`}>{answers[q.id]?.trim() && index !== i ? <Check size={13} aria-hidden="true" /> : i+1}</button>)}</nav>
-    <div className="quiz-question space-y-4 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
+    <div key={question.id} data-navigation={direction} className="question-transition quiz-question space-y-4 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
     <div className="flex items-center justify-between gap-2 text-[11px]"><span className="font-medium uppercase tracking-wider text-accent">{questionKind(question)}</span>{showsAssessmentMarks(assessment) && <span className="tabular-nums text-muted">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>}</div>
     <MarkdownContent content={question.prompt} />
     {question.context && <div className="border-l-2 border-accent/30 pl-3 text-sm text-muted"><MarkdownContent content={question.context} /></div>}
