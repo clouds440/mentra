@@ -13,6 +13,11 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
   const newAnswer = useRef<string | null>(null);
   const prepend = useRef<{ height: number; first: number } | null>(null);
   const userScrollUntil = useRef(0);
+  const lastScrollTop = useRef(0);
+  const scrolledUp = useRef(false);
+  const jumping = useRef(false);
+  const jumpVisible = useRef(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [anchor, setAnchor] = useState<number | null>(null);
   const groups = useMemo(() => {
     const result: { key: number; userSequence: number | null; messages: StoredMessage[] }[] = [];
@@ -26,7 +31,8 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
   useLayoutEffect(() => {
     known.current = null; requested.current = null; target.current = null; newAnswer.current = null;
     prepend.current = null; bottom.current = true; followAnchor.current = false;
-    userScrollUntil.current = 0; setAnchor(null);
+    userScrollUntil.current = 0; lastScrollTop.current = 0; scrolledUp.current = false;
+    jumping.current = false; jumpVisible.current = false; setShowScrollToBottom(false); setAnchor(null);
   }, [id]);
   useLayoutEffect(() => {
     if (loading || !messages.length) return;
@@ -42,6 +48,12 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
     }
   }, [messages, loading, busy, pending]);
 
+  function updateJumpButton() {
+    const el = container.current; if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const visible = scrolledUp.current && distance > (jumpVisible.current ? 120 : Math.max(360, el.clientHeight * .75));
+    if (visible !== jumpVisible.current) { jumpVisible.current = visible; setShowScrollToBottom(visible); }
+  }
   function position() {
     const el = container.current; if (!el) return;
     const style = getComputedStyle(el);
@@ -53,11 +65,12 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
     const available = Math.max(0, contentHeight - (footer?.getBoundingClientRect().height ?? 0));
     const size = `${available}px`;
     if (el.style.getPropertyValue('--latest-turn-height') !== size) el.style.setProperty('--latest-turn-height', size);
+    if (jumping.current) { updateJumpButton(); return; }
     if (prepend.current) {
       if (!loading && messages[0]?.sequence !== prepend.current.first) {
         el.scrollTop += el.scrollHeight - prepend.current.height; prepend.current = null;
       }
-      return;
+      updateJumpButton(); return;
     }
     if (followAnchor.current && latest.current?.dataset.userSequence === String(target.current)) {
       el.scrollTop += latest.current.getBoundingClientRect().top - el.getBoundingClientRect().top - inset;
@@ -67,6 +80,8 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
       newAnswer.current = null;
       bottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
     } else if (bottom.current) el.scrollTop = el.scrollHeight;
+    lastScrollTop.current = el.scrollTop;
+    updateJumpButton();
   }
   const positioning = useRef(position); positioning.current = position;
   useLayoutEffect(() => { position(); }, [id, messages, loading, busy, anchor]);
@@ -78,15 +93,27 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
   }, [id, loading, !!messages.length]);
 
   return {
-    container, latest, groups, anchor,
+    container, latest, groups, anchor, showScrollToBottom,
     anchorNextSend() {
       requested.current = Math.max(0, ...messages.map(message => message.sequence)) + 1;
       followAnchor.current = false; bottom.current = false;
+      scrolledUp.current = false; jumping.current = false; updateJumpButton();
     },
-    noteUserScroll() { userScrollUntil.current = performance.now() + 1500; followAnchor.current = false; },
+    noteUserScroll() { userScrollUntil.current = performance.now() + 1500; followAnchor.current = false; jumping.current = false; },
     onScroll() {
       const el = container.current;
-      if (el && performance.now() < userScrollUntil.current) bottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+      if (!el) return;
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (!jumping.current && performance.now() < userScrollUntil.current) {
+        const movedUp = el.scrollTop < lastScrollTop.current - 1;
+        // Stop following immediately, including small upward gestures near the
+        // bottom, so late image/font sizing cannot pull the reader back down.
+        bottom.current = !movedUp && distance < 100;
+        if (movedUp) scrolledUp.current = true;
+      }
+      if (distance < 2) { jumping.current = false; bottom.current = true; scrolledUp.current = false; }
+      lastScrollTop.current = el.scrollTop;
+      updateJumpButton();
     },
     preparePrepend() {
       prepend.current = {height:container.current?.scrollHeight ?? 0, first:messages[0]?.sequence ?? 0};
@@ -97,6 +124,17 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
         positioning.current(); prepend.current = null;
       }); };
     },
-    showLatest() { setAnchor(null); target.current = null; followAnchor.current = false; bottom.current = true; },
+    showLatest() { setAnchor(null); target.current = null; followAnchor.current = false; bottom.current = true;
+      scrolledUp.current = false; jumping.current = false; updateJumpButton(); },
+    scrollToBottom() {
+      const el = container.current; if (!el) return;
+      jumping.current = true; followAnchor.current = false; target.current = null;
+      newAnswer.current = null; bottom.current = true; setAnchor(null);
+      el.focus({ preventScroll: true });
+      requestAnimationFrame(() => {
+        if (container.current !== el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      });
+    },
   };
 }

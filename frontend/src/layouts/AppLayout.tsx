@@ -4,11 +4,13 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
 import { IconButton } from '../components/ui/IconButton';
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const sidebar = useResizableSidebar();
+  const { collapsed } = sidebar;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [newChatKey, setNewChatKey] = useState(0);
   const [newChatPending, setNewChatPending] = useState(false);
@@ -29,10 +31,13 @@ export function AppLayout() {
   }
 
   return (
-    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground">
+    <div className={`relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground ${sidebar.resizing ? 'select-none' : ''}`}>
       <a href="#workspace-main" className="skip-link">Skip to content</a>
       <AppSidebar
         collapsed={collapsed}
+        width={sidebar.width}
+        resizing={sidebar.resizing}
+        resizeHandle={<div {...sidebar.handleProps} className="group absolute inset-y-0 -right-1 z-30 hidden w-2 cursor-col-resize touch-none items-center justify-center outline-none lg:flex" title="Drag to resize · Double-click to reset"><span aria-hidden="true" className={`h-full w-0.5 rounded-full transition-colors duration-150 group-hover:bg-accent/50 group-focus-visible:bg-accent ${sidebar.resizing ? 'bg-accent/60' : ''}`} /></div>}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         onNewChat={startNewChat}
@@ -51,7 +56,7 @@ export function AppLayout() {
             <IconButton
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               className="pointer-events-auto hidden bg-background text-muted lg:inline-flex"
-              onClick={() => setCollapsed((value) => !value)}
+              onClick={sidebar.toggle}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
             >

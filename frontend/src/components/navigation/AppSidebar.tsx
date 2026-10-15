@@ -10,7 +10,7 @@ import {
   Settings2,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { MentraLogo } from '../brand/MentraLogo';
 import { ThemeSelector } from '../theme/ThemeSelector';
@@ -29,6 +29,9 @@ const primaryNavigation = [
 
 interface AppSidebarProps {
   collapsed: boolean;
+  width: number;
+  resizing: boolean;
+  resizeHandle: ReactNode;
   mobileOpen: boolean;
   onCloseMobile: () => void;
   onNewChat: () => void;
@@ -36,6 +39,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({
   collapsed,
+  width,
+  resizing,
+  resizeHandle,
   mobileOpen,
   onCloseMobile,
   onNewChat,
@@ -71,18 +77,21 @@ export function AppSidebar({
       )}
 
       <aside
+        id="main-sidebar"
         ref={sidebar}
         role={!desktop && mobileOpen ? 'dialog' : undefined}
         aria-modal={!desktop && mobileOpen ? true : undefined}
         data-modal-navigation={!desktop && mobileOpen ? true : undefined}
         tabIndex={-1}
         aria-label="Main navigation"
+        style={{ '--sidebar-width': `${collapsed ? 56 : width}px` } as CSSProperties}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-border bg-background transition-[width,transform] duration-200 ease-out lg:relative lg:z-20 lg:translate-x-0',
-          collapsed && 'lg:w-14',
+          'fixed inset-y-0 left-0 z-50 flex w-[17rem] shrink-0 flex-col border-r border-border bg-background duration-200 ease-out motion-reduce:transition-none lg:relative lg:z-20 lg:w-[var(--sidebar-width)] lg:translate-x-0',
+          resizing ? 'transition-none' : 'transition-[width,transform]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
+        {resizeHandle}
         <div className={cn('flex h-12 shrink-0 items-center justify-between border-b border-border px-4', collapsed && 'lg:justify-center lg:px-0')}>
           <div className="flex min-w-0 items-center gap-3">
             <MentraLogo />

@@ -1,7 +1,7 @@
 import { useChatScroll } from '../hooks/useChatScroll';
 ﻿import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
-import { FileText, X } from 'lucide-react';
+import { ArrowDown, FileText, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
@@ -167,7 +167,11 @@ export function ChatPage() {
           </div>
         </div>
       )}
-      <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
+      <div className="relative shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
+        {scroll.showScrollToBottom && <div className="pointer-events-none absolute inset-x-0 -top-11 z-20 flex justify-center"><IconButton type="button" aria-label="Scroll to bottom" title="Scroll to bottom" className="pointer-events-auto rounded-full border border-border-strong bg-surface text-muted shadow-sm hover:bg-hover hover:text-heading" onClick={() => {
+          if (view.olderWindow) { scroll.showLatest(); void chatStore.open(id, true); }
+          else scroll.scrollToBottom();
+        }}><ArrowDown size={16} aria-hidden="true" /></IconButton></div>}
         <div className="mx-auto w-full max-w-[52rem]">
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
