@@ -129,6 +129,7 @@ Vision and Speech capabilities keep local processing independent of the LLM.
 
 | Documentation | Scope |
 | --- | --- |
+| [Backend atlas](docs/Mentra_Backend_Map.md) | Module and file guide, feature dependencies, APIs, storage, and worker flows |
 | [Setup](docs/SETUP.md), [identity/PostgreSQL](docs/identity-and-postgresql.md) | Environment, migrations, native development and identity |
 | [Persistent chat](docs/persistent-chat.md), [context summaries](backend/app/chat/SUMMARIES.md) | Storage, synchronization, attachments and model context |
 | [History and memory](docs/history-management.md) | Exact history recovery and durable user memories |
