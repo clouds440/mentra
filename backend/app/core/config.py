@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     memory_goal_days: int = Field(default=30, ge=1, le=3650)
     memory_fact_days: int = Field(default=180, ge=1, le=3650)
     memory_preference_days: int = Field(default=365, ge=1, le=3650)
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_model: str = "intfloat/multilingual-e5-small"
     embedding_device: str = "cpu"
     embedding_worker_timeout: float = Field(default=10, gt=0, le=60)
     embedding_initialization_timeout: float = Field(default=45, gt=0, le=120)

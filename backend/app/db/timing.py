@@ -1,4 +1,5 @@
 """SQL latency without statements, bind values, credentials, or user data."""
+import logging
 from time import monotonic
 from sqlalchemy import event
 from app.core.observability.events import emit
@@ -16,7 +17,8 @@ def instrument_engine(engine):
             compiled = getattr(context, 'compiled', None)
             statement = getattr(compiled, 'statement', None)
             kind = 'select' if getattr(statement, 'is_select', False) else 'insert' if getattr(statement, 'is_insert', False) else 'update' if getattr(statement, 'is_update', False) else 'delete' if getattr(statement, 'is_delete', False) else 'command'
-            emit('db.query', operation=kind, duration_ms=round((monotonic()-started)*1000, 3), outcome=outcome)
+            emit('db.query', level=logging.DEBUG if outcome == 'success' else logging.WARNING,
+                 operation=kind, duration_ms=round((monotonic()-started)*1000, 3), outcome=outcome)
 
     @event.listens_for(engine, 'after_cursor_execute')
     def after(connection, cursor, statement, parameters, context, executemany):

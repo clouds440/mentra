@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 
+# Standard HTTP also works where the optional Xet transport stalls on large weights.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 from huggingface_hub import model_info, snapshot_download
 
 model_name = os.environ["EMBEDDING_MODEL"]
@@ -35,6 +37,8 @@ snapshot_download(
         "tokenizer.json",
         "tokenizer_config.json",
         "vocab.txt",
+        "sentencepiece.bpe.model",
+        "sentencepiece.model",
     ],
 )
 (model_path / "model-metadata.json").write_text(

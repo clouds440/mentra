@@ -18,7 +18,7 @@ def _embedding_worker(connection, config):
             if message is None:
                 break
             operation, argument = message
-            if operation not in ('token_count', 'query_token_count', 'embed_query', 'embed_documents'):
+            if operation not in ('token_count', 'query_token_count', 'embed_query', 'embed_documents', 'embed_similarity'):
                 connection.send(('error', None))
                 continue
             try:
@@ -140,6 +140,12 @@ class ProcessEmbeddingService:
         result = []
         for start in range(0, len(texts), 32):
             result.extend(self._request('embed_documents', texts[start:start + 32]))
+        return result
+
+    def embed_similarity(self, texts):
+        result = []
+        for start in range(0, len(texts), 32):
+            result.extend(self._request('embed_similarity', texts[start:start + 32]))
         return result
 
     def close(self):

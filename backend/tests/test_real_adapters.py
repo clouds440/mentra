@@ -14,7 +14,7 @@ from app.rag.qdrant_store import (
 
 class FakeEmbeddingService:
     dimension = 3
-    model_name = "BAAI/bge-small-en-v1.5"
+    model_name = "intfloat/multilingual-e5-small"
     model_version = "test-model-revision"
 
 

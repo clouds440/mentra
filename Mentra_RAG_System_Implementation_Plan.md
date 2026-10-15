@@ -18,7 +18,7 @@ Implementation decisions retain the requirements below while distinguishing the 
 
 | Existing foundation or previous assumption | Implementation decision |
 | --- | --- |
-| `app/rag/embeddings.py` provides synchronous local BGE inference with baked model identity and normalized vectors. | Reuse it. Add tokenizer budget/capability access and bounded execution; prevent silent truncation. |
+| `app/rag/embeddings.py` provides synchronous local multilingual E5 inference with baked model identity and normalized vectors. | Reuse it. Add tokenizer budget/capability access and bounded execution; prevent silent truncation. |
 | `app/rag/vector_store.py` currently exposes collection validation and close only. | Extend the existing protocol for typed chunk upsert, filtered query, and generation deletion. |
 | `app/rag/qdrant_store.py` uses remote URL/API-key configuration, one unnamed dense vector, and a reserved identity point. Compose has no Qdrant service. | Keep remote Qdrant as the deployment baseline. Local Qdrant is an isolated test option. Do not add an operational database service without a need. |
 | Qdrant validation rejects named vectors and requires an exact embedding identity. | Dense MVP keeps the existing collection shape. Named/sparse vectors and model changes require explicit collection migration, not an in-place configuration toggle. |
@@ -138,9 +138,9 @@ Prefer native text. Route OCR per page/region using measured extraction quality,
 
 Use deterministic heading/block/sentence segmentation before expensive semantic boundary models. Keep slides, code and tables meaningful, splitting oversized units with source-span mappings. Maintain original extraction plus normalization mapping; do not aggressively rewrite formulas or repair words without evidence.
 
-The current BGE small English baseline has a documented 512-token sequence length and 384-dimensional output. Read the actual baked tokenizer/model limit rather than hardcoding this into business logic. Start with a configurable target around 300 embedding tokens and a conservative ceiling around 450 including headings/special tokens, then evaluate. Small overlap may be useful for prose; do not blindly overlap slides/tables. Validate the exact embedding input before encode; oversized inputs are split or rejected instead of silently truncated.
+The current multilingual E5 small model has a documented 512-token sequence length and 384-dimensional output. Read the actual baked tokenizer/model limit rather than hardcoding this into business logic. Start with a configurable target around 300 embedding tokens and a conservative ceiling around 450 including headings/special tokens, then evaluate. Small overlap may be useful for prose; do not blindly overlap slides/tables. Validate the exact embedding input before encode; oversized inputs are split or rejected instead of silently truncated.
 
-Query limits and answer-context limits are separate: embedding token budget, candidate cap, reranker pair budget, and chat-model context budget must each be enforced. Preserve the existing BGE query instruction once, only for query encoding. Record language; expose the English baseline limitation and evaluate multilingual alternatives against a representative corpus before promising multilingual quality.
+Query limits and answer-context limits are separate: embedding token budget, candidate cap, reranker pair budget, and chat-model context budget must each be enforced. Centralize E5 query/passage prefixes and include them in tokenizer budgets. Use query prefixes on both sides for symmetric similarity. Record language and evaluate multilingual retrieval against a representative corpus before promising quality.
 
 Concept tagging is optional after baseline retrieval. Resolve candidates through Learner contracts without automatically registering canonical concepts or altering mastery. Unresolved labels remain noncanonical annotations and never become hard-filter IDs.
 
@@ -272,7 +272,7 @@ Repository evidence: `backend/app/rag/*`, `backend/app/main.py`, `backend/app/co
 
 Primary upstream references checked during preparation:
 
-- [BGE model card](https://huggingface.co/BAAI/bge-small-en-v1.5): model limits and query/document instruction behavior; supports the token-budget and English-baseline decisions.
+- [E5 model card](https://huggingface.co/intfloat/multilingual-e5-small): model limits and query/passage prefix behavior; supports the token-budget and multilingual model decisions.
 - [Qdrant Query API and hybrid retrieval](https://qdrant.tech/documentation/search/hybrid-queries/): staged retrieval/fusion capabilities; deployed server and pinned client compatibility still require execution tests.
 - [Qdrant payload indexing](https://qdrant.tech/documentation/manage-data/indexing/): indexed filter fields; choose deployment-compatible schema before data loading.
 - [Docling supported formats](https://github.com/docling-project/docling/blob/main/docs/usage/supported_formats.md) and [pipeline options](https://docling-project.github.io/docling/reference/pipeline_options/): format/OCR adapter spike inputs, not proof that Mentra's uninstalled parser stack works.

@@ -77,6 +77,14 @@ class QdrantVectorStore(VectorStore):
                 f"{self.collection_name!r}: {exc}"
             ) from exc
 
+    def reset_collection(self) -> None:
+        """Operator-only destructive reset of the configured derived vector index."""
+        client = self._get_client()
+        if client.collection_exists(self.collection_name):
+            client.delete_collection(collection_name=self.collection_name)
+        self._indexes_initialized = False
+        self.initialize_chunk_indexes()
+
     def validate_collection(self) -> None:
         client = self._get_client()
         try:

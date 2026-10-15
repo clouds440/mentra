@@ -16,7 +16,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
 RUN pip install --no-cache-dir -r requirements.txt
 
-ARG EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+ARG EMBEDDING_MODEL=intfloat/multilingual-e5-small
 ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
 COPY bake_embedding_model.py ./
 RUN python bake_embedding_model.py

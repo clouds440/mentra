@@ -48,6 +48,8 @@ class IngestionWorker:
                     self.stage(job, 'resuming')
                 else:
                     parsed = version.get('extracted_content')
+                    if parsed is None and job['request_hash'].startswith('embedding-reset:') and not self.service.storage.path(version['storage_key']).is_file():
+                        parsed = self.repository.retained_extraction(job['learner_id'], job['document_id'], version['id'])
                     if parsed is None:
                         parsed = self.service.parser.parse(self.service.storage.path(version['storage_key']), version['media_type'],
                             self.service.settings.rag_max_pages, self.service.settings.rag_parser_timeout)
@@ -132,8 +134,6 @@ def main():
     last_sweep = 0.0
     try:
         while not stopping:
-            from app.db.health import heartbeat
-            heartbeat(worker.repository.sessions, 'rag')
             if not worker.run_once():
                 time.sleep(1)
             if time.monotonic() - last_sweep > 60:

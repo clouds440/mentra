@@ -262,14 +262,20 @@ class RAGRepository:
             session.execute(jobs.insert().values(**job))
             return self._public_job(job)
 
-    def queue_rebuild(self, owner, run_id, config, dry_run=True):
+    def queue_rebuild(self, owner, run_id, config, dry_run=True, *, reset_embeddings=False):
         with self.sessions.begin() as session:
             session.execute(select(learner.c.id).where(learner.c.id == owner).with_for_update()).scalar_one()
-            rows = [dict(r) for r in session.execute(select(documents).where(documents.c.learner_id == owner,
-                documents.c.deleted_at.is_(None), documents.c.archived.is_(False), documents.c.active_generation_id.is_not(None))
+            scope = [documents.c.learner_id == owner, documents.c.deleted_at.is_(None)]
+            if not reset_embeddings:
+                scope += [documents.c.archived.is_(False), documents.c.active_generation_id.is_not(None)]
+            rows = [dict(r) for r in session.execute(select(documents).where(*scope)
                 .order_by(documents.c.id).with_for_update()).mappings()]
             if dry_run:
                 return dict(dry_run=True, ready_materials=len(rows), run_id=run_id)
+            if reset_embeddings:
+                session.execute(update(jobs).where(jobs.c.learner_id == owner, jobs.c.operation == 'INGEST',
+                    jobs.c.state.in_(['QUEUED','RUNNING','RETRY_WAIT'])).values(
+                        state='CANCELLED', lease_token=None, lease_until=None, updated_at=now()))
             if session.execute(select(jobs.c.id).where(jobs.c.learner_id == owner, jobs.c.operation == 'INGEST',
                 jobs.c.state.in_(['QUEUED','RUNNING','RETRY_WAIT']))).first():
                 raise AppError('RAG_INGESTION_BUSY', 'Wait for existing ingestion jobs before rebuilding.', 409)
@@ -280,15 +286,40 @@ class RAGRepository:
                 if old:
                     queued.append(old)
                     continue
-                version_id = session.execute(select(generations.c.version_id).where(generations.c.id == doc['active_generation_id'])).scalar_one()
+                if reset_embeddings:
+                    version_id = session.execute(select(versions.c.id).where(versions.c.document_id == doc['id'],
+                        versions.c.learner_id == owner).order_by(versions.c.created_at.desc(), versions.c.id).limit(1)).scalar_one()
+                else:
+                    version_id = session.execute(select(generations.c.version_id).where(generations.c.id == doc['active_generation_id'])).scalar_one()
                 generation_id = new_id()
                 session.execute(generations.insert().values(id=generation_id, learner_id=owner, document_id=doc['id'],
                     version_id=version_id, state='PENDING', config=config, warnings=[], chunk_count=0, created_at=now()))
                 revision = doc['revision'] + 1
                 session.execute(update(documents).where(documents.c.id == doc['id']).values(revision=revision, updated_at=now()))
-                job = self._job(owner, doc['id'], generation_id, 'INGEST', key, 'rebuild:' + run_id, revision)
+                job = self._job(owner, doc['id'], generation_id, 'INGEST', key, ('embedding-reset:' if reset_embeddings else 'rebuild:') + run_id, revision)
                 session.execute(jobs.insert().values(**job)); queued.append(job['id'])
             return dict(dry_run=False, run_id=run_id, job_ids=queued)
+
+    def retained_extraction(self, owner, document_id, version_id):
+        """Reset-only recovery from complete published text when a blob is missing."""
+        with self.sessions() as session:
+            generation = session.execute(select(generations).where(generations.c.learner_id == owner,
+                generations.c.document_id == document_id, generations.c.version_id == version_id,
+                generations.c.indexed_at.is_not(None)).order_by(generations.c.created_at.desc()).limit(1)).mappings().first()
+            if not generation:
+                return None
+            rows = list(session.execute(select(chunks).where(chunks.c.learner_id == owner,
+                chunks.c.generation_id == generation['id']).order_by(chunks.c.ordinal)).mappings())
+            if not rows or len(rows) != generation['chunk_count']:
+                return None
+            blocks = {}
+            for row in rows:
+                span = row['spans'][0]
+                block = blocks.setdefault(span['block'], dict(text='', heading_path=row['heading_path'],
+                    **{key: span[key] for key in ('page', 'slide', 'method', 'language') if key in span}))
+                block['text'] += row['content']
+            return dict(blocks=list(blocks.values()), warnings=[*generation['warnings'],
+                'Original source file is missing; this index was rebuilt from retained extracted text.'])
 
     @staticmethod
     def _public_job(row):
@@ -374,7 +405,7 @@ class RAGRepository:
             # Consistent lock order: document before job, matching delete/retry.
             doc = self._document(session, job['learner_id'], job['document_id'], lock=True, deleted=True)
             self._lease(session, job)
-            if doc['deleted_at'] or doc['archived'] or doc['revision'] != job['expected_revision']:
+            if doc['deleted_at'] or (doc['archived'] and not job['request_hash'].startswith('embedding-reset:')) or doc['revision'] != job['expected_revision']:
                 session.execute(update(jobs).where(jobs.c.id == job['id']).values(state='CANCELLED', lease_token=None))
                 session.execute(update(generations).where(generations.c.id == job['generation_id']).values(state='SUPERSEDED'))
                 return False

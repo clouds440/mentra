@@ -68,15 +68,8 @@ async def serve():
     stopping = asyncio.Event()
     for name in (signal.SIGTERM, signal.SIGINT): signal.signal(name, lambda *_:stopping.set())
     async def consume(consumer):
-        from time import monotonic
-        from app.db.health import heartbeat
-        from starlette.concurrency import run_in_threadpool
-        last_heartbeat = 0
         while not stopping.is_set():
             try:
-                if monotonic() - last_heartbeat > 30:
-                    await run_in_threadpool(heartbeat, get_session_factory(), 'assessment')
-                    last_heartbeat = monotonic()
                 await consumer.run_once()
             except Exception as error:
                 logging.getLogger('mentra').warning('Worker queue unavailable (%s)', type(error).__name__)

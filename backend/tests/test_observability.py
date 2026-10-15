@@ -41,6 +41,38 @@ class LoggingTests(unittest.IsolatedAsyncioTestCase):
     def events(self, name):
         return [x for x in self.capture.items if x['event'] == name]
 
+    async def test_successful_sql_is_debug_and_execution_steps_stay_info(self):
+        from sqlalchemy import create_engine, text
+        from app.db.timing import instrument_engine
+        engine = instrument_engine(create_engine('sqlite://'))
+        self.addCleanup(engine.dispose)
+        self.target.setLevel(logging.INFO)
+
+        @workflow_logger.operation(outcome='success')
+        def action():
+            with engine.connect() as connection:
+                connection.execute(text('SELECT 1'))
+
+        action()
+        self.assertFalse(self.events('db.query'))
+        self.assertEqual(self.events('step.completed')[0]['level'], 'INFO')
+        self.target.setLevel(logging.DEBUG)
+        with engine.connect() as connection:
+            connection.execute(text('SELECT 1'))
+        self.assertEqual(self.events('db.query')[0]['level'], 'DEBUG')
+
+    async def test_failed_sql_remains_visible_at_info(self):
+        from sqlalchemy import create_engine, text
+        from sqlalchemy.exc import SQLAlchemyError
+        from app.db.timing import instrument_engine
+        engine = instrument_engine(create_engine('sqlite://'))
+        self.addCleanup(engine.dispose)
+        self.target.setLevel(logging.INFO)
+        with self.assertRaises(SQLAlchemyError), engine.connect() as connection:
+            connection.execute(text('SELECT * FROM missing_table'))
+        self.assertEqual(self.events('db.query')[0]['outcome'], 'failed')
+        self.assertEqual(self.events('db.query')[0]['level'], 'WARNING')
+
     async def test_unknown_module_nested_async_and_identity(self):
         @workflow_logger.connect_module()
         class NewModule:

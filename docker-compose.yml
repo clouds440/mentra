@@ -27,7 +27,7 @@ x-runtime-settings: &runtime-settings
   PARSE_OWNER_CAPACITY: ${PARSE_OWNER_CAPACITY:-1}
 
 x-retrieval-settings: &retrieval-settings
-  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
   EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
   QDRANT_URL: ${QDRANT_URL:-}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-}
@@ -87,7 +87,7 @@ services:
     build:
       context: ./backend
       args:
-        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
         RAG_RERANKER_MODEL: ${RAG_RERANKER_MODEL:-}
         SPEECH_MODEL: ${SPEECH_MODEL:-base}
     container_name: mentra-backend
@@ -140,7 +140,7 @@ services:
       MEMORY_GOAL_DAYS: ${MEMORY_GOAL_DAYS:-30}
       MEMORY_FACT_DAYS: ${MEMORY_FACT_DAYS:-180}
       MEMORY_PREFERENCE_DAYS: ${MEMORY_PREFERENCE_DAYS:-365}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
       QDRANT_URL: ${QDRANT_URL:-}
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
@@ -190,7 +190,7 @@ services:
       LOG_HEALTH_REQUESTS: ${LOG_HEALTH_REQUESTS:-false}
       LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
       QDRANT_URL: ${QDRANT_URL:-}
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}

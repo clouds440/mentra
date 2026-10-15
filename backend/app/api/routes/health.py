@@ -21,10 +21,8 @@ def readiness_check(request: Request) -> JSONResponse:
     try:
         if probe is None:
             raise RuntimeError('Not initialized')
-        worker_status = probe()
+        probe()
         checks['database'] = {'status': 'ok'}
-        checks['workers'] = {'status': 'ok' if all(value == 'ok' for value in worker_status.values()) else 'error', 'roles': worker_status}
-        is_ready = all(value == 'ok' for value in worker_status.values())
     except Exception:
         checks['database'] = {'status': 'error', 'message': 'Database readiness is unavailable.'}
         is_ready = False

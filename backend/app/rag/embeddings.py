@@ -7,8 +7,16 @@ from typing import Any, Protocol, runtime_checkable
 from app.core.config import Settings, settings
 
 EMBEDDING_CACHE_DIR = Path("/opt/mentra/models/embedding")
-QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+QUERY_INSTRUCTION = "query: "
+PASSAGE_INSTRUCTION = "passage: "
 DOCUMENT_BATCH_SIZE = 32
+
+
+def prefixed_text(text: str, prefix: str) -> str:
+    """Apply exactly one E5 role, including when handed already-prefixed text."""
+    while text.startswith((QUERY_INSTRUCTION, PASSAGE_INSTRUCTION)):
+        text = text.split(": ", 1)[1]
+    return prefix + text
 
 
 class EmbeddingModelError(RuntimeError):
@@ -36,6 +44,8 @@ class EmbeddingService(Protocol):
     def embed_query(self, text: str) -> list[float]: ...
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
+
+    def embed_similarity(self, texts: list[str]) -> list[list[float]]: ...
 
 
 from app.core.logging import workflow_logger
@@ -123,25 +133,32 @@ class SentenceTransformerEmbeddingService:
         return self._model_version
 
     def embed_query(self, text: str) -> list[float]:
-        return self._encode([f"{QUERY_INSTRUCTION}{text}"])[0]
+        return self._encode([prefixed_text(text, QUERY_INSTRUCTION)])[0]
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        return self._encode(texts)
+        return self._encode([prefixed_text(text, PASSAGE_INSTRUCTION) for text in texts])
+
+    def embed_similarity(self, texts: list[str]) -> list[list[float]]:
+        """Symmetric similarity uses the query role on both sides, per E5."""
+        return self._encode([prefixed_text(text, QUERY_INSTRUCTION) for text in texts]) if texts else []
 
     @property
     def max_tokens(self) -> int:
         return int(self._model.max_seq_length)
 
     def token_count(self, text: str) -> int:
+        return self._token_count(prefixed_text(text, PASSAGE_INSTRUCTION))
+
+    def _token_count(self, text: str) -> int:
         return len(self._model.tokenizer.encode(text, add_special_tokens=True, truncation=False))
 
     def query_token_count(self, text: str) -> int:
-        return self.token_count(QUERY_INSTRUCTION + text)
+        return self._token_count(prefixed_text(text, QUERY_INSTRUCTION))
 
     def _encode(self, texts: Sequence[str]) -> list[list[float]]:
-        if hasattr(self._model, 'tokenizer') and any(self.token_count(text) > self.max_tokens for text in texts):
+        if hasattr(self._model, 'tokenizer') and any(self._token_count(text) > self.max_tokens for text in texts):
             raise EmbeddingModelError('Embedding input exceeds the model token budget.')
         embeddings = self._model.encode(
             list(texts),

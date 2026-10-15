@@ -590,23 +590,11 @@ Both IDs are retained only in this verification history and are excluded from th
 
 ### Reproduction and Artifacts
 
-Diagnostic source: `backend/scripts/verify_backend_audit.py`. It intentionally asserts current failures/safeguards; a passing diagnostic run does not mean those failures have been fixed. The F38 probe explicitly uses a non-UTC test connection.
+The historical diagnostic script intentionally asserted pre-fix failures/safeguards at audit revision `9883ce7`; a passing diagnostic run did not mean those failures were fixed. The F38 probe used a non-UTC test connection. The final diagnostic rerun completed all 22 probes in 19.928 seconds with no failures/errors/skips.
 
-Local generated evidence is retained under the ignored `.cache/backend-audit/` directory: `baseline-py312.log`, `probes-py312.log`, `probes.json`, `replay-failures.log`, and `replay-utc.log`. The temporary Python environment and portable PostgreSQL files are also isolated there. This directory contains only audit-generated runtime/test artifacts, not application database backups. The disposable PostgreSQL server was stopped after verification. The final diagnostic rerun completed all 22 probes in 19.928 seconds with no failures/errors/skips.
+The obsolete probe script and ignored audit artifacts were removed during repository cleanup on 2026-10-15. These artifacts included logs, a temporary Python environment, and a stopped disposable PostgreSQL installation containing audit-generated data only, not application backups. The findings and verification history remain in this document.
 
-```powershell
-& .cache/backend-audit/portable-postgres/pgsql/bin/pg_ctl.exe -D .cache/backend-audit/pgdata -l .cache/backend-audit/postgres.log -o '-h 127.0.0.1 -p 55439' -w start
-& .cache/backend-audit/portable-postgres/pgsql/bin/psql.exe -h 127.0.0.1 -p 55439 -U audit -d mentra_audit -c "ALTER DATABASE mentra_audit SET timezone TO 'Asia/Karachi'"
-$env:PYTHONPATH = 'backend'
-$env:PYTHONDONTWRITEBYTECODE = '1'
-$env:TEST_DATABASE_URL = 'postgresql://audit@127.0.0.1:55439/mentra_audit'
-$env:LOG_LEVEL = 'ERROR'
-.\.cache\backend-audit\venv\Scripts\python.exe -m unittest discover -s backend/tests -v
-.\.cache\backend-audit\venv\Scripts\python.exe backend/scripts/verify_backend_audit.py
-& .cache/backend-audit/portable-postgres/pgsql/bin/pg_ctl.exe -D .cache/backend-audit/pgdata -m fast -w stop
-```
-
-These commands require the disposable server to be running. Never substitute `DATABASE_URL` or an application/Supabase database for this dedicated target. Completed checks establish a baseline and refine the plan; post-fix regression and production-like load/capability tests still gate implementation acceptance.
+For current regression acceptance, use `backend/tests` with an explicit disposable `TEST_DATABASE_URL` and `backend/scripts/verify_runtime_hardening.py` for image capabilities. Never substitute an application/Supabase database for the dedicated test target. Historical baseline checks do not replace post-fix acceptance tests.
 
 ## Research References
 

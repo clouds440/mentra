@@ -22,8 +22,6 @@ def main():
     for name in (signal.SIGTERM, signal.SIGINT): signal.signal(name, lambda *_: stopping.set())
     while not stopping.is_set():
         try:
-            from app.db.health import heartbeat
-            heartbeat(sessions, 'events')
             from app.core.logging import workflow_logger
             with workflow_logger.workflow('events.reminder_batch', quiet=True) as execution:
                 count = repository.deliver_reminders()

@@ -48,7 +48,7 @@ The supported settings in `.env.example` are:
 | `AI_TEMPERATURE` | `0.2` | Chat model temperature |
 | `AI_TIMEOUT` | `30` | Chat request timeout in seconds |
 | `AI_MAX_RETRIES` | `2` | Chat request retry limit |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Local model baked into the backend image |
+| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Local model baked into the backend image |
 | `EMBEDDING_DEVICE` | `cpu` | Local embedding inference device |
 | `QDRANT_URL` | *(required)* | Remote Qdrant deployment URL |
 | `QDRANT_API_KEY` | *(required)* | Qdrant Cloud secret |
@@ -60,7 +60,7 @@ The frontend port is currently fixed at host port `5173` (container port `80`). 
 
 To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY` to the compatible provider's values. DeepSeek and Groq use this same adapter; no application-code change is required. AI configuration is validated when a model is requested and reported by readiness, without a paid readiness request. Missing credentials do not prevent lightweight API startup. Qdrant is connected and its collection is initialized or validated by the readiness check, so a Qdrant outage does not prevent the lightweight liveness endpoint from responding.
 
-Embeddings are independent of the chat provider. `BAAI/bge-small-en-v1.5` runs locally in the backend container; it is downloaded while building the image, uses CPU by default, and does not call an external embedding API. Changing `EMBEDDING_MODEL` requires rebuilding the backend image and reindexing the Qdrant collection. Mentra checks the collection's dimension, distance metric, model, and resolved model revision; it will not recreate or mix incompatible indexes.
+Embeddings are independent of the chat provider. `intfloat/multilingual-e5-small` runs locally in the backend container; it is downloaded while building the image, uses CPU by default, and does not call an external embedding API. Changing `EMBEDDING_MODEL` requires rebuilding the backend image and reindexing the Qdrant collection. Mentra checks the collection's dimension, distance metric, model, and resolved model revision; it will not mix incompatible indexes. When replacing BGE with E5, stop API/ingestion/assessment services and run the explicit [vector reset procedure](../backend/app/rag/README.md#e5-reset-and-verification). Matching 384-dimensional shapes do not make the two embedding spaces compatible.
 
 ## 4. Start Mentra
 

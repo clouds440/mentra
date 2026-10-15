@@ -40,21 +40,21 @@ class EmbeddingServiceTests(unittest.TestCase):
         (self.model_path / "model-metadata.json").write_text(
             json.dumps(
                 {
-                    "model_name": "BAAI/bge-small-en-v1.5",
+                    "model_name": "intfloat/multilingual-e5-small",
                     "model_version": "test-revision",
                 }
             ),
             encoding="utf-8",
         )
         self.settings = Settings(
-            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_model="intfloat/multilingual-e5-small",
             embedding_device="cpu",
         )
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_query_uses_bge_instruction_and_normalized_vectors(self) -> None:
+    def test_query_uses_e5_instruction_and_normalized_vectors(self) -> None:
         model = FakeSentenceTransformer()
         service = SentenceTransformerEmbeddingService(
             self.settings,
@@ -71,7 +71,7 @@ class EmbeddingServiceTests(unittest.TestCase):
         )
         self.assertTrue(model.calls[0][1]["normalize_embeddings"])
         self.assertEqual(service.dimension, 2)
-        self.assertEqual(service.model_name, "BAAI/bge-small-en-v1.5")
+        self.assertEqual(service.model_name, "intfloat/multilingual-e5-small")
         self.assertEqual(service.model_version, "test-revision")
 
     def test_documents_are_encoded_in_a_configured_batch(self) -> None:
@@ -86,9 +86,35 @@ class EmbeddingServiceTests(unittest.TestCase):
         vectors = service.embed_documents(["first", "second", "third"])
 
         self.assertEqual(vectors, [[0.6, 0.8], [0.6, 0.8], [0.6, 0.8]])
-        self.assertEqual(model.calls[0][0], ["first", "second", "third"])
+        self.assertEqual(model.calls[0][0], ["passage: first", "passage: second", "passage: third"])
         self.assertEqual(model.calls[0][1]["batch_size"], 2)
         self.assertTrue(model.calls[0][1]["normalize_embeddings"])
+
+    def test_roles_are_idempotent_for_all_supported_languages(self):
+        model = FakeSentenceTransformer()
+        service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path,
+            model_loader=lambda *_a, **_k: model)
+        for text in ('How do plants grow?', 'پودے کیسے بڑھتے ہیں؟', 'كيف تنمو النباتات؟'):
+            service.embed_query('passage: query: query: ' + text)
+            service.embed_documents(['query: passage: passage: ' + text])
+            service.embed_similarity([text, 'passage: query: ' + text])
+            self.assertEqual(model.calls[-3][0], ['query: ' + text])
+            self.assertEqual(model.calls[-2][0], ['passage: ' + text])
+            self.assertEqual(model.calls[-1][0], ['query: ' + text] * 2)
+
+    def test_token_budget_includes_exactly_one_role_prefix(self):
+        from types import SimpleNamespace
+        model = FakeSentenceTransformer()
+        model.max_seq_length = 16
+        model.tokenizer = SimpleNamespace(encode=lambda text, **_kw: list(text))
+        service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path,
+            model_loader=lambda *_a, **_k: model)
+        self.assertEqual(service.token_count('passage: abc'), len('passage: abc'))
+        self.assertEqual(service.query_token_count('query: abc'), len('query: abc'))
+        service.embed_documents(['1234567'])
+        with self.assertRaises(EmbeddingModelError):
+            service.embed_documents(['12345678'])
+        self.assertEqual(model.calls[-1][0], ['passage: 1234567'])
 
     def test_empty_documents_do_not_call_model(self) -> None:
         model = FakeSentenceTransformer()

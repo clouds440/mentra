@@ -394,6 +394,49 @@ class WorkflowTests(unittest.TestCase):
         replay = self.repo.queue_rebuild(self.owner, run_id, self.service.config(), dry_run=False)
         self.assertEqual(queued['job_ids'], replay['job_ids'])
 
+    def test_embedding_reset_rebuilds_archived_and_pending_sources_preserving_records(self):
+        first = self.ready()
+        citation = self.search().chunks[0].source
+        doc = self.repo.get_document(self.owner, first['document_id'])
+        self.service.update_document(self.owner, doc['id'], DocumentUpdate(expected_revision=doc['revision'], archived=True))
+        pending = self.upload(b'A new decorators document awaiting ingestion.', key='pending-reset')
+        self.embedding.model_name = 'intfloat/multilingual-e5-small'
+        with self.assertRaises(VectorStoreError):
+            self.vector.ensure_collection()
+        run_id = str(__import__('uuid').uuid4())
+        dry = self.repo.queue_rebuild(self.owner, run_id, self.service.config(), reset_embeddings=True)
+        self.assertEqual(dry['ready_materials'], 2)
+        self.assertEqual(self.repo.get_job(self.owner, pending['job_id'])['state'], 'QUEUED')
+        self.vector.reset_collection()
+        queued = self.repo.queue_rebuild(self.owner, run_id, self.service.config(), dry_run=False, reset_embeddings=True)
+        self.assertEqual(self.repo.get_job(self.owner, pending['job_id'])['state'], 'CANCELLED')
+        for job_id in queued['job_ids']:
+            self.assertTrue(self.worker.run_once())
+        for job_id in queued['job_ids']:
+            self.assertEqual(self.repo.get_job(self.owner, job_id)['state'], 'SUCCEEDED')
+        archived = self.repo.get_document(self.owner, doc['id'])
+        self.assertTrue(archived['archived'])
+        self.assertNotEqual(archived['active_generation_id'], first['generation_id'])
+        self.assertEqual(self.service.get_chunk(self.owner, citation.chunk_id, include_archived=True)['generation_id'], first['generation_id'])
+        self.assertTrue(self.service.source(self.owner, citation.document_id, citation.version_id, include_archived=True)[0].is_file())
+        self.assertEqual(self.vector.count_chunks(self.owner, first['generation_id']), 0)
+        self.assertTrue(self.search(mode='SOURCE_SPECIFIC', document_ids=[doc['id']], include_archived=True).chunks)
+
+    def test_embedding_reset_recovers_retained_text_when_original_file_is_missing(self):
+        first = self.ready()
+        source = self.search().chunks[0].source
+        self.service.source(self.owner, source.document_id, source.version_id)[0].unlink()
+        self.embedding.model_name = 'intfloat/multilingual-e5-small'
+        self.vector.reset_collection()
+        queued = self.repo.queue_rebuild(self.owner, str(__import__('uuid').uuid4()),
+            self.service.config(), dry_run=False, reset_embeddings=True)
+        self.assertTrue(self.worker.run_once())
+        self.assertEqual(self.repo.get_job(self.owner, queued['job_ids'][0])['state'], 'SUCCEEDED')
+        result = self.search()
+        self.assertIn('decorators', result.chunks[0].content)
+        self.assertTrue(any('Original source file is missing' in warning for warning in result.chunks[0].source.warnings))
+        self.assertEqual(self.service.get_chunk(self.owner, source.chunk_id)['generation_id'], first['generation_id'])
+
     def test_lexical_questions_match_identifiers_without_every_question_word(self):
         accepted = self.ready()
         ids = self.repo.lexical(self.owner, [accepted['generation_id']], 'What do decorators do?', 10)

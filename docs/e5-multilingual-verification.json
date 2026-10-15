@@ -1,0 +1,198 @@
+{
+  "model": "intfloat/multilingual-e5-small",
+  "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "dimension": 384,
+  "cases": 27,
+  "passed": 27,
+  "results": [
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8956
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8615
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8416
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8414
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8343
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8043
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.9096
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8515
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8343
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8349
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8724
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8361
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8307
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8538
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8303
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8757
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8925
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8423
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8082
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.8462
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 0,
+      "actual": 0,
+      "score": 0.875
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.7757
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8391
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 1,
+      "actual": 1,
+      "score": 0.8603
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8008
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8495
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 2,
+      "actual": 2,
+      "score": 0.8716
+    }
+  ]
+}

@@ -90,7 +90,7 @@ class FakeQdrantClient:
 
 class FakeEmbeddingService:
     dimension = 3
-    model_name = "BAAI/bge-small-en-v1.5"
+    model_name = "intfloat/multilingual-e5-small"
     model_version = "resolved-revision"
 
 
@@ -106,6 +106,24 @@ def settings(**overrides: object) -> Settings:
 
 
 class QdrantStoreTests(unittest.TestCase):
+    def test_same_dimension_bge_identity_is_rejected(self):
+        client = FakeQdrantClient(exists=True, identity=dict(model_name='BAAI/bge-small-en-v1.5',
+            model_version='old', dimension=FakeEmbeddingService.dimension))
+        store = QdrantVectorStore(settings(), FakeEmbeddingService(), client)
+        with self.assertRaises(IncompatibleCollectionError):
+            store.ensure_collection()
+
+    def test_operator_reset_drops_vectors_and_rewrites_identity(self):
+        from unittest.mock import Mock
+        client = FakeQdrantClient(exists=True, identity=dict(model_name='old'))
+        client.delete_collection = Mock(side_effect=lambda **_kw: setattr(client, 'exists', False))
+        store = QdrantVectorStore(settings(), FakeEmbeddingService(), client)
+        with patch.object(store, 'initialize_chunk_indexes', side_effect=store.ensure_collection) as indexes:
+            store.reset_collection()
+        client.delete_collection.assert_called_once_with(collection_name=store.collection_name)
+        self.assertEqual(client.identity['model_name'], 'intfloat/multilingual-e5-small')
+        indexes.assert_called_once()
+
     def setUp(self) -> None:
         models = types.SimpleNamespace(
             Distance=FakeDistance,

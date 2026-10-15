@@ -23,7 +23,7 @@ notifications and settings; browser caches accelerate navigation and synchroniza
   Library. Vision-capable chat models receive images with the question; local OCR
   is a fallback. CPU Whisper voice transcription fills the editable composer.
 - **Library and RAG:** durable ingestion, native document reading and local OCR,
-  BGE embeddings, hybrid dense/lexical retrieval, optional reranking, provenance
+  multilingual E5 embeddings, hybrid dense/lexical retrieval, optional reranking, provenance
   and source lifecycle controls. Prefetch warms caches; passages reach the model
   only after a requested retrieval tool call. Selected materials are cleared after
   a successful response.

@@ -15,7 +15,7 @@ def fake_worker(connection, config):
             operation, argument = message
             if argument == 'hang':
                 time.sleep(60)
-            value = [[1., 0., 0.] for _ in argument] if operation == 'embed_documents' else [1., 0., 0.] if operation == 'embed_query' else len(argument)
+            value = [[1., 0., 0.] for _ in argument] if operation in ('embed_documents', 'embed_similarity') else [1., 0., 0.] if operation == 'embed_query' else len(argument)
             connection.send(('ok', value))
     except (EOFError, BrokenPipeError):
         pass
@@ -34,6 +34,8 @@ class EmbeddingProcessTests(unittest.TestCase):
         self.assertIsNone(service._process)
         self.assertEqual(service.embed_query('query'), [1., 0., 0.])
         self.assertEqual(len(service.embed_documents(['note'] * 70)), 70)
+        self.assertEqual(len(service.embed_similarity(['note'] * 70)), 70)
+        self.assertEqual(service.embed_similarity([]), [])
         self.assertEqual(service.dimension, 3)
         service.close()
         with self.assertRaises(EmbeddingModelError):
