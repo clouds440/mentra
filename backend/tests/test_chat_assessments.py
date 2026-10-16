@@ -254,6 +254,8 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.service.workflows.llm,'ainvoke',side_effect=capture):
             await tool.ainvoke(dict(draft_id=card['id'],instructions=scope['current_answer_text']))
         self.assertEqual([len(payload['original_questions']) for payload in payloads],[3,3,3,1])
-        self.assertTrue(all(len(payload['original_overview'])==10 for payload in payloads))
-        self.assertTrue(all(payload['original_overview'][0]['truncated'] for payload in payloads))
+        self.assertEqual([len(payload['original_overview']) for payload in payloads], [7,7,7,9])
+        for payload in payloads:
+            current = set(range(payload['question_offset'] + 1, payload['question_offset'] + payload['count'] + 1))
+            self.assertTrue(all(item['truncated'] and item['number'] not in current for item in payload['original_overview']))
         self.assertNotIn('model_answer',str(payloads))

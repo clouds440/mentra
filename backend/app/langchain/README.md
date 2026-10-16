@@ -57,3 +57,27 @@ the Events facade before answering; it does not authorize unsolicited practice.
 Model/tool calls participate in correlated metadata-only traces. Logs record
 timing, parameter presence/types/counts and sanitized outcomes, not query or
 response bodies. See [logging](../../../docs/backend-logging.md).
+
+## Prompt size and provider caching
+
+The universal chat contract stays in `prompts/chat.py`. Detailed assessment routing
+uses `chat_assessment`, activated with bound/discovered assessment tools or existing
+assessment context and retained through finalization. The coordinator includes the
+same fragments when checking schema admission and constructing provider requests.
+
+Assessment content generation uses `GeneratedAssessmentBatch`; public assessments
+still use `GeneratedAssessment` with server-owned paper structure. Shared request,
+learner and source data precedes changing batch data. Overviews cover only other
+batches; full current-batch original questions and grounding excerpts are retained.
+
+DeepSeek's automatic prefix cache still requires sending instructions/context.
+Cache-aware adapter normalization preserves provider cache counters for streaming
+and buffered calls. `model.usage` records actual input/output/total counts when
+available, `cached_tokens`, `uncached_tokens`, and `token_estimate_method`.
+`cl100k_base` is a local estimate; `utf8_byte_bound` means the verified vocabulary
+was unavailable. Neither should be confused with actual provider usage. Docker
+bakes its vocabulary; native runs can set `TIKTOKEN_CACHE_DIR` to the existing
+`backend/.cache/tokenizers` folder when available. No request-time download occurs.
+
+See [prompt efficiency and verification](../../../docs/prompt-efficiency.md) for
+measurements, live synthetic comparisons, caching semantics and limitations.

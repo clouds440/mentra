@@ -136,7 +136,7 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         original = self.factory.with_structured_output
         def fresh(schema, **kwargs):
             model = original(schema, **kwargs)
-            if schema.__name__ != 'GeneratedAssessment': return model
+            if schema.__name__ not in ('GeneratedAssessment', 'GeneratedAssessmentBatch'): return model
             async def invoke(messages):
                 result = await model.ainvoke(messages)
                 for question in result.questions:
@@ -172,7 +172,7 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         offsets, fail = [], [True]
         def scripted(schema, **kwargs):
             model = original(schema, **kwargs)
-            if schema.__name__ != 'GeneratedAssessment': return model
+            if schema.__name__ not in ('GeneratedAssessment', 'GeneratedAssessmentBatch'): return model
             async def invoke(messages):
                 payload = json.loads(messages[-1].content); offset = payload['question_offset']; offsets.append(offset)
                 if offset == 6 and fail[0]: raise RuntimeError('interrupted')

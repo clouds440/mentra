@@ -48,7 +48,7 @@ class HistoryChatFactory(TestChatFactory):
                         mode = 'multiple_choice' if kind=='multiple_select' else 'single_choice' if kind in ('mcq','true_false') else 'text'
                         questions.append(dict(number=i+1, context='Use this shared case.' if paper else '', parts=[dict(path=[part] if paper else [], question_type=kind, answer_mode=mode, marks=marks, brief='A useful question') for part in (['a','b'] if paper else [''])]))
                     return schema(title='Designed assessment', duration_minutes=data.get('duration_minutes') or 60, instructions='Answer all parts.', sections=[dict(title='Section A', question_count=count, questions=questions)])
-                if schema.__name__ == 'GeneratedAssessment':
+                if schema.__name__ in ('GeneratedAssessment', 'GeneratedAssessmentBatch'):
                     revised = bool(data.get('revision_instructions'))
                     questions = []
                     for index in range(data['count']):

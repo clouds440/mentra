@@ -18,17 +18,17 @@ class SearchStudy(BaseModel):
 
 class GeneratePractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    context_id: str | None = Field(default=None, min_length=1, max_length=100, description='Existing owned learning context if relevant. Omit when none exists; the assessment workflow creates or reuses a topic context.')
-    topic: str | None = Field(default=None, min_length=1, max_length=200, description='Use the learner-specified topic when present. Omit for a general assessment request: the engine reads learner tools and chooses a useful topic.')
-    concept_names: list[str] = Field(default_factory=list, description='Concrete practice concepts inferred from the requested topic, preferably subject-qualified. Omit to let the assessment model select suitable concepts. Prior concept IDs or confirmation are not required.')
-    count: int | None = Field(default=None, ge=1, description='Honor an explicit main-question count. Otherwise omit: the assessment designer decides a suitable length from the exact learner request. Parts do not count as main questions.')
+    context_id: str | None = Field(default=None, min_length=1, max_length=100, description='Owned context if relevant; otherwise omit for automatic topic context.')
+    topic: str | None = Field(default=None, min_length=1, max_length=200, description='Explicit/current topic; omit for engine selection from learner context.')
+    concept_names: list[str] = Field(default_factory=list, description='Subject-qualified concepts, or omit for automatic selection/resolution.')
+    count: int | None = Field(default=None, ge=1, description='Explicit MAIN-question count; parts are separate. Omit for request-based length.')
     grounded: bool = False
-    question_format: QuestionFormat = Field(default='auto', description='Honor any explicit type; otherwise omit for the assessment engine to decide from the request and learner data. Supports mixed, mcq, true_false, short_answer, written, custom types and mock_paper. Interactive does not mean MCQ-only.')
+    question_format: QuestionFormat = Field(default='auto', description='Explicit type, or omit for automatic choice: mixed, mcq, true_false, short_answer, written, mock_paper or custom. Interactive supports varied types.')
     level: str | None = Field(default=None, max_length=200, description='Explicit academic level, e.g. Grade 7, GCSE or undergraduate. Do not infer a school grade from ability scores.')
     result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
     duration_minutes: int | None = Field(default=None, ge=1)
     total_marks: float | None = Field(default=None, gt=0)
-    paper_sections: list[PaperSection] = Field(default_factory=list, description='Optional explicitly requested exam structure. Sections can contain questions with shared context and leaf parts whose paths include a, a.ii etc. Omit to let the designer plan the paper from the exact learner request.')
+    paper_sections: list[PaperSection] = Field(default_factory=list, description='Explicit exam sections with parent questions/shared context and leaf parts; otherwise omit for design.')
 
 
 class AssessmentStatus(BaseModel):

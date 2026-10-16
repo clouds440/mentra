@@ -102,5 +102,7 @@ def log_usage(result, source, estimated_input):
     details = usage.get('input_token_details') or {}
     if isinstance(details.get('cache_read'), int):
         counts['cached_tokens'] = details['cache_read']
+        if isinstance(usage.get('input_tokens'), int) and 0 <= details['cache_read'] <= usage['input_tokens']:
+            counts['uncached_tokens'] = usage['input_tokens'] - details['cache_read']
     workflow_logger.event('model.usage', prompt_source=source.value, estimated_input_tokens=estimated_input,
-                          usage_available=bool(counts), **counts)
+                          usage_available=bool(counts), token_estimate_method='cl100k_base' if _encoding() is not None else 'utf8_byte_bound', **counts)

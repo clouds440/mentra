@@ -58,7 +58,7 @@ class RecoveryEngineTests(unittest.IsolatedAsyncioTestCase):
         offsets=[]; active=[0]; peak=[0]
         def capture(schema,**kwargs):
             model=original(schema,**kwargs)
-            if schema.__name__!='GeneratedAssessment': return model
+            if schema.__name__ not in ('GeneratedAssessment', 'GeneratedAssessmentBatch'): return model
             async def invoke(messages):
                 offsets.append(json.loads(messages[-1].content)['question_offset'])
                 active[0]+=1; peak[0]=max(peak[0],active[0])
@@ -77,7 +77,7 @@ class RecoveryEngineTests(unittest.IsolatedAsyncioTestCase):
         original=self.factory.with_structured_output; calls=[]
         def capture(schema,**kwargs):
             model=original(schema,**kwargs)
-            if schema.__name__!='GeneratedAssessment': return model
+            if schema.__name__ not in ('GeneratedAssessment', 'GeneratedAssessmentBatch'): return model
             async def invoke(messages):
                 calls.append(json.loads(messages[-1].content)['count'])
                 return await model.ainvoke(messages)

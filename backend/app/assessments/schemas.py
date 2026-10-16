@@ -186,9 +186,13 @@ class GeneratedQuestion(Contract):
     rubric: str = Field(min_length=1)
     source_tokens: list[str] = Field(default_factory=list, max_length=5)
 
-class GeneratedAssessment(Contract):
+class GeneratedAssessmentBatch(Contract):
+    """Internal content output; validated paper structure stays server-owned."""
     title: str = Field(min_length=1, max_length=200)
     questions: list[GeneratedQuestion] = Field(min_length=1)
+
+
+class GeneratedAssessment(GeneratedAssessmentBatch):
     paper: PaperInfo | None = None
 
 

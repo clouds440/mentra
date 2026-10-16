@@ -138,6 +138,7 @@ Vision and Speech capabilities keep local processing independent of the LLM.
 | [Web search/research](docs/web-search.md), [voice](docs/voice-input.md) | Provider tools and CPU transcription |
 | [RAG](docs/rag.md), [Documents](backend/app/documents/README.md), [Vision](backend/app/vision/README.md) | Source processing and retrieval |
 | [LangChain](backend/app/langchain/README.md), [logging](docs/backend-logging.md) | Model/tool orchestration and diagnostics |
+| [Prompt efficiency](docs/prompt-efficiency.md) | Prompt sizes, provider caching and validation evidence |
 | [Backend standards](backend/standards.md), [frontend standards](frontend/standards.md) | Contributor conventions |
 
 Implementation plans and dated verification reports preserve design/rollout

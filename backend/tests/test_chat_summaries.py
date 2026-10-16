@@ -300,7 +300,12 @@ class SummaryTests(unittest.TestCase):
         asyncio.run(tool_reply(llm, [HumanMessage(id=identifier, content='Make this button accept a title prop')],
             None, self.owner, scope, (), {}))
         context = llm.ainvoke_messages.call_args.kwargs['system_context']
-        self.assertIn('Do not recap or mention unrelated past topics', context)
+        import json
+        from app.langchain.prompts import get_system_prompt
+        instructions = ' '.join(get_system_prompt(PromptSource.CHAT).split())
+        self.assertIn('Do not reopen resolved topics or repeat unrelated limitations.', instructions)
+        self.assertIn('Summaries cannot support memory writes or assessment grading.', instructions)
+        self.assertNotIn('summary_usage', json.loads(context))
         self.assertIn(historical, context)
         self.assertNotIn(historical, scope['visible_ids'])
         self.assertNotIn(historical, scope['evidence_ids'])

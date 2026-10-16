@@ -1,6 +1,6 @@
 from uuid import uuid4
 from app.core.exceptions import AppError
-from app.assessments.schemas import GeneratedAssessment, GradedAssessment, AssessmentTargets
+from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatch, GradedAssessment, AssessmentTargets
 from app.learner.schemas import EvidenceSubmissionRequest, LearnerContextRequest
 from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
@@ -103,25 +103,22 @@ class AssessmentWorkflows:
         batch_size=(3 if long_revision else 6) if split else len(question_plan)
         workflow_logger.event('assessment.generation_plan', parts=len(question_plan), batch_size=batch_size,
             concurrent_batches=min(2,(len(question_plan)+batch_size-1)//batch_size))
+        from .assessment_payloads import generation_payload
+        shared_payload = dict(topic=request.topic, question_format=request.question_format,
+            instructions=request.instructions, purpose=request.purpose, targets=targets,
+            recommendations=[item.model_dump(mode='json', exclude_none=True) for item in recommendations if item.concept_id in concepts],
+            verification=[item.model_dump(mode='json', exclude_none=True) for item in verification if item.concept_id in concepts],
+            sources=prompt_sources, profile=profile_context.model_dump(mode='json', exclude_none=True) if profile_context else None,
+            learner_context=learner_context.model_dump(mode='json', exclude_none=True), level=request.level, result_style=request.result_style,
+            paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
+                sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None,
+            **(dict(revision_instructions=request.revision_instructions) if revision else {}))
         async def generate_batch(offset, prior):
             batch_plan = question_plan[offset:offset+batch_size]
             batch_count = len(batch_plan)
             generated = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GENERATION,
-            dict(topic=request.topic, question_format=request.question_format, question_plan=batch_plan,
-                paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
-                    sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None, instructions=request.instructions,
-                count=batch_count, question_offset=offset, purpose=request.purpose, targets=targets,
-                assessment_overview=[dict(number=item.get('number',i+1),question_type=item['question_type'],brief=item.get('brief','')[:200]) for i,item in enumerate(question_plan)],
-                recommendations=[item.model_dump(mode='json') for item in recommendations if item.concept_id in concepts],
-                verification=[item.model_dump(mode='json') for item in verification if item.concept_id in concepts], sources=prompt_sources,
-                profile=profile_context.model_dump(mode='json') if profile_context else None,
-                learner_context=learner_context.model_dump(mode='json'), level=request.level, result_style=request.result_style,
-                previous_prompts=[question.prompt[:250] for question in prior],
-                revision_instructions=request.revision_instructions,
-                original_overview=[dict(number=index, excerpt=q['prompt'][:160], truncated=len(q['prompt'])>160)
-                    for index,q in enumerate(revision['questions'],1)] if revision else None,
-                original_questions=[dict(prompt=q['prompt'], marks=q['marks'], difficulty=q['difficulty'], concept_ids=q['concept_ids'], options=q.get('options', []))
-                    for q in revision['questions'][offset:offset+batch_count]] if revision else None), output_schema=GeneratedAssessment,
+            generation_payload(shared=shared_payload, plan=question_plan, offset=offset,
+                batch_size=batch_size, prior=prior, revision=revision), output_schema=GeneratedAssessmentBatch,
                 maximum_attempts=1 if batch_count>6 else 2,
                 validate=lambda result: validate_questions(result, count=batch_count,
                     question_format=request.question_format, concepts=None,

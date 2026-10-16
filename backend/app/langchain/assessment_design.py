@@ -8,6 +8,9 @@ from .generation_recovery import invoke_generated, GenerationMismatch
 async def design_assessment(llm, request, sources, profile, original=None, learner_context=None):
     def validate(result):
         result.sections = limit_sections(result.sections)
+        for section in result.sections:
+            if section.questions:
+                section.part_marks = []  # Explicit leaves already carry all marks.
         if request.result_style != 'marks' and request.total_marks is None:
             for section in result.sections:
                 if not section.questions: section.part_marks = [1 for _ in section.part_marks]

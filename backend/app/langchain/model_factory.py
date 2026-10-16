@@ -70,6 +70,11 @@ class ModelFactory:
             # DeepSeek defaults to thinking mode, which rejects required/named
             # tool choices used for both structured answers and domain tools.
             provider_options['extra_body'] = {'thinking': {'type': 'disabled'}}
+            provider_options['stream_usage'] = True
+            from .provider_usage import CacheUsageMixin
+            class CacheAwareChatOpenAI(CacheUsageMixin, ChatOpenAI):
+                pass
+            ChatOpenAI = CacheAwareChatOpenAI
         model = ChatOpenAI(
             model=model_name or self._settings.ai_model,
             base_url=self._settings.ai_base_url,
