@@ -1,4 +1,3 @@
-from typing import Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.rag.schemas import ChatSelection
@@ -34,7 +33,3 @@ class EditConversation(BaseModel):
 class StopTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     attempt: int = Field(ge=1)
-
-
-class TurnStatus(BaseModel):
-    state: Literal['RUNNING', 'SUCCEEDED', 'FAILED']

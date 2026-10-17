@@ -13,7 +13,6 @@ from app.learner import (
 )
 from app.learner.repositories import PostgresLearnerRepository
 from testing.postgres import PostgresSandbox
-from sqlalchemy.exc import IntegrityError
 from app.learner.scoring import HeuristicMasteryPolicy
 
 

@@ -1,4 +1,4 @@
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Card, Input } from '../ui';

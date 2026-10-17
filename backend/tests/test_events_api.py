@@ -1,6 +1,5 @@
 """Real event persistence behind the HTTP boundary and production auth dependencies."""
 import os
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 import unittest

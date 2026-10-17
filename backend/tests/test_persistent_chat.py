@@ -8,7 +8,7 @@ from app.chat.repositories.postgres import ChatRepository, now
 from app.chat.schemas import SendTurn
 from app.chat.service import ConversationService
 from app.chat.context import HistoryContextPolicy
-from app.chat.repositories.tables import conversations, messages, turns, sync_state
+from app.chat.repositories.tables import messages, turns, sync_state
 from app.core.exceptions import AppError
 from testing.postgres import PostgresSandbox
 from testing.identities import learner_id

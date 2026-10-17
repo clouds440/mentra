@@ -1,7 +1,7 @@
 from sqlalchemy import Table, Column, Text, BigInteger, Boolean, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
-from app.auth.repositories.tables import learner
+from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
 
 
 def owner(primary_key=False):

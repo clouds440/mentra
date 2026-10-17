@@ -1,6 +1,6 @@
 import unittest
 from uuid import uuid4
-from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, SaveDraftAnswers, GeneratedQuestion
+from app.assessments.schemas import StartAttempt, SubmitAnswers, SaveDraftAnswers, GeneratedQuestion
 from testing.assessment_workers import run_assessment_pipeline
 from app.core.exceptions import AppError
 from pydantic import ValidationError

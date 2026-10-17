@@ -1,6 +1,6 @@
 import { Dialog } from '../components/ui/Dialog';
 import { materialWarningMessage } from '../services/userError';
-import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
+import { usePageRefresh } from '../hooks/usePageRefresh';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
 import { useCallback, useEffect, useRef, useState } from 'react';

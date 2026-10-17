@@ -15,7 +15,7 @@ class AttachmentMaintenanceTests(unittest.TestCase):
         with PostgresSandbox() as db:
             owner = learner_id('alice')
             repository = AttachmentRepository(db.sessions)
-            unsent = repository.create(owner, 'old.txt', b'old')
+            repository.create(owner, 'old.txt', b'old')
             bound = repository.create(owner, 'bound.txt', b'bound')
             ChatRepository(db.sessions).begin_turn(owner, SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(),
                 expected_revision=0, content='File', attachment_ids=[bound['id']]))

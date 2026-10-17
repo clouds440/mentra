@@ -1,7 +1,6 @@
 import os
 import unittest
 from uuid import uuid4
-from io import BytesIO
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import update
 from app.chat.schemas import SendTurn

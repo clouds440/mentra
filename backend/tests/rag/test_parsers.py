@@ -1,7 +1,6 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 from types import SimpleNamespace
 from app.documents import create_document_reader
 

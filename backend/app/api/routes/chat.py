@@ -2,15 +2,8 @@ from typing import Literal
 
 from fastapi import APIRouter, Request, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-import re
-import json
-from starlette.concurrency import run_in_threadpool
-from app.core.exceptions import AppError
-from app.rag.schemas import ChatSelection, SearchRequest, SourceReference
+from app.rag.schemas import ChatSelection
 
-from app.langchain.chat_service import ChatService
-from app.chat.context import HistoryContextPolicy
-from app.langchain.prompts import PromptSource, get_system_prompt
 from app.student_profile.dependencies import require_onboarded_identity
 
 from app.chat.response import ChatResponse

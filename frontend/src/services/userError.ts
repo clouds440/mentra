@@ -35,15 +35,6 @@ export function materialWarningMessage(message: string): string {
   return 'Some content may be incomplete. Check the original file.';
 }
 
-export function webSearchWarningMessage(outcome: string): string {
-  if (outcome === 'partial') return 'Only some web results were available. Check important details against the sources.';
-  if (outcome === 'quota_exhausted' || outcome === 'rate_limited') return 'Web search has reached its limit for now. Please try again later.';
-  if (outcome === 'timeout') return 'Web search took too long. Please try again.';
-  if (outcome === 'invalid_input') return 'Try a different search phrase or website.';
-  if (outcome === 'disabled') return 'Web search isn’t available right now.';
-  return 'Current web information couldn’t be checked. Please try again later.';
-}
-
 export function errorMessage(status: number, code: string): string {
   if (code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
   if (['USERNAME_TAKEN', 'ACCOUNT_EXISTS'].includes(code)) return 'That username is already registered.';

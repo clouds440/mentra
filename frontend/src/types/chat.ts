@@ -28,22 +28,3 @@ export interface ChatMessageData {
   assessment_cards?: (import('./assessments').ChatAssessmentCardData | import('./assessments').GenerationCardData)[];
   event_references?: import('./events').EventRecord[];
 }
-
-export type ChatTurn = Pick<ChatMessageData, 'role' | 'content'>;
-
-export interface ChatResponse {
-  web_sources?: import('./webSearch').WebSource[];
-  web_citations?: string[];
-  web_searches?: import('./webSearch').WebSearchRecord[];
-  tool_warnings?: ToolWarning[];
-  role: 'assistant';
-  assessment_cards?: (import('./assessments').ChatAssessmentCardData | import('./assessments').GenerationCardData)[];
-  content: string;
-  sources?: SourceReference[];
-  citations?: string[];
-  retrieval_status?: string;
-  retrieval_warning?: string | null;
-  retrieval_scope?: ChatSelection | null;
-  history_references?: HistoryReference[];
-  memory_references?: MemoryReference[];
-}

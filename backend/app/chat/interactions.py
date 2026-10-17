@@ -1,6 +1,6 @@
 """Validated native controls; persisted in existing assistant message metadata."""
 from uuid import UUID, uuid5, NAMESPACE_URL
-from app.interactions.schemas import ChoiceOption, ChoiceContent, selected_options
+from app.interactions.schemas import ChoiceContent, selected_options
 from app.core.exceptions import AppError
 
 

@@ -32,7 +32,7 @@ from app.langchain.chat_service import ChatService
 from app.chat.repositories.postgres import ChatRepository
 from app.chat.service import ConversationService
 from app.api.routes.conversations import router as conversations_router
-from testing.rag import TestEmbedding, TestChatFactory
+from testing.rag import TestEmbedding
 from testing.history_model import HistoryChatFactory
 from app.langchain.llm import MentraLLM
 from app.history_management.factory import create_history_management

@@ -1,6 +1,5 @@
 import type { WebSource, WebSearchRecord } from '../../types/webSearch';
 import { WebCitation } from './WebCitation';
-import { webSearchWarningMessage } from '../../services/userError';
 
 function civilDate(value: string | null | undefined): string | undefined {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
@@ -17,7 +16,6 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
 }) {
   if (!sources.length) return null;
   const zone = searches[searches.length - 1]?.reference_timezone ?? 'UTC';
-  const limitations = searches.filter(search => !['ok', 'no_results'].includes(search.outcome));
   return <div className="mt-4 text-sm">
     {searches.some(search => search.cache_hit) && <p className="mb-2 text-xs text-subtle">Recently cached web results were reused; original search dates are shown below.</p>}
     {!!sources.length && <details className="rounded-xl border border-border px-3 py-2">

@@ -1,5 +1,4 @@
 import asyncio
-import io
 import json
 import logging
 import unittest
@@ -8,12 +7,11 @@ from unittest.mock import patch
 
 from fastapi import Depends
 from fastapi.testclient import TestClient
-from app.core.logging import workflow_logger, configure_logging
+from app.core.logging import workflow_logger
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
-from app.core.observability.context import current, span, Collector, envelope, validated_envelope
+from app.core.observability.context import current, span, envelope, validated_envelope
 from app.core.observability.formatters import EventFormatter
-from app.core.observability.events import ContextFilter
 from app.core.observability.middleware import ObservedFastAPI
 
 
@@ -147,7 +145,7 @@ class LoggingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_task_cancelled_before_first_execution(self):
         async def never(): raise AssertionError('must not run')
-        with workflow_logger.workflow('parent') as parent:
+        with workflow_logger.workflow('parent'):
             task=workflow_logger.start_task(never(),name='cancelled_before_start')
             task.cancel()
             with self.assertRaises(asyncio.CancelledError): await task
@@ -368,7 +366,7 @@ class DurableLoggingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_additive_migration_preserves_legacy_records(self):
         from alembic import command
-        from sqlalchemy import select,func
+        from sqlalchemy import select
         from app.db.migrate import migration_config,upgrade
         from app.chat.repositories.tables import conversations,turns
         from testing.identities import learner_id

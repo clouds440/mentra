@@ -1,4 +1,4 @@
-import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
+import { usePageRefresh } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useState } from 'react';

@@ -4,7 +4,6 @@ from hashlib import sha256
 import json
 from uuid import uuid4, UUID
 from sqlalchemy import select, update, delete, and_, or_, text
-from sqlalchemy.dialects.postgresql import insert
 from app.core.exceptions import AppError
 from .tables import conversations as c, messages as m, turns as t, sync_state as ss, changes as ch
 from app.chat.titles import NewChatReply, provisional_title
@@ -118,7 +117,7 @@ class ChatRepository:
 
     @staticmethod
     def _request_hash(request):
-        conversation_id, turn_id = str(request.conversation_id), str(request.client_turn_id)
+        conversation_id = str(request.conversation_id)
         content = request.content
         selection = request.retrieval.model_dump(mode='json')
         attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))

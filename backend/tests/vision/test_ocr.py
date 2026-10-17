@@ -9,7 +9,7 @@ from app.vision import VisionError, VisionService, create_vision_service
 from app.vision.providers.local import PopplerPDFPageRasterizer, TesseractImageOCR
 from app.rag.errors import ExtractionError
 from app.rag.parsers import NativeDocumentParser
-from app.documents import DocumentReadError, create_document_reader
+from app.documents import create_document_reader
 
 
 class VisionOCRTests(unittest.TestCase):

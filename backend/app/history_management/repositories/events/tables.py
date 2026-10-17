@@ -3,7 +3,7 @@ from sqlalchemy import (Table, Column, Text, BigInteger, Boolean, Date, DateTime
                         CheckConstraint, Index)
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
-from app.auth.repositories.tables import learner
+from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
 
 
 def owner(primary_key=False):

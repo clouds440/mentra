@@ -1,6 +1,5 @@
 """Optional local-only cross-encoder; one bounded task, safe timeout fallback."""
 import json
-import logging
 import math
 from pathlib import Path
 from threading import Lock

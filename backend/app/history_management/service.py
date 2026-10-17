@@ -3,7 +3,6 @@ import json
 from datetime import timedelta
 from hashlib import sha256
 from app.core.observability.timing import run_in_threadpool
-from app.core.exceptions import AppError
 from app.langchain.concurrent_reads import project_read, gather_reads
 from .repositories.postgres import fingerprint, now
 

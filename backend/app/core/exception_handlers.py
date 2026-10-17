@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import AppError
-from app.core.logging import logger, workflow_logger
+from app.core.logging import workflow_logger
 from app.core.observability.sanitization import error_metadata
 from app.schemas.errors import ErrorDetail, ErrorResponse, ValidationIssue
 

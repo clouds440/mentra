@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, AwareDatetime

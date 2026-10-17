@@ -13,10 +13,10 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.student_profile import StudentProfileService, ProfileDetails, ProfileUpdate, EvidenceInput, EvidenceItem
-from app.student_profile.schemas import VersionRequest, AnswerRequest, CalibrationCompletionRequest, DIMENSIONS, AIEvaluation, EducationLevel
+from app.student_profile.schemas import VersionRequest, AnswerRequest, CalibrationCompletionRequest, DIMENSIONS, EducationLevel
 from app.student_profile.repositories.postgres import PostgresStudentProfileRepository
-from app.student_profile.repositories.tables import student_profile, calibration_attempt, profile_evidence
-from app.student_profile.calibration.blueprints import blueprint, banks
+from app.student_profile.repositories.tables import calibration_attempt, profile_evidence
+from app.student_profile.calibration.blueprints import blueprint
 from app.student_profile.calibration.domains import VARIANTS
 from app.student_profile.errors import EvaluationUnavailable
 from app.core.exceptions import AppError

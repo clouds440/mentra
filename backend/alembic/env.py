@@ -4,19 +4,20 @@ from sqlalchemy import create_engine, pool
 from app.core.config import settings
 from app.db.urls import postgres_url
 from app.learner.repositories.tables import metadata
-from app.student_profile.repositories import tables as profile_tables
-from app.rag.repositories import tables as rag_tables
-from app.chat.repositories import tables as chat_tables
-from app.history_management.repositories import tables as memory_tables
-from app.history_management.repositories.events import tables as event_tables
-from app.notifications.repositories import tables as notification_tables
-from app.history_management.repositories.events import proposal_tables
-from app.langchain.repositories import checkpoint_tables
-from app.assessments.repositories import tables as assessment_tables
-from app.langchain.repositories import evidence_tables
-from app.web_search.repositories import tables as web_search_tables
-from app.db import admission as admission_tables
-from app.db import health as health_tables
+# Import each domain to populate Alembic target metadata.
+from app.student_profile.repositories import tables as profile_tables  # noqa: F401 - Register domain tables.
+from app.rag.repositories import tables as rag_tables  # noqa: F401 - Register domain tables.
+from app.chat.repositories import tables as chat_tables  # noqa: F401 - Register domain tables.
+from app.history_management.repositories import tables as memory_tables  # noqa: F401 - Register domain tables.
+from app.history_management.repositories.events import tables as event_tables  # noqa: F401 - Register domain tables.
+from app.notifications.repositories import tables as notification_tables  # noqa: F401 - Register domain tables.
+from app.history_management.repositories.events import proposal_tables  # noqa: F401 - Register domain tables.
+from app.langchain.repositories import checkpoint_tables  # noqa: F401 - Register domain tables.
+from app.assessments.repositories import tables as assessment_tables  # noqa: F401 - Register domain tables.
+from app.langchain.repositories import evidence_tables  # noqa: F401 - Register domain tables.
+from app.web_search.repositories import tables as web_search_tables  # noqa: F401 - Register domain tables.
+from app.db import admission as admission_tables  # noqa: F401 - Register domain tables.
+from app.db import health as health_tables  # noqa: F401 - Register domain tables.
 
 config = context.config
 

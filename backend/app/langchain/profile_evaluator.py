@@ -35,7 +35,6 @@ class LangChainProfileEvaluator:
         self.llm = llm if isinstance(llm, MentraLLM) else MentraLLM(llm)
 
     async def evaluate(self, evidence, context):
-        import json
         try:
             # The same MentraLLM component routes by this fixed, server-owned source.
             return await self.llm.ainvoke(PromptSource.STUDENT_PROFILE_EVALUATION,

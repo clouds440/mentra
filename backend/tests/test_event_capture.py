@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, Mock
 from datetime import timedelta
 from uuid import uuid4
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, func
 from testing.postgres import PostgresSandbox
 from testing.identities import learner_id
 from app.chat.schemas import SendTurn
@@ -12,7 +11,6 @@ from app.chat.repositories.postgres import ChatRepository
 from app.history_management.events.factory import create_events_service
 from app.history_management.events.proposal_service import create_event_proposals
 from app.history_management.events.capture import EventCapture, event_candidate
-from app.history_management.repositories.events.tables import events
 from app.langchain.planning import plan_request
 
 

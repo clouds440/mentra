@@ -59,7 +59,7 @@ class NotificationTests(unittest.TestCase):
         from unittest.mock import patch
         from app.history_management.repositories.events.tables import reminders
         blocked = [self.event() for _ in range(50)]
-        other = self.events.create(self.other, EventCreate(title='Other quiz', kind='quiz', timezone='UTC',
+        self.events.create(self.other, EventCreate(title='Other quiz', kind='quiz', timezone='UTC',
             starts_at=self.now+timedelta(hours=3), client_request_id=uuid4()))['event']
         publish = self.service.publish
 

@@ -1,6 +1,6 @@
 """Public persistence port. Domain callers never receive SQL sessions or tables."""
 from typing import Protocol
-from .schemas import EventCreate, EventDraft, EventEdit, PreferencesEdit
+from .schemas import EventCreate, EventEdit, PreferencesEdit
 
 
 class EventsRepository(Protocol):

@@ -27,7 +27,6 @@ writes = Table('checkpoint_writes', metadata,
 from sqlalchemy import Table, Column, Uuid, Text, DateTime, BigInteger, Integer, ForeignKeyConstraint, CheckConstraint, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 
-from sqlalchemy import UniqueConstraint
 Table('chat_conversation', metadata, Column('learner_id', Uuid(as_uuid=False)), Column('id', Uuid(as_uuid=False)), UniqueConstraint('learner_id', 'id'))
 
 proposals = Table('hm_event_proposal', metadata,

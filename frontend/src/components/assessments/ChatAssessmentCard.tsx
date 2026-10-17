@@ -3,7 +3,6 @@ import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui';
-import { MarkdownContent } from '../content/MarkdownContent';
 import { assessments } from '../../services/assessments';
 import type { AssessmentAttempt, ChatAssessmentCardData } from '../../types/assessments';
 import { MCQAssessment } from './MCQAssessment';

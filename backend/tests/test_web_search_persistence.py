@@ -2,7 +2,7 @@
 import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from uuid import uuid4
 from sqlalchemy import select, func, delete, inspect
 from alembic import command
@@ -11,7 +11,7 @@ from alembic.migration import MigrationContext
 from app.db.migrate import migration_config, upgrade
 from app.db.metadata import metadata
 from app.web_search.repositories.postgres import UsageRepository
-from app.web_search.repositories.tables import calls, guard, cache
+from app.web_search.repositories.tables import calls, cache
 from app.chat.repositories.postgres import ChatRepository
 from app.chat.repositories.activity import ActivityRepository
 from app.chat.schemas import SendTurn

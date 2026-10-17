@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.learner.normalization import normalize
 from .base import PostgresRepositoryBase, utcnow
-from app.learner.repositories.tables import concept, concept_alias, concept_relation, concept_redirect, candidate_concept, learning_context
+from app.learner.repositories.tables import concept, concept_alias, concept_relation, concept_redirect, candidate_concept
 
 
 class ConceptsStore(PostgresRepositoryBase):

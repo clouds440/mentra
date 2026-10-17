@@ -49,11 +49,6 @@ async function withResponse<T>(url: string, init: RequestInit, consume: (respons
   }
 }
 
-export interface HealthResponse {
-  status: string;
-  service: string;
-}
-
 interface ApiErrorResponse {
   error?: {
     code?: string;
@@ -135,10 +130,6 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const value = await request<T>(path, init);
   if (init.method && init.method !== 'GET' && init.method !== 'HEAD') invalidatePageCache();
   return value;
-}
-
-export async function fetchHealth(): Promise<HealthResponse> {
-  return apiRequest<HealthResponse>('/api/v1/health');
 }
 
 export async function apiBlob(path: string, signal?: AbortSignal): Promise<Blob> {

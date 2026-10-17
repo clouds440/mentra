@@ -14,10 +14,10 @@ from app.core.exceptions import AppError
 from app.db.metadata import metadata
 from app.db.migrate import migration_config, upgrade
 from app.history_management.events.schemas import (EventCreate, EventDraft, EventEdit,
-    EventRecord, EventPage, EventSync, EventOutcome, PreferencesEdit, TemporalPreview)
+    EventPage, EventSync, EventOutcome, PreferencesEdit, TemporalPreview)
 from app.history_management.events.temporal import local_choices, bounds, reminder_due, bucket, preview
 from app.history_management.events.factory import create_events_service
-from app.history_management.repositories.events.tables import events, reminders, receipts, evidence, revisions, sync_state
+from app.history_management.repositories.events.tables import events, reminders, evidence, revisions
 from app.chat.repositories.postgres import ChatRepository
 from app.chat.schemas import SendTurn
 from testing.postgres import PostgresSandbox

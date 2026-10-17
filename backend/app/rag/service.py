@@ -5,7 +5,6 @@ from pathlib import Path
 from threading import BoundedSemaphore
 from collections import OrderedDict
 import time
-import logging
 from contextlib import contextmanager
 from uuid import uuid4
 from app.core.exceptions import AppError

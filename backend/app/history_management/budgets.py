@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from app.core.exceptions import AppError
 from langchain_core.messages import HumanMessage
-from langchain_core.messages.utils import count_tokens_approximately
 from contextlib import contextmanager
 from contextvars import ContextVar
 

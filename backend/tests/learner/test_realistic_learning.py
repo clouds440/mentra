@@ -14,9 +14,7 @@ from app.learner import (
     InvalidEvidenceError, ConfirmEvidenceRequest,
 )
 from app.learner.assessment import AssessmentObservations, GradedQuestion, ConceptGrade, LearnerAssessmentAdapter
-from app.learner.repositories import PostgresLearnerRepository
 from testing.postgres import PostgresSandbox
-from sqlalchemy.exc import IntegrityError
 from app.learner.scoring import HeuristicMasteryPolicy
 from app.learner.evaluation import evaluate_observations
 

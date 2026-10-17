@@ -149,7 +149,6 @@ class AssessmentService:
             except DocumentReadError as error: raise AppError('ASSESSMENT_UNREADABLE', str(error), 422) from None
         # Numbered segmentation is a suggestion only. Unknown handwriting/mapping
         # confidence always requires a complete reviewed answer map on submission.
-        import re
         text = document.text
         from .blueprint import question_reference, parse_numbered_answers
         segments = parse_numbered_answers(text)

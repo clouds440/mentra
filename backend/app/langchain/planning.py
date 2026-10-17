@@ -45,7 +45,6 @@ from app.core.logging import workflow_logger
 @workflow_logger.operation(outcome='success')
 def plan_request(query: str, *, attachments=False, selected_sources=False, context_rows=()):
     text = query.strip().casefold()
-    greeting = bool(re.fullmatch(r'(hi|hello|hey|thanks|thank you)[.! ]*', text))
     personal = bool(re.search(r'\b(remember|preference|previous chat|earlier conversation|my profile|saved memory)\b', text))
     event = bool(re.search(r'\b(agenda|deadline|remind|upcoming|schedule|event)\b|\bwhen\b.*\bexam\b', text))
     assessment = bool(re.search(r'\b(assessment|quiz|mock paper|mock exam|answer sheet|test)\b|\b(grade|evaluate|mark)\b.*\b(answers?|paper)\b', text))

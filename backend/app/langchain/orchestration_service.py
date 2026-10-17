@@ -3,7 +3,6 @@ import json
 from app.core.observability.timing import run_in_threadpool
 from app.core.exceptions import AppError
 from app.rag.schemas import SearchRequest, ChatSelection
-from app.langchain.chat_service import ChatService
 from app.chat.context import HistoryContextPolicy
 from app.langchain.prompts import PromptSource, get_system_prompt
 from app.chat.response import ChatResponse

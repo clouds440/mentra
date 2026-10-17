@@ -1,4 +1,3 @@
-from uuid import uuid4
 from app.core.exceptions import AppError
 from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatch, GradedAssessment, AssessmentTargets
 from app.learner.schemas import EvidenceSubmissionRequest, LearnerContextRequest

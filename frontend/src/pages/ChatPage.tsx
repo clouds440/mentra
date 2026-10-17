@@ -10,7 +10,7 @@ import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatMessage } from '../components/chat/ChatMessage';
 import { ChatActivity } from '../components/chat/ChatActivity';
-import { chatStore, useChatList, useConversation } from '../stores/chatStore';
+import { chatStore, useConversation } from '../stores/chatStore';
 import { IconButton, Spinner } from '../components/ui';
 import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from '../services/chatAttachments';
 
@@ -29,8 +29,6 @@ export function ChatPage() {
   const id = conversationId ?? draftId;
   useLayoutEffect(() => { if (!conversationId) chatStore.markDraft(id); }, [id, conversationId]);
   const view = useConversation(id);
-  const list = useChatList();
-  const conversation = list.items.find(chat => chat.id === id);
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
   const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>();
   const [draft, setDraft] = useState('');

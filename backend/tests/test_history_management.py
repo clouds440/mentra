@@ -15,7 +15,7 @@ from app.chat.repositories.history_reader import ChatReadFacade
 from app.chat.schemas import SendTurn
 from app.chat.service import ConversationService
 from app.history_management.repositories.postgres import MemoryRepository
-from app.history_management.repositories.tables import memories, evidence, revisions, receipts
+from app.history_management.repositories.tables import memories, evidence, revisions
 from app.history_management.schemas import MemoryEdit, MemoryToolInput, HistoryLookup, PreferencesEdit
 from app.history_management.memory.validation import MemoryValidator, Admission
 from app.history_management.service import HistoryManagement

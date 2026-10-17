@@ -1,6 +1,4 @@
-import json
 from langchain_core.tools import StructuredTool
-from app.core.exceptions import AppError
 from .schemas import HistoryLookup, MemoryToolInput
 
 

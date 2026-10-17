@@ -1,7 +1,7 @@
 """Native PostgreSQL column helpers used only by repositories."""
 from sqlalchemy import Column, Text, Uuid, ForeignKey, DateTime, func
-from app.db.metadata import metadata
-from app.auth.repositories.tables import learner
+from app.db.metadata import metadata as metadata
+from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
 
 
 def identifier(name='id', *, primary_key=False, nullable=False):

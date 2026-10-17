@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 from datetime import timedelta
-from sqlalchemy import select, update
+from sqlalchemy import update
 from qdrant_client import QdrantClient
 from app.core.config import Settings
 from app.core.exceptions import AppError
@@ -12,7 +12,7 @@ from app.rag.errors import ExtractionError
 from app.learner.engine import LearnerEngine
 from app.learner.schemas import ResolveLearningContextRequest, ContextTransitionRequest
 from app.rag.repositories.postgres import RAGRepository, now
-from app.rag.repositories.tables import documents, jobs, generations
+from app.rag.repositories.tables import jobs, generations
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.storage import FileStorage
 from app.rag.service import RAGService
@@ -171,7 +171,7 @@ class WorkflowTests(unittest.TestCase):
         self.upload(b'Replacement decorators source', key='replacement-summary', document_id=document['id'], expected_revision=document['revision'])
         with patch.object(self.service.parser, 'parse', side_effect=ExtractionError('invalid source')):
             self.worker.run_once()
-        second = self.upload(b'Python dictionaries map keys to values.', key='second-summary')
+        self.upload(b'Python dictionaries map keys to values.', key='second-summary')
         self.worker.run_once()
         statements = []
         def record(_connection, _cursor, statement, *_args):
@@ -318,7 +318,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.repo.request_delete(self.owner, accepted['document_id'])['state'], 'purged')
 
     def test_expired_worker_is_fenced(self):
-        accepted = self.upload()
+        self.upload()
         old = self.repo.claim(300)
         with self.db.sessions.begin() as session:
             session.execute(update(jobs).where(jobs.c.id == old['id']).values(lease_until=now() - timedelta(seconds=1)))
@@ -385,7 +385,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(result.chunks)
 
     def test_operator_rebuild_is_transactional_and_resumable(self):
-        first = self.ready()
+        self.ready()
         run_id = str(__import__('uuid').uuid4())
         dry = self.repo.queue_rebuild(self.owner, run_id, self.service.config())
         self.assertEqual(dry['ready_materials'], 1)

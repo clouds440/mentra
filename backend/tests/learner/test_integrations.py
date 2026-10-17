@@ -175,7 +175,6 @@ class LearnerIntegrationTests(unittest.TestCase):
 
     def test_application_startup_installs_persistent_learner_facade(self):
         from fastapi.testclient import TestClient
-        from app.core.config import Settings
         from app.db import database
         from app.main import create_app
 
