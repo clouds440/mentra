@@ -116,7 +116,7 @@ test('generation progress survives reload and replaces itself with the completed
   await expect(progress).toHaveCount(0);
 });
 
-test('creation works with every configuration field omitted', async ({page}) => {
+test('creation needs only a topic and automatically decides advanced settings', async ({page}) => {
   await workspace(page,false,true);
   let payload: Record<string,unknown> | undefined;
   await page.route('**/api/v1/assessments/generation-jobs', async route => {
@@ -127,11 +127,12 @@ test('creation works with every configuration field omitted', async ({page}) => 
   await page.goto('/assessments?tab=create');
   const form=page.getByRole('form',{name:'Create assessment'});
   await expect(form).toBeVisible();
-  await expect(form.getByLabel('Assessment learning context')).toContainText('Choose for me');
+  await form.getByLabel('Topic', {exact:true}).fill('Forces');
+  await expect(form.getByLabel('Assessment learning context')).toHaveCount(0);
   await expect(form.getByLabel('Assessment level')).toHaveCount(0);
   await form.getByRole('button',{name:'Generate assessment',exact:true}).click();
   await expect(page.getByRole('region',{name:'Assessment generation'})).toBeVisible();
-  expect(payload).toMatchObject({topic:'',context_id:'',count:null,question_format:'auto'});
+  expect(payload).toMatchObject({topic:'Forces',context_id:'',count:5,question_format:'auto'});
 });
 
 test('simple grading shows correctness and feedback without marks or letter grades', async ({page}) => {

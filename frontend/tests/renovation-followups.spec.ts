@@ -21,17 +21,18 @@ test('material search preserves a lost-response operation and payload edits rece
     return route.fulfill({status:503, json:{error:{code:'UNAVAILABLE',message:'Lost response'}}});
   });
   await page.goto('/assessments?tab=create');
+  await page.getByLabel('Topic', {exact:true}).fill('Mechanics');
   const generate = page.getByRole('button', {name:'Generate assessment', exact:true});
   await generate.click();
   await expect(page.getByRole('alert').first()).toBeVisible();
-  await page.getByRole('switch', {name:'Ground questions in selected Library documents'}).check();
+  await page.getByText('Study materials', {exact:false}).click();
   await page.getByRole('searchbox', {name:'Search assessment materials'}).fill('مرحبا');
-  await page.getByRole('switch', {name:'Ground questions in selected Library documents'}).uncheck();
+  await page.getByText('Study materials', {exact:false}).click();
   await generate.click();
   await expect.poll(() => requests.length).toBe(2);
   expect(requests[1].client_request_id).toBe(requests[0].client_request_id);
   await expect(generate).toBeEnabled();
-  await page.getByLabel('Topic (optional)', {exact:true}).fill('New target');
+  await page.getByLabel('Topic', {exact:true}).fill('New target');
   await generate.click();
   await expect.poll(() => requests.length).toBe(3);
   expect(requests[2].client_request_id).not.toBe(requests[1].client_request_id);
@@ -44,14 +45,16 @@ test('unavailable selected materials remain visible and are not silently dropped
     ? route.fulfill({status:404,json:{error:{code:'NOT_FOUND',message:'Missing'}}})
     : route.fulfill({json:{items:[doc],total:1,limit:25,offset:0}}));
   await page.goto('/assessments?tab=create&document=missing');
+  await page.getByLabel('Topic', {exact:true}).fill('Forces');
   const picker=page.getByRole('combobox',{name:'Assessment study documents',exact:true});
   await picker.click();
   await expect(page.getByRole('option',{name:'Selected material (unavailable or loading)',exact:true})).toHaveAttribute('aria-selected','true');
   await page.getByRole('option',{name:'Ready material',exact:true}).click();
   await page.keyboard.press('Escape');
   await expect(page.getByText('2 selected · Choose up to 20 ready materials. Selections stay when you search or change pages.')).toBeVisible();
-  await page.getByRole('button',{name:'Clear selected materials'}).click();
   await expect(page.getByRole('button',{name:'Generate assessment',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Clear selected materials'}).click();
+  await expect(page.getByRole('button',{name:'Generate assessment',exact:true})).toBeEnabled();
 });
 
 test('mistake practice selects wrong and partial questions, recovers retries and completes a repeat', async ({page},info) => {

@@ -14,13 +14,13 @@ import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, FileInput, Input, Select, Textarea, FormField } from '../ui';
+import { Button, FileInput, Select, Textarea } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { AnswerContent } from '../content/AnswerContent';
 import { assessments } from '../../services/assessments';
 import { listContexts } from '../../services/rag';
 import { practiceDraft } from '../../services/practiceIntent';
-import { MaterialPicker, materialSelectionKey } from '../library/MaterialPicker';
+import { AssessmentCreateForm } from './AssessmentCreateForm';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
 import type { LearningContext } from '../../types/rag';
 import { assessmentSession, useEvaluatedAttempt } from '../../stores/assessmentSession';
@@ -48,15 +48,13 @@ function Workspace() {
   const [reload, setReload] = useState(0);
   const [more, setMore] = useState<number | null>(null);
   const [draft, setDraft] = useState<AssessmentGeneration>(() => practiceDraft(params));
-  const [materialValidity, setMaterialValidity] = useState<{key:string;ready:boolean}>();
   const intentKey = JSON.stringify([params.get('context'), params.get('topic'), params.get('purpose'), params.getAll('concept'), params.getAll('document')]);
   const previousIntent = useRef(intentKey);
   useEffect(() => {
     if (previousIntent.current === intentKey) return;
     previousIntent.current = intentKey;
-    if (params.has('concept') || params.has('document')) { setDraft(practiceDraft(params)); setLabels(''); }
+    if (params.has('concept') || params.has('document')) { setDraft(practiceDraft(params)); }
   }, [intentKey]);
-  const [labels, setLabels] = useState('');
   const active = useRef<AbortController | null>(null);
   const startOperation = useRef(crypto.randomUUID());
   const generating = useRef(false);
@@ -74,7 +72,7 @@ function Workspace() {
     generating.current = true;
     const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
     try {
-      const { client_request_id: initialId, ...payload } = { ...draft, concept_names: labels.split(',').map(label => label.trim()).filter(Boolean) };
+      const { client_request_id: initialId, ...payload } = { ...draft, count: draft.count ?? 5, grounded: draft.document_ids.length > 0 };
       const fingerprint = JSON.stringify(payload);
       if (generationOperation.current?.payload !== fingerprint) generationOperation.current = { payload: fingerprint, id: generationOperation.current ? crypto.randomUUID() : initialId };
       const request = { ...payload, client_request_id: generationOperation.current.id };
@@ -96,26 +94,12 @@ function Workspace() {
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load more assessments.'); }
   }
   return <div className="h-full overflow-y-auto"><div className="page-container">
-    <WorkspaceHeader title={tab === 'create' ? 'Create assessment' : 'Assessments'} description={tab === 'create' ? 'Let Mentra choose from your learning priorities, or specify exactly what you want. All choices below are optional.' : 'Turn what you’re learning into practice. Explore your questions, continue an attempt or start something new.'} icon={ClipboardCheck} actions={tab !== 'create' && <Button disabled={busy} onClick={() => changeTab('create')}><Plus size={16} aria-hidden="true" />New assessment</Button>} />
+    <WorkspaceHeader title={tab === 'create' ? 'Create assessment' : 'Assessments'} description={tab === 'create' ? 'Choose a topic and the practice you want. Mentra handles the rest.' : 'Turn what you’re learning into practice. Explore your questions, continue an attempt or start something new.'} icon={ClipboardCheck} actions={tab !== 'create' && <Button disabled={busy} onClick={() => changeTab('create')}><Plus size={16} aria-hidden="true" />New assessment</Button>} />
     <Tabs label="Assessment sections" value={tab} onChange={changeTab} options={(['assessments', 'create'] as const).map(value => ({ value, label: value === 'create' ? 'Create new' : 'Assessments', id: `assessment-tab-${value}`, panel: `assessment-panel-${value}`, disabled: busy }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => setReload(value => value + 1))}>Refresh</button></p>}
     <section role="tabpanel" id="assessment-panel-create" aria-labelledby="assessment-tab-create" hidden={tab !== 'create'}>
     {params.get('generation') && <AssessmentGenerationCard key={params.get('generation')!} id={params.get('generation')!} title="Your assessment" onComplete={result => setParams({ assessment: 'assessment' in result ? result.assessment.id : result.id })} />}
-    {loading && !error ? <Skeleton variant="form" rows={5} /> : <form aria-label="Create assessment" className="workspace-panel space-y-5 max-w-3xl" onSubmit={event => { event.preventDefault(); void generate(); }}>
-      <label className="block text-sm">Learning context (optional)<Select aria-label="Assessment learning context" disabled={busy} value={draft.context_id} onChange={event => setDraft({ ...draft, context_id: event.target.value, concept_ids: [] })}><option value="">Choose for me</option>{contexts.filter(item => item.status !== 'ARCHIVED').map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></label>
-      <FormField label="Topic (optional)">{field => <Input {...field} placeholder="Choose from my learning priorities" disabled={busy} maxLength={200} value={draft.topic} onChange={event => setDraft({ ...draft, topic: event.target.value })} />}</FormField>
-      <label className="block space-y-2 text-sm">What should it include?<Textarea aria-label="Assessment instructions" rows={3} disabled={busy} placeholder="Describe question types, level, paper sections, marks, passages or anything else you need." value={draft.instructions ?? ''} onChange={event => setDraft({ ...draft, instructions: event.target.value })} /></label>
-      <label className="block text-sm">Results<Select aria-label="Assessment results style" disabled={busy} value={draft.result_style ?? 'marks'} onChange={event => setDraft({ ...draft, result_style: event.target.value as AssessmentGeneration['result_style'] })}><option value="marks">Marks and feedback</option><option value="grade">Review without marks</option></Select></label>
-      <label className="block text-sm">Concept names (comma separated, optional)<Input value={labels} disabled={!!draft.concept_ids?.length || busy} onChange={event => setLabels(event.target.value)} /></label>
-      <label className="block text-sm">Question format<Select aria-label="Assessment format" disabled={busy} value={draft.question_format ?? 'auto'} onChange={event => setDraft({ ...draft, question_format: event.target.value as AssessmentGeneration['question_format'] })}><option value="auto">Choose for me</option><option value="mixed">Mixed practice</option><option value="mcq">Multiple choice</option><option value="true_false">True / false</option><option value="short_answer">Short answers</option><option value="written">Written responses</option><option value="mock_paper">Mock exam paper</option></Select></label>
-      {draft.question_format === 'mock_paper' && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Duration (minutes)<Input aria-label="Exam duration" type="number" min={1} disabled={busy} value={draft.duration_minutes ?? ''} placeholder="Let Mentra decide" onChange={event => setDraft({ ...draft, duration_minutes: event.target.value ? Number(event.target.value) : undefined })} /></label><label className="text-sm">Total marks (optional)<Input aria-label="Exam total marks" type="number" min={1}  disabled={busy} value={draft.total_marks ?? ''} placeholder="Use section marks" onChange={event => setDraft({ ...draft, total_marks: event.target.value ? Number(event.target.value) : undefined })} /></label><p className="text-xs leading-5 text-muted sm:col-span-2">Describe the sections and question types you want, or let Mentra design them. Question count refers to main questions; parts carry their own marks.</p></div>}
-
-      <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Question count (max 20)<Input type="number" min={1} max={20} disabled={busy} value={draft.count ?? ''} placeholder="Let Mentra decide" onChange={event => setDraft({ ...draft, count: event.target.value ? Math.min(20,Math.max(1,Number(event.target.value))) : null })} /></label><label className="text-sm">Purpose<Select aria-label="Assessment purpose" disabled={busy} value={draft.purpose} onChange={event => setDraft({ ...draft, purpose: event.target.value })}><option value="practice">Practice</option><option value="verification">Verification</option><option value="calibration">Granular calibration</option></Select></label></div>
-      <Toggle label="Ground questions in selected Library documents" disabled={busy} checked={draft.grounded} onChange={event => setDraft({ ...draft, grounded: event.target.checked })} />
-      {!!draft.concept_ids?.length && <p className="text-xs text-muted">Practising {draft.concept_ids.length} selected topic{draft.concept_ids.length === 1 ? '' : 's'} in this learning context. <Button size="sm" variant="ghost" disabled={busy} onClick={() => setDraft({ ...draft, concept_ids: [] })}>Choose different topics</Button></p>}
-      {draft.grounded && <MaterialPicker onValidityChange={setMaterialValidity} value={draft.document_ids} contextId={draft.context_id} disabled={busy} onChange={document_ids => setDraft({ ...draft, document_ids })} />}
-      <Button type="submit" disabled={busy || !!draft.grounded && (!materialValidity?.ready || materialValidity.key !== materialSelectionKey(draft.document_ids, draft.context_id))} loading={busy}>{'Generate assessment'}</Button>
-    </form>}
+    {loading && !error ? <Skeleton variant="form" rows={5} /> : <AssessmentCreateForm topics={contexts.map(item => item.name)} draft={draft} onChange={setDraft} busy={busy} onSubmit={() => void generate()} />}
     </section>
     <section role="tabpanel" id="assessment-panel-assessments" aria-labelledby="assessment-tab-assessments" hidden={tab !== 'assessments'} className="space-y-5">
     {loading && !error && <Skeleton variant="card" />}

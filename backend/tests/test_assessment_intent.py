@@ -27,6 +27,32 @@ class IntentContractTests(unittest.TestCase):
         self.assertIn('concept_ids', selected.fingerprint_payload())
         with self.assertRaises(ValidationError):
             AssessmentIntent(client_request_id=uuid4(), concept_ids=[uuid4()])
+    def test_selected_formats_are_canonical_and_preserve_legacy_replays(self):
+        from pydantic import ValidationError
+        body = dict(client_request_id=uuid4(), context_id='context', topic='Forces')
+        self.assertNotIn('question_formats', GenerationRequest(**body).fingerprint_payload())
+        value = AssessmentIntent(**body, count=4, question_formats=['multiple_choice','short_answer','mcq'])
+        self.assertNotIn('result_style', value.fingerprint_payload())
+        self.assertEqual(value.question_formats, ['mcq','short_answer'])
+        self.assertEqual(value.question_format, 'mixed')
+        with self.assertRaises(ValidationError):
+            AssessmentIntent(**body, count=1, question_formats=['mcq','short_answer'])
+        with self.assertRaises(ValidationError):
+            AssessmentIntent(**body, question_formats=['auto'])
+
+    def test_selected_formats_reject_unrequested_types_and_extra_answers(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        from app.langchain.assessment_design import design_assessment
+        from app.assessments.schemas import AssessmentDesign
+        for parts in ([dict(question_type='essay',marks=1)], [dict(path=['a'],question_type='mcq',marks=1),dict(path=['b'],question_type='mcq',marks=1)]):
+            request=GenerationRequest(client_request_id=uuid4(),context_id='test',topic='Forces',count=1,question_formats=['mcq'])
+            llm=SimpleNamespace(ainvoke=AsyncMock(return_value=AssessmentDesign(title='Wrong outline',
+                sections=[dict(title='Questions',questions=[dict(number=1,parts=parts)])])))
+            with self.assertRaises(AppError) as error:
+                asyncio.run(design_assessment(llm,request,[],None))
+            self.assertEqual(error.exception.code,'ASSESSMENT_INVALID_GENERATION')
+
     def test_simple_grading_uses_equal_internal_weights_for_shorthand_parts(self):
         import asyncio
         from unittest.mock import AsyncMock
@@ -70,6 +96,30 @@ class AssessmentIntentTests(unittest.IsolatedAsyncioTestCase):
         result = self.service.generation_jobs.get(owner,job['id'])
         self.assertEqual(result['state'],'completed',result)
         return self.service.repository.detail(owner,result['result']['id']),job
+
+    async def test_simple_form_uses_shared_selection_and_enforces_each_format(self):
+        calls = []
+        invoke = self.service.workflows.llm.ainvoke
+        async def capture(source, payload, **kwargs):
+            calls.append((source.value,payload))
+            value = await invoke(source,payload,**kwargs)
+            if source.value == 'assessment_selection':
+                value.level = 'secondary'
+                value.result_style = 'feedback'
+            return value
+        with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=capture):
+            value, job = await self.finish(AssessmentIntent(client_request_id=uuid4(),
+                topic='Requested forces', count=4, question_formats=['mcq','short_answer'],
+                instructions='Everyday examples; feedback without marks.'))
+        self.assertEqual(value.preferences.result_style, 'feedback')
+        self.assertEqual(value.preferences.level, 'secondary')
+        self.assertEqual(len(value.questions),4)
+        self.assertEqual({q.question_type for q in value.questions}, {'mcq','short_answer'})
+        self.assertEqual(sum(source == 'assessment_selection' for source,_ in calls),1)
+        self.assertEqual(sum(source == 'assessment_design' for source,_ in calls),1)
+        with self.db.sessions() as session:
+            saved = session.execute(select(generation_jobs).where(generation_jobs.c.id == job['id'])).mappings().one()
+        self.assertEqual(saved['progress']['resolved_request']['question_formats'], ['mcq','short_answer'])
 
     async def test_bare_request_uses_owned_learning_data(self):
         await self.learner.resolve_generated_concepts(GeneratedConceptsRequest(learner_id=self.owner,

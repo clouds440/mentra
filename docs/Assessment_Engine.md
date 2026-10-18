@@ -4,13 +4,13 @@ Assessments reuse the existing draft, publication, attempt, grading and learner-
 
 ## Request-led structure
 
-Chat and the creation form accept an entirely unspecified assessment request. A background selection step reads the existing owner-bound learner tools for active contexts, study priorities, verification candidates and relevant learning context. When no active context exists, it considers the learner's other non-archived contexts. Selected Library metadata is read through the RAG facade in one owner-checked batch. Profile details supply the education level and learning goals already collected during onboarding/settings.
+Chat and the queue API accept an entirely unspecified assessment request. The creation page asks only for a topic, optional materials, inclusion instructions, independently selectable question formats and a question count. A background selection step reads the existing owner-bound learner tools for active contexts, study priorities, verification candidates and relevant learning context. When no active context exists, it considers the learner's other non-archived contexts. Selected Library metadata is read through the RAG facade in one owner-checked batch. Profile details supply the education level and learning goals already collected during onboarding/settings.
 
-The model chooses a coherent topic and delivery format from this packet. With no useful data it can choose a general reasoning baseline without inventing weaknesses. It never asks for missing configuration merely to complete the request. Explicit topics and formats bypass this selection model call. Resolved choices are checkpointed before content generation so retry does not change the topic. They stay private; the public job exposes the chosen topic as its title.
+The existing selection model chooses a coherent topic, delivery format, academic level and result presentation from this packet; no separate frontend configuration model call is introduced. With no useful data it can choose a general reasoning baseline without inventing weaknesses. It never asks for missing configuration merely to complete the request. Explicit topics, formats, level and result preferences are retained. Fully specified topic/format/result requests can bypass selection. Resolved choices are checkpointed before content generation so retry does not change the topic. They stay private; the public job exposes the chosen topic as its title.
 
-An outline model chooses the appropriate length and question mix. Explicit counts, formats, marks, timing, instructions and section plans take precedence. The legacy direct API retains its five-question written default for existing callers; this is not the chat/UI default. The creation form queues every request for consistent progress and recovery.
+An outline model chooses the appropriate length and question mix. Explicit counts, formats, marks, timing, instructions and section plans take precedence. The legacy direct API retains its five-question written default for existing callers; chat can infer a count, while the UI offers an editable five-question default (three for linked quick practice). The creation form queues every request for consistent progress and recovery.
 
-Academic level is not a required creation field. Account education level is the default; current evidence calibrates difficulty conservatively. Any explicit higher/lower level or difficulty request takes precedence and is never capped by the account level or an ability estimate. The optional internal `level` field records only a requested override and never writes back to profile settings.
+Academic level is not a required creation field. Account education level is the default; current evidence calibrates difficulty conservatively. Any explicit higher/lower level or difficulty request takes precedence and is never capped by the account level or an ability estimate. The optional internal `level` field records the assessment-specific selected or requested level and never writes back to profile settings.
 
 `result_style=grade` means simple grading: correctness and feedback without per-question marks, totals or letter-grade scales. Internal equal weights support grading/evidence when no marks were requested. `marks` retains visible marks and totals; `feedback` is also supported for API callers. These choices persist in assessment preferences and survive revision, chat publication and reopening. UI question views, answer review, feedback and print respect the mode; the chat status tool omits numeric score summaries for unmarked reviews.
 
@@ -57,3 +57,37 @@ Verified locally on 2026-10-14: all 90 focused assessment regression checks pass
 A synthetic live-provider check produced six main questions, 13 parts and exactly 30 marks across essay, MCQ, numerical, short-answer and true/false formats. A content batch generated from that outline passed validation after the automatic repair path corrected its batch count. This verifies model/schema compatibility, not a full live learner assessment or handwriting accuracy.
 
 Screenshots: [mixed practice on mobile](assessment-engine/mixed-practice-mobile.png), [paper preview on mobile](assessment-engine/mock-paper-mobile.png).
+
+
+## Simplified creation — 18 October 2026
+
+Material card actions reuse small bordered secondary buttons and separate icons.
+The creation page removes the context, purpose, concept-name, result-style, timing,
+marks and grounding controls. Materials imply grounding; empty selection means a
+request without Library grounding. Linked exact concepts and verification purpose
+remain server-validated even though they are no longer separate form controls.
+Editing the topic clears the old exact concept/context target.
+
+`question_formats` is an optional list of concrete types, normalized and deduplicated.
+An empty list permits automatic selection. Multiple selected types use the existing
+mixed planner, which must include every selected type and no other type. There must
+be at least one question per selected format. For these quizzes count means exactly
+that many answerable items, with no hidden multipart expansion. Invalid outlines
+receive bounded repair and never publish as a completed assessment.
+
+Omitted result presentation is decided in the existing assessment-selection call;
+explicit requests such as feedback without marks take precedence. The outline and
+content calls retain their existing responsibility for marks, difficulty, sections
+and educational content. This shared chat/UI pipeline can involve several bounded
+calls; simplifying the form does not promise one total model request.
+
+Empty format lists and omitted result styles are excluded from replay fingerprints,
+preserving requests queued by earlier callers. Resolved preferences and formats are
+checkpointed for retries. No database migration is needed for these request fields.
+
+Verification includes 51 browser cases and 79 distinct backend cases across the
+69-test assessment/chat regression run and 25-test intent/prompt run (15 overlap),
+production TypeScript/Vite build and theme/UI checks. Live synthetic English and Urdu
+selection/outline checks retained both requested formats, exactly four answerable
+items and feedback-only presentation. These are contract checks, not a broad
+subject-quality or educational-effectiveness evaluation.

@@ -72,9 +72,7 @@ test('review and practice links retain exact concept, context and purpose withou
   await page.goto('/progress');
   await page.getByRole('link', { name: 'Start quick review', exact: true }).click();
   await expect(page).toHaveURL(new RegExp('concept=' + conceptId));
-  await expect(page.getByLabel('Topic (optional)', { exact: true })).toHaveValue('Shared topic');
-  await expect(page.getByRole('combobox', { name: 'Assessment purpose', exact: true })).toContainText('Verification');
-  await expect(page.getByRole('combobox', { name: 'Assessment learning context', exact: true })).toContainText('Mechanics');
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Shared topic');
   await page.reload();
   await expect(page.getByText('Practising 1 selected topic in this learning context.')).toBeVisible();
   expect(jobs).toBe(0);
@@ -120,3 +118,50 @@ test('event detail downloads an explicit calendar snapshot', async ({ page }) =>
   await page.getByRole('button', { name: 'Download calendar file', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('mentra-event-event-1.ics');
 });
+
+
+for (const [width, scheme] of [[360, 'light'], [390, 'dark'], [1440, 'light']] as const) {
+  test(`simple creation and distinct material actions at ${width} ${scheme}`, async ({ page }, info) => {
+    await workspace(page);
+    await page.setViewportSize({width, height:900});
+    await page.emulateMedia({colorScheme:scheme, reducedMotion:'reduce'});
+    const doc=material(1);
+    await page.route('**/api/v1/documents**', route => route.fulfill({json:route.request().url().endsWith('/material-1') ? doc : {items:[doc],total:1,offset:0,limit:25}}));
+    const requests: Record<string, unknown>[]=[];
+    await page.route('**/api/v1/assessments/generation-jobs', route => {
+      requests.push(route.request().postDataJSON());
+      return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Retry later'}}});
+    });
+    await page.goto('/library');
+    for (const label of ['View material','Study in chat','Quiz this material']) {
+      const link=page.getByRole('link',{name:label,exact:true});
+      await expect(link).toBeVisible();
+      await expect(link).toHaveCSS('border-top-width','1px');
+      await expect(link).toHaveCSS('text-decoration-line','none');
+    }
+    await page.getByRole('link',{name:'Quiz this material',exact:true}).click();
+    const form=page.getByRole('form',{name:'Create assessment'});
+    await expect(form.getByLabel('Topic',{exact:true})).toHaveValue('Material 1');
+    await expect(form.getByLabel('Number of questions',{exact:true})).toHaveValue('3');
+    for (const name of ['Assessment learning context','Assessment purpose','Assessment results style','Assessment format']) await expect(form.getByLabel(name,{exact:true})).toHaveCount(0);
+    await form.getByRole('checkbox',{name:'Short answers',exact:true}).check();
+    await form.getByRole('checkbox',{name:'Multiple choice',exact:true}).uncheck();
+    await form.getByRole('checkbox',{name:'Multiple choice',exact:true}).focus();
+    await page.keyboard.press('Space');
+    await form.getByLabel('Number of questions',{exact:true}).fill('1');
+    await expect(form.getByRole('button',{name:'Generate assessment',exact:true})).toBeDisabled();
+    await form.getByLabel('Number of questions',{exact:true}).fill('6');
+    await form.getByLabel('Assessment instructions',{exact:true}).fill('Everyday examples. Explain without marks.');
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await form.getByLabel('Topic',{exact:true}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:info.outputPath(`assessment-create-${width}-${scheme}.png`),fullPage:true,animations:'disabled'});
+    await form.getByRole('group',{name:'Question formats',exact:true}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:info.outputPath(`assessment-formats-${width}-${scheme}.png`),animations:'disabled'});
+    await form.getByRole('button',{name:'Generate assessment',exact:true}).click();
+    await expect.poll(() => requests.length).toBe(1);
+    expect(requests[0]).toMatchObject({topic:'Material 1',count:6,question_format:'mixed',document_ids:['material-1'],grounded:true});
+    expect(requests[0].question_formats).toEqual(['short_answer','mcq']);
+    expect(requests[0]).not.toHaveProperty('result_style');
+    expect(requests[0]).not.toHaveProperty('level');
+  });
+}

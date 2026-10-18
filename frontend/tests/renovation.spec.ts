@@ -200,16 +200,16 @@ test('mobile navigation is modal, restores focus, and retains history after desk
 test('shared tabs preserve assessment drafts, URL history and keyboard focus', async ({ page }) => {
   await workspace(page, false, true);
   await page.goto('/assessments?tab=create');
-  await page.getByLabel('Topic (optional)', { exact: true }).fill('A draft to preserve');
+  await page.getByLabel('Topic', { exact: true }).fill('A draft to preserve');
   const create = page.getByRole('tab', { name: 'Create new' });
   await create.focus(); await create.press('Home');
   await expect(page.getByRole('tab', { name: 'Assessments', exact: true })).toBeFocused();
   await expect(page).not.toHaveURL(/tab=create/);
   await page.goBack();
-  await expect(page.getByLabel('Topic (optional)', { exact: true })).toHaveValue('A draft to preserve');
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
   await create.focus(); await create.press('ArrowLeft'); await page.getByRole('tab', { name: 'Assessments', exact: true }).press('End');
   await expect(create).toBeFocused();
-  await expect(page.getByLabel('Topic (optional)', { exact: true })).toHaveValue('A draft to preserve');
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
 });
 
 test('refresh keeps understanding rows and coalesces focus and visibility events', async ({ page }) => {

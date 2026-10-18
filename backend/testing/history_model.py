@@ -38,7 +38,7 @@ class HistoryChatFactory(TestChatFactory):
                         question_format='mixed' if request['question_format']=='auto' else request['question_format'])
                 if schema.__name__ == 'AssessmentDesign':
                     count = data.get('count') or (12 if data['question_format']=='mock_paper' else 4)
-                    kinds = ['mcq', 'true_false', 'short_answer', 'multiple_select', 'numerical', 'essay']
+                    kinds = data.get('question_formats') or ['mcq', 'true_false', 'short_answer', 'multiple_select', 'numerical', 'essay']
                     paper = data['question_format']=='mock_paper'
                     total_parts = count * (2 if paper else 1)
                     marks = (data.get('total_marks') or total_parts*2) / total_parts

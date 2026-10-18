@@ -117,3 +117,26 @@ responsive mistake-practice selection and a scrollable progress-evidence view wi
 sticky controls. Material eligibility is fenced to the current selection, metadata
 requests are bounded, and reference Markdown loads on expansion. See the
 [verification report](Product_Deployment_Hardening_2026-10-18.md).
+
+
+## 18 October 2026 simplified assessment creation
+
+Library card actions now use small shared secondary buttons with separate icons.
+Creation uses one topic field, optional material selection, inclusion instructions,
+keyboard-operable multi-format cards and a bounded question count. Advanced settings
+are resolved through the existing shared assessment pipeline. Responsive light/dark
+UI, material eligibility, draft retention, retries and exact linked targets were
+covered in 51 browser checks. Live synthetic English/Urdu planning checks passed;
+see [the assessment engine contract](Assessment_Engine.md#simplified-creation--18-october-2026).
+
+
+The final two-column mobile format layout passed three additional deployed-image
+checks at 360 light, 390 dark and 1440 light (overlapping the 51-case set). Local
+backend/frontend and all three workers were refreshed; readiness passed and each
+container had zero restarts. The disposable PostgreSQL fixture was removed with
+its test-only volume. Application data volumes were preserved.
+
+[Mobile creation](product-improvements/assessment-create-mobile.png) ·
+[Desktop creation](product-improvements/assessment-create-desktop.png)
+
+[Mobile format selection](product-improvements/assessment-formats-mobile.png)

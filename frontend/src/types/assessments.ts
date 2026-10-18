@@ -14,7 +14,7 @@ export interface AssessmentAttempt {
   assistance?: 'unknown' | 'independent' | 'assisted';
   grade_revision: number; grade_history: { grade_revision: number; grades: QuestionGrade[]; answers: Record<string,string>; corrected_at: string }[];
 }
-export interface AssessmentGeneration { concept_ids?: string[]; level?: string; result_style?: 'marks' | 'grade' | 'feedback'; instructions?: string; question_format?: QuestionFormat; duration_minutes?: number; total_marks?: number; client_request_id: string; context_id: string; topic: string; concept_names: string[]; confirm_new_concepts: boolean; count: number | null; purpose: string; grounded: boolean; document_ids: string[] }
+export interface AssessmentGeneration { question_formats?: string[]; concept_ids?: string[]; level?: string; result_style?: 'marks' | 'grade' | 'feedback'; instructions?: string; question_format?: QuestionFormat; duration_minutes?: number; total_marks?: number; client_request_id: string; context_id: string; topic: string; concept_names: string[]; confirm_new_concepts: boolean; count: number | null; purpose: string; grounded: boolean; document_ids: string[] }
 export interface GenerationJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed'; title: string; completed_parts: number; total_parts: number | null; result: Assessment | ChatAssessmentCardData | null; error: string | null; can_retry: boolean }
 export interface GenerationCardData { id: string; generation_job_id: string; title: string }
 export interface ChatAssessmentCardData {

@@ -1,4 +1,4 @@
-VERSION = 'assessment-selection-v1'
+VERSION = 'assessment-selection-v2'
 SYSTEM_PROMPT = '''Choose the missing subject and delivery format for a requested assessment.
 The learner has authorized an assessment; do not ask them to fill missing fields.
 Use the supplied owner-scoped tool results: active learning contexts, ranked study
@@ -20,5 +20,8 @@ Use mixed for ordinary practice unless the request or available data warrants a
 different type. Do not silently turn a plain assessment into a full mock exam.
 Return a context_id only from supplied eligible context IDs, or null for a new
 topic context. Omit concept_names unless they actually fit the selected topic.
-Return topic, context_id, question_format and optional concept_names only. The
+Choose level from explicit instructions or the profile when supported, otherwise leave it null.
+Choose result_style: grade/feedback when review without marks is requested, otherwise marks.
+Respect selected question_formats; mixed means a combination of those concrete types.
+Return topic, context_id, question_format, level, result_style and optional concept_names. The
 separate designer will choose count, sections, parts and marks from the request.'''

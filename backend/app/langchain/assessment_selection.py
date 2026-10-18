@@ -10,10 +10,11 @@ from .prompts import PromptSource
 
 async def resolve_assessment_intent(workflows, owner, intent):
     learner = workflows.learner
+    selected = None
     if intent.context_id:
         await run_in_threadpool(learner.get_context_summaries, owner, [intent.context_id])
-    # An explicit topic and format need no extra model decision.
-    if intent.topic and intent.question_format != 'auto':
+    # Resolve omitted presentation preferences in the existing selection call.
+    if intent.topic and intent.question_format != 'auto' and intent.result_style is not None:
         topic, context_id, kind, labels = intent.topic, intent.context_id, intent.question_format, intent.concept_names
     else:
         tools = {tool.name: tool for tool in create_learner_tools(learner, owner)}
@@ -57,9 +58,12 @@ async def resolve_assessment_intent(workflows, owner, intent):
             if material_ids and context_id not in material_ids: context_id = material_ids[0]
         kind = selected.question_format if intent.question_format == 'auto' else intent.question_format
         labels = intent.concept_names or (selected.concept_names if not intent.topic else [])
+    settings = {}
+    if selected is not None:
+        settings = dict(level=intent.level or selected.level, result_style=intent.result_style or selected.result_style)
     if context_id is None:
         context = await run_in_threadpool(learner.resolve_learning_context,
             ResolveLearningContextRequest(learner_id=owner, name=topic))
         context_id = context.context_id
     return GenerationRequest.model_validate(dict(intent.model_dump(mode='json'), topic=topic,
-        context_id=context_id, question_format=kind, concept_names=labels))
+        context_id=context_id, question_format=kind, concept_names=labels, **settings))

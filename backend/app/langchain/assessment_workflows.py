@@ -79,7 +79,7 @@ class AssessmentWorkflows:
             paper = PaperInfo.model_validate(resume['paper']) if resume.get('paper') else None
             questions = [GeneratedQuestion.model_validate(value) for value in resume.get('questions', [])]
             title = resume.get('title')
-        elif not request.paper_sections and (request.question_format in ('mixed', 'mock_paper') or request.count is None or request.instructions):
+        elif not request.paper_sections and (request.question_formats or request.question_format in ('mixed', 'mock_paper') or request.count is None or request.instructions):
             from .assessment_design import design_assessment
             question_plan, paper = await design_assessment(self.llm, request, prompt_sources,
                 profile_context.model_dump(mode='json') if profile_context else None, original=revision,

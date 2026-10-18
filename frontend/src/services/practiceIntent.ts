@@ -15,7 +15,7 @@ export function practiceDraft(params: URLSearchParams): AssessmentGeneration {
   const documents = [...new Set(params.getAll('document'))].slice(0,20), concepts = [...new Set(params.getAll('concept'))].slice(0,20);
   const preset = documents.length > 0 || concepts.length > 0;
   return { client_request_id: crypto.randomUUID(), context_id: (params.get('context') ?? '').slice(0,100), topic: (params.get('topic') ?? '').slice(0,200),
-    concept_names: [], concept_ids: concepts, confirm_new_concepts: false, count: preset ? 3 : null,
+    concept_names: [], concept_ids: concepts, confirm_new_concepts: false, count: preset ? 3 : 5,
     question_format: preset ? 'mcq' : 'auto', purpose: params.get('purpose') === 'verification' ? 'verification' : 'practice',
     grounded: documents.length > 0, document_ids: documents };
 }

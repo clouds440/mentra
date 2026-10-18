@@ -75,6 +75,7 @@ class GenerationRequest(Contract):
     count: int | None = Field(default=5, ge=1)
     purpose: Literal['practice', 'verification', 'calibration'] = 'practice'
     question_format: QuestionFormat = 'written'
+    question_formats: list[Annotated[str, Field(min_length=1, max_length=50)]] = Field(default_factory=list, max_length=12)
     duration_minutes: int | None = Field(default=None, ge=1)
     total_marks: float | None = Field(default=None, gt=0)
     paper_sections: list[PaperSection] = Field(default_factory=list)
@@ -103,6 +104,14 @@ class GenerationRequest(Contract):
     def revision_target(self):
         if self.concept_ids and not self.context_id:
             raise ValueError('Exact practice topics require a learning context.')
+        if self.question_formats:
+            aliases = {'multiple_choice':'mcq', 'multi_select':'multiple_select', 'true/false':'true_false', 'short_answers':'short_answer'}
+            self.question_formats = list(dict.fromkeys(aliases.get(value.lower(), value.lower()) for value in self.question_formats))
+            if any(value in ('auto', 'mixed', 'mock_paper') for value in self.question_formats):
+                raise ValueError('Select concrete question types, or leave formats empty for automatic selection.')
+            if self.count is not None and self.count < len(self.question_formats):
+                raise ValueError('Choose at least one question per selected format.')
+            self.question_format = self.question_formats[0] if len(self.question_formats) == 1 else 'mixed'
         targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
         if targets and self.concept_ids:
             raise ValueError('Revisions retain their original concepts; exact practice targets require a new assessment.')
@@ -121,6 +130,7 @@ class GenerationRequest(Contract):
         # Preserve replay hashes for generation requests created before revisions
         # were supported. New optional defaults must not invalidate old retries.
         exclude = {'revision_draft_id','revision_assessment_id','revision_instructions'} if not self.revision_instructions else set()
+        if not self.question_formats: exclude.add('question_formats')
         if not self.concept_ids: exclude.add('concept_ids')
         if self.question_format == 'written': exclude.add('question_format')
         if not self.paper_sections: exclude.add('paper_sections')
@@ -128,7 +138,8 @@ class GenerationRequest(Contract):
         if self.duration_minutes is None or self.question_format != 'mock_paper': exclude.add('duration_minutes')
         if not self.instructions: exclude.add('instructions')
         if self.level is None: exclude.add('level')
-        if self.result_style == 'marks': exclude.add('result_style')
+        # Omitted style remains replay-compatible with pre-automation requests.
+        if self.result_style in ('marks', None): exclude.add('result_style')
         return self.model_dump(mode='json', exclude=exclude)
 
 class AssessmentIntent(GenerationRequest):
@@ -137,6 +148,7 @@ class AssessmentIntent(GenerationRequest):
     topic: str | None = Field(default=None, min_length=1, max_length=200)
     count: int | None = Field(default=None, ge=1)
     question_format: str = 'auto'
+    result_style: Literal['marks', 'grade', 'feedback'] | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -151,6 +163,8 @@ class AssessmentSelection(Contract):
     topic: str = Field(min_length=1, max_length=200)
     context_id: str | None = None
     question_format: str = 'mixed'
+    level: str | None = Field(default=None, max_length=200)
+    result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
     concept_names: list[str] = Field(default_factory=list)
 
 class AssessmentPreferences(Contract):
