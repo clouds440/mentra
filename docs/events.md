@@ -152,3 +152,12 @@ and times out after 300 seconds. Tests cover competing fresh schemas and timeout
 cleanup; the migration lock identity and existing schema revisions are preserved.
 
 The verification counts above describe the dated foundation increment. They do not establish current deployment or exhaust later capture/proposal/worker/UI behavior. Current contracts are described above and in linked operational docs; the [historical implementation plan](../Mentra_Events_Implementation_Plan.md) preserves the original rollout record.
+
+## Calendar export
+
+`GET /api/v1/events/{event_id}/calendar` downloads an authenticated, owner-checked
+`.ics` snapshot. It uses a stable UID/revision, UTC instants for timed events,
+and civil dates with an exclusive next-day end for all-day events. UTF-8 lines are
+folded by octet length and text is escaped. Descriptions contain user event text,
+never source chat evidence. Exported files contain no reminder alarm and do not
+synchronize later edits; calendar applications determine import/notification behavior.

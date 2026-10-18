@@ -9,12 +9,14 @@ notifications and settings; browser caches accelerate navigation and synchroniza
 
 - **Persistent chat:** account-owned conversations, rename/delete, recoverable
   generation and Stop, incremental cross-tab/device synchronization, and immediate
-  session-cache rendering followed by database reconciliation on revisits.
+  session-cache rendering followed by database reconciliation on revisits. Search
+  finds literal phrases in owned titles/messages and opens the exact saved exchange,
+  including messages outside the current window.
 - **Chat context:** private rolling summaries stored by chat ID, recent verbatim
   context, and exact/keyword history recovery. Normal chat input is 8,192 tokens,
   with a bounded 12,288-token recovery allowance and a separate 2,048-token output
   reserve. Original displayed messages remain intact.
-- **Rich answers:** Markdown, shared Prism code blocks, citations, interactive
+- **Rich answers:** Markdown, shared Prism code blocks, rendered equations, citations, interactive
   choices, compact assessment cards and a copy-as-plain-text action. Scrolling is
   contained within chat, and answers use a short top-to-bottom reveal.
 - **Attachments and voice:** stage uploads or paste files/images inside the
@@ -26,19 +28,28 @@ notifications and settings; browser caches accelerate navigation and synchroniza
   multilingual E5 embeddings, hybrid dense/lexical retrieval, optional reranking, provenance
   and source lifecycle controls. Prefetch warms caches; passages reach the model
   only after a requested retrieval tool call. Selected materials are cleared after
-  a successful response.
+  a successful response. Library title/filename search runs on the server; ready
+  materials offer an editable, source-grounded quiz shortcut. Citations open their
+  exact source passage before full-document browsing.
 - **Assessments:** chat drafts and saved assessments, interactive MCQs or written
   answers, revisions that preserve originals, reviewed image/document answer
   extraction, durable grading and learner evidence. Interactive choices stay in
-  memory until final Submit; grading status is visible in the composer.
+  memory until final Submit; grading status is visible in the composer. Assessment
+  source selection searches/pages the complete Library and preserves selections.
+  Graded results can prepare selected mistake questions with durable answer-exposure
+  and item lineage; repeated practice cannot count as fresh independent evidence.
 - **Learning Progress:** concept review, searchable understanding, practice
   recommendations and evidence-supported follow-up reviews. Accepting a topic
-  does not count as mastery evidence.
+  does not count as mastery evidence. Practice/review actions retain exact owned
+  concept/context targets; Quick review prepares three questions for an eligible
+  topic, with explicit generation before starting. Per-topic evidence details explain
+  uncertainty, independent difficulty coverage and recent accepted practice.
 - **Events and notifications:** an owned agenda, reminders, manual editing and
   durable proposals. Actual first-party event announcements are captured before
   chat answers and auto-saved when complete/unambiguous; uncertain details remain
   reviewable. Event announcements alone do not request practice quizzes. An
   independent Notifications inbox receives reminder publications.
+  Events can be downloaded as calendar snapshots; imported files do not sync later changes.
 - **Web tools:** keyless You.com MCP `web_search` and a separate authenticated
   `web_research` tool using `YOU_WEB_SEARCH_API_KEY`, with independent quotas,
   caching, source dates and citations. Research can consume provider credits.
@@ -53,7 +64,7 @@ notifications and settings; browser caches accelerate navigation and synchroniza
 ## Quick start
 
 Docker Desktop/Engine and Docker Compose are sufficient for the container setup.
-Node.js 20+ and Python 3.12 are needed only for native development/testing.
+Node.js 24 LTS and Python 3.12 are needed only for native development/testing.
 
 ```powershell
 Copy-Item .env.example .env
@@ -79,7 +90,7 @@ docker compose --profile local-db up -d postgres
 For that profile, set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra`
 for containers; native clients use the configured localhost port instead. The API
 applies Alembic migrations before starting. The repository migration head is
-`20261013_0018`; verify the actual database revision rather than assuming deployment.
+`20261017_0027`; verify the actual database revision rather than assuming deployment.
 
 | Address | Purpose |
 | --- | --- |
@@ -162,3 +173,9 @@ docker compose logs -f backend rag-worker assessment-worker events-worker
 
 Daily JSON diagnostics are persisted at `logs/backend/backend-YYYY-MM-DD.log`.
 `LOG_PARAMETER_DETAILS=false` disables detailed parameter shapes.
+
+
+Frontend containers serve on internal port **8080**, mapped to local **5173**, as
+nonroot with a read-only root filesystem and a temporary `/tmp`. See the
+[product hardening and deployment notes](docs/Product_Deployment_Hardening_2026-10-18.md)
+and [saved-chat search contract](docs/saved-chat-search.md).

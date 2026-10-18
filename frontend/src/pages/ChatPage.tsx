@@ -2,7 +2,7 @@ import { useChatScroll } from '../hooks/useChatScroll';
 ﻿import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { ArrowDown, FileText, X } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
@@ -16,6 +16,7 @@ import { uploadChatAttachment, removeChatAttachment, type ChatAttachment } from 
 
 interface ChatOutletContext { newChatKey: number; newChatPending: boolean }
 interface StagedFile { id: string; file: File; preview?: string; saved?: ChatAttachment }
+const SavedChatExchange = lazy(() => import('../components/chat/SavedChatExchange').then(module => ({default:module.SavedChatExchange})));
 
 export function ChatPage() {
   const { identity } = useAuth();
@@ -24,6 +25,8 @@ export function ChatPage() {
   const [params, setParams] = useSearchParams();
   const selectedDocument = params.get('document');
   const practice = params.get('practice');
+  const matchedMessage = params.get('message');
+  function closeExchange() { const next = new URLSearchParams(params); next.delete('message'); setParams(next, {replace:true}); }
   const { newChatKey, newChatPending } = useOutletContext<ChatOutletContext>();
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const id = conversationId ?? draftId;
@@ -136,6 +139,7 @@ export function ChatPage() {
 
   return (
     <section aria-label="Chat workspace" className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      {conversationId && matchedMessage && <Suspense fallback={null}><SavedChatExchange key={`${identity?.learner_id}:${conversationId}:${matchedMessage}`} conversation={conversationId} message={matchedMessage} onClose={closeExchange} /></Suspense>}
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
       ) : view.messages.length === 0 ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState onChooseSuggestion={setDraft} /></div> : (

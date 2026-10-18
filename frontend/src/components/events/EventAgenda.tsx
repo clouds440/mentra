@@ -29,6 +29,19 @@ function Agenda() {
   const active = useRef<AbortController | null>(null);
   const mutation = useRef<AbortController | null>(null);
   const operation = useRef<{ key: string; id: string } | null>(null);
+  async function exportCalendar(item: EventRecord) {
+    if (busy) return;
+    const controller = new AbortController(); mutation.current = controller;
+    setBusy(true); setActiveAction('calendar'); setError('');
+    try {
+      const blob = await events.calendar(item.id, controller.signal);
+      if (controller.signal.aborted) return;
+      const url = URL.createObjectURL(blob), anchor = document.createElement('a');
+      anchor.href = url; anchor.download = `mentra-event-${item.id}.ics`; anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to export this event.'); }
+    finally { if (!controller.signal.aborted) { setBusy(false); setActiveAction(''); } }
+  }
   async function load(cursor?: string) {
     active.current?.abort(); const controller = new AbortController(); active.current = controller; setError('');
     try {
@@ -72,7 +85,9 @@ function Agenda() {
       {detail.evidence?.map((source, index) => <div key={index} className="border-l border-border pl-3 text-sm"><p>{source.quote}</p>{source.source_deleted ? <p className="text-muted">Source conversation deleted</p> : source.conversation_id && <Link className="text-accent underline" to={`/chat/${source.conversation_id}`}>Source conversation</Link>}</div>)}
       <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(detail)}>Edit</Button>
       {(['scheduled', 'completed', 'cancelled'] as const).filter(value => value !== detail.status).map(value => <Button key={value} size="sm" variant="ghost" disabled={busy} loading={activeAction === value} onClick={() => void change(detail, value)}>{value === 'scheduled' ? 'Reopen' : value === 'completed' ? 'Complete' : 'Cancel event'}</Button>)}
+      <Button variant="secondary" size="sm" disabled={busy} loading={activeAction === 'calendar'} onClick={() => void exportCalendar(detail)}>Download calendar file</Button>
       <Button variant="danger" size="sm" disabled={busy} onClick={() => setDeleting(true)}>Delete</Button></div>
+      <p className="text-xs text-muted">The calendar file is a snapshot. Later changes in Mentra do not update your calendar.</p>
       {deleting && <div className="space-y-2"><p>Delete this event permanently?</p><Button variant="danger" disabled={busy} loading={activeAction === 'delete'} onClick={() => void change(detail, 'delete')}>Confirm delete</Button> <Button variant="ghost" disabled={busy} onClick={() => setDeleting(false)}>Keep event</Button></div>}
     </section>}
     <form className="workspace-toolbar" onSubmit={event => { event.preventDefault(); void load(); }}><Input aria-label="Search events" className="min-w-40 flex-1" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /><Button variant="secondary" type="submit">Search</Button><Select className="w-auto" aria-label="Event status" value={status} onChange={event => setStatus(event.target.value as EventStatus)}>{['scheduled', 'completed', 'cancelled'].map(value => <option key={value}>{value}</option>)}</Select><Select className="w-auto" aria-label="Event date range" value={range} onChange={event => setRange(event.target.value)}><option value="upcoming">Upcoming six months</option><option value="past">Past six months</option></Select></form>

@@ -7,6 +7,7 @@ import { WorkspaceEmpty } from '../workspace/WorkspaceHeader';
 import { learningProgress } from '../../services/learning';
 import type { LearningProgressPage } from '../../types/learning';
 import { progressStatus } from './progressLabels';
+import { ProgressEvidence } from './ProgressEvidence';
 
 interface Props { context: string; reload: number; onTotal: (total: number) => void }
 const percent = (value: number | null) => value === null ? 'Not yet known' : `${Math.round(value * 100)}%`;
@@ -22,6 +23,7 @@ export function UnderstandingTable({context, reload, onTotal}: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [selected, setSelected] = useState<string>();
   useEffect(() => {
     if (search.trim() === query) return;
     const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250);
@@ -39,6 +41,7 @@ export function UnderstandingTable({context, reload, onTotal}: Props) {
   }, [context, query, page, reload, retry, onTotal]);
   const current = visible ? Math.floor(visible.offset / visible.limit) + 1 : page;
   return <section aria-labelledby="understanding-title" className="workspace-panel space-y-4">
+    {selected && <ProgressEvidence key={`${context}:${selected}`} concept={selected} context={context} onClose={() => setSelected(undefined)} />}
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h2 id="understanding-title" className="flex items-center gap-2 text-lg font-medium text-heading"><BookOpen size={19} aria-hidden="true" />Your understanding</h2>
         <p className="mt-1 max-w-lg text-sm text-muted">Topics in your learning contexts, with estimates based on your practice and answers. “Getting started” means Mentra needs more practice to form a reliable picture.</p></div>
@@ -57,7 +60,7 @@ export function UnderstandingTable({context, reload, onTotal}: Props) {
       <div tabIndex={0} role="region" aria-label="Understanding table, scroll horizontally for all estimates" className="overflow-x-auto rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"><table aria-label="Your understanding" className="w-full text-left text-sm">
         <thead className="bg-background text-muted"><tr>{['Topic', 'Learning status', 'Understanding estimate', 'Estimate reliability', 'Recall confidence'].map(label => <th key={label} scope="col" className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{label}</th>)}</tr></thead>
         <tbody>{visible.items.map(item => <tr key={item.concept_id}>
-          <th scope="row" className="border-b border-border px-3 py-3 font-medium">{item.name}</th>
+          <th scope="row" className="border-b border-border px-3 py-3 font-medium"><span className="block">{item.name}</span><button type="button" className="mt-1 text-xs font-normal text-accent underline focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setSelected(item.concept_id)} aria-label={`What is ${item.name}'s estimate based on?`}>What is this based on?</button></th>
           <td className="border-b border-border px-3 py-3"><span className="whitespace-nowrap rounded-full bg-active px-2.5 py-1 text-xs text-heading">{progressStatus(item.knowledge_status)}</span></td>
           {[item.mastery, item.estimate_confidence, item.retention_confidence].map((value, index) => <td key={index} className="whitespace-nowrap border-b border-border px-3 py-3 text-muted">{percent(value)}</td>)}
         </tr>)}</tbody></table></div>

@@ -20,6 +20,9 @@ class GenerationJobs:
         fingerprint = request_hash(dict(request=request.fingerprint_payload(), conversation=conversation))
         with self.repository.transactions.write(owner) as tx:
             session = tx._session
+            if conversation:
+                from .chat import ChatAssessmentRepository
+                ChatAssessmentRepository(self.repository)._conversation(session, owner, conversation)
             row = session.execute(select(jobs).where(jobs.c.learner_id==owner, jobs.c.operation_id==str(request.client_request_id))).mappings().first()
             if row:
                 if row['fingerprint'] != fingerprint:
@@ -32,6 +35,16 @@ class GenerationJobs:
                 error=None, attempts=0, claim_id=None, claim_until=None, created_at=self.repository.clock())
             session.execute(jobs.insert().values(**row))
             return self.public(row)
+
+    def replay(self, owner, request, conversation=None):
+        fingerprint = request_hash(dict(request=request.fingerprint_payload(), conversation=conversation))
+        with self.repository.sessions() as session:
+            row = session.execute(select(jobs).where(jobs.c.learner_id==owner,
+                jobs.c.operation_id==str(request.client_request_id))).mappings().first()
+            if not row: return None
+            if row['fingerprint'] != fingerprint:
+                raise AppError('OPERATION_CONFLICT', 'This request ID belongs to a different assessment.', 409)
+        return self.get(owner, row['id'])
 
     def get(self, owner, identifier):
         with self.repository.sessions() as session:
@@ -47,6 +60,9 @@ class GenerationJobs:
         with self.repository.transactions.write(owner) as tx:
             row = tx._session.execute(select(jobs).where(jobs.c.id==identifier, jobs.c.learner_id==owner).with_for_update()).mappings().first()
             if not row: raise AppError('ASSESSMENT_JOB_NOT_FOUND', 'Assessment generation unavailable.', 404)
+            if row['conversation_id']:
+                from .chat import ChatAssessmentRepository
+                ChatAssessmentRepository(self.repository)._conversation(tx._session, owner, row['conversation_id'])
             if row['state']=='failed':
                 if tx._session.scalar(select(func.count()).select_from(jobs).where(jobs.c.learner_id==owner, jobs.c.state.in_(['queued','running']))) >= 2:
                     raise AppError('ASSESSMENT_GENERATION_BUSY', 'Let your current assessments finish before resuming another.', 409)

@@ -2,6 +2,8 @@ import { apiRequest } from './api';
 import type { Conversation, MessagePage, PendingTurn, SyncPage } from '../types/conversations';
 
 const base = '/api/v1/conversations';
+export const searchChats = (query: string, offset: number, signal: AbortSignal) => apiRequest<import('../types/conversations').ChatSearchPage>(`${base}/search?${new URLSearchParams({query,offset:String(offset)})}`, {signal,cache:'no-store'});
+export const savedExchange = (conversation: string, message: string, signal: AbortSignal) => apiRequest<import('../types/conversations').SavedExchange>(`${base}/${encodeURIComponent(conversation)}/messages/${encodeURIComponent(message)}/window`, {signal,cache:'no-store'});
 export const syncChats = (cursor: number | null, active?: string, signal?: AbortSignal) => {
   const query = new URLSearchParams();
   if (cursor !== null) query.set('cursor', String(cursor));

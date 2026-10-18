@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import UUID
 from app.student_profile.dependencies import require_onboarded_identity
 from app.learner.schemas import LearnerContextRequest, LearnerContextPacket, StudyRecommendation, VerificationCandidate, LearningProgressRequest, LearningProgressPage
+from app.learner.schemas import ProgressExplanation
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/learning', tags=['learning'], dependencies=[Depends(private_response)])
@@ -49,3 +50,17 @@ async def understanding(request: Request, query: str = Query('', max_length=200)
     return await run_in_threadpool(request.app.state.learner_service.get_learning_progress,
         LearningProgressRequest(learner_id=identity.learner_id, query=query,
             context_ids=[context_id] if context_id else None, limit=limit, offset=offset))
+
+
+@router.get('/understanding/{identifier}', response_model=ProgressExplanation)
+async def explanation(identifier: UUID, request: Request,
+        context_id: str | None = Query(None, min_length=1, max_length=100),
+        identity=Depends(require_onboarded_identity)):
+    def read():
+        value = request.app.state.learner_service.get_progress_explanation(identity.learner_id, str(identifier), context_id)
+        references = [(str(item.assessment_id), str(item.attempt_id), item.grade_revision)
+            for item in value.recent_evidence if item.assessment_id and item.attempt_id]
+        available = request.app.state.assessment_service.repository.available_evidence_sources(identity.learner_id, references)
+        return value.model_copy(update={'recent_evidence': [item.model_copy(update={'source_available':
+            (str(item.assessment_id), str(item.attempt_id), item.grade_revision) in available}) for item in value.recent_evidence]})
+    return await run_in_threadpool(read)

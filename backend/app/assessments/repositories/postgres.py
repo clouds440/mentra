@@ -38,7 +38,9 @@ class AssessmentRepository:
         return dict(row)
 
     def public(self, row):
-        return Assessment(paper=row.get('paper'), preferences=row.get('preferences') or {}, **{key:row[key] for key in ('id','context_id','title','purpose','revision','created_at','sources')},
+        lineage = row.get('practice_lineage')
+        return Assessment(practice_source={key:value for key,value in lineage.items() if key != 'question_items'} if lineage else None,
+            paper=row.get('paper'), preferences=row.get('preferences') or {}, **{key:row[key] for key in ('id','context_id','title','purpose','revision','created_at','sources')},
             questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id','correct_option_ids','concept_names')}) for question in row['questions']])
 
     def attempt_public(self, row):
@@ -98,11 +100,17 @@ class AssessmentRepository:
                 paper=generated.paper.model_dump(mode='json') if generated.paper else None,
                 preferences=dict(level=request.level, result_style=request.result_style),
                 operation_id=str(request.client_request_id), fingerprint=fingerprint)
+            from .mistake_practice import inherit_practice_lineage
+            row['practice_lineage'] = inherit_practice_lineage(self, session, owner, request, questions, row['id'])
             session.execute(a.insert().values(**row))
             return self.public(row)
 
     def detail(self, owner, identifier):
         with self.sessions() as session: return self.public(self._assessment(session, owner, identifier))
+
+    def practise_mistakes(self, owner, identifier, body):
+        from .mistake_practice import create_practice
+        return create_practice(self, owner, identifier, body)
 
     def list(self, owner, offset=0):
         with self.sessions() as session:
@@ -112,7 +120,7 @@ class AssessmentRepository:
     def start(self, owner, identifier, body, *, fingerprint=None):
         with self.transactions.write(owner) as tx:
             session = tx._session
-            self._assessment(session, owner, identifier)
+            assessment = self._assessment(session, owner, identifier)
             existing = session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner, t.c.operation_id == str(body.client_request_id))).mappings().first()
             if existing:
                 if existing['assessment_id'] != identifier: raise AppError('OPERATION_CONFLICT', 'Request ID belongs to another assessment.', 409)
@@ -123,7 +131,8 @@ class AssessmentRepository:
             if count >= 20: raise AppError('ATTEMPT_CAPACITY', 'This assessment has reached its attempt limit.', 409)
             row = dict(id=str(uuid4()), learner_id=owner, assessment_id=identifier, operation_id=str(body.client_request_id),
                 attempt_number=count+1, revision=1, state='draft', created_at=self.clock(), answers={}, grades=None,
-                extraction=None, error=None, worker_attempts=0, evidence_status='none', start_fingerprint=fingerprint)
+                extraction=None, error=None, worker_attempts=0, evidence_status='none', start_fingerprint=fingerprint,
+                assistance='assisted' if assessment.get('practice_lineage') else 'unknown')
             session.execute(t.insert().values(**row))
             return self.attempt_public(row)
 
@@ -165,6 +174,16 @@ class AssessmentRepository:
             self._assessment(session, owner, assessment_id)
             return [self.attempt_public(row) for row in session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner,
                 t.c.assessment_id == assessment_id).order_by(t.c.attempt_number.desc()).limit(20)).mappings()]
+
+    def available_evidence_sources(self, owner, references):
+        """Hydrate only current owned grades; deleted or regraded sources have no link."""
+        references = list(references)[:5]
+        if not references: return set()
+        with self.sessions() as session:
+            rows = session.execute(select(t.c.assessment_id, t.c.id, t.c.grade_revision).join(a,
+                and_(a.c.id==t.c.assessment_id, a.c.learner_id==t.c.learner_id)).where(
+                    t.c.learner_id==owner, t.c.state=='graded', t.c.id.in_([str(ref[1]) for ref in references]))).all()
+            return {(str(row.assessment_id), str(row.id), row.grade_revision) for row in rows}
 
     def save_draft_answers(self, owner, identifier, body):
         with self.transactions.write(owner) as tx:
@@ -216,14 +235,15 @@ class AssessmentRepository:
                 raise AppError('REVISION_CONFLICT', 'This attempt changed. Reload before submitting.', 409)
             if row['extraction'] and not body.transcription_confirmed:
                 raise AppError('TRANSCRIPTION_CONFIRMATION_REQUIRED', 'Confirm the reviewed answer transcription.', 422)
-            questions = self._assessment(session, owner, row['assessment_id'])['questions']
+            assessment = self._assessment(session, owner, row['assessment_id'])
+            questions = assessment['questions']
             if set(body.answers) != {q['id'] for q in questions} or any(not answer.strip() for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE', 'Answer every question or part.', 422)
             answers = self.normalize_answers(questions, body.answers)
             self.validate_mcq_answers(questions, answers)
             values = dict(answers=answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
                 profile_context_version=self.profile_version(session, owner),
-                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', assistance=body.assistance, error=None, log_context=workflow_logger.envelope())
+                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', assistance='assisted' if assessment.get('practice_lineage') else body.assistance, error=None, log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id == identifier).values(**values))
             from app.langchain.repositories.checkpoint_tables import delete_thread
             delete_thread(session, f'assessment-transcription-v1:{owner}:{identifier}')
@@ -247,7 +267,8 @@ class AssessmentRepository:
                 return self.attempt_public(row)
             if row['state']!='graded' or row['revision']!=body.expected_revision:
                 raise AppError('REVISION_CONFLICT','Only the current graded attempt can be corrected.',409)
-            questions=self._assessment(session,owner,row['assessment_id'])['questions']
+            assessment=self._assessment(session,owner,row['assessment_id'])
+            questions=assessment['questions']
             if set(body.answers)!={question['id'] for question in questions} or any(not answer.strip() for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE','Review every answer before submitting a correction.',422)
             if row['extraction'] and not body.transcription_confirmed:
@@ -259,7 +280,7 @@ class AssessmentRepository:
             values=dict(grade_history=history,grade_revision=row['grade_revision']+1,answers=answers,grades=None,grading_progress={},
                 profile_context_version=self.profile_version(session, owner),
                 revision=row['revision']+1,state='submitted',submitted_at=self.clock(),worker_attempts=0,retry_at=None,
-                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',assistance=body.assistance,error=None,log_context=workflow_logger.envelope())
+                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',assistance='assisted' if assessment.get('practice_lineage') else body.assistance,error=None,log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id==identifier).values(**values))
             return self.attempt_public(dict(row,**values))
 

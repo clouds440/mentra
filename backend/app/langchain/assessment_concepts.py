@@ -7,6 +7,12 @@ def concept_label(label):
     return value if len(value) <= 200 else value[:176] + ' [' + sha256(value.encode()).hexdigest()[:16] + ']'
 
 async def resolve_question_concepts(learner, owner, request, questions, targets):
+    if request.concept_ids:
+        # Exact targets have already been validated, including model attribution.
+        # Never let extra generated labels create or substitute an identity.
+        for question in questions:
+            question.concept_names = []
+        return
     known = {item['id']: item['name'] for item in targets}
     by_name = {item['name'].casefold(): item['id'] for item in targets}
     pending = {}

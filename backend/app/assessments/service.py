@@ -25,10 +25,15 @@ class AssessmentService:
         self.generation_jobs = GenerationJobs(repository)
 
     async def queue_generation(self, owner, request, conversation=None):
+        previous = await run_in_threadpool(self.generation_jobs.replay, owner, request, conversation)
+        if previous: return previous
         if request.grounded and not request.document_ids:
             raise AppError('ASSESSMENT_SOURCES_REQUIRED', 'Select study documents to ground this assessment.', 422)
         if request.context_id:
             await run_in_threadpool(self.workflows.learner.get_context_summaries, owner, [request.context_id])
+        if request.concept_ids:
+            await run_in_threadpool(self.workflows.learner.get_practice_concepts, owner, request.context_id,
+                                   [str(identifier) for identifier in request.concept_ids])
         if conversation: await run_in_threadpool(self.chat.recent, owner, conversation)
         if request.revision_instructions: await self._revision_source(owner, request, conversation)
         return await run_in_threadpool(self.generation_jobs.enqueue, owner, request, conversation)

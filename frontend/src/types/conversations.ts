@@ -30,3 +30,12 @@ export interface SyncPage {
   reset: boolean; cursor: number; has_more: boolean;
   conversations: Conversation[]; deleted_ids: string[]; active?: MessagePage; list_cursor?: string | null;
 }
+export interface ChatSearchHit {
+  conversation_id: string; title: string; matched_message_id: string; sequence: number;
+  role: 'user' | 'assistant'; snippet: string; created_at: string; matched_in: 'message' | 'title';
+}
+export interface ChatSearchPage { items: ChatSearchHit[]; next_offset: number | null; truncated: boolean }
+export interface SavedExchange {
+  conversation_id: string; title: string; matched_message_id: string;
+  messages: { id: string; role: 'user' | 'assistant'; content: string; created_at: string }[];
+}

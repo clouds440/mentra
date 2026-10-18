@@ -40,6 +40,20 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_library_metadata_search_is_unicode_literal_paginated_and_owned(self):
+        self.ready()
+        document = self.repo.list_documents(self.owner)['items'][0]
+        from app.rag.schemas import DocumentUpdate
+        self.service.update_document(self.owner, document['id'], DocumentUpdate(expected_revision=document['revision'], title='اردو Biology 100%'))
+        self.assertEqual(self.repo.list_documents(self.owner, query='اردو')['total'], 1)
+        self.assertEqual(self.repo.list_documents(self.owner, query='BIOLOGY')['total'], 1)
+        self.assertEqual(self.repo.list_documents(self.owner, query='notes.txt')['total'], 1)
+        self.assertEqual(self.repo.list_documents(self.owner, query='100%')['total'], 1)
+        self.assertEqual(self.repo.list_documents(self.owner, query='_')['total'], 0)
+        self.assertEqual(self.repo.list_documents(self.owner, offset=1, limit=1, query='biology')['items'], [])
+        self.assertEqual(self.repo.list_documents(self.other, query='اردو')['total'], 0)
+        self.assertEqual(self.repo.list_documents(self.owner, context_id='other-context', query='biology')['total'], 0)
+
     def test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached(self):
         self.ready()
         with patch.object(self.vector, 'query_chunks', side_effect=VectorStoreError('offline')):

@@ -68,6 +68,15 @@ async def detail(event_id: UUID, request: Request, identity=Depends(require_onbo
     return await run_in_threadpool(service(request).detail, identity.learner_id, str(event_id))
 
 
+@router.get('/{event_id}/calendar')
+async def calendar_export(event_id: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    from app.history_management.events.calendar import calendar_file
+    event = await run_in_threadpool(service(request).detail, identity.learner_id, str(event_id))
+    return Response(calendar_file(EventDetail.model_validate(event)), media_type='text/calendar; charset=utf-8', headers={
+        'Content-Disposition': f'attachment; filename="mentra-event-{event_id}.ics"',
+        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
+
+
 @router.patch('/{event_id}', response_model=EventOutcome)
 async def edit(event_id: UUID, body: EventEdit, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(service(request).edit, identity.learner_id, str(event_id), body)

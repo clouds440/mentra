@@ -1,6 +1,10 @@
 import { Children, isValidElement, memo, useMemo, type ReactNode } from 'react';
 import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { normalizeMathDelimiters, remarkMathCurrency } from '../../lib/mathMarkdown';
 import { CodeBlock } from './CodeBlock';
 
 function MarkdownCode({ children }: { children?: ReactNode }) {
@@ -17,5 +21,7 @@ export const MarkdownContent = memo(function MarkdownContent({ content, linkComp
     a: linkComponent ?? (({ children, href }) => <a href={href} rel="noopener noreferrer">{children}</a>),
     table: ({ children }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
   }), [linkComponent]);
-  return <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm, ...(plugins ?? [])]} components={components}>{content}</ReactMarkdown></div>;
+  const markdown = useMemo(() => normalizeMathDelimiters(content), [content]);
+  return <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkMathCurrency, ...(plugins ?? [])]}
+    rehypePlugins={[[rehypeKatex, { trust: false, maxExpand: 500, maxSize: 20, throwOnError: false }]]} components={components}>{markdown}</ReactMarkdown></div>;
 });

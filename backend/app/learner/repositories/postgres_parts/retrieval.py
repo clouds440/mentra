@@ -53,10 +53,12 @@ class RetrievalStore(PostgresRepositoryBase):
         with self._session() as session:
             return set(session.execute(stmt).scalars())
 
-    def context_concepts(self, learner_id, context_ids, query_terms=(), limit=None, normalized_query=''):
+    def context_concepts(self, learner_id, context_ids, query_terms=(), limit=None, normalized_query='', concept_ids=None):
         score = literal(0)
         filters = [contexts.c.learner_id == learner_id, links.c.learner_id == learner_id,
                    contexts.c.id.in_(context_ids), concept.c.status == 'ACTIVE']
+        if concept_ids is not None:
+            filters.append(concept.c.id.in_(concept_ids))
         if query_terms:
             predicates = [matches(term) for term in query_terms]
             filters.append(or_(*predicates))
@@ -79,7 +81,7 @@ class RetrievalStore(PostgresRepositoryBase):
             if concept_ids is not None:
                 query = query.where(links.c.concept_id.in_(concept_ids))
             for row in session.execute(query).mappings():
-                factor = dict(importance=row['importance'], relevance=relevance[row['context_id']], target_difficulty=row['target_difficulty'])
+                factor = dict(importance=row['importance'], relevance=relevance[row['context_id']], target_difficulty=row['target_difficulty'], context_id=row['context_id'])
                 old = result.get(row['concept_id'])
                 if old is None or (factor['importance'] * factor['relevance'], factor['target_difficulty']) > (
                         old['importance'] * old['relevance'], old['target_difficulty']):

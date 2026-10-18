@@ -16,6 +16,29 @@ from testing.identities import learner_id
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'Requires explicit dedicated TEST_DATABASE_URL')
 class EventsAPITests(unittest.TestCase):
+    def test_calendar_export_retains_time_and_date_semantics_and_authorizes_every_read(self):
+        body = self.body() | dict(title='اردو, revision; ' + 'ا' * 120, description='First line\nEND:VEVENT\nSecond line')
+        event = self.client.post('/api/v1/events', json=body, headers=self.headers).json()['event']
+        path = '/api/v1/events/' + event['id'] + '/calendar'
+        response = self.client.get(path, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('text/calendar', response.headers['content-type'])
+        self.assertTrue(all(len(line) <= 75 for line in response.content.split(b'\r\n')))
+        unfolded = response.text.replace('\r\n ', '')
+        self.assertIn('DTSTART;VALUE=DATE:20261012\r\nDTEND;VALUE=DATE:20261013', unfolded)
+        self.assertIn('اردو\\, revision\\;', unfolded)
+        self.assertEqual(unfolded.count('\r\nEND:VEVENT\r\n'), 1)
+        self.assertNotIn('VALARM', unfolded)
+        self.assertEqual(self.client.get(path, headers={'Authorization': 'Bearer bob'}).status_code, 404)
+        self.assertEqual(self.client.get(path).status_code, 401)
+        timed = self.body(); timed.pop('local_date')
+        timed.update(starts_at='2026-10-20T09:00:00+05:00', ends_at='2026-10-20T10:00:00+05:00')
+        item = self.client.post('/api/v1/events', json=timed, headers=self.headers).json()['event']
+        exported = self.client.get('/api/v1/events/' + item['id'] + '/calendar', headers=self.headers).text
+        self.assertIn('DTSTART:20261020T040000Z', exported)
+        self.assertIn('DTEND:20261020T050000Z', exported)
+
     @classmethod
     def setUpClass(cls):
         cls.db = PostgresSandbox()

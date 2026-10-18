@@ -1,9 +1,11 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import { normalizeMathDelimiters, remarkMathCurrency } from './mathMarkdown';
 
 interface Node { type: string; value?: string; url?: string; alt?: string; children?: Node[]; ordered?: boolean; start?: number }
-const parser = unified().use(remarkParse).use(remarkGfm);
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkMathCurrency);
 
 // Parse Markdown rather than stripping punctuation: code, escaped characters,
 // nested formatting, tables and link labels retain their actual content.
@@ -13,6 +15,8 @@ export function markdownPlainText(markdown: string): string {
     switch (node.type) {
       case 'root': return children.map(text).join('\n\n');
       case 'text': case 'inlineCode': case 'code': return node.value ?? '';
+      case 'inlineMath': return `$${node.value?.trim() ?? ''}$`;
+      case 'math': return `$$\n${node.value ?? ''}\n$$`;
       case 'break': return '\n';
       case 'html': return '';
       case 'image': return node.alt ?? '';
@@ -25,5 +29,6 @@ export function markdownPlainText(markdown: string): string {
       default: return children.map(text).join('');
     }
   }
-  return text(parser.parse(markdown) as Node).trim();
+  const tree = parser.parse(normalizeMathDelimiters(markdown));
+  return text(parser.runSync(tree) as Node).trim();
 }

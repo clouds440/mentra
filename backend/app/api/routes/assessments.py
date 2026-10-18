@@ -5,6 +5,7 @@ from app.student_profile.dependencies import require_onboarded_identity
 from app.assessments.schemas import GenerationRequest, AssessmentIntent, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
 from pydantic import BaseModel, ConfigDict, Field
 from app.assessments.schemas import RetryGrading
+from app.assessments.schemas import MistakePracticeRequest
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
@@ -60,6 +61,11 @@ async def list_assessments(request: Request, offset: int = Query(0, ge=0, le=200
 @router.get('/attempts/{identifier}', response_model=Attempt)
 async def attempt(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.repository.attempt, identity.learner_id, str(identifier))
+
+@router.post('/attempts/{identifier}/practice', response_model=Assessment)
+async def practise_mistakes(identifier: UUID, body: MistakePracticeRequest, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.repository.practise_mistakes,
+        identity.learner_id, str(identifier), body)
 
 @router.post('/attempts/{identifier}/submission', response_model=Attempt)
 async def submit(identifier: UUID, body: SubmitAnswers, request: Request, identity=Depends(require_onboarded_identity)):

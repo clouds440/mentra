@@ -19,10 +19,23 @@ def grading_payload(assessment, attempt, questions):
     # complete prompt, context, key, rubric and answer; never shorten their text.
     fields = ('id', 'prompt', 'context', 'model_answer', 'rubric', 'marks',
               'concept_ids', 'question_type', 'number', 'part', 'section')
-    return dict(questions=[{key: q[key] for key in fields if key in q} for q in questions],
+    payload = dict(questions=[{key: q[key] for key in fields if key in q} for q in questions],
         answers={q['id']: attempt['answers'][q['id']] for q in questions},
         result_style=assessment.get('preferences', {}).get('result_style', 'marks'),
         transcription_confirmed=attempt.get('extraction') is not None)
+    lineage = assessment.get('practice_lineage') or {}
+    if lineage.get('reference_questions'):
+        contexts, references = {}, []
+        for q in lineage['reference_questions']:
+            reference = {key:q[key] for key in ('prompt','number','part','section','options') if key in q}
+            if q.get('context'):
+                context_id = contexts.setdefault(q['context'], f'C{len(contexts)+1}')
+                reference['context_ref'] = context_id
+            references.append(reference)
+        payload['original_paper_reference'] = dict(instructions=lineage.get('instructions', ''),
+            contexts={value:key for key,value in contexts.items()}, questions=references,
+            usage='Reference only; context_ref points to shared contexts. Grade only the questions with submitted answers.')
+    return payload
 
 
 def plan_grading_batches(llm, assessment, attempt, questions):

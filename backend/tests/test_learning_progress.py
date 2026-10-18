@@ -15,6 +15,21 @@ from testing.identities import learner_id
 
 
 class LearningProgressTests(unittest.TestCase):
+    def test_exact_practice_targets_require_membership_in_the_owned_context(self):
+        from app.core.exceptions import AppError
+        owned = self.concept('Owned practice identity')
+        foreign = self.learner.register_concept('Another practice identity')
+        other_context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.other, name='Private area'))
+        self.learner.link_context_concept(self.other, other_context.context_id, foreign.id)
+        self.assertEqual([row.id for row in self.learner.get_practice_concepts(self.owner, self.context.context_id, [owned.id])], [owned.id])
+        with self.assertRaises(AppError):
+            self.learner.get_practice_concepts(self.owner, self.context.context_id, [foreign.id])
+        with self.assertRaises(LearningContextNotFoundError):
+            self.learner.get_practice_concepts(self.owner, other_context.context_id, [foreign.id])
+        targets = self.learner.get_study_targets(self.owner, [self.context.context_id])
+        self.assertEqual(targets['recommendations'][0].context_id, self.context.context_id)
+        self.assertIsNone(self.page().items[0].mastery)
+
     def setUp(self):
         self.db = PostgresSandbox(); self.addCleanup(self.db.close)
         self.owner, self.other = learner_id('alice'), learner_id('bob')

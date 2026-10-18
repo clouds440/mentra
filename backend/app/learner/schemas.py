@@ -2,6 +2,7 @@ from app.core.identifiers import LearnerId
 """Typed, serializable request and response contracts for learner services."""
 
 from datetime import datetime, timezone
+from uuid import UUID
 from typing import Any, Literal, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
@@ -210,6 +211,43 @@ class LearningProgressPage(LearnerSchema):
     generated_at: datetime
 
 
+class ProgressEvidence(LearnerSchema):
+    occurred_at: datetime
+    source_type: str
+    result: str
+    difficulty: float | None = None
+    independent: bool
+    participation: Literal['independent', 'repeated', 'assisted', 'unspecified']
+    assessment_id: UUID | None = None
+    attempt_id: UUID | None = None
+    grade_revision: int | None = None
+    source_available: bool = False
+
+
+class DifficultyCoverage(LearnerSchema):
+    band: Literal['easy', 'medium', 'hard']
+    independent_items: int = Field(ge=0, le=64)
+
+
+class ProgressExplanation(LearnerSchema):
+    context_id: str | None = None
+    concept_id: str
+    name: str
+    knowledge_status: str
+    mastery: float | None = None
+    mastery_lower_bound: float
+    mastery_upper_bound: float
+    independent_item_count: int = Field(ge=0, le=64)
+    evidence_count: int = Field(ge=0)
+    last_practice_at: datetime | None = None
+    last_independent_at: datetime | None = None
+    recommended_difficulty: float
+    next_check: str
+    difficulty_coverage: list[DifficultyCoverage] = Field(max_length=3)
+    recent_evidence: list[ProgressEvidence] = Field(max_length=5)
+    generated_at: datetime
+
+
 class StudyRecommendationsRequest(LearnerSchema):
     learner_id: LearnerId
     context_ids: list[str] | None = Field(default=None, max_length=20)
@@ -217,6 +255,7 @@ class StudyRecommendationsRequest(LearnerSchema):
 
 
 class StudyRecommendation(LearnerSchema):
+    context_id: str | None = None
     concept_id: str
     name: str
     reason: str
@@ -234,6 +273,7 @@ class VerificationCandidatesRequest(LearnerSchema):
 
 
 class VerificationCandidate(LearnerSchema):
+    context_id: str | None = None
     concept_id: str
     name: str
     reason: str

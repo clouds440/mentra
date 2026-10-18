@@ -16,13 +16,16 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "idb": "^8.0.3",
+    "katex": "^0.19.0",
     "lucide-react": "^1.52.0",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.4",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "tailwind-merge": "^2.6.0",
     "unified": "^11.0.5"
@@ -37,6 +40,10 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.6.2",
-    "vite": "^5.4.10"
+    "vite": "^6.4.4"
+  },
+  "overrides": {
+    "katex": "$katex",
+    "postcss-selector-parser": "^7.1.6"
   }
 }

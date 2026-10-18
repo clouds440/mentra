@@ -352,8 +352,8 @@ class ChatRepository:
                 # Keep only the conversation tombstone; content is actually removed.
                 from .tables import attachments, summaries
                 session.execute(delete(summaries).where(summaries.c.conversation_id == conversation_id, summaries.c.learner_id == owner))
-                from app.assessments.repositories.tables import chat_drafts
-                session.execute(delete(chat_drafts).where(chat_drafts.c.conversation_id == conversation_id, chat_drafts.c.learner_id == owner))
+                from app.assessments.repositories.chat import ChatAssessmentRepository
+                ChatAssessmentRepository.detach_chat(session, owner, conversation_id)
                 session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
                 session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
                 session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))

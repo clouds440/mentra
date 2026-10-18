@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.rag.schemas import ChatSelection
 
@@ -33,3 +35,34 @@ class EditConversation(BaseModel):
 class StopTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     attempt: int = Field(ge=1)
+
+
+class ChatSearchHit(BaseModel):
+    conversation_id: UUID
+    title: str
+    matched_message_id: UUID
+    sequence: int
+    role: Literal['user', 'assistant']
+    snippet: str = Field(max_length=260)
+    created_at: datetime
+    matched_in: Literal['message', 'title']
+
+
+class ChatSearchPage(BaseModel):
+    items: list[ChatSearchHit] = Field(max_length=20)
+    next_offset: int | None = None
+    truncated: bool = False
+
+
+class SavedExchangeMessage(BaseModel):
+    id: UUID
+    role: Literal['user', 'assistant']
+    content: str
+    created_at: datetime
+
+
+class SavedExchange(BaseModel):
+    conversation_id: UUID
+    title: str
+    matched_message_id: UUID
+    messages: list[SavedExchangeMessage] = Field(max_length=3)

@@ -56,6 +56,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
   const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.web_citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)], message.content), [message.content, message.citations, message.web_citations, message.history_references, message.memory_references]);
+  const markdownPlugins = useMemo(() => [citations], [citations]);
   // Keep the renderer identity stable so opening the dialog retains its trigger
   // node and native dialog focus restoration works for keyboard users.
   const markdownComponents = useMemo(() => ({ a: ({ href, children }: { href?: string; children?: ReactNode }) => {
@@ -91,7 +92,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
       >
         {isAssistant ? (
           <div className="markdown-content">
-            <MarkdownContent content={message.content} plugins={[citations]} linkComponent={markdownComponents.a} />
+            <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
             <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}

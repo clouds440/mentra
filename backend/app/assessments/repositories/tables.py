@@ -2,12 +2,19 @@ from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer,
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 
+practice_operations = Table('assessment_practice_operation', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
+    Column('operation_id', Uuid(as_uuid=False), primary_key=True),
+    Column('assessment_id', Uuid(as_uuid=False), nullable=False), Column('fingerprint', Text, nullable=False),
+    Column('created_at', DateTime(timezone=True), nullable=False))
+
 assessments = Table('assessment', metadata,
     Column('id', Uuid(as_uuid=False), primary_key=True), Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id'), nullable=False),
     Column('context_id', Text, nullable=False), Column('title', Text, nullable=False), Column('purpose', Text, nullable=False),
     Column('revision', BigInteger, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
     Column('questions', JSONB, nullable=False), Column('sources', JSONB, nullable=False), Column('paper', JSONB),
     Column('preferences', JSONB, nullable=False, server_default='{}'),
+    Column('practice_lineage', JSONB(none_as_null=True)),
     Column('operation_id', Uuid(as_uuid=False), nullable=False), Column('fingerprint', Text, nullable=False),
     UniqueConstraint('learner_id', 'id'), UniqueConstraint('learner_id', 'operation_id', name='uq_assessment_owner_operation'),
     ForeignKeyConstraint(['learner_id', 'context_id'], ['learning_context.learner_id', 'learning_context.id']),

@@ -1,17 +1,35 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Response, Query
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.auth.dependencies import require_identity
 from app.chat.schemas import SendTurn, EditConversation, StopTurn
 from app.rag.schemas import ChatSelection
 from .chat import generate_reply
+from app.chat.schemas import ChatSearchPage, SavedExchange
 
 router = APIRouter(prefix='/conversations', tags=['conversations'])
 
 
 def service(request: Request):
     return request.app.state.conversation_service
+
+
+@router.get('/search', response_model=ChatSearchPage)
+async def search_saved(request: Request, response: Response, query: str = Query('', max_length=200),
+        offset: int = Query(0, ge=0, le=180), identity=Depends(require_onboarded_identity)):
+    from app.chat.repositories.history_reader import ChatReadFacade
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(ChatReadFacade(service(request).repository).search_saved, identity.learner_id, query, offset)
+
+
+@router.get('/{conversation_id}/messages/{message_id}/window', response_model=SavedExchange)
+async def saved_exchange(conversation_id: UUID, message_id: UUID, request: Request, response: Response,
+        identity=Depends(require_onboarded_identity)):
+    from app.chat.repositories.history_reader import ChatReadFacade
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(ChatReadFacade(service(request).repository).saved_exchange,
+        identity.learner_id, str(conversation_id), str(message_id))
 
 
 @router.get('/sync')

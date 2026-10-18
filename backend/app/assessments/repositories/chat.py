@@ -1,6 +1,6 @@
 """Chat-scoped practice drafts; publishing copies the immutable grading key once."""
 from uuid import uuid4
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, delete, func
 from app.core.exceptions import AppError
 from app.chat.repositories.tables import conversations
 from .tables import assessments, chat_drafts, preferences
@@ -11,6 +11,12 @@ from app.core.logging import workflow_logger
 class ChatAssessmentRepository:
     def __init__(self, repository):
         self.repository = repository
+
+    @staticmethod
+    def detach_chat(session, owner, conversation):
+        from .tables import generation_jobs
+        session.execute(delete(chat_drafts).where(chat_drafts.c.conversation_id==conversation, chat_drafts.c.learner_id==owner))
+        session.execute(delete(generation_jobs).where(generation_jobs.c.conversation_id==conversation, generation_jobs.c.learner_id==owner))
 
     def _conversation(self, session, owner, conversation):
         if not session.scalar(select(conversations.c.id).where(conversations.c.id == conversation,
@@ -84,6 +90,8 @@ class ChatAssessmentRepository:
                 preferences=dict(level=request.level, result_style=request.result_style),
                 questions=[dict(q.model_dump(mode='json'), id=str(uuid4())) for q in generated.questions],
                 sources=sources, operation_id=str(request.client_request_id), fingerprint=fingerprint)
+            from .mistake_practice import inherit_practice_lineage
+            payload['practice_lineage'] = inherit_practice_lineage(self.repository, session, owner, request, payload['questions'], payload['id'])
             row = dict(id=str(uuid4()), learner_id=owner, conversation_id=conversation, payload=payload,
                 operation_id=str(request.client_request_id), assessment_id=None, created_at=self.repository.clock())
             session.execute(chat_drafts.insert().values(**row))

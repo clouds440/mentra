@@ -64,11 +64,11 @@ def get_capabilities(service=Depends(rag), identity=Depends(require_onboarded_id
 
 @router.get('/documents')
 def list_documents(offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100),
-                   archived: bool | None = None, context_id: str | None = None,
+                   archived: bool | None = None, context_id: str | None = None, query: str = Query(default='', max_length=200),
                    service=Depends(rag), identity=Depends(require_onboarded_identity)):
     if context_id is not None:
         service.context_summaries(identity.learner_id, [context_id])
-    return service.repository.list_documents(identity.learner_id, offset, limit, archived, context_id)
+    return service.repository.list_documents(identity.learner_id, offset, limit, archived, context_id, query)
 
 
 async def accept(file, title, contexts, key, identity, service, document_id=None, expected_revision=None):

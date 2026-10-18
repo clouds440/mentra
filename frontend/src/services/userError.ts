@@ -36,6 +36,9 @@ export function materialWarningMessage(message: string): string {
 }
 
 export function errorMessage(status: number, code: string): string {
+  if (code === 'CHAT_SEARCH_BUSY') return 'This search took too long. Try a more specific phrase.';
+  if (code === 'CHAT_SEARCH_QUERY_INVALID') return 'Use a search phrase of at most 200 characters.';
+  if (code === 'ASSESSMENT_PRACTICE_DELETED') return 'This follow-up was deleted. Refresh the results before choosing new practice.';
   if (code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
   if (['USERNAME_TAKEN', 'ACCOUNT_EXISTS'].includes(code)) return 'That username is already registered.';
   if (code.startsWith('SPEECH_')) return 'Your recording could not be transcribed.';
@@ -47,6 +50,9 @@ export function errorMessage(status: number, code: string): string {
   if (['CHAT_ATTEMPT_EXPIRED', 'CHAT_STALE_ATTEMPT'].includes(code)) return 'This response is no longer running. Check the saved conversation before retrying.';
   if (code === 'CHAT_DELETED') return 'This conversation was deleted.';
   if (code === 'MEMORY_CAPACITY') return 'Memory capacity reached. Delete unused memories first.';
+  if (code === 'ASSESSMENT_TARGET_UNAVAILABLE') return 'A selected topic is no longer available in this learning context. Return to Progress and choose another topic.';
+  if (code === 'ASSESSMENT_PRACTICE_INVALID') return 'Choose incorrect or partially correct questions from the current results.';
+  if (code === 'ASSESSMENT_CAPACITY') return 'Assessment capacity reached. Your saved results are preserved.';
   if (status === 401) return 'Your session has ended.';
   if (status === 403) return 'This is unavailable to your account.';
   if (status === 404) return 'This is no longer available.';

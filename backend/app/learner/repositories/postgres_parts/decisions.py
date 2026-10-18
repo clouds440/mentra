@@ -34,6 +34,15 @@ class DecisionStore(PostgresRepositoryBase):
             session.execute(update(decisions).where(decisions.c.learner_id == learner_id,
                 decisions.c.status == 'ACCEPTED', decisions.c.evidence_id.in_(ids)).values(status='SUPERSEDED', reason='corrected'))
 
+    def recent_accepted_evidence(self, learner_id, concept_id, limit=5):
+        stmt = select(evidence).join(decisions, decisions.c.evidence_id == evidence.c.id).outerjoin(
+            redirects, redirects.c.source_id == evidence.c.concept_id).where(evidence.c.learner_id == learner_id,
+            decisions.c.learner_id == learner_id, decisions.c.status == 'ACCEPTED',
+            or_(evidence.c.concept_id == concept_id, redirects.c.target_id == concept_id)).order_by(
+                evidence.c.occurred_at.desc(), decisions.c.sequence.desc()).limit(min(5, max(1, limit)))
+        with self._session() as session:
+            return [self._evidence_from_row(row) for row in session.execute(stmt).mappings()]
+
     def accepted_evidence(self, learner_id, concept_id):
         stmt = select(evidence, decisions.c.confirmed_at).join(decisions, decisions.c.evidence_id == evidence.c.id).outerjoin(
             redirects, redirects.c.source_id == evidence.c.concept_id).where(evidence.c.learner_id == learner_id,

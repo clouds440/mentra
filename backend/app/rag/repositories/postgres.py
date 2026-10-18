@@ -101,13 +101,17 @@ class RAGRepository:
             session.execute(jobs.insert().values(**job))
             return dict(document_id=document_id, generation_id=generation_id, job_id=job['id'], duplicate=False)
 
-    def list_documents(self, owner, offset=0, limit=25, archived=None, context_id=None):
+    def list_documents(self, owner, offset=0, limit=25, archived=None, context_id=None, query=''):
         with self.sessions() as session:
             condition = [documents.c.learner_id == owner, documents.c.deleted_at.is_(None)]
             if archived is not None:
                 condition.append(documents.c.archived == archived)
             if context_id is not None:
                 condition.append(documents.c.context_ids.has_any(cast([context_id], ARRAY(Text))))
+            if query.strip():
+                term = query.strip().lower()
+                condition.append(or_(func.strpos(func.lower(documents.c.title), term) > 0,
+                                     func.strpos(func.lower(documents.c.filename), term) > 0))
             count = session.execute(select(func.count()).select_from(documents).where(*condition)).scalar_one()
             rows = [dict(row) for row in session.execute(select(documents).where(*condition)
                 .order_by(documents.c.created_at.desc(), documents.c.id).offset(offset).limit(limit)).mappings()]

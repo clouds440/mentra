@@ -19,6 +19,14 @@ from app.core.exceptions import AppError
 
 
 class IntentContractTests(unittest.TestCase):
+    def test_exact_targets_preserve_legacy_fingerprints_and_require_a_context(self):
+        from pydantic import ValidationError
+        body = dict(client_request_id=uuid4(), context_id='context', topic='Topic')
+        self.assertNotIn('concept_ids', GenerationRequest(**body).fingerprint_payload())
+        selected = GenerationRequest(**body, concept_ids=[uuid4()])
+        self.assertIn('concept_ids', selected.fingerprint_payload())
+        with self.assertRaises(ValidationError):
+            AssessmentIntent(client_request_id=uuid4(), concept_ids=[uuid4()])
     def test_simple_grading_uses_equal_internal_weights_for_shorthand_parts(self):
         import asyncio
         from unittest.mock import AsyncMock
@@ -42,6 +50,17 @@ class IntentContractTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'Requires isolated test database')
 class AssessmentIntentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_practice_target_survives_generation_and_foreign_target_is_rejected_before_queue(self):
+        target = self.learner.register_concept('Science: exact motion')
+        self.learner.link_context_concept(self.owner, self.context.context_id, target.id)
+        value, _ = await self.finish(AssessmentIntent(client_request_id=uuid4(), context_id=self.context.context_id,
+            topic='Motion', concept_ids=[target.id], question_format='mcq', count=3, purpose='verification'))
+        self.assertEqual(value.purpose, 'verification')
+        self.assertTrue(all(question.concept_ids == [target.id] for question in value.questions))
+        with self.assertRaises(AppError):
+            await self.service.queue_generation(self.owner, AssessmentIntent(client_request_id=uuid4(),
+                context_id=self.context.context_id, concept_ids=[uuid4()], topic='Foreign', count=3))
+
     setUp = flexible.FlexibleEngineTests.setUp
 
     async def finish(self, intent, owner=None):

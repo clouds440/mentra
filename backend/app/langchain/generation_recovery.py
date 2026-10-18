@@ -43,7 +43,7 @@ async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict
 
 
 def validate_questions(result: GeneratedAssessment, *, count: int, question_format: str,
-                       concepts: set[str], tokens: set[str], grounded: bool, previous: list[str], plan=None) -> None:
+                       concepts: set[str] | None, tokens: set[str], grounded: bool, previous: list[str], plan=None, require_attribution=False) -> None:
     if len(result.questions) != count:
         raise GenerationMismatch('wrong_question_count')
     seen = {prompt.casefold().strip() for prompt in previous}
@@ -66,6 +66,8 @@ def validate_questions(result: GeneratedAssessment, *, count: int, question_form
         seen.add(prompt)
         if concepts is not None and set(question.concept_ids) - concepts:
             raise GenerationMismatch('unknown_concept_id')
+        if require_attribution and not question.concept_ids:
+            raise GenerationMismatch('use_supplied_target_concept_ids')
         if set(question.source_tokens) - tokens:
             raise GenerationMismatch('unknown_source_token')
         if grounded and not question.source_tokens:

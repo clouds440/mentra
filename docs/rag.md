@@ -86,3 +86,16 @@ python -m scripts.rag_admin rebuild --learner-id <internal-UUID> --run-id <run-U
 Rebuild defaults to dry-run and records resumable per-document jobs. Reuse the run UUID for idempotency. Health reports a bounded coverage sample (up to 100 generations) and the total corpus count; it does not expose source text. No global admin HTTP route exists. Query diagnostics record timing/counts/ranks and cache hits without raw queries or excerpts. Only owner-keyed, bounded query embeddings are cached; retrieval results are reauthorized, never served from a stale response cache.
 
 Keep the current collection/model identity during normal rebuilds. A model/schema upgrade requires a new collection and a maintenance-window reindex, with retained old source/index backups for rollback. Automatic mixed-model reuse and destructive collection recreation are rejected. A zero-downtime dual-encoder routing/cutover system is not part of this baseline. Fine-tuning, sparse Qdrant migrations and query expansion remain conditional experiments; the source-judgment comparison harness accepts their rankings without adding training dependencies to production.
+
+## Material search and practice entry
+
+The document listing accepts a bounded `query` (up to 200 characters), matched
+literally against title/filename without case sensitivity, alongside owner,
+context/archive filters and server pagination. The assessment material picker
+preserves selected IDs across pages/searches and hydrates preselected material
+through owned detail reads. Grounding still goes through the RAG service.
+
+**Quiz this material** prepares the existing creation form with the material,
+context and three-MCQ preset; generating remains explicit. Citation readers first
+fetch the authorized chunk and validate document/version/generation identity,
+then offer full-source browsing. PDF page targeting is a browser-viewer hint.

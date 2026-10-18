@@ -9,7 +9,7 @@ import { CodeBlock } from '../content/CodeBlock';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { fileLanguage } from '../../lib/codeLanguages';
 import { groupPassages, isMarkdown, passageLanguage } from './sourcePresentation';
-import { downloadSource, getSourceChunks, materialError } from '../../services/rag';
+import { downloadSource, getSourceChunk, getSourceChunks, materialError } from '../../services/rag';
 import type { SourceReference, SourceChunk } from '../../types/rag';
 
 export function sourceLocation(source: Pick<SourceReference, 'spans' | 'heading_path'>) {
@@ -20,6 +20,7 @@ interface OriginalFile { blob: Blob; url: string; media: string; text?: string; 
 export function SourceViewer({ source, filename, includeArchived = false, onClose }: { source: SourceReference; filename?: string; includeArchived?: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [chunks, setChunks] = useState<SourceChunk[]>([]);
+  const [citedChunk, setCitedChunk] = useState<SourceChunk>();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -31,25 +32,37 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
   const controllerRef = useRef<AbortController>();
   const originalRequest = useRef<Promise<OriginalFile>>();
   const displayFilename = filename ?? source.filename ?? chunks[0]?.filename;
-  const passages = useMemo(() => groupPassages(chunks), [chunks]);
+  const passages = useMemo(() => [...(citedChunk ? [citedChunk] : []), ...groupPassages(chunks.filter(chunk => chunk.id !== citedChunk?.id))], [chunks, citedChunk]);
   useEffect(() => {
 
     const controller = new AbortController(); controllerRef.current = controller;
-    setLoading(true); setChunks([]); setError(''); setOriginal(undefined); setView('extracted'); originalRequest.current = undefined;
-    void getSourceChunks(source.document_id, source.version_id, includeArchived, controller.signal, 0, source.generation_id || undefined)
-      .then(items => { if (!controller.signal.aborted) { setChunks(items); setMore(items.length === 100); } })
+    setOpening(false); setDownloadBusy(false);
+    setLoading(true); setLoadingMore(false); setMore(false); setChunks([]); setCitedChunk(undefined); setError(''); setOriginal(undefined); setView('extracted'); originalRequest.current = undefined;
+    async function load() {
+      if (source.chunk_id) {
+        const chunk = await getSourceChunk(source.chunk_id, includeArchived, controller.signal);
+        if (chunk.document_id !== source.document_id || chunk.version_id !== source.version_id || source.generation_id && chunk.generation_id !== source.generation_id) throw new Error('Source identity changed');
+        if (!controller.signal.aborted) { setCitedChunk({ ...chunk, media_type: source.media_type ?? chunk.media_type }); setMore(true); }
+      } else {
+        const items = await getSourceChunks(source.document_id, source.version_id, includeArchived, controller.signal, 0, source.generation_id || undefined);
+        if (!controller.signal.aborted) { setChunks(items); setMore(items.length === 100); }
+      }
+    }
+    void load()
       .catch(e => { if (!controller.signal.aborted) setError(materialError(e)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [source.document_id, source.version_id, source.generation_id, includeArchived]);
+  }, [source.document_id, source.version_id, source.generation_id, source.chunk_id, includeArchived]);
   useEffect(() => () => { if (original?.url) URL.revokeObjectURL(original.url); }, [original?.url]);
   async function loadMore() {
+    if (loadingMore) return;
+    const controller = controllerRef.current;
     setLoadingMore(true); setError('');
     try {
-      const items = await getSourceChunks(source.document_id, source.version_id, includeArchived, controllerRef.current?.signal, chunks.length, source.generation_id || undefined);
-      if (!controllerRef.current?.signal.aborted) { setChunks(previous => [...previous, ...items]); setMore(items.length === 100); }
-    } catch (e) { if (!controllerRef.current?.signal.aborted) setError(materialError(e)); }
-    finally { if (!controllerRef.current?.signal.aborted) setLoadingMore(false); }
+      const items = await getSourceChunks(source.document_id, source.version_id, includeArchived, controller?.signal, chunks.length, source.generation_id || undefined);
+      if (!controller?.signal.aborted) { setChunks(previous => [...previous, ...items]); setMore(items.length === 100); }
+    } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
+    finally { if (!controller?.signal.aborted) setLoadingMore(false); }
   }
   async function originalFile() {
     if (original) return original;
@@ -69,18 +82,20 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     try { return await request; } finally { if (originalRequest.current === request) originalRequest.current = undefined; }
   }
   async function openOriginal() {
+    const controller = controllerRef.current;
     setView('original'); setOpening(true); setError('');
-    try { await originalFile(); } catch (e) { if (!controllerRef.current?.signal.aborted) setError(materialError(e)); }
-    finally { if (!controllerRef.current?.signal.aborted) setOpening(false); }
+    try { await originalFile(); } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
+    finally { if (!controller?.signal.aborted) setOpening(false); }
   }
   async function download() {
+    const controller = controllerRef.current;
     setDownloadBusy(true); setError('');
     try {
       const file = await originalFile();
-      if (controllerRef.current?.signal.aborted) return;
+      if (controller?.signal.aborted) return;
       const anchor = document.createElement('a'); anchor.href = file.url; anchor.download = displayFilename ?? source.title; anchor.click();
-    } catch (e) { if (!controllerRef.current?.signal.aborted) setError(materialError(e)); }
-    finally { if (!controllerRef.current?.signal.aborted) setDownloadBusy(false); }
+    } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
+    finally { if (!controller?.signal.aborted) setDownloadBusy(false); }
   }
   return <Dialog open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-overlay">
     <header className="source-header">
@@ -96,18 +111,18 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
       {view === 'extracted' ? <>
         {source.warnings.length > 0 && <details className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted"><summary className="cursor-pointer"><AlertCircle size={13} className="mr-2 inline" aria-hidden="true" />Extraction notes ({source.warnings.length})</summary><ul className="mt-3 space-y-2">{source.warnings.map(w => <li key={w}>{materialWarningMessage(w)}</li>)}</ul></details>}
         {loading && <Skeleton variant="text" rows={8} className="py-6" />}
-        {!loading && chunks.length === 0 && <p className="source-prose">{source.excerpt || 'No extracted passages are available for this version. Open the original file to inspect it.'}</p>}
+        {!loading && chunks.length === 0 && !citedChunk && <p className="source-prose">{source.excerpt || 'No extracted passages are available for this version. Open the original file to inspect it.'}</p>}
         {passages.map(chunk => {
           const language = passageLanguage(chunk, displayFilename);
-          const cited = chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
+          const cited = chunk.id === source.chunk_id || chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
           return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}</section>;
         })}
-        {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{'Load more passages'}</Button>}
+        {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{citedChunk && !chunks.length ? 'Read full source' : 'Load more passages'}</Button>}
       </> : <>
         {opening && !original && <Skeleton variant="text" rows={8} className="py-6" />}
         {original?.text !== undefined && <><CodeBlock code={original.text} language={fileLanguage(displayFilename) ?? 'plain'} filename={displayFilename ?? undefined} />{original.truncated && <p className="mt-3 text-xs text-muted">Preview shows the first 256 KiB. Download the original for the complete file.</p>}</>}
         {original?.media.startsWith('image/') && <img src={original.url} alt="Original study material" className="mx-auto max-h-[65dvh] max-w-full rounded-xl object-contain" />}
-        {original?.media === 'application/pdf' && <iframe title="Original PDF" src={original.url} className="h-[60dvh] w-full rounded-xl border border-border" />}
+        {original?.media === 'application/pdf' && <iframe title="Original PDF" src={`${original.url}${source.spans.find(span => span.page)?.page ? `#page=${source.spans.find(span => span.page)!.page}` : ''}`} className="h-[60dvh] w-full rounded-xl border border-border" />}
         {original && original.text === undefined && !original.media.startsWith('image/') && original.media !== 'application/pdf' && <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-muted"><FileText size={32} strokeWidth={1.2} aria-hidden="true" /><p className="text-sm">{displayFilename ?? 'Original file'}</p><p className="max-w-xs text-xs leading-5">Read the extracted content here, or download the original to open it in its document application.</p></div>}
       </>}
     </div>

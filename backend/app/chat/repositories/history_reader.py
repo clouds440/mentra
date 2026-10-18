@@ -12,6 +12,62 @@ class ChatReadFacade:
     def __init__(self, repository):
         self.repository = repository
 
+    def search_saved(self, owner, query: str, offset: int = 0):
+        from sqlalchemy import case, literal, union_all
+        from sqlalchemy.exc import DBAPIError
+        from app.chat.schemas import ChatSearchPage
+        query = query.strip()
+        if not query: return ChatSearchPage(items=[])
+        if len(query) > 200 or '\x00' in query or not 0 <= offset <= 180:
+            raise AppError('CHAT_SEARCH_QUERY_INVALID', 'Use a search of at most 200 characters.', 422)
+        pattern = '%' + query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        content_match = m.c.content.ilike(pattern, escape='\\')
+        position = func.strpos(func.lower(m.c.content), func.lower(query))
+        snippet = case((position > 70, literal('…')), else_=literal('')) + func.substr(
+            m.c.content, func.greatest(1, position - 70), 240)
+        columns = [m.c.conversation_id, c.c.title, m.c.id.label('matched_message_id'), m.c.sequence,
+            m.c.role, snippet.label('snippet'), m.c.created_at]
+        base = select(*columns).join(c, and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(
+            m.c.learner_id==owner, c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant']))
+        order = (m.c.created_at.desc(), m.c.id.desc())
+        # Separate branches keep the existing content trigram index usable. Title
+        # matches contribute one latest-message hit rather than an entire transcript.
+        messages = base.add_columns(literal('message').label('matched_in')).where(content_match).order_by(*order).limit(offset+21)
+        titles = base.add_columns(literal('title').label('matched_in')).where(c.c.title.ilike(pattern, escape='\\'),
+            m.c.sequence==c.c.message_count, ~content_match).order_by(*order).limit(offset+21)
+        hits = union_all(messages, titles).subquery()
+        statement = select(hits).order_by(hits.c.created_at.desc(), hits.c.matched_message_id.desc()).offset(offset).limit(21)
+        try:
+            with self.repository.sessions() as session:
+                session.execute(text('SET LOCAL statement_timeout = 2000'))
+                rows = list(session.execute(statement).mappings())
+        except DBAPIError as error:
+            if getattr(error.orig, 'sqlstate', None) == '57014':
+                raise AppError('CHAT_SEARCH_BUSY', 'This search took too long. Try a more specific phrase.', 503) from None
+            raise
+        return ChatSearchPage(items=rows[:20], next_offset=offset+20 if len(rows)>20 and offset<180 else None,
+            truncated=offset==180 and len(rows)>20)
+
+    def saved_exchange(self, owner, conversation_id, message_id):
+        from app.chat.schemas import SavedExchange
+        # One statement binds ownership, live chat, anchor and neighboring messages
+        # to the same snapshot. Search does not create a parallel transcript store.
+        anchor = select(m.c.sequence).join(c, and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(
+            m.c.learner_id==owner, m.c.conversation_id==conversation_id, m.c.id==message_id,
+            c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant'])).cte('anchor')
+        statement = select(m.c.id, m.c.role, m.c.content, m.c.created_at, c.c.title).join(c,
+            and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(m.c.learner_id==owner,
+            m.c.conversation_id==conversation_id, c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant']),
+            m.c.sequence.between(func.greatest(1, select(anchor.c.sequence).scalar_subquery()-1),
+                select(anchor.c.sequence).scalar_subquery()+1)).order_by(m.c.sequence).limit(3)
+        with self.repository.sessions() as session:
+            session.execute(text('SET LOCAL statement_timeout = 2000'))
+            rows = list(session.execute(statement).mappings())
+        if not rows or not any(row['id']==message_id for row in rows):
+            raise AppError('CHAT_MESSAGE_UNAVAILABLE', 'This saved exchange is unavailable.', 404)
+        return SavedExchange(conversation_id=conversation_id, title=rows[0]['title'], matched_message_id=message_id,
+            messages=[{key:row[key] for key in ('id','role','content','created_at')} for row in rows])
+
     def evidence(self, owner, identifier):
         with self.repository.sessions() as session:
             row = session.execute(select(m).join(c, and_(c.c.id == m.c.conversation_id, c.c.learner_id == m.c.learner_id))

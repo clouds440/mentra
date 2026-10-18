@@ -17,7 +17,7 @@ from app.learner.schemas import (
     EvidenceSubmissionResult,
     LearnerContextPacket,
     LearnerContextRequest,
-    LearningContextSummary, LearningProgressRequest, LearningProgressPage,
+    LearningContextSummary, LearningProgressRequest, LearningProgressPage, ProgressExplanation,
     StudyRecommendation,
     StudyRecommendationsRequest,
     VerificationCandidate,
@@ -45,6 +45,9 @@ class LearnerService(Protocol):
     def get_context_summaries(self, learner_id: str, context_ids: list[str] | None = None) -> list[LearningContextSummary]: ...
 
     def get_learning_progress(self, request: LearningProgressRequest) -> LearningProgressPage: ...
+    def get_progress_explanation(self, learner_id: str, concept_id: str, context_id: str | None = None) -> ProgressExplanation: ...
+
+    def get_practice_concepts(self, learner_id: str, context_id: str, concept_ids: list[str]) -> list[Concept]: ...
 
     def get_study_targets(self, learner_id: str, context_ids: list[str] | None = None,
                          limit: int = 5, *, supported_verification: bool = False) -> dict: ...

@@ -267,10 +267,15 @@ services:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: mentra-frontend
     restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
     ports:
-      - "5173:80"
+      - "5173:8080"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 10s
       timeout: 5s
       retries: 5

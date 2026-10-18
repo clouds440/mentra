@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+.markdown-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-block: 0.25rem; }
+.markdown-content .katex { font-size: 1.05em; }
+
 /* Semantic palette: components use these tokens through Tailwind or CSS variables. */
 :root {
   --radius-control: 9px;

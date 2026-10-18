@@ -20,7 +20,7 @@ from app.learner.scoring import ExponentialRetentionPolicy, HeuristicMasteryPoli
 from app.learner.schemas import (
     ActiveContextsResponse, ConceptStateResponse, ActiveContextsRequest,
     ConceptResolutionRequest, ConceptResolution, ConceptStateRequest,
-    GeneratedConceptsRequest, LearningProgressRequest, LearningProgressPage,
+    GeneratedConceptsRequest, LearningProgressRequest, LearningProgressPage, ProgressExplanation,
     LearnerContextRequest, LearnerContextPacket, StudyRecommendationsRequest, StudyRecommendation,
     VerificationCandidatesRequest, VerificationCandidate, ActivateLearningContextRequest,
     LearningContextSummary, ResolveLearningContextRequest, ContextActivityRequest,
@@ -243,6 +243,23 @@ class LearnerEngine:
 
     def get_learning_progress(self, request: LearningProgressRequest) -> LearningProgressPage:
         return self.retrieval.progress(request)
+
+    def get_progress_explanation(self, learner_id: str, concept_id: str, context_id: str | None = None) -> ProgressExplanation:
+        from .progress_explanation import explain
+        return explain(self, learner_id, concept_id, context_id)
+
+    def get_practice_concepts(self, learner_id: str, context_id: str, concept_ids: list[str]) -> list[Concept]:
+        """Read exact targets only when linked to this owned context; no writes."""
+        from app.core.exceptions import AppError
+        self.contexts.require(learner_id, context_id)
+        if not concept_ids or len(concept_ids) > 20:
+            raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'Choose available practice topics.', 422)
+        ids = list(dict.fromkeys(concept_ids))
+        rows = self.repository.context_concepts(learner_id, [context_id], concept_ids=ids, limit=20)
+        by_id = {row.id: row for row in rows}
+        if any(identifier not in by_id for identifier in ids):
+            raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'A practice topic is no longer available in this learning context.', 404)
+        return [by_id[identifier] for identifier in ids]
 
     def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False):
         """One consistent ranking input set for recommendations and verification."""

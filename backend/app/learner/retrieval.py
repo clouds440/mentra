@@ -55,13 +55,13 @@ class RetrievalService:
                             or not (state.verification_required or (state.estimate_confidence or 0) < .65
                                     or retention is not None and retention < .5)):
                         continue
-                    yield VerificationCandidate(concept_id=concept.id, name=concept.canonical_name,
+                    yield VerificationCandidate(concept_id=concept.id, name=concept.canonical_name, context_id=factor.get('context_id'),
                           reason=reason, priority=score, mastery=state.mastery if state else None,
                           estimate_confidence=state.estimate_confidence if state else None,
                           retention_confidence=retention,
                           recommended_difficulty=challenge, importance=factor['importance'])
                 else:
-                    yield StudyRecommendation(concept_id=concept.id, name=concept.canonical_name,
+                    yield StudyRecommendation(concept_id=concept.id, name=concept.canonical_name, context_id=factor.get('context_id'),
                                               reason=reason, priority=score, recommended_difficulty=challenge,
                                               importance=factor['importance'], relevance=factor['relevance'], knowledge_status=status)
         return nlargest(request.limit, ranked(), key=lambda item: (item.priority, item.concept_id))
@@ -138,6 +138,6 @@ class RetrievalService:
                          target_performance=PerformanceEstimate.model_validate(prediction.model_dump(exclude={'concept_id', 'policy_version'})),
                          verification_required=state.verification_required if state else False,
                          hint_dependency=state.hint_dependency if state else None,
-                         **factor,
+                         **{key: value for key, value in factor.items() if key != 'context_id'},
                          misconceptions=misconceptions.get(concept.id, [])[:3]))
         return items

@@ -108,3 +108,12 @@ Visual evidence: [desktop before](frontend-renovation/library-desktop-before.png
 Evidence distinguishes UI fixtures from real persistence integration. No application
 data migration or public deployment is included. Physical mobile, Safari/Firefox,
 field-user performance and a complete manual screen-reader audit were not verified.
+
+
+## 18 October 2026 product hardening
+
+Preserved shell placement while adding shared saved-chat search/exchange dialogs,
+responsive mistake-practice selection and a scrollable progress-evidence view with
+sticky controls. Material eligibility is fenced to the current selection, metadata
+requests are bounded, and reference Markdown loads on expansion. See the
+[verification report](Product_Deployment_Hardening_2026-10-18.md).

@@ -2,6 +2,7 @@ import type { Assessment, AssessmentQuestion } from '../../types/assessments';
 import { Clock3, FileText } from 'lucide-react';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { PrintPaperButton } from './PrintPaperButton';
+import { useState } from 'react';
 
 export const showsAssessmentMarks = (assessment: Assessment) => !assessment.preferences?.result_style || assessment.preferences.result_style === 'marks';
 
@@ -18,6 +19,19 @@ export function selectedAnswer(question: AssessmentQuestion, answer = '') {
   return question.options?.find(option => option.id === answer)?.label ?? answer;
 }
 
+export function PracticeNotice({ assessment }: { assessment: Assessment }) {
+  const [expanded, setExpanded] = useState(false);
+  const source = assessment.practice_source;
+  if (!source) return null;
+  return <aside className="space-y-2 rounded-lg border border-border bg-surface p-3" aria-label="Repeated practice">
+    <p className="text-xs text-muted">This practice is based on previously graded questions. Results are saved as practice and do not count as a fresh independent demonstration.</p>
+    {!!source.reference_questions.length && <details onToggle={event => setExpanded(event.currentTarget.open)}><summary className="cursor-pointer text-xs text-accent">Original paper context and reference questions</summary>{expanded && <div className="mt-3 space-y-3">
+      <MarkdownContent content={source.instructions} />
+      {source.reference_questions.map((question, index) => <div key={question.id} className="space-y-1 text-sm"><p className="font-medium">{questionLabel(question, index)}</p><MarkdownContent content={[question.context, question.prompt, ...(question.options?.map(option => `${option.id}: ${option.label}`) ?? [])].filter(Boolean).join('\n\n')} /></div>)}
+    </div>}</details>}
+  </aside>;
+}
+
 export function PaperHeader({ assessment, printMode = false }: { assessment: Assessment; printMode?: boolean }) {
   const paper = assessment.paper;
   if (!paper) return null;
@@ -32,6 +46,7 @@ export function PaperHeader({ assessment, printMode = false }: { assessment: Ass
 
 export function AssessmentPaper({ assessment, printMode = false }: { assessment: Assessment; printMode?: boolean }) {
   return <div aria-label={assessment.paper ? 'Exam paper' : 'Assessment questions'} className="space-y-4">
+    <PracticeNotice assessment={assessment} />
     <PaperHeader assessment={assessment} printMode={printMode} />
     {assessment.questions.map((question, index) => <section key={question.id} className="space-y-2">
       {question.section && question.section !== assessment.questions[index - 1]?.section && <h3 className="border-b border-border pb-2 pt-2 text-sm font-semibold text-heading">{question.section}</h3>}

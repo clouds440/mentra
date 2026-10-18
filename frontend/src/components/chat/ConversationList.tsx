@@ -9,6 +9,7 @@ import { cn } from '../../utils/cn';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
+import { ChatSearch } from './ChatSearch';
 
 function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => void }) {
   const [editing, setEditing] = useState(false), [deleting, setDeleting] = useState(false);
@@ -61,7 +62,7 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
 export function ConversationList({ onOpen }: { onOpen: () => void }) {
   const view = useChatList();
   return <section aria-label="Conversation history" className="mt-8 min-h-0 flex-1 overflow-y-auto px-3">
-    <h2 className="px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Recent chats</h2>
+    <div className="mb-1 flex items-center justify-between gap-2 pl-3"><h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Recent chats</h2><ChatSearch onOpen={onOpen} /></div>
     {view.items.map(chat => <ConversationRow key={chat.id} chat={chat} onOpen={onOpen} />)}
     {!view.items.length && (view.loading ? <Skeleton variant="list" rows={5} className="px-3 py-3" /> : <p className="px-3 py-3 text-xs leading-5 text-subtle">Your conversations will appear here.</p>)}
     {view.error && <div className="px-3 py-2 text-xs text-danger" role="alert"><p>{view.error}</p><button type="button" className="mt-1 underline" onClick={() => void chatStore.sync()}>Try again</button></div>}

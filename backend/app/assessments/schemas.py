@@ -70,6 +70,7 @@ class GenerationRequest(Contract):
     context_id: str = Field(min_length=1, max_length=100)
     topic: str = Field(min_length=1, max_length=200)
     concept_names: list[str] = Field(default_factory=list)
+    concept_ids: list[UUID] = Field(default_factory=list, max_length=20)
     confirm_new_concepts: bool = False
     count: int | None = Field(default=5, ge=1)
     purpose: Literal['practice', 'verification', 'calibration'] = 'practice'
@@ -100,7 +101,11 @@ class GenerationRequest(Contract):
 
     @model_validator(mode='after')
     def revision_target(self):
+        if self.concept_ids and not self.context_id:
+            raise ValueError('Exact practice topics require a learning context.')
         targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
+        if targets and self.concept_ids:
+            raise ValueError('Revisions retain their original concepts; exact practice targets require a new assessment.')
         if targets > 1 or bool(targets) != bool(self.revision_instructions):
             raise ValueError('Revisions require exactly one source assessment and instructions.')
         if sum(section.question_count for section in self.paper_sections) > 20:
@@ -116,6 +121,7 @@ class GenerationRequest(Contract):
         # Preserve replay hashes for generation requests created before revisions
         # were supported. New optional defaults must not invalidate old retries.
         exclude = {'revision_draft_id','revision_assessment_id','revision_instructions'} if not self.revision_instructions else set()
+        if not self.concept_ids: exclude.add('concept_ids')
         if self.question_format == 'written': exclude.add('question_format')
         if not self.paper_sections: exclude.add('paper_sections')
         if self.total_marks is None: exclude.add('total_marks')
@@ -227,6 +233,17 @@ class PublicQuestionGrade(QuestionGrade):
 class StartAttempt(Contract):
     client_request_id: UUID
 
+class MistakePracticeRequest(Contract):
+    client_request_id: UUID
+    expected_grade_revision: int = Field(ge=1)
+    question_ids: list[UUID] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode='after')
+    def unique_questions(self):
+        if len(set(self.question_ids)) != len(self.question_ids):
+            raise ValueError('Choose each question once.')
+        return self
+
 class RetryGrading(Contract):
     client_request_id: UUID
     expected_revision: int = Field(ge=1)
@@ -257,7 +274,16 @@ class PublicQuestion(Contract):
     marks: float
     source_tokens: list[str]
 
+class PracticeSource(Contract):
+    assessment_id: UUID
+    attempt_id: UUID
+    grade_revision: int = Field(ge=1)
+    known_exposure: Literal[True] = True
+    instructions: str = ''
+    reference_questions: list[PublicQuestion] = Field(default_factory=list)
+
 class Assessment(Contract):
+    practice_source: PracticeSource | None = None
     preferences: AssessmentPreferences = Field(default_factory=AssessmentPreferences)
     paper: PaperInfo | None = None
     id: UUID

@@ -39,3 +39,31 @@ understanding counts refresh after successful changes.
 
 The compact LLM context and assessment bootstrap ranking are unchanged. Page-only
 visibility rules do not remove new concepts from adaptive AI practice workflows.
+
+Each understanding row offers **What is this based on?**. The private/no-store
+`GET /api/v1/learning/understanding/{concept_id}` endpoint uses the same owned
+context scope (optional `context_id`), refreshes stale policy projections, and
+returns deterministic diagnostics plus at most five currently accepted observations.
+It explains the heuristic uncertainty range, the recent independent-item window
+(at most 64 items), easy/medium/hard independent coverage, last qualifying practice
+and a suggested next check. Raw policy data, private rubrics and metadata stay private.
+
+Assisted, repeated/answer-exposed and unspecified work are labelled separately.
+Confirming a topic leaves estimates unknown. Corrections supersede earlier accepted
+evidence; withdrawn observations disappear from the current explanation. Assessment
+links are hydrated through Assessments' owner-checked projection and target the
+specific attempt. Deleted or regraded sources lose the link while immutable accepted
+observations remain under the existing history policy. Counts describe recorded
+learning evidence, not calibrated probabilities or predicted exam results.
+
+Practice and review links prepare the existing assessment creation form with exact
+concept IDs, the owned context and the appropriate practice/verification purpose.
+Recommendation projections include their selected context ID. The backend checks
+context membership before queueing and again during generation; generated questions
+must attribute only those exact targets. Following a link never creates a job or
+learning evidence. New optional target fields are omitted from legacy fingerprints.
+
+Quick review highlights one evidence-supported follow-up topic and prepares three
+MCQs. The student can adjust the assessment before explicitly generating it. It
+does not schedule daily work, manufacture overdue dates or create a new retention
+policy. The original supported-review filters still apply.

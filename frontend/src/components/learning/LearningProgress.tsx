@@ -18,6 +18,7 @@ import type { EventProposal } from '../../types/events';
 import type { LearningOverview } from '../../types/learning';
 import type { LearningContext } from '../../types/rag';
 import { UnderstandingTable } from './UnderstandingTable';
+import { QuickReview } from './QuickReview';
 import { LearningSuggestions } from './LearningSuggestions';
 import { supportedReview } from './progressLabels';
 
@@ -47,9 +48,9 @@ function Progress() {
       {tab==='learning' && <ConceptReview contexts={contexts} onReviewed={() => setReload(value => value+1)} />}
       <div className="workspace-toolbar"><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={context} onChange={event => { setLearning(null); setTotalConcepts(null); setContext(event.target.value); }}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></div>
       {!learning && !error && <Skeleton variant="table" />}
-      {learning && <><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
+      {learning && <><QuickReview learning={learning} context={context} /><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
         {tab === 'learning' && <UnderstandingTable key={context} context={context} reload={reload} onTotal={setTotalConcepts} />}
-        <LearningSuggestions learning={learning} />
+        <LearningSuggestions learning={learning} context={context} />
       </>}
     </section>
     <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda />}<h2 className="border-t border-border pt-6 text-lg font-medium text-heading">For your review</h2>{!proposals && !error && <Skeleton variant="card" />}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}{proposals?.map(value => <EventProposalCard key={value.id} initial={value} />)}</section>

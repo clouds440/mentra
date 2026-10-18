@@ -6,7 +6,7 @@ import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { AssessmentFeedback } from './AssessmentFeedback';
-import { AssessmentPaper, PaperHeader, questionLabel, selectedIds, selectedAnswer, showsAssessmentMarks } from './AssessmentPaper';
+import { AssessmentPaper, PaperHeader, PracticeNotice, questionLabel, selectedIds, selectedAnswer, showsAssessmentMarks } from './AssessmentPaper';
 import { MCQAssessment } from './MCQAssessment';
 import { AssessmentGenerationCard } from './AssessmentGenerationCard';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
@@ -18,9 +18,11 @@ import { Button, FileInput, Input, Select, Textarea, FormField } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { AnswerContent } from '../content/AnswerContent';
 import { assessments } from '../../services/assessments';
-import { listContexts, listMaterials } from '../../services/rag';
+import { listContexts } from '../../services/rag';
+import { practiceDraft } from '../../services/practiceIntent';
+import { MaterialPicker, materialSelectionKey } from '../library/MaterialPicker';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
-import type { LearningContext, MaterialDocument } from '../../types/rag';
+import type { LearningContext } from '../../types/rag';
 import { assessmentSession, useEvaluatedAttempt } from '../../stores/assessmentSession';
 import { QuizAnswerReview } from './QuizAnswerReview';
 
@@ -28,11 +30,10 @@ export function AssessmentWorkspace() { const { identity } = useAuth(); return <
 function Workspace() {
   const [params, setParams] = useSearchParams();
   const id = params.get('assessment');
+  const attemptId = params.get('attempt');
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Assessment[]>([]);
   const [contexts, setContexts] = useState<LearningContext[]>([]);
-  const [documents, setDocuments] = useState<MaterialDocument[]>([]);
-  const [materialsUnavailable, setMaterialsUnavailable] = useState(false);
   const [current, setCurrent] = useState<Assessment | null>(null);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
@@ -46,27 +47,41 @@ function Workspace() {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [more, setMore] = useState<number | null>(null);
-  const [draft, setDraft] = useState<AssessmentGeneration>({ client_request_id: crypto.randomUUID(), context_id: '', topic: '', concept_names: [], confirm_new_concepts: false, count: null, question_format: 'auto', purpose: 'practice', grounded: false, document_ids: [] });
+  const [draft, setDraft] = useState<AssessmentGeneration>(() => practiceDraft(params));
+  const [materialValidity, setMaterialValidity] = useState<{key:string;ready:boolean}>();
+  const intentKey = JSON.stringify([params.get('context'), params.get('topic'), params.get('purpose'), params.getAll('concept'), params.getAll('document')]);
+  const previousIntent = useRef(intentKey);
+  useEffect(() => {
+    if (previousIntent.current === intentKey) return;
+    previousIntent.current = intentKey;
+    if (params.has('concept') || params.has('document')) { setDraft(practiceDraft(params)); setLabels(''); }
+  }, [intentKey]);
   const [labels, setLabels] = useState('');
   const active = useRef<AbortController | null>(null);
   const startOperation = useRef(crypto.randomUUID());
+  const generating = useRef(false);
+  const generationOperation = useRef<{ payload: string; id: string }>();
   usePageRefresh(() => setReload(value => value + 1), !busy && !attempt);
   useEffect(() => {
     const controller = new AbortController(); setLoading(items.length === 0 || !!id && current?.id !== id); setError(''); if (current?.id !== id) { setCurrent(null); setAttempt(null); }
-    setMaterialsUnavailable(false);
-    void Promise.all([assessments.list(controller.signal), listContexts(controller.signal), listMaterials(0, false, controller.signal).catch(() => { if(!controller.signal.aborted) setMaterialsUnavailable(true); return {items: []}; }), id ? assessments.detail(id, controller.signal) : Promise.resolve(null), id ? assessments.attempts(id, controller.signal) : Promise.resolve([])]).then(([page, choices, materials, detail, history]) => {
-      if (!controller.signal.aborted) { setItems(page.items); setMore(page.next_offset); setContexts(choices); setDocuments(materials.items); setCurrent(detail); setAttempts(history); if (history[0]?.state !== 'graded') setAttempt(history[0] ?? null); }
+    void Promise.all([assessments.list(controller.signal), listContexts(controller.signal), id ? assessments.detail(id, controller.signal) : Promise.resolve(null), id ? assessments.attempts(id, controller.signal) : Promise.resolve([])]).then(([page, choices, detail, history]) => {
+      if (!controller.signal.aborted) { setItems(page.items); setMore(page.next_offset); setContexts(choices); setCurrent(detail); setAttempts(history); if (attemptId) setAttempt(history.find(item => item.id === attemptId) ?? null); else if (history[0]?.state !== 'graded') setAttempt(history[0] ?? null); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessments.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); active.current?.abort(); };
-  }, [id, reload]);
+  }, [id, attemptId, reload]);
   async function generate() {
+    if (generating.current) return;
+    generating.current = true;
     const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
     try {
-      const request = { ...draft, concept_names: labels.split(',').map(label => label.trim()).filter(Boolean) };
+      const { client_request_id: initialId, ...payload } = { ...draft, concept_names: labels.split(',').map(label => label.trim()).filter(Boolean) };
+      const fingerprint = JSON.stringify(payload);
+      if (generationOperation.current?.payload !== fingerprint) generationOperation.current = { payload: fingerprint, id: generationOperation.current ? crypto.randomUUID() : initialId };
+      const request = { ...payload, client_request_id: generationOperation.current.id };
       const value = await assessments.queue(request, controller.signal);
-      if (!controller.signal.aborted) { setParams({ tab: 'create', generation: value.id }); setDraft(previous => ({ ...previous, client_request_id: crypto.randomUUID() })); }
+      if (!controller.signal.aborted) { setParams({ tab: 'create', generation: value.id }); generationOperation.current = undefined; setDraft(previous => ({ ...previous, client_request_id: crypto.randomUUID() })); }
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to generate assessment.'); }
-    finally { if (!controller.signal.aborted) setBusy(false); }
+    finally { generating.current = false; if (!controller.signal.aborted) setBusy(false); }
   }
   async function start() {
     if (!current) return;
@@ -86,20 +101,20 @@ function Workspace() {
     {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => setReload(value => value + 1))}>Refresh</button></p>}
     <section role="tabpanel" id="assessment-panel-create" aria-labelledby="assessment-tab-create" hidden={tab !== 'create'}>
     {params.get('generation') && <AssessmentGenerationCard key={params.get('generation')!} id={params.get('generation')!} title="Your assessment" onComplete={result => setParams({ assessment: 'assessment' in result ? result.assessment.id : result.id })} />}
-    {loading && !error ? <Skeleton variant="form" rows={5} /> : <form aria-label="Create assessment" className="workspace-panel space-y-5 max-w-3xl" onSubmit={event => { event.preventDefault(); void generate(); }} onChange={() => setDraft(value => ({ ...value, client_request_id: crypto.randomUUID() }))}>
-      <label className="block text-sm">Learning context (optional)<Select aria-label="Assessment learning context" disabled={busy} value={draft.context_id} onChange={event => setDraft({ ...draft, context_id: event.target.value })}><option value="">Choose for me</option>{contexts.filter(item => item.status !== 'ARCHIVED').map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></label>
+    {loading && !error ? <Skeleton variant="form" rows={5} /> : <form aria-label="Create assessment" className="workspace-panel space-y-5 max-w-3xl" onSubmit={event => { event.preventDefault(); void generate(); }}>
+      <label className="block text-sm">Learning context (optional)<Select aria-label="Assessment learning context" disabled={busy} value={draft.context_id} onChange={event => setDraft({ ...draft, context_id: event.target.value, concept_ids: [] })}><option value="">Choose for me</option>{contexts.filter(item => item.status !== 'ARCHIVED').map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></label>
       <FormField label="Topic (optional)">{field => <Input {...field} placeholder="Choose from my learning priorities" disabled={busy} maxLength={200} value={draft.topic} onChange={event => setDraft({ ...draft, topic: event.target.value })} />}</FormField>
       <label className="block space-y-2 text-sm">What should it include?<Textarea aria-label="Assessment instructions" rows={3} disabled={busy} placeholder="Describe question types, level, paper sections, marks, passages or anything else you need." value={draft.instructions ?? ''} onChange={event => setDraft({ ...draft, instructions: event.target.value })} /></label>
       <label className="block text-sm">Results<Select aria-label="Assessment results style" disabled={busy} value={draft.result_style ?? 'marks'} onChange={event => setDraft({ ...draft, result_style: event.target.value as AssessmentGeneration['result_style'] })}><option value="marks">Marks and feedback</option><option value="grade">Review without marks</option></Select></label>
-      <label className="block text-sm">Concept names (comma separated, optional)<Input disabled={busy} value={labels} onChange={event => setLabels(event.target.value)} /></label>
+      <label className="block text-sm">Concept names (comma separated, optional)<Input value={labels} disabled={!!draft.concept_ids?.length || busy} onChange={event => setLabels(event.target.value)} /></label>
       <label className="block text-sm">Question format<Select aria-label="Assessment format" disabled={busy} value={draft.question_format ?? 'auto'} onChange={event => setDraft({ ...draft, question_format: event.target.value as AssessmentGeneration['question_format'] })}><option value="auto">Choose for me</option><option value="mixed">Mixed practice</option><option value="mcq">Multiple choice</option><option value="true_false">True / false</option><option value="short_answer">Short answers</option><option value="written">Written responses</option><option value="mock_paper">Mock exam paper</option></Select></label>
       {draft.question_format === 'mock_paper' && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Duration (minutes)<Input aria-label="Exam duration" type="number" min={1} disabled={busy} value={draft.duration_minutes ?? ''} placeholder="Let Mentra decide" onChange={event => setDraft({ ...draft, duration_minutes: event.target.value ? Number(event.target.value) : undefined })} /></label><label className="text-sm">Total marks (optional)<Input aria-label="Exam total marks" type="number" min={1}  disabled={busy} value={draft.total_marks ?? ''} placeholder="Use section marks" onChange={event => setDraft({ ...draft, total_marks: event.target.value ? Number(event.target.value) : undefined })} /></label><p className="text-xs leading-5 text-muted sm:col-span-2">Describe the sections and question types you want, or let Mentra design them. Question count refers to main questions; parts carry their own marks.</p></div>}
 
       <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Question count (max 20)<Input type="number" min={1} max={20} disabled={busy} value={draft.count ?? ''} placeholder="Let Mentra decide" onChange={event => setDraft({ ...draft, count: event.target.value ? Math.min(20,Math.max(1,Number(event.target.value))) : null })} /></label><label className="text-sm">Purpose<Select aria-label="Assessment purpose" disabled={busy} value={draft.purpose} onChange={event => setDraft({ ...draft, purpose: event.target.value })}><option value="practice">Practice</option><option value="verification">Verification</option><option value="calibration">Granular calibration</option></Select></label></div>
       <Toggle label="Ground questions in selected Library documents" disabled={busy} checked={draft.grounded} onChange={event => setDraft({ ...draft, grounded: event.target.checked })} />
-      {draft.grounded && materialsUnavailable && <p role="alert" className="text-xs text-danger">Library documents could not be loaded. Refresh to choose your sources.</p>}
-      {draft.grounded && <Select multiple aria-label="Assessment study documents" disabled={busy} value={draft.document_ids} onChange={event => setDraft({ ...draft, document_ids: [...event.target.selectedOptions].map(option => option.value) })}>{documents.filter(item => item.active_generation_id && (!draft.context_id || item.context_ids.includes(draft.context_id))).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</Select>}
-      <Button type="submit" disabled={busy} loading={busy}>{'Generate assessment'}</Button>
+      {!!draft.concept_ids?.length && <p className="text-xs text-muted">Practising {draft.concept_ids.length} selected topic{draft.concept_ids.length === 1 ? '' : 's'} in this learning context. <Button size="sm" variant="ghost" disabled={busy} onClick={() => setDraft({ ...draft, concept_ids: [] })}>Choose different topics</Button></p>}
+      {draft.grounded && <MaterialPicker onValidityChange={setMaterialValidity} value={draft.document_ids} contextId={draft.context_id} disabled={busy} onChange={document_ids => setDraft({ ...draft, document_ids })} />}
+      <Button type="submit" disabled={busy || !!draft.grounded && (!materialValidity?.ready || materialValidity.key !== materialSelectionKey(draft.document_ids, draft.context_id))} loading={busy}>{'Generate assessment'}</Button>
     </form>}
     </section>
     <section role="tabpanel" id="assessment-panel-assessments" aria-labelledby="assessment-tab-assessments" hidden={tab !== 'assessments'} className="space-y-5">
@@ -164,6 +179,7 @@ export function AnswerSheet({ assessment, initial, onChange, actions }: { assess
     finally { if(!controller.signal.aborted) setBusy(false); }
   }
   return <section aria-label="Assessment answer sheet" className="space-y-5">
+    <PracticeNotice assessment={assessment} />
     <PaperHeader assessment={assessment} />
     {busy && activeAction === 'upload' && <p role="status" className="flex items-center gap-2 text-xs text-muted"><LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Reading your answer sheet</p>}
     {attempt.state==='graded' && !correcting && <AssessmentFeedback assessment={assessment} attempt={attempt} />}
@@ -172,12 +188,12 @@ export function AnswerSheet({ assessment, initial, onChange, actions }: { assess
     {editable && !correcting && <FileInput label="Upload an answer sheet" aria-label="Upload assessment answer sheet" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value=''; }} />}
     {attempt.extraction && <div className="space-y-2 text-sm text-muted"><p>{attempt.extraction.handwriting_support==='typed_chat' ? 'Your chat answers are ready. Check their question numbers before submitting.' : attempt.extraction.handwriting_support==='vision_requires_review' ? 'Image transcription is ready. Review every answer and its question number before submitting.' : 'Review and correct every extracted answer before submitting. Handwriting may not have been read accurately.'}</p>{attempt.extraction.warnings.map((warning,index) => <p key={index}>{materialWarningMessage(warning)}</p>)}</div>}
     {quizPending && <QuizAnswerReview assessment={assessment} answers={attempt.answers} />}
-    {!quizPending && (attempt.state !== 'graded' || correcting) && assessment.questions.map((question,index) => { const grade=attempt.grades?.find(item => item.question_id===question.id); return <section key={question.id} className="space-y-2 border-t border-border pt-4">{question.section && question.section !== assessment.questions[index-1]?.section && <h3 className="text-sm font-semibold text-accent">{question.section}</h3>}<h3 className="text-sm font-medium">{questionLabel(question,index)}{showsAssessmentMarks(assessment) ? ` · ${question.marks} marks` : ''}</h3><MarkdownContent content={question.prompt} />
+    {!quizPending && (attempt.state !== 'graded' || correcting) && assessment.questions.map((question,index) => { const grade=attempt.grades?.find(item => item.question_id===question.id); return <section key={question.id} className="space-y-2 border-t border-border pt-4">{question.section && question.section !== assessment.questions[index-1]?.section && <h3 className="text-sm font-semibold text-accent">{question.section}</h3>}<h3 className="text-sm font-medium">{questionLabel(question,index)}{showsAssessmentMarks(assessment) ? ` · ${question.marks} marks` : ''}</h3>{!!question.context && <div className="rounded-lg border border-border bg-surface p-3"><MarkdownContent content={question.context} /></div>}<MarkdownContent content={question.prompt} />
       {editable && !!question.options?.length && attempt.extraction && <p className="text-sm text-muted">Answer text to review: {answers[question.id] || 'Not answered'}</p>}
       {editable && question.options?.length ? <ChoiceOptions kind={question.answer_mode === 'multiple_choice' ? 'multiple_choice' : 'single_choice'} question={`Answer ${questionLabel(question,index).replace('Question ', '')}`} hideLegend options={question.options} selected={selectedIds(question, answers[question.id])} renderLabel={label => <MarkdownContent content={label} />} disabled={busy} onChange={selected => { setAnswers(previous => ({ ...previous, [question.id]: question.answer_mode === 'multiple_choice' ? selected.length ? JSON.stringify(selected) : '' : selected[0] })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : editable ? <Textarea aria-label={`Answer ${questionLabel(question,index).replace('Question ', '')}`} className="min-h-28 w-full rounded-xl border border-border-strong bg-input p-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-accent"  disabled={busy} value={answers[question.id] ?? ''} onChange={event => { setAnswers(previous => ({ ...previous, [question.id]:event.target.value })); operation.current=crypto.randomUUID(); setConfirmed(false); }} /> : <AnswerContent content={selectedAnswer(question, attempt.answers[question.id])} />}
       {grade && <div className="space-y-1 text-sm"><p className="font-medium">{showsAssessmentMarks(assessment) ? `${grade.score}/${question.marks} · ` : ''}Review confidence {Math.round(grade.confidence*100)}%</p><MarkdownContent content={grade.feedback} />{grade.misconceptions.map((value,i) => <p key={i} className="text-muted">{value}</p>)}</div>}
     </section>; })}
-    {editable && <><Select aria-label="Assistance used" disabled={busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select>{attempt.extraction && <Toggle label="I reviewed and corrected all extracted answers" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}</>}
+    {editable && <>{assessment.practice_source ? <p className="text-xs text-muted">Earlier feedback is available, so this attempt is recorded as repeated practice.</p> : <Select aria-label="Assistance used" disabled={busy} value={assistance} onChange={event => { setAssistance(event.target.value as typeof assistance); operation.current=crypto.randomUUID(); }}><option value="unknown">Assistance not specified</option><option value="independent">I answered independently</option><option value="assisted">I used hints or assistance</option></Select>}{attempt.extraction && <Toggle label="I reviewed and corrected all extracted answers" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}</>}
     {attempt.error && !evaluating && <p role="alert" className="text-sm text-danger">{attempt.error} Your answers are saved.</p>}
     {attempt.state==='graded' && <><p role="status" className="text-sm text-muted">{attempt.evidence_status==='pending' ? 'Results saved. Learning progress updates in the background.' : attempt.evidence_status==='applied' ? 'Feedback saved and learning progress updated.' : attempt.evidence_status==='partial' ? 'Feedback saved. Learning progress was updated where the review was confident.' : 'Feedback saved. Learning progress could not be updated for this review.'}</p></>}
     {!!attempt.grade_history.length && <details className="text-sm"><summary className="cursor-pointer">Previous grade revisions</summary>{attempt.grade_history.map(history => <div key={history.grade_revision} className="space-y-2 py-3"><p className="font-medium">Revision {history.grade_revision}</p>{history.grades.map(grade => <p key={grade.question_id}>{showsAssessmentMarks(assessment) ? `${grade.score} marks · ` : ''}{grade.feedback}</p>)}</div>)}</details>}
