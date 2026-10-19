@@ -43,7 +43,7 @@ export function AppLayout() {
         onNewChat={startNewChat}
       />
       <div id="workspace-content" className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:px-5" aria-label="Workspace controls">
+        <div className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:px-5 ${isChat ? 'chat-floating-controls' : ''}`} aria-label="Workspace controls">
           <div className="flex min-w-0 items-center gap-3">
             <IconButton
               aria-label="Open navigation menu"
@@ -67,7 +67,7 @@ export function AppLayout() {
               )}
             </IconButton>
           </div>
-          <div className="pointer-events-auto shrink-0 rounded-control bg-background"><NotificationBell /></div>
+          <div className="pointer-events-auto shrink-0 rounded-control bg-background"><NotificationBell quiet={isChat} /></div>
         </div>
         <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
           <Outlet context={{ newChatKey, newChatPending }} />

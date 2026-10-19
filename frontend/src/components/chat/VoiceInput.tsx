@@ -1,3 +1,4 @@
+import { buttonStyles } from '../ui/Button';
 import { LoaderCircle, X } from 'lucide-react';
 import type { useVoiceInput } from './useVoiceInput';
 
@@ -22,7 +23,7 @@ export function VoiceInput({ voice }: { voice: ReturnType<typeof useVoiceInput> 
       </span>}
     </div>}
     {voice.error && <p role="alert" className="px-2.5 py-2 text-xs text-danger">{voice.error}
-      {voice.canRetry && <><button type="button" onClick={voice.retry} className="ml-2 underline">Retry</button>
-        <button type="button" onClick={voice.cancel} className="ml-2 underline">Dismiss</button></>}</p>}
+      {voice.canRetry && <><button type="button" onClick={voice.retry} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-2' })}>Retry</button>
+        <button type="button" onClick={voice.cancel} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-2' })}>Dismiss</button></>}</p>}
   </>;
 }

@@ -78,6 +78,6 @@ export function ChatActivity({ conversationId, turnId, attempt, stopping = false
     </span>)}</span>;
   return <div aria-label="Current activity">
     <ThinkingIndicator label={stopping ? 'Stopping this response' : label} />
-    {current && <div className="ml-11">{sites(current)}</div>}
+    {current && <div className="sm:ml-11">{sites(current)}</div>}
   </div>;
 }

@@ -547,3 +547,61 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
     mask-position: 0 0%;
   }
 }
+
+/* App disclosures retain native markers and keyboard behavior. */
+@layer components {
+  .ui-disclosure {
+    @apply rounded-control py-2 font-medium transition-colors duration-150 hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Quiet mobile chat chrome: small visual surfaces, full-sized touch targets. */
+@media (max-width: 639px) {
+  .chat-floating-controls {
+    padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) 4px max(4px, env(safe-area-inset-left));
+  }
+  .chat-floating-controls > div { background: transparent; }
+  .chat-floating-controls .icon-control {
+    position: relative; isolation: isolate; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0;
+    background: transparent; color: rgb(var(--muted)); border-radius: 999px;
+  }
+  .chat-floating-controls .icon-control::before {
+    content: ''; position: absolute; inset: 7px; z-index: -1; border-radius: 999px;
+    background: rgb(var(--background) / .88);
+  }
+  .chat-floating-controls .icon-control:hover::before,
+  .chat-floating-controls .icon-control:focus-visible::before { background: rgb(var(--hover)); }
+  .chat-floating-controls .icon-control svg { width: 16px; height: 16px; }
+  .quiet-notification .notification-count {
+    position: absolute; top: 10px; right: 10px; width: 4px; height: 4px; overflow: hidden;
+    border-radius: 999px; background: rgb(var(--accent)); font-size: 0;
+  }
+  .chat-composer-region { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 639px) {
+  .chat-composer { padding: 4px; }
+  .composer-entry { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: end; gap: 2px; }
+  .composer-entry > textarea { grid-column: 2; grid-row: 1; padding: 10px 2px; min-height: 44px; }
+  .composer-entry > textarea:placeholder-shown { white-space: pre; text-overflow: ellipsis; overflow-x: hidden; }
+  .composer-toolbar { display: contents; }
+  .composer-attach { grid-column: 1; grid-row: 1; width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .composer-actions { grid-column: 3; grid-row: 1; gap: 0; }
+  .composer-actions .icon-control { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+  .composer-entry:has(textarea:focus) .composer-mic { display: none; }
+  .composer-voice { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+  .composer-voice:empty { display: none; }
+  .composer-voice-active .composer-voice { grid-column: 1 / -1; grid-row: 1; }
+  .composer-voice-active .composer-attach, .composer-voice-active .composer-actions { grid-row: 2; }
+}
+
+@media (max-width: 639px) {
+  .composer-actions .composer-send { isolation: isolate; border: 0; background: transparent; }
+  .composer-send::before {
+    content: ''; position: absolute; inset: 7px; z-index: -1; border-radius: 9px;
+    background: rgb(var(--primary));
+  }
+  .composer-send:hover::before { background: rgb(var(--primary-hover)); }
+  .composer-send svg { width: 15px; height: 15px; }
+}

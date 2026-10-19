@@ -1,3 +1,4 @@
+import { buttonStyles } from '../ui/Button';
 import { CalendarDays, Plus, ArrowUpRight } from 'lucide-react';
 import { WorkspaceEmpty } from '../workspace/WorkspaceHeader';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
@@ -76,13 +77,13 @@ function Agenda() {
   return <section className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-medium text-heading">Your agenda</h2><Button onClick={() => setEditing('new')}><Plus size={16} aria-hidden="true" />New event</Button></div>
     <p className="text-sm text-muted">Keep track of quizzes, deadlines and study sessions. Each event has at most one reminder.</p>
-    {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => refreshPage(() => { void load(); })}>Refresh</button></p>}
+    {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => { void load(); })}>Refresh</button></p>}
     {editing && <EventEditor key={editing === 'new' ? 'new' : `${editing.id}:${editing.revision}`} current={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onSaved={item => { setEditing(null); setParams({ tab: 'events', event: item.id }); void load(); }} />}
     {detail && <section className="workspace-panel space-y-4" aria-label="Event details">
       <div className="flex justify-between gap-3"><h2 className="text-xl font-medium">{detail.title}</h2><Button variant="ghost" size="sm" onClick={() => setParams({ tab: 'events' })}>Close</Button></div>
       <p className="text-sm text-muted">{detail.description}</p><p className="text-sm">{detail.local_date ?? new Date(detail.starts_at!).toLocaleString(undefined, { timeZone: detail.timezone })} · {detail.timezone}</p>
       <p className="text-sm text-muted">{detail.bucket} · Reminder {detail.reminder_state}{detail.reminder_due_at ? ` · ${new Date(detail.reminder_due_at).toLocaleString()}` : ''}</p>
-      {detail.evidence?.map((source, index) => <div key={index} className="border-l border-border pl-3 text-sm"><p>{source.quote}</p>{source.source_deleted ? <p className="text-muted">Source conversation deleted</p> : source.conversation_id && <Link className="text-accent underline" to={`/chat/${source.conversation_id}`}>Source conversation</Link>}</div>)}
+      {detail.evidence?.map((source, index) => <div key={index} className="border-l border-border pl-3 text-sm"><p>{source.quote}</p>{source.source_deleted ? <p className="text-muted">Source conversation deleted</p> : source.conversation_id && <Link className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/chat/${source.conversation_id}`}>Source conversation</Link>}</div>)}
       <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(detail)}>Edit</Button>
       {(['scheduled', 'completed', 'cancelled'] as const).filter(value => value !== detail.status).map(value => <Button key={value} size="sm" variant="ghost" disabled={busy} loading={activeAction === value} onClick={() => void change(detail, value)}>{value === 'scheduled' ? 'Reopen' : value === 'completed' ? 'Complete' : 'Cancel event'}</Button>)}
       <Button variant="secondary" size="sm" disabled={busy} loading={activeAction === 'calendar'} onClick={() => void exportCalendar(detail)}>Download calendar file</Button>

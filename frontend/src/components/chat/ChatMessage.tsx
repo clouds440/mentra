@@ -1,3 +1,4 @@
+import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { MentraLogo } from '../brand/MentraLogo';
@@ -73,7 +74,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
     <article
       data-message-id={message.id}
       aria-label={isAssistant ? 'Mentra response' : 'Your message'}
-      className={isAssistant ? `flex gap-3.5${reveal ? ' chat-response-reveal' : ''}` : 'flex justify-end'}
+      className={isAssistant ? `flex flex-col gap-2 sm:flex-row sm:gap-3.5${reveal ? ' chat-response-reveal' : ''}` : 'flex justify-end'}
     >
       {isAssistant && (
         <div
@@ -97,11 +98,11 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
             {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
-            {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className="text-sm text-accent underline" to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
-            {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="text-left text-accent hover:underline" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
+            {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
+            {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
             {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
-            {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="text-accent hover:underline" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
+            {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
             {!!message.content.trim() && <CopyResponse content={message.content} />}
           </div>
         ) : (

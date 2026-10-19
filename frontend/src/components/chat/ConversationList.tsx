@@ -1,3 +1,4 @@
+import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { Spinner } from '../ui/Spinner';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
@@ -65,7 +66,7 @@ export function ConversationList({ onOpen }: { onOpen: () => void }) {
     <div className="mb-1 flex items-center justify-between gap-2 pl-3"><h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Recent chats</h2><ChatSearch onOpen={onOpen} /></div>
     {view.items.map(chat => <ConversationRow key={chat.id} chat={chat} onOpen={onOpen} />)}
     {!view.items.length && (view.loading ? <Skeleton variant="list" rows={5} className="px-3 py-3" /> : <p className="px-3 py-3 text-xs leading-5 text-subtle">Your conversations will appear here.</p>)}
-    {view.error && <div className="px-3 py-2 text-xs text-danger" role="alert"><p>{view.error}</p><button type="button" className="mt-1 underline" onClick={() => void chatStore.sync()}>Try again</button></div>}
-    {view.more && <button type="button" disabled={view.loading} className="mx-3 my-3 text-xs text-muted hover:text-foreground" onClick={() => void chatStore.more()}>{view.loading ? <Spinner className="h-4 w-4" /> : 'Load more chats'}</button>}
+    {view.error && <div className="px-3 py-2 text-xs text-danger" role="alert"><p>{view.error}</p><button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mt-1' })} onClick={() => void chatStore.sync()}>Try again</button></div>}
+    {view.more && <button type="button" disabled={view.loading} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mx-3 my-3' })} onClick={() => void chatStore.more()}>{view.loading ? <Spinner className="h-4 w-4" /> : 'Load more chats'}</button>}
   </section>;
 }

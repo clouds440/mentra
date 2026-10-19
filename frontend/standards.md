@@ -151,3 +151,9 @@ Prioritize meaningful primitive behavior, user interactions, and important rende
 > Do not add a dependency for something that can be implemented clearly and safely in a few lines, but also do not reimplement complex, security-sensitive, or well-solved infrastructure merely to avoid a dependency. Every dependency should have a reason to exist.
 
 - Assessment types share the compact runner and paper primitives. Keep immutable IDs separate from printed nested references; never expose grading keys in generation progress or printed papers. See [Assessment engine](../docs/Assessment_Engine.md).
+
+- Standalone card/footer navigation and recovery actions use compact shared button styling. Keep inline prose citations as links. Application disclosures use `ui-disclosure` for a consistent padded focus target while retaining native disclosure markers and keyboard behavior.
+
+- On phones, assistant avatars sit above the response instead of reserving a left column. Chat text and composer share equal side margins. Floating menu and notification glyphs stay quiet while their hit areas remain 44px. Mobile composer text is at least 16px, and long drafts are height-bounded by the viewport.
+
+- The mobile composer starts in one row with attachment and send controls at opposite ends; text grows vertically as needed. Hide the microphone only while the textarea is focused, retain its recording controls, and keep the send button position stable.

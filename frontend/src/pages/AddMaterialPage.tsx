@@ -1,3 +1,4 @@
+import { buttonStyles } from '../components/ui/Button';
 import { FilePlus2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -29,7 +30,7 @@ export function AddMaterialPage() {
   }, [reload]);
 
   return <div className="h-full overflow-y-auto"><section className="page-container">
-    <Link to="/library" className="text-sm text-accent hover:underline">Back to Library</Link>
+    <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link>
     <WorkspaceHeader title="Add material" description="Give your study sources a home. Upload a file and connect it to what you’re learning." icon={FilePlus2} />
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
     {!capabilities && !error && <Skeleton variant="form" />}

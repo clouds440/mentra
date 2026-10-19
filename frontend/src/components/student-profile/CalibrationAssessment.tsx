@@ -83,8 +83,8 @@ export function CalibrationAssessment({ initialAttempt, onComplete, onSkip, skip
     </div>
     {pending === 'finish' && <p className="mt-4 text-center text-xs leading-5 text-muted" aria-live="polite">Submitting your answers and finding a starting point for your explanations.</p>}
     <div className="mt-6 border-t border-border pt-4 text-center">
-      <button className="rounded px-2 py-1 text-xs text-muted hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
-        type="button" disabled={disabled} onClick={onSkip}>{skipping ? 'Skipping calibration…' : 'Skip calibration for now'}</button>
+      <Button variant="ghost" size="sm"
+        type="button" disabled={disabled} onClick={onSkip}>{skipping ? 'Skipping calibration…' : 'Skip calibration for now'}</Button>
     </div>
   </section>;
 }

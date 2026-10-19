@@ -26,7 +26,7 @@ export function AssessmentCreateForm({ draft, onChange, busy, onSubmit, topics }
     <datalist id={topicList}>{[...new Set(topics)].map(topic => <option key={topic} value={topic} />)}</datalist>
     {!!draft.concept_ids?.length && <p className="text-xs text-muted">Practising {draft.concept_ids.length} selected topic{draft.concept_ids.length === 1 ? '' : 's'} in this learning context.</p>}
     <details className="rounded-panel border border-border p-3" open={draft.document_ids.length > 0 || undefined}>
-      <summary className="cursor-pointer text-sm font-medium text-heading"><BookOpen size={16} className="mr-2 inline" aria-hidden="true" />Study materials <span className="font-normal text-muted">· optional</span></summary>
+      <summary className="ui-disclosure cursor-pointer text-sm font-medium text-heading"><BookOpen size={16} className="mr-2 inline" aria-hidden="true" />Study materials <span className="font-normal text-muted">· optional</span></summary>
       <div className="mt-4"><MaterialPicker value={draft.document_ids} contextId={draft.context_id} disabled={busy} onValidityChange={setValidity} onChange={document_ids => onChange({ ...draft, document_ids, grounded: document_ids.length > 0 })} /></div>
     </details>
     <FormField label="What should it include?" hint="Add anything that matters: subtopics, level, examples or exam requirements.">{field => <Textarea {...field} aria-label="Assessment instructions" rows={3} maxLength={4000} disabled={busy} placeholder="For example: focus on Newton’s laws, with everyday examples and a few calculations." value={draft.instructions ?? ''} onChange={event => onChange({ ...draft, instructions: event.target.value })} />}</FormField>

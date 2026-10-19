@@ -25,7 +25,7 @@ export function PracticeNotice({ assessment }: { assessment: Assessment }) {
   if (!source) return null;
   return <aside className="space-y-2 rounded-lg border border-border bg-surface p-3" aria-label="Repeated practice">
     <p className="text-xs text-muted">This practice is based on previously graded questions. Results are saved as practice and do not count as a fresh independent demonstration.</p>
-    {!!source.reference_questions.length && <details onToggle={event => setExpanded(event.currentTarget.open)}><summary className="cursor-pointer text-xs text-accent">Original paper context and reference questions</summary>{expanded && <div className="mt-3 space-y-3">
+    {!!source.reference_questions.length && <details onToggle={event => setExpanded(event.currentTarget.open)}><summary className="ui-disclosure cursor-pointer text-xs text-accent">Original paper context and reference questions</summary>{expanded && <div className="mt-3 space-y-3">
       <MarkdownContent content={source.instructions} />
       {source.reference_questions.map((question, index) => <div key={question.id} className="space-y-1 text-sm"><p className="font-medium">{questionLabel(question, index)}</p><MarkdownContent content={[question.context, question.prompt, ...(question.options?.map(option => `${option.id}: ${option.label}`) ?? [])].filter(Boolean).join('\n\n')} /></div>)}
     </div>}</details>}

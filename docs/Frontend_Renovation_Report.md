@@ -140,3 +140,38 @@ its test-only volume. Application data volumes were preserved.
 [Desktop creation](product-improvements/assessment-create-desktop.png)
 
 [Mobile format selection](product-improvements/assessment-formats-mobile.png)
+
+## 2026-10-19 — Frontend action and disclosure consistency
+
+Audited route pages and feature controls for bare action links, small interaction targets and inconsistent selection states. Preserved the shell, page placement, inline citations and plain Copy controls.
+
+| Area | Improvement |
+| --- | --- |
+| Library, progress, events and memories | Compact shared secondary buttons for standalone navigation and practice actions |
+| Chat, assessments, notifications and settings | Consistent bordered recovery controls with visible keyboard focus; chat recovery actions have separation |
+| Assessment history | Full-width selectable rows with a visible and accessible selected state |
+| Source lists and disclosures | Padded source rows; shared disclosure hover/focus styling while retaining native markers and keyboard behavior |
+| Event editor and calibration | Bordered radio choices with selected states; shared calibration skip control |
+| Quiz navigation | Shared coarse-pointer sizing for numbered question controls |
+
+Validation: production TypeScript/Vite build, theme checks, UI checks and diff whitespace checks passed. All 51 existing browser regression cases passed, including nine workspace routes at 320, 390, 768 and 1440px in light and dark themes. Inspected mobile assessment, progress and event screenshots. API fixtures isolate these checks from real records; this is frontend validation, not backend integration coverage.
+
+The local Docker image rebuild was attempted but could not connect to Docker Desktop's Linux engine. No running container was updated.
+
+## 2026-10-19 — Mobile chat centering and quiet controls
+
+The assistant avatar occupied a permanent 42px side column, shifting text and interactive cards to the right on phones. Below 640px the avatar now sits above a full-width response, giving the content the same 16px side margins as the composer. Desktop placement is unchanged.
+
+Mobile chat navigation and notifications now sit in opposite top corners with 16px glyphs, 30px quiet circular surfaces and 44px hit areas. Unread notifications use a small dot while the accessible label retains the count. Safe-area spacing protects the controls and composer. The composer uses 16px mobile input text to avoid iOS focus zoom and caps long drafts at the smaller of 12rem or 30dvh. Empty chat has top clearance for the floating controls.
+
+Verification: production build and theme/UI checks passed. Browser geometry checks cover equal response margins, corner positioning, touch targets, drawer opening and long drafts in a shortened viewport at 320/390/430px in both themes. These are Chromium emulation checks, not physical iPhone keyboard verification. The full selected regression suite ran against the rebuilt local Nginx frontend with API fixtures. The frontend container was rebuilt and replaced successfully; backend and workers were left running.
+
+Screenshots: [320px light](product-improvements/chat-mobile-light.png), [390px dark](product-improvements/chat-mobile-dark.png).
+
+### Compact mobile composer
+
+The phone composer now starts as a single row with attachment on the left and microphone/send controls on the right. Text grows naturally into multiple lines, up to the existing viewport-aware height cap, and clearing it restores the compact row. While the textarea is focused the microphone is hidden; it returns on blur. The send control remains in the same position. Recording and transcription retain their dedicated voice surface and stop/cancel controls. Desktop layout is unchanged.
+
+Verified compact height, wrapping, shrinking, microphone focus behavior and stable send position at 320/390/430px in both themes. The production build, UI/theme checks and 33 selected browser cases passed. Screenshots above show the updated composer.
+
+The send button uses a smaller 30px visible surface and 15px glyph within its 44px touch target. The six mobile geometry cases passed again after this final adjustment.

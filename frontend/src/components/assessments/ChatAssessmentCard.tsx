@@ -1,3 +1,4 @@
+import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
@@ -73,7 +74,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
       {card.assessment_id && !card.deleted && <Button className="shrink-0" size="sm" variant="secondary" disabled={!ready} onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}
     </div>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
-    {error && <p role="alert" className="text-sm text-danger">{error} <button className="underline" onClick={() => setReload(value => value+1)}>Refresh</button></p>}
+    {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => setReload(value => value+1)}>Refresh</button></p>}
     {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} actions={actions} /> :
       <AssessmentPaper assessment={card.assessment} />}
     {(!ready && !error || !isMCQ && !attempt) && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

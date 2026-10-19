@@ -19,7 +19,7 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
   return <div className="mt-4 text-sm">
     {searches.some(search => search.cache_hit) && <p className="mb-2 text-xs text-subtle">Recently cached web results were reused; original search dates are shown below.</p>}
     {!!sources.length && <details className="rounded-xl border border-border px-3 py-2">
-      <summary className="cursor-pointer text-muted">Web sources ({sources.length})</summary>
+      <summary className="ui-disclosure cursor-pointer text-muted">Web sources ({sources.length})</summary>
       <ol className="mt-3 space-y-3">{sources.slice(0, 10).map(source => <li key={source.token} className="min-w-0">
         <WebCitation source={source}><span className="break-words">[{source.token}] {source.title}</span></WebCitation>
         <p className="mt-1 text-xs text-subtle">{citations.includes(source.token) ? 'Cited' : 'Consulted'} · {source.domain}</p>

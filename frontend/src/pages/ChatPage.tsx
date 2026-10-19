@@ -1,5 +1,6 @@
+import { buttonStyles } from '../components/ui/Button';
 import { useChatScroll } from '../hooks/useChatScroll';
-﻿import { Skeleton } from '../components/ui/Skeleton';
+import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { ArrowDown, FileText, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -152,7 +153,7 @@ export function ChatPage() {
           onScroll={scroll.onScroll}>
           <div className="mx-auto flex min-h-[var(--chat-content-height,0px)] w-full max-w-[52rem] flex-col">
             <div className="flex flex-col gap-8">
-            {view.before !== null && <button type="button" disabled={view.loading} className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
+            {view.before !== null && <button type="button" disabled={view.loading} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'self-center' })}
               onClick={() => { const done = scroll.preparePrepend(); void chatStore.older(id).finally(done); }}>
               {view.loading ? <Spinner className="h-4 w-4" /> : 'Load earlier messages'}
             </button>}
@@ -162,14 +163,14 @@ export function ChatPage() {
               {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
               {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} stopping={stopping} />}
             </div>)}
-            {view.olderWindow && <button type="button" className="self-center rounded-lg border border-border px-4 py-2 text-xs text-muted hover:bg-hover"
+            {view.olderWindow && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'self-center' })}
               onClick={() => { scroll.showLatest(); void chatStore.open(id, true); }}>Back to latest messages</button>}
             </div>
             <p data-chat-footer className="mt-auto shrink-0 pt-6 text-center text-[10px] leading-4 text-subtle" aria-label="Chat disclaimer">Mentra can make mistakes. Check important information.</p>
           </div>
         </div>
       )}
-      <div className="relative shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
+      <div className="chat-composer-region relative shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         {scroll.showScrollToBottom && <div className="pointer-events-none absolute inset-x-0 -top-11 z-20 flex justify-center"><IconButton type="button" aria-label="Scroll to bottom" title="Scroll to bottom" className="pointer-events-auto rounded-full border border-border-strong bg-surface text-muted shadow-sm hover:bg-hover hover:text-heading" onClick={() => {
           if (view.olderWindow) { scroll.showLatest(); void chatStore.open(id, true); }
           else scroll.scrollToBottom();
@@ -177,10 +178,10 @@ export function ChatPage() {
         <div className="mx-auto w-full max-w-[52rem]">
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
-            {view.unsent && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
-            {view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.' && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry response</button>}
-            {!view.turn && view.error && <button type="button" className="mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
-            {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className="ml-3 mt-2 font-medium underline underline-offset-4" onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
+            {view.unsent && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
+            {view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.' && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.send(id, '', selection, true)}>Retry response</button>}
+            {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
+            {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-2' })} onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
           <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
             attachments={<>
