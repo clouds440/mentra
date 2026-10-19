@@ -2,6 +2,8 @@ import { apiRequest } from './api';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData } from '../types/assessments';
 const base = '/api/v1/assessments';
 export const assessments = {
+  mistakes: (ids: string[], topics: string[], offset: number, signal: AbortSignal) => { const query = new URLSearchParams({ offset: String(offset) }); ids.forEach(id => query.append('assessment_id', id)); topics.forEach(id => query.append('topic_id', id)); return apiRequest<import('../types/assessments').MistakesPage>(`${base}/mistakes?${query}`, { signal, cache: 'no-store' }); },
+  reviseMistakes: (body: { client_request_id: string; assessment_ids: string[]; topic_ids: string[]; count: number }, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/mistakes/practice`, { method: 'POST', signal, body: JSON.stringify(body) }),
   practiseMistakes: (attempt: AssessmentAttempt, question_ids: string[], operation: string, signal: AbortSignal) => apiRequest<Assessment>(`${base}/attempts/${attempt.id}/practice`, { method:'POST', signal, body:JSON.stringify({ expected_grade_revision:attempt.grade_revision, question_ids, client_request_id:operation }) }),
   retryEvaluation: (attempt: AssessmentAttempt, operation: string, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/retry`, {method:'POST',signal,body:JSON.stringify({expected_revision:attempt.revision,client_request_id:operation})}),
   queue: (request: AssessmentGeneration, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/generation-jobs`, { method: 'POST', signal, body: JSON.stringify(request) }),

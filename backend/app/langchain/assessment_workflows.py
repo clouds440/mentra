@@ -115,18 +115,24 @@ class AssessmentWorkflows:
             learner_context=learner_context.model_dump(mode='json', exclude_none=True), level=request.level, result_style=request.result_style,
             paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
                 sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None,
-            **(dict(revision_instructions=request.revision_instructions) if revision else {}))
+            **(dict(revision_instructions=revision.get('instructions', request.revision_instructions)) if revision else {}))
         async def generate_batch(offset, prior):
             batch_plan = question_plan[offset:offset+batch_size]
             batch_count = len(batch_plan)
+            def validate_batch(result):
+                validate_questions(result, count=batch_count,
+                    question_format=request.question_format, concepts=set(concepts) if request.concept_ids else None,
+                    require_attribution=bool(request.concept_ids), tokens={source['token'] for source in sources}, grounded=request.grounded,
+                    previous=[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior], plan=batch_plan)
+                if revision and revision.get('mistake_revision'):
+                    originals = {item['prompt'].strip().casefold() for item in revision['questions']}
+                    if any(question.prompt.strip().casefold() in originals for question in result.questions):
+                        raise GenerationMismatch('revision_questions_require_fresh_wording')
             generated = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GENERATION,
             generation_payload(shared=shared_payload, plan=question_plan, offset=offset,
                 batch_size=batch_size, prior=prior, revision=revision), output_schema=GeneratedAssessmentBatch,
                 maximum_attempts=1 if batch_count>6 else 2,
-                validate=lambda result: validate_questions(result, count=batch_count,
-                    question_format=request.question_format, concepts=set(concepts) if request.concept_ids else None, require_attribution=bool(request.concept_ids),
-                    tokens={source['token'] for source in sources}, grounded=request.grounded,
-                    previous=[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior], plan=batch_plan))
+                validate=validate_batch)
             return generated, batch_plan
         # Independent outline batches overlap; only ordered prefixes are checkpointed.
         # This keeps refresh/retry deterministic even when a later call finishes first.
@@ -148,7 +154,12 @@ class AssessmentWorkflows:
                         for key,value in planned.items():
                             if key in type(question).model_fields: setattr(question,key,value)
                     from .assessment_concepts import resolve_question_concepts
-                    await resolve_question_concepts(self.learner,owner,request,generated.questions,targets)
+                    if revision and revision.get('mistake_revision'):
+                        for question, original in zip(generated.questions, revision['questions'][offset:offset+len(batch_plan)]):
+                            question.concept_ids = original['concept_ids']
+                            question.concept_names = []
+                    else:
+                        await resolve_question_concepts(self.learner,owner,request,generated.questions,targets)
                     questions.extend(generated.questions)
                     await save_progress()
             except AppError as error:
@@ -236,13 +247,14 @@ class AssessmentWorkflows:
         withdraw = []
         for grade in grades.questions:
             question = questions[grade.question_id]
+            provenance = lineage.get('question_sources', {}).get(grade.question_id, lineage)
             for concept, value in grade.concept_grades.items():
                 if min(grade.confidence, value.confidence) < .8:
                     old = previous.get((grade.question_id, concept))
                     if old:
                         withdraw.append(old)
                     continue
-                requests.append(EvidenceSubmissionRequest(learner_id=job['owner'], concept_id=concept, context_id=assessment['context_id'],
+                requests.append(EvidenceSubmissionRequest(learner_id=job['owner'], concept_id=concept, context_id=lineage.get('question_contexts', {}).get(grade.question_id, assessment['context_id']),
                     source_type='HANDWRITTEN_ASSESSMENT' if attempt['extraction'] else 'MOCK_EXAM' if assessment.get('paper') else 'CALIBRATION' if assessment['purpose']=='calibration' else 'QUIZ',
                     source_id=f"assessment:{job['id']}:{attempt['grade_revision']}:{grade.question_id}:{concept}",
                     item_id=lineage.get('question_items', {}).get(grade.question_id, f"{assessment['id']}:{grade.question_id}"),
@@ -256,7 +268,7 @@ class AssessmentWorkflows:
                         question_score=grade.score, question_max_score=question['marks'],
                         misconceptions=grade.misconceptions, transcription_confirmed=bool(attempt['extraction']),
                         assistance=attempt.get('assistance','unknown'), independence_provenance='known_answer_exposure' if exposed else 'self_reported',
-                        **(dict(known_exposure=True, source_attempt_id=lineage['attempt_id'], source_grade_revision=lineage['grade_revision']) if exposed else {}),
+                        **(dict(known_exposure=True, source_attempt_id=provenance['attempt_id'], source_grade_revision=provenance['grade_revision']) if exposed else {}),
                         profile_context_version=job.get('profile_context_version'))))
         if withdraw:
             self.learner.withdraw_assessment_evidence_in_transaction(job['owner'], withdraw, job['id'], unit_of_work)

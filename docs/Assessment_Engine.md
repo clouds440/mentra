@@ -91,3 +91,22 @@ production TypeScript/Vite build and theme/UI checks. Live synthetic English and
 selection/outline checks retained both requested formats, exactly four answerable
 items and feedback-only presentation. These are contract checks, not a broad
 subject-quality or educational-effectiveness evaluation.
+
+
+## Revision practice workspace (2026-10-19)
+
+Progress → **Practice my mistakes** centralizes graded mistakes and partial answers. Assessment results now link to this workspace with their assessment filter preselected. The topic and assessment dropdowns support multiple selections; the filtered action is **Practice selected**.
+
+| Contract | Behavior |
+| --- | --- |
+| `GET /api/v1/assessments/mistakes` | Owner-scoped history, 30 rows per page, repeated `assessment_id` / `topic_id` filters, source assessment and attempt links, feedback and topic labels. Never returns private answers or rubrics. |
+| History | One row per source question, with its most recent mistake and accumulated failures across its revision lineage. A later correct graded answer marks the lineage corrected without removing earlier mistake records. Corrections use the current authoritative grade revision. |
+| Automatic selection | Unresolved mistakes only; descending failure count, proportional score gap, marks, then recency. Duplicate root questions are removed before applying the requested maximum of 1–20. This is a transparent heuristic, not an LLM judgment of curricular importance. |
+| `POST /api/v1/assessments/mistakes/practice` | Accepts `client_request_id`, optional assessment/topic ID arrays, and count. Owner transaction checks selected assessments and the existing two-active-job admission limit. |
+| Durable generation | Selection and shuffled order are snapshotted once in the private generation job checkpoint. Retries reuse the same operation, selection and provenance. Each source produces one new answerable variation; unchanged prompts fail generation validation before checkpoint publication. |
+| LLM responsibility | Generate fresh, self-contained wording/examples/values and appropriate choices, answers and rubrics using the existing assessment-generation workflow. |
+| Server responsibility | Set the `revision assessment` tag, title, source assessment IDs, per-question root identity, concept IDs, source attempt/grade revision and learning context. Clients cannot submit these metadata fields. |
+| Persistence | Existing `assessment.practice_lineage` JSON stores revision metadata; `Assessment.tags` and `source_assessment_ids` expose safe projections. No database migration is needed. Source snapshots preserve provenance even if a source is subsequently removed. |
+| Learning evidence | Revision remains known-exposure/repeated practice. Cross-context revisions submit each question’s evidence in its original learning context and retain its specific source attempt and grade revision. |
+
+Verification: 40 distinct backend cases passed across the 39-case regression run and final seven-case revision suite (six overlap). These include owner isolation, API metadata rejection, filters, concurrency, replay, multi-source generation, corrected history and cross-context evidence. A synthetic live-provider run produced three fresh schema-valid questions with server tags and source IDs intact. This is a generation contract smoke test, not a broad educational-quality evaluation.

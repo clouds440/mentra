@@ -4,7 +4,7 @@ from sqlalchemy import select, update, delete, func, and_, or_
 from app.core.exceptions import AppError
 from app.db.owner_transactions import OwnerTransactions
 from app.history_management.repositories.events.postgres import request_hash
-from app.assessments.schemas import Assessment, Attempt, PublicQuestion
+from app.assessments.schemas import Assessment, Attempt, PublicQuestion, PracticeSource
 from .tables import assessments as a, attempts as t, generation_claims as g
 
 # Upload bytes are only needed when explicitly reading the original artifact.
@@ -39,7 +39,9 @@ class AssessmentRepository:
 
     def public(self, row):
         lineage = row.get('practice_lineage')
-        return Assessment(practice_source={key:value for key,value in lineage.items() if key != 'question_items'} if lineage else None,
+        return Assessment(tags=['revision assessment'] if lineage and lineage.get('revision_assessment') else [],
+            source_assessment_ids=lineage.get('source_assessment_ids', []) if lineage else [],
+            practice_source={key:value for key,value in lineage.items() if key in PracticeSource.model_fields} if lineage else None,
             paper=row.get('paper'), preferences=row.get('preferences') or {}, **{key:row[key] for key in ('id','context_id','title','purpose','revision','created_at','sources')},
             questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id','correct_option_ids','concept_names')}) for question in row['questions']])
 
@@ -80,7 +82,7 @@ class AssessmentRepository:
                 raise AppError('OPERATION_CONFLICT', 'This request ID already belongs to another assessment.', 409)
             return self.public(row) if row else None
 
-    def save(self, owner, request, generated, sources, claim_id=None):
+    def save(self, owner, request, generated, sources, claim_id=None, revision_snapshot=None):
         with self.transactions.write(owner) as tx:
             session = tx._session
             previous = session.execute(select(a).where(a.c.learner_id == owner, a.c.operation_id == str(request.client_request_id))).mappings().first()
@@ -102,6 +104,9 @@ class AssessmentRepository:
                 operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage
             row['practice_lineage'] = inherit_practice_lineage(self, session, owner, request, questions, row['id'])
+            if revision_snapshot:
+                from .revision_practice import revision_lineage
+                row['practice_lineage'] = revision_lineage(revision_snapshot, questions)
             session.execute(a.insert().values(**row))
             return self.public(row)
 

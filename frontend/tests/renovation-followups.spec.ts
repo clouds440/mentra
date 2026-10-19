@@ -57,59 +57,19 @@ test('unavailable selected materials remain visible and are not silently dropped
   await expect(page.getByRole('button',{name:'Generate assessment',exact:true})).toBeEnabled();
 });
 
-test('mistake practice selects wrong and partial questions, recovers retries and completes a repeat', async ({page},info) => {
+test('assessment results link to the dedicated filtered mistake workspace', async ({page}) => {
   await workspace(page);
-  await page.setViewportSize({width:390,height:844});
-  const child: Assessment = {...source,id:'mistake-paper',title:'Practise mistakes · Force practice',questions:[question('repeat-q1')],
-    practice_source:{assessment_id:source.id,attempt_id:result.id,grade_revision:1,known_exposure:true,instructions:'',reference_questions:[{...question('reference'),prompt:'Original context only for reference'}]}};
-  let attempt: AssessmentAttempt | null=null;
-  const requests: Record<string, unknown>[]=[];
   await page.route('**/api/v1/assessments/**', route => {
-    const path=new URL(route.request().url()).pathname;
-    if (path.endsWith('/original-attempt/practice')) {
-      requests.push(route.request().postDataJSON());
-      return requests.length===1 ? route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Lost response'}}}) : route.fulfill({json:child});
-    }
+    const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/original-paper/attempts')) return route.fulfill({json:[result]});
     if (path.endsWith('/original-paper')) return route.fulfill({json:source});
-    if (path.endsWith('/mistake-paper/attempts') && route.request().method()==='POST') {
-      attempt={...result,id:'repeat-attempt',assessment_id:child.id,state:'draft',revision:1,answers:{},grades:null};
-      return route.fulfill({json:attempt});
-    }
-    if (path.endsWith('/repeat-attempt/submission')) {
-      attempt={...attempt!,answers:route.request().postDataJSON().answers,state:'graded',revision:3,
-        grades:[{question_id:'repeat-q1',score:2,confidence:1,feedback:'Correct repeated practice.',concept_grades:{},misconceptions:[],outcome:'correct'}]};
-      return route.fulfill({json:attempt});
-    }
-    if (path.endsWith('/mistake-paper/attempts')) return route.fulfill({json:attempt?[attempt]:[]});
-    if (path.endsWith('/mistake-paper')) return route.fulfill({json:child});
-    if (path.endsWith('/repeat-attempt')) return route.fulfill({json:attempt});
+    if (path.endsWith('/mistakes')) return route.fulfill({json:{items:[],total:0,active_count:0,next_offset:null,assessments:[],topics:[]}});
     return route.fallback();
   });
   await page.goto(`/assessments?assessment=${source.id}&attempt=${result.id}`);
-  const practice=page.getByRole('region',{name:'Practise my mistakes',exact:true});
-  await expect(practice.getByText('1 eligible · 1 selected (up to 20)')).toBeVisible();
-  await practice.getByRole('switch',{name:'Include partially correct questions'}).check();
-  await expect(practice.getByText('2 eligible · 2 selected (up to 20)')).toBeVisible();
-  await practice.getByText('Choose questions',{exact:true}).click();
-  await practice.getByRole('checkbox',{name:'Question 2',exact:true}).uncheck();
-  await practice.screenshot({path:info.outputPath('mistake-practice-mobile.png'),animations:'disabled'});
-  await practice.getByRole('button',{name:'Prepare mistake practice'}).click();
-  await expect(practice.getByRole('alert')).toBeVisible();
-  await practice.getByRole('button',{name:'Prepare mistake practice'}).click();
-  await expect(page).toHaveURL(/assessment=mistake-paper/);
-  expect(requests[0]).toEqual(requests[1]);
-  expect(requests[0].question_ids).toEqual(['q1']);
-  await expect(page.getByRole('complementary',{name:'Repeated practice'})).toBeVisible();
-  await expect(page.getByText('Original context only for reference',{exact:true})).toHaveCount(0);
-  await page.getByText('Original paper context and reference questions',{exact:true}).click();
-  await expect(page.getByText('Original context only for reference',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Start new attempt',exact:true}).click();
-  await page.getByRole('radio',{name:'Four newtons'}).check();
-  await page.getByRole('button',{name:'Submit',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Your results',exact:true})).toBeVisible();
-  await expect(page.getByText('Correct repeated practice.',{exact:true})).toBeVisible();
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('link',{name:'Review these mistakes'}).click();
+  await expect(page).toHaveURL(/tab=mistakes&mistake_assessment=original-paper/);
+  await expect(page.getByRole('heading',{name:'Turn mistakes into progress'})).toBeVisible();
 });
 
 for (const variant of [{width:360,height:740,theme:'light'},{width:390,height:844,theme:'dark'},{width:1440,height:1000,theme:'light'}] as const) test(`progress evidence at ${variant.width} ${variant.theme} opens the specific owned attempt`, async ({page},info) => {

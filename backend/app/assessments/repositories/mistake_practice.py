@@ -20,6 +20,10 @@ def inherit_practice_lineage(repository, session, owner, request, questions, ass
     old_items = lineage['question_items']
     identities = {(q['prompt'], q.get('context', '')):old_items[q['id']] for q in source['questions'] if q['id'] in old_items}
     lineage['question_items'] = {q['id']:identities.get((q['prompt'], q.get('context', '')), f"{assessment_id}:{q['id']}") for q in questions}
+    contexts = {old_items[key]: value for key, value in lineage.get('question_contexts', {}).items() if key in old_items}
+    if contexts: lineage['question_contexts'] = {q['id']: contexts.get(lineage['question_items'][q['id']], source['context_id']) for q in questions}
+    provenance = {old_items[key]: value for key, value in lineage.get('question_sources', {}).items() if key in old_items}
+    if provenance: lineage['question_sources'] = {q['id']: provenance[lineage['question_items'][q['id']]] for q in questions if lineage['question_items'][q['id']] in provenance}
     return lineage
 
 

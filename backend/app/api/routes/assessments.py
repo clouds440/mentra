@@ -10,6 +10,21 @@ from app.assessments.schemas import MistakePracticeRequest
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
 
+@router.get('/mistakes')
+async def mistake_history(request: Request, assessment_id: list[UUID] = Query(default=[], max_length=200),
+                          topic_id: list[str] = Query(default=[], max_length=200), offset: int = Query(default=0, ge=0),
+                          identity=Depends(require_onboarded_identity)):
+    from app.assessments.repositories.revision_practice import list_mistakes
+    return await run_in_threadpool(list_mistakes, request.app.state.assessment_service.repository,
+        identity.learner_id, list(map(str, assessment_id)), topic_id, offset)
+
+from app.assessments.schemas import RevisionPracticeRequest
+
+@router.post('/mistakes/practice')
+async def revision_practice(body: RevisionPracticeRequest, request: Request, identity=Depends(require_onboarded_identity)):
+    from app.assessments.repositories.revision_practice import enqueue_revision
+    return await run_in_threadpool(enqueue_revision, request.app.state.assessment_service, identity.learner_id, body)
+
 @router.post('/generation-jobs')
 async def queue_generation(body: AssessmentIntent, request: Request, identity=Depends(require_onboarded_identity)):
     return await request.app.state.assessment_service.queue_generation(identity.learner_id, body)

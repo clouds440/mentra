@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { buttonStyles } from '../ui/Button';
 import type { Assessment, AssessmentQuestion } from '../../types/assessments';
 import { Clock3, FileText } from 'lucide-react';
 import { MarkdownContent } from '../content/MarkdownContent';
@@ -24,6 +26,8 @@ export function PracticeNotice({ assessment }: { assessment: Assessment }) {
   const source = assessment.practice_source;
   if (!source) return null;
   return <aside className="space-y-2 rounded-lg border border-border bg-surface p-3" aria-label="Repeated practice">
+    {assessment.tags?.includes('revision assessment') && <p className="text-xs font-semibold text-accent">Revision assessment</p>}
+    {!!assessment.source_assessment_ids?.length && <div className="flex flex-wrap gap-2">{assessment.source_assessment_ids.map((id, index) => <Link key={id} className={buttonStyles({ variant: 'secondary', size: 'sm' })} to={`/assessments?assessment=${encodeURIComponent(id)}`}>Source assessment {index+1}</Link>)}</div>}
     <p className="text-xs text-muted">This practice is based on previously graded questions. Results are saved as practice and do not count as a fresh independent demonstration.</p>
     {!!source.reference_questions.length && <details onToggle={event => setExpanded(event.currentTarget.open)}><summary className="ui-disclosure cursor-pointer text-xs text-accent">Original paper context and reference questions</summary>{expanded && <div className="mt-3 space-y-3">
       <MarkdownContent content={source.instructions} />

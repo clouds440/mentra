@@ -38,10 +38,12 @@ class AssessmentGenerationWorker:
                 await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
                 return True
             claim = await run_in_threadpool(repository.claim_generation, owner, request)
-            revision = await self.service._revision_source(owner, request, conversation)
+            snapshot = job['progress'].get('mistake_revision')
+            revision = dict(questions=snapshot['questions'], instructions=request.instructions, mistake_revision=True) if snapshot else await self.service._revision_source(owner, request, conversation)
             async def checkpoint(value):
                 if conversation: await run_in_threadpool(self.service.chat.recent, owner, conversation)
                 value = dict(value, resolved_request=request.model_dump(mode='json'))
+                if snapshot: value['mistake_revision'] = snapshot
                 await run_in_threadpool(jobs.update, job, progress=value)
                 await run_in_threadpool(repository.renew_generation, owner, request.client_request_id, claim)
             async def renew():
@@ -60,10 +62,19 @@ class AssessmentGenerationWorker:
                     if heartbeat in done: await heartbeat
                     raise TimeoutError()
                 generated, sources = await generation
+            if snapshot:
+                if len(generated.questions) != len(snapshot['questions']):
+                    raise AppError('ASSESSMENT_INVALID_GENERATION', 'Revision question count changed.', 422)
+                for question, original in zip(generated.questions, snapshot['questions']):
+                    if question.prompt.strip().casefold() == original['prompt'].strip().casefold():
+                        raise AppError('ASSESSMENT_INVALID_GENERATION', 'Revision needs fresh question wording.', 422)
+                    question.concept_ids = original['concept_ids']
+                generated.title = 'Revision assessment'
+
             if conversation:
                 result = await run_in_threadpool(self.service.chat.save, owner, conversation, request, generated, sources, claim)
             else:
-                value = await run_in_threadpool(repository.save, owner, request, generated, sources, claim)
+                value = await run_in_threadpool(repository.save, owner, request, generated, sources, claim, snapshot)
                 result = value.model_dump(mode='json')
             await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
         except Exception as error:

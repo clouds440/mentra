@@ -175,3 +175,16 @@ The phone composer now starts as a single row with attachment on the left and mi
 Verified compact height, wrapping, shrinking, microphone focus behavior and stable send position at 320/390/430px in both themes. The production build, UI/theme checks and 33 selected browser cases passed. Screenshots above show the updated composer.
 
 The send button uses a smaller 30px visible surface and 15px glyph within its 44px touch target. The six mobile geometry cases passed again after this final adjustment.
+
+
+## 2026-10-19 — Dedicated mistake-practice workspace
+
+Progress now includes a **Practice my mistakes** tab with a quiet revision setup card, multiple-topic/assessment dropdowns, an automatic practice action and paginated mistake history. Cards show feedback, repeated/partial/corrected state and a direct link to the source assessment attempt. The filtered action uses the compact label **Practice selected**. Existing assessment result cards link here instead of duplicating controls.
+
+Revision creation uses the existing durable generation progress card. Refresh retains a queued job through the URL; a lost-response retry reuses the operation ID. Generated assessment cards show the server-owned Revision assessment tag and source-assessment links. Original results remain intact.
+
+Validated the workspace at 320px light, 390px dark and 1440px light, with no document overflow, working filters and source links. The generation recovery test covers an interrupted request and navigation to the tagged result. Backend/frontend images and all workers were refreshed locally after the synthetic live-model check passed.
+
+Final validation: **62 browser cases passed against the rebuilt frontend container**, covering the new tab plus assessment, chat, saved-search, product, follow-up and route-matrix regressions. Production build, theme/UI checks and whitespace checks passed. API readiness confirmed database, AI configuration, embeddings and Qdrant; all three workers are running. The disposable integration-test database was removed after verification.
+
+Screenshots: [mobile](product-improvements/mistakes-mobile.png), [dark mobile](product-improvements/mistakes-dark.png), [desktop](product-improvements/mistakes-desktop.png).

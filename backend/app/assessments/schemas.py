@@ -258,6 +258,12 @@ class MistakePracticeRequest(Contract):
             raise ValueError('Choose each question once.')
         return self
 
+class RevisionPracticeRequest(Contract):
+    client_request_id: UUID
+    assessment_ids: list[UUID] = Field(default_factory=list, max_length=200)
+    topic_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(default_factory=list, max_length=200)
+    count: int = Field(default=5, ge=1, le=20)
+
 class RetryGrading(Contract):
     client_request_id: UUID
     expected_revision: int = Field(ge=1)
@@ -297,6 +303,8 @@ class PracticeSource(Contract):
     reference_questions: list[PublicQuestion] = Field(default_factory=list)
 
 class Assessment(Contract):
+    tags: list[str] = Field(default_factory=list)
+    source_assessment_ids: list[UUID] = Field(default_factory=list)
     practice_source: PracticeSource | None = None
     preferences: AssessmentPreferences = Field(default_factory=AssessmentPreferences)
     paper: PaperInfo | None = None
