@@ -23,12 +23,30 @@ class RevisionPracticeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(page['active_count'], 5)
         self.assertEqual(page['items'][0]['score'], 0)
         self.assertEqual(page['items'][0]['attempt_id'], str(result.id))
+        for item in page['items']:
+            self.assertEqual(item['answer'], result.answers.get(item['question_id'], ''))
         self.assertNotIn('model_answer', str(page))
         self.assertNotIn('rubric', str(page))
         self.assertEqual(list_mistakes(self.service.repository, self.other)['total'], 0)
         self.assertEqual(list_mistakes(self.service.repository, self.owner, [str(uuid4())])['total'], 0)
         self.assertEqual(list_mistakes(self.service.repository, self.owner, [], ['unknown'])['total'], 0)
         self.assertEqual(list_mistakes(self.service.repository, self.owner, [str(source.id)])['total'], 5)
+
+    async def test_assessment_cards_summarize_latest_graded_attempt(self):
+        source, result = await self.graded()
+        item = self.service.repository.list(self.owner)['items'][0]
+        summary = item.attempt_summary
+        self.assertEqual(summary.count, 1)
+        self.assertEqual(str(summary.graded_attempt_id), str(result.id))
+        expected = sum(grade.score >= question.marks for question in source.questions for grade in result.grades if str(grade.question_id) == str(question.id))
+        self.assertEqual(summary.correct, expected)
+        self.assertEqual(summary.incorrect, len(source.questions) - expected)
+        self.service.repository.start(self.owner, str(source.id), StartAttempt(client_request_id=uuid4()))
+        summary = self.service.repository.list(self.owner)['items'][0].attempt_summary
+        self.assertEqual(summary.count, 2)
+        self.assertEqual(summary.latest_state, 'draft')
+        self.assertEqual(str(summary.graded_attempt_id), str(result.id))
+        self.assertEqual(self.service.repository.list(self.other)['items'], [])
 
     async def test_queued_variations_have_server_tags_sources_and_exposure(self):
         source, result = await self.graded()

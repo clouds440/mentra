@@ -13,8 +13,8 @@ def collect(session, owner):
     graded_ids = select(attempts.c.assessment_id).where(attempts.c.learner_id == owner, attempts.c.state == 'graded')
     sources = {row['id']: dict(row) for row in session.execute(select(assessments).where(
         assessments.c.learner_id == owner, assessments.c.id.in_(graded_ids))).mappings()}
-    # Do not hydrate uploaded artifacts, answers, or grading checkpoints.
-    results = session.execute(select(attempts.c.id, attempts.c.assessment_id, attempts.c.grades,
+    # Read submitted answers, but never uploaded artifacts or grading checkpoints.
+    results = session.execute(select(attempts.c.id, attempts.c.assessment_id, attempts.c.grades, attempts.c.answers,
         attempts.c.grade_revision, attempts.c.submitted_at, attempts.c.created_at).where(
         attempts.c.learner_id == owner, attempts.c.state == 'graded').order_by(
         attempts.c.submitted_at, attempts.c.created_at, attempts.c.id).execution_options(yield_per=100)).mappings()
@@ -39,6 +39,8 @@ def collect(session, owner):
                     attempt_id=result['id'], grade_revision=result['grade_revision'], question_id=question['id'],
                     prompt=question['prompt'], context=question.get('context', ''), topic_ids=question['concept_ids'],
                     score=grade['score'], marks=question['marks'], feedback=grade['feedback'],
+                    answer=(result['answers'] or {}).get(question['id'], ''),
+                    answer_mode=question.get('answer_mode'), options=deepcopy(question.get('options') or []),
                     occurrences=(previous['occurrences'] if previous else 0)+1, resolved=False,
                     occurred_at=(result['submitted_at'] or result['created_at']).isoformat(),
                     _question=deepcopy(question), _context_id=lineage.get('question_contexts', {}).get(question['id'], source['context_id']))

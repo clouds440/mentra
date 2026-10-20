@@ -1,7 +1,8 @@
+import { invalidatePageCache } from '../services/pageCache';
 import { practiceLink } from '../services/practiceIntent';
 import { Dialog } from '../components/ui/Dialog';
 import { materialWarningMessage } from '../services/userError';
-import { usePageRefresh } from '../hooks/usePageRefresh';
+import { usePendingWork, usePageRefresh } from '../hooks/usePageRefresh';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -27,9 +28,11 @@ export function MaterialDetailPage() {
   const latestDocument = useRef<MaterialDocument>();
   const [conflict, setConflict] = useState(false);
   const [activeAction, setActiveAction] = useState('');
+  const processing = useRef(false);
   const request = useRef<AbortController>();
   const refresh = useCallback(() => setReload(v => v + 1), []);
-  usePageRefresh(() => { if (!request.current) refresh(); }, !busy, doc && pendingJob(doc) ? 3000 : 60_000);
+  usePageRefresh(() => { if (!request.current) refresh(); }, true, ['documents', 'learning-contexts']);
+  usePendingWork(() => { if (!request.current) refresh(); }, !busy && !!doc && !!pendingJob(doc));
   useEffect(() => {
     const abort = new AbortController();
     controllerRef.current = abort; request.current = abort;
@@ -37,6 +40,9 @@ export function MaterialDetailPage() {
       try {
         const [data, ctx, capabilities] = await Promise.all([getMaterial(documentId, abort.signal), listContexts(abort.signal), getCapabilities(abort.signal)]);
         if (abort.signal.aborted) return;
+        const isProcessing = !!pendingJob(data);
+        if (processing.current && !isProcessing) invalidatePageCache(['documents', 'learning'], true);
+        processing.current = isProcessing;
         latestDocument.current = data; setContexts(ctx); setCaps(capabilities);
         if (dirty.current && revision.current !== `${data.id}:${data.revision}`) setConflict(true);
         else {

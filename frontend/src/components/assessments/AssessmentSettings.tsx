@@ -11,7 +11,7 @@ export function AssessmentSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
-  usePageRefresh(() => setReload(value => value + 1), !busy);
+  usePageRefresh(() => setReload(value => value + 1), !busy, ['assessments']);
   useEffect(() => {
     const controller = new AbortController();
     void assessments.preferences(controller.signal).then(result => { if (!controller.signal.aborted) setValue(result); })

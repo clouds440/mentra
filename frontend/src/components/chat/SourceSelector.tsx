@@ -50,7 +50,7 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
       } catch (e) { if (!controller.signal.aborted) setError(materialError(e)); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }
-    void load(); window.addEventListener('focus', load); return () => { controller.abort(); window.removeEventListener('focus', load); };
+    void load(); return () => controller.abort();
   }, [selection.include_archived, selection.document_ids?.join(','), selection.context_ids?.join(','), pickerOpen]);
   async function loadMore() {
     const controller = controllerRef.current;

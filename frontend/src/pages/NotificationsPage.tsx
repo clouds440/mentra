@@ -32,7 +32,7 @@ function Inbox() {
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load notifications.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
-  usePageRefresh(() => { void load(); }, !busy);
+  usePageRefresh(() => { void load(); }, !busy, ['notifications']);
   useEffect(() => { setPage(null); void load(); return () => active.current?.abort(); }, [unread]); // eslint-disable-line react-hooks/exhaustive-deps
   async function edit(item: NotificationItem, action: 'read' | 'dismiss') {
     if (busy) return;

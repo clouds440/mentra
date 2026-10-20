@@ -1,3 +1,4 @@
+import { invalidatePageCache } from '../../services/pageCache';
 import { useEffect, useRef, useState } from 'react';
 import { FileText, CheckCircle2 } from 'lucide-react';
 import { Button, Spinner } from '../ui';
@@ -24,7 +25,7 @@ export function AssessmentGenerationCard({ id, title, onComplete }: { id: string
         if (controller.signal.aborted) return;
         setJob(value); setError(''); terminal = ['completed','failed'].includes(value.state);
         if (value.result && value.state === 'completed' && !completed.current) {
-          completed.current = true; callback.current?.(value.result);
+          completed.current = true; invalidatePageCache(['assessments'], true); callback.current?.(value.result);
         }
       } catch (reason) { if (!controller.signal.aborted) {
         terminal = reason instanceof ApiError && [403,404].includes(reason.status);

@@ -1,3 +1,5 @@
+import { MistakesPractice } from './MistakesPractice';
+import { AttemptBadges } from './AttemptBadges';
 import { buttonStyles } from '../ui/Button';
 import { Tabs } from '../ui/Tabs';
 import { ClipboardCheck, Plus, ArrowUpRight, Sparkles, LoaderCircle } from 'lucide-react';
@@ -38,10 +40,10 @@ function Workspace() {
   const [current, setCurrent] = useState<Assessment | null>(null);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
-  const tab = params.get('tab') === 'create' ? 'create' : 'assessments';
-  function changeTab(value: 'create' | 'assessments') {
+  const tab = params.get('tab') === 'mistakes' ? 'mistakes' : params.get('tab') === 'create' ? 'create' : 'assessments';
+  function changeTab(value: 'create' | 'assessments' | 'mistakes') {
     const next = new URLSearchParams(params);
-    if (value === 'create') next.set('tab', value); else next.delete('tab');
+    if (value !== 'assessments') next.set('tab', value); else next.delete('tab');
     setParams(next);
   }
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,7 @@ function Workspace() {
   const startOperation = useRef(crypto.randomUUID());
   const generating = useRef(false);
   const generationOperation = useRef<{ payload: string; id: string }>();
-  usePageRefresh(() => setReload(value => value + 1), !busy && !attempt);
+  usePageRefresh(() => setReload(value => value + 1), !busy && !attempt, ['assessments']);
   useEffect(() => {
     const controller = new AbortController(); setLoading(items.length === 0 || !!id && current?.id !== id); setError(''); if (current?.id !== id) { setCurrent(null); setAttempt(null); }
     void Promise.all([assessments.list(controller.signal), listContexts(controller.signal), id ? assessments.detail(id, controller.signal) : Promise.resolve(null), id ? assessments.attempts(id, controller.signal) : Promise.resolve([])]).then(([page, choices, detail, history]) => {
@@ -68,6 +70,26 @@ function Workspace() {
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessments.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); active.current?.abort(); };
   }, [id, attemptId, reload]);
+  function updateAttempt(result: AssessmentAttempt) {
+    setAttempt(result);
+    setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]);
+    setItems(previous => previous.map(item => {
+      if (item.id !== result.assessment_id) return item;
+      const summary = { count: Math.max(item.attempt_summary?.count ?? 0, result.attempt_number), latest_state: result.attempt_number >= (item.attempt_summary?.count ?? 0) ? result.state : item.attempt_summary?.latest_state ?? result.state,
+        graded_attempt_id: item.attempt_summary?.graded_attempt_id ?? null, graded_attempt_number: item.attempt_summary?.graded_attempt_number ?? 0, correct: item.attempt_summary?.correct ?? 0,
+        incorrect: item.attempt_summary?.incorrect ?? 0, partial: item.attempt_summary?.partial ?? 0 };
+      if (result.state === 'graded' && result.attempt_number >= summary.graded_attempt_number) {
+        summary.graded_attempt_id = result.id; summary.graded_attempt_number = result.attempt_number; summary.correct = 0; summary.incorrect = 0; summary.partial = 0;
+        for (const question of item.questions) {
+          const grade = result.grades?.find(value => value.question_id === question.id);
+          if (!grade) continue;
+          if (grade.score >= question.marks) summary.correct++;
+          else { summary.incorrect++; if (grade.score > 0) summary.partial++; }
+        }
+      }
+      return {...item, attempt_summary: summary};
+    }));
+  }
   async function generate() {
     if (generating.current) return;
     generating.current = true;
@@ -85,7 +107,7 @@ function Workspace() {
   async function start() {
     if (!current) return;
     const controller = new AbortController(); active.current = controller; setBusy(true); setError('');
-    try { const result = await assessments.start(current.id, startOperation.current, controller.signal); if (!controller.signal.aborted) { setAttempt(result); setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]); startOperation.current = crypto.randomUUID(); } }
+    try { const result = await assessments.start(current.id, startOperation.current, controller.signal); if (!controller.signal.aborted) { updateAttempt(result); startOperation.current = crypto.randomUUID(); } }
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to start attempt.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
@@ -96,8 +118,9 @@ function Workspace() {
   }
   return <div className="h-full overflow-y-auto"><div className="page-container">
     <WorkspaceHeader title={tab === 'create' ? 'Create assessment' : 'Assessments'} description={tab === 'create' ? 'Choose a topic and the practice you want. Mentra handles the rest.' : 'Turn what you’re learning into practice. Explore your questions, continue an attempt or start something new.'} icon={ClipboardCheck} actions={tab !== 'create' && <Button disabled={busy} onClick={() => changeTab('create')}><Plus size={16} aria-hidden="true" />New assessment</Button>} />
-    <Tabs label="Assessment sections" value={tab} onChange={changeTab} options={(['assessments', 'create'] as const).map(value => ({ value, label: value === 'create' ? 'Create new' : 'Assessments', id: `assessment-tab-${value}`, panel: `assessment-panel-${value}`, disabled: busy }))} />
+    <Tabs label="Assessment sections" value={tab} onChange={changeTab} options={(['assessments', 'mistakes', 'create'] as const).map(value => ({ value, label: value === 'create' ? 'Create new' : value === 'mistakes' ? 'Practice my mistakes' : 'Assessments', id: `assessment-tab-${value}`, panel: `assessment-panel-${value}`, disabled: busy }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => setReload(value => value + 1))}>Refresh</button></p>}
+    <section role="tabpanel" id="assessment-panel-mistakes" aria-labelledby="assessment-tab-mistakes" hidden={tab !== 'mistakes'}>{tab === 'mistakes' && <MistakesPractice />}</section>
     <section role="tabpanel" id="assessment-panel-create" aria-labelledby="assessment-tab-create" hidden={tab !== 'create'}>
     {params.get('generation') && <AssessmentGenerationCard key={params.get('generation')!} id={params.get('generation')!} title="Your assessment" onComplete={result => setParams({ assessment: 'assessment' in result ? result.assessment.id : result.id })} />}
     {loading && !error ? <Skeleton variant="form" rows={5} /> : <AssessmentCreateForm topics={contexts.map(item => item.name)} draft={draft} onChange={setDraft} busy={busy} onSubmit={() => void generate()} />}
@@ -105,10 +128,10 @@ function Workspace() {
     <section role="tabpanel" id="assessment-panel-assessments" aria-labelledby="assessment-tab-assessments" hidden={tab !== 'assessments'} className="space-y-5">
     {loading && !error && <Skeleton variant="card" />}
     {current && <section className="workspace-panel space-y-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium text-heading">{current.title}</h2><Button variant="secondary" disabled={busy} loading={busy} onClick={() => void start()}>Start new attempt</Button></div>
-      {attempt ? !current.paper && current.questions.some(q => !!q.options?.length || (!!q.question_type && q.question_type !== 'written')) && attempt.state === 'draft' ? <MCQAssessment key={attempt.id} assessment={current} initial={attempt} onChange={result => { setAttempt(result); setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]); }} /> : <AnswerSheet key={attempt.id} assessment={current} initial={attempt} onChange={result => { setAttempt(result); setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]); }} /> : <AssessmentPaper assessment={current} />}
+      {attempt ? !current.paper && current.questions.some(q => !!q.options?.length || (!!q.question_type && q.question_type !== 'written')) && attempt.state === 'draft' ? <MCQAssessment key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <AnswerSheet key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <AssessmentPaper assessment={current} />}
       <h3 className="font-medium">Attempt history</h3>{attempts.length === 0 && <p className="text-sm text-muted">No attempts yet.</p>}<ul className="space-y-2">{attempts.map(value => <li key={value.id}><button type="button" aria-pressed={attempt?.id === value.id} className="w-full rounded-control border border-border px-3 py-2.5 text-left text-sm text-heading transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-active" onClick={() => setAttempt(value)}>Attempt {value.attempt_number} · {value.state} · {new Date(value.created_at).toLocaleString()}</button></li>)}</ul>
     </section>}
-    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.paper?.question_count ?? item.questions.length} questions{item.paper ? ` · ${item.questions.length} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
+    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.paper?.question_count ?? item.questions.length} questions{item.paper ? ` · ${item.questions.length} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span><AttemptBadges summary={item.attempt_summary} /></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
     </section>
   </div></div>;
 }

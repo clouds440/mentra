@@ -179,7 +179,7 @@ The send button uses a smaller 30px visible surface and 15px glyph within its 44
 
 ## 2026-10-19 — Dedicated mistake-practice workspace
 
-Progress now includes a **Practice my mistakes** tab with a quiet revision setup card, multiple-topic/assessment dropdowns, an automatic practice action and paginated mistake history. Cards show feedback, repeated/partial/corrected state and a direct link to the source assessment attempt. The filtered action uses the compact label **Practice selected**. Existing assessment result cards link here instead of duplicating controls.
+Assessments now includes a **Practice my mistakes** tab with a quiet revision setup card, multiple-topic/assessment dropdowns, an automatic practice action and paginated mistake history. Cards show feedback, repeated/partial/corrected state and a direct link to the source assessment attempt. The filtered action uses the compact label **Practice selected**. Existing assessment result cards link here instead of duplicating controls.
 
 Revision creation uses the existing durable generation progress card. Refresh retains a queued job through the URL; a lost-response retry reuses the operation ID. Generated assessment cards show the server-owned Revision assessment tag and source-assessment links. Original results remain intact.
 
@@ -188,3 +188,10 @@ Validated the workspace at 320px light, 390px dark and 1440px light, with no doc
 Final validation: **62 browser cases passed against the rebuilt frontend container**, covering the new tab plus assessment, chat, saved-search, product, follow-up and route-matrix regressions. Production build, theme/UI checks and whitespace checks passed. API readiness confirmed database, AI configuration, embeddings and Qdrant; all three workers are running. The disposable integration-test database was removed after verification.
 
 Screenshots: [mobile](product-improvements/mistakes-mobile.png), [dark mobile](product-improvements/mistakes-dark.png), [desktop](product-improvements/mistakes-desktop.png).
+
+
+### October 20: stable page caches and assessment review
+
+Settled pages no longer refresh on timers, focus, visibility changes or reconnect. Owner-scoped in-memory caches persist until relevant writes, explicit refresh, bounded capacity eviction or account changes. Successful writes invalidate dependent domains and notify mounted views and same-owner tabs. Generation, grading and ingestion continue to poll only while unfinished, and completion invalidates their dependent views. Authentication checks still verify session access without resetting page content.
+
+Mistake practice lives in Assessments; old Progress links redirect with filters and revision jobs intact. Mistake cards reuse the assessment answer component, resolving choice IDs to labels. Assessment list cards summarize the latest graded attempt with correct/incorrect counts (partial credit is included in incorrect and disclosed separately). Unattempted and ungraded attempts have distinct status badges. Summaries use one bounded, owner-scoped query for each page of assessments.

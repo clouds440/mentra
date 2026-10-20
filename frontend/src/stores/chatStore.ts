@@ -1,3 +1,4 @@
+import { invalidatePageCache } from '../services/pageCache';
 import { useSyncExternalStore } from 'react';
 import * as api from '../services/conversations';
 import { ApiError } from '../services/api';
@@ -208,6 +209,10 @@ class ChatStore {
     page.items.forEach(message => values.set(message.sequence, message));
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
     const messages = older || page.incremental && view.olderWindow ? items.slice(0, 200) : items.slice(-200);
+    if (view.busy && page.turn && page.turn.state !== 'RUNNING') {
+      // A completed user turn may have written through any of the chat tools.
+      invalidatePageCache(['learning', 'assessments', 'memories', 'events', 'event-proposals', 'documents', 'learning-contexts'], true);
+    }
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
       error: page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn: page.turn ?? view.turn,
       before: messages[0]?.sequence > 1 ? messages[0].sequence : null,

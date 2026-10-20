@@ -22,10 +22,8 @@ export function NotificationBell({ quiet = false }: { quiet?: boolean }) {
       finally { busy = false; }
     }
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
     window.addEventListener('mentra:notifications-changed', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    return () => { controller.abort(); clearInterval(timer); window.removeEventListener('mentra:notifications-changed', refresh); document.removeEventListener('visibilitychange', refresh); };
+    return () => { controller.abort(); window.removeEventListener('mentra:notifications-changed', refresh); };
   }, [owner]);
   const count = badge?.owner === owner ? badge?.count ?? 0 : 0;
   return <Link to="/notifications" aria-label={`Notifications${count ? `, ${count} unread` : ''}`} className={`${quiet ? 'quiet-notification ' : ''}icon-control ml-auto flex min-h-8 items-center justify-center gap-1 rounded-control px-2 text-muted hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}><Bell aria-hidden="true" size={18} />{count > 0 && <span aria-hidden="true" className="notification-count text-xs text-accent">{count > 99 ? '99+' : count}</span>}</Link>;

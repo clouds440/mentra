@@ -59,7 +59,7 @@ function Agenda() {
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load events.'); }
   }
   const previousFilter = useRef<{ key: string; after: string; before: string } | null>(null);
-  usePageRefresh(() => { void load(); }, !busy && !editing);
+  usePageRefresh(() => { void load(); }, !busy && !editing, ['events']);
   useEffect(() => { setPage(null); setDetail(null); setDeleting(false); void load(); return () => active.current?.abort(); }, [selected, status, range]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => mutation.current?.abort(), []);
   async function change(item: EventRecord, action: EventStatus | 'delete') {

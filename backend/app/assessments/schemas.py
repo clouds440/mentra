@@ -302,7 +302,17 @@ class PracticeSource(Contract):
     instructions: str = ''
     reference_questions: list[PublicQuestion] = Field(default_factory=list)
 
+class AttemptSummary(Contract):
+    count: int = 0
+    latest_state: str | None = None
+    graded_attempt_id: UUID | None = None
+    graded_attempt_number: int = 0
+    correct: int = 0
+    incorrect: int = 0
+    partial: int = 0
+
 class Assessment(Contract):
+    attempt_summary: AttemptSummary | None = None
     tags: list[str] = Field(default_factory=list)
     source_assessment_ids: list[UUID] = Field(default_factory=list)
     practice_source: PracticeSource | None = None

@@ -48,7 +48,6 @@ export function StudentProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const restore = () => { void refresh().catch(() => {}); };
     restore();
-    window.addEventListener('focus', restore);
     if (typeof BroadcastChannel !== 'undefined') {
       channel.current = new BroadcastChannel('mentra-profile');
       channel.current.onmessage = ({ data }) => { if (data === authRef.current.identity?.learner_id) restore(); };
@@ -58,7 +57,6 @@ export function StudentProfileProvider({ children }: { children: ReactNode }) {
       pending.current?.abort();
       channel.current?.close();
       channel.current = null;
-      window.removeEventListener('focus', restore);
     };
   }, [refresh]);
   return <ProfileContext.Provider value={{ profile, error, refresh, replace }}>{children}</ProfileContext.Provider>;

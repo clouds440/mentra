@@ -10,13 +10,13 @@ export const showsAssessmentMarks = (assessment: Assessment) => !assessment.pref
 
 export const questionLabel = (question: AssessmentQuestion, index: number) => `Question ${question.number ?? index + 1}${question.part ? question.part.split('.').map(part => ` (${part})`).join('') : ''}`;
 export const questionKind = (question: AssessmentQuestion) => question.question_type === 'true_false' ? 'True or false' : question.answer_mode === 'multiple_choice' ? 'Select all that apply' : question.options?.length ? 'Multiple choice' : question.question_type ? question.question_type.replace(/_/g, ' ') : 'Written response';
-export function selectedIds(question: AssessmentQuestion, answer = ''): string[] {
+export function selectedIds(question: Pick<AssessmentQuestion, 'answer_mode'>, answer = ''): string[] {
   if (question.answer_mode === 'multiple_choice') {
     try { const ids: unknown = JSON.parse(answer); return Array.isArray(ids) && ids.every(value => typeof value === 'string') ? ids : []; } catch { return []; }
   }
   return answer ? [answer] : [];
 }
-export function selectedAnswer(question: AssessmentQuestion, answer = '') {
+export function selectedAnswer(question: Pick<AssessmentQuestion, 'answer_mode' | 'options'>, answer = '') {
   if (question.answer_mode === 'multiple_choice') return question.options?.filter(option => selectedIds(question, answer).includes(option.id)).map(option => option.label).join('\n\n') || answer;
   return question.options?.find(option => option.id === answer)?.label ?? answer;
 }

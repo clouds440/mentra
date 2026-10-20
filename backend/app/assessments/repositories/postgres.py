@@ -4,7 +4,7 @@ from sqlalchemy import select, update, delete, func, and_, or_
 from app.core.exceptions import AppError
 from app.db.owner_transactions import OwnerTransactions
 from app.history_management.repositories.events.postgres import request_hash
-from app.assessments.schemas import Assessment, Attempt, PublicQuestion, PracticeSource
+from app.assessments.schemas import Assessment, Attempt, AttemptSummary, PublicQuestion, PracticeSource
 from .tables import assessments as a, attempts as t, generation_claims as g
 
 # Upload bytes are only needed when explicitly reading the original artifact.
@@ -120,7 +120,29 @@ class AssessmentRepository:
     def list(self, owner, offset=0):
         with self.sessions() as session:
             rows = session.execute(select(a).where(a.c.learner_id == owner).order_by(a.c.created_at.desc(), a.c.id).offset(offset).limit(21)).mappings().all()
-            return dict(items=[self.public(row) for row in rows[:20]], next_offset=offset+20 if len(rows)>20 else None)
+            # One bounded query for this page; never load answer uploads or private keys.
+            page = rows[:20]
+            history = session.execute(select(t.c.id, t.c.assessment_id, t.c.state, t.c.attempt_number, t.c.grades).where(
+                t.c.learner_id == owner, t.c.assessment_id.in_([row['id'] for row in page]))
+                .order_by(t.c.attempt_number.desc(), t.c.id)).mappings().all() if page else []
+            items = []
+            for row in page:
+                records = [record for record in history if record['assessment_id'] == row['id']]
+                summary = AttemptSummary(count=len(records), latest_state=records[0]['state'] if records else None)
+                graded = next((record for record in records if record['state'] == 'graded'), None)
+                if graded:
+                    summary.graded_attempt_id = graded['id']
+                    summary.graded_attempt_number = graded['attempt_number']
+                    grades = {grade['question_id']: grade for grade in graded['grades'] or []}
+                    for question in row['questions']:
+                        grade = grades.get(question['id'])
+                        if not grade: continue
+                        if grade['score'] >= question['marks']: summary.correct += 1
+                        else:
+                            summary.incorrect += 1
+                            if grade['score'] > 0: summary.partial += 1
+                items.append(self.public(row).model_copy(update={'attempt_summary': summary}))
+            return dict(items=items, next_offset=offset+20 if len(rows)>20 else None)
 
     def start(self, owner, identifier, body, *, fingerprint=None):
         with self.transactions.write(owner) as tx:

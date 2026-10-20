@@ -27,7 +27,7 @@ function Preferences() {
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load settings.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
-  usePageRefresh(() => { void load(); }, !busy && !dirty);
+  usePageRefresh(() => { void load(); }, !busy && !dirty, ['notifications']);
   useEffect(() => { void load(); return () => active.current?.abort(); }, []);
   async function save() {
     if (!value || busy) return;

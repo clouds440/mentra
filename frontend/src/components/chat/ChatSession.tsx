@@ -9,12 +9,5 @@ export function ChatSession() {
     if (status === 'authenticated' && owner) void chatStore.start(owner);
     else if (status === 'anonymous') chatStore.stop(true);
   }, [owner, status]);
-  useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') void chatStore.sync(); };
-    window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    const timer = window.setInterval(refresh, 5000);
-    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
-  }, []);
   return null;
 }

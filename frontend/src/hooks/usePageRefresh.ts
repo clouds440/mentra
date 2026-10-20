@@ -1,29 +1,33 @@
 import { useEffect, useRef } from 'react';
-import { invalidatePageCache } from '../services/pageCache';
+import { invalidatePageCache, subscribePageChanges, type PageScope } from '../services/pageCache';
 
-// Keep mounted pages current as well as pages revisited after the cache expires.
-export function usePageRefresh(refresh: () => void, enabled = true, interval = 60_000) {
-  const latest = useRef(refresh);
-  latest.current = refresh;
+// Settled pages react to relevant writes, never clocks, focus or connectivity.
+export function usePageRefresh(refresh: () => void, enabled = true, scopes?: readonly PageScope[]) {
+  const latest = useRef({ refresh, enabled, scopes });
+  latest.current = { refresh, enabled, scopes };
+  useEffect(() => {
+    let frame: number | undefined;
+    const unsubscribe = subscribePageChanges(changed => {
+      const current = latest.current;
+      if (changed && current.scopes && !changed.some(scope => current.scopes!.includes(scope))) return;
+      if (frame !== undefined) return;
+      frame = requestAnimationFrame(() => {
+        frame = undefined;
+        if (latest.current.enabled) latest.current.refresh();
+      });
+    });
+    return () => { unsubscribe(); if (frame !== undefined) cancelAnimationFrame(frame); };
+  }, []);
+}
+
+// Only unfinished user-started work needs polling; callers keep content mounted.
+export function usePendingWork(refresh: () => void, enabled: boolean) {
+  const latest = useRef(refresh); latest.current = refresh;
   useEffect(() => {
     if (!enabled) return;
-    let frame: number | undefined;
-    const update = () => {
-      if (document.visibilityState !== 'visible' || !navigator.onLine || frame !== undefined) return;
-      frame = requestAnimationFrame(() => { frame = undefined; latest.current(); });
-    };
-    const timer = setInterval(update, interval);
-    window.addEventListener('focus', update);
-    window.addEventListener('online', update);
-    document.addEventListener('visibilitychange', update);
-    return () => {
-      clearInterval(timer);
-      if (frame !== undefined) cancelAnimationFrame(frame);
-      window.removeEventListener('focus', update);
-      window.removeEventListener('online', update);
-      document.removeEventListener('visibilitychange', update);
-    };
-  }, [enabled, interval]);
+    const timer = setInterval(() => latest.current(), 3000);
+    return () => clearInterval(timer);
+  }, [enabled]);
 }
 
 export function refreshPage(refresh: () => void) {

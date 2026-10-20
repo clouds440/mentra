@@ -1,7 +1,8 @@
+import { invalidatePageCache } from '../services/pageCache';
 import { practiceLink } from '../services/practiceIntent';
 import { BookOpen, FileText, FolderOpen, Plus, MessageSquare, ClipboardCheck, ArrowUpRight } from 'lucide-react';
 import { WorkspaceHeader, WorkspaceEmpty } from '../components/workspace/WorkspaceHeader';
-import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
+import { usePendingWork, usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,15 +29,20 @@ export function LibraryPage() {
     : params.get('uploaded') === 'duplicate' ? 'This material is already in your Library. No duplicate was created.'
     : params.get('uploaded') === 'accepted' ? 'Upload accepted. Your material is now processing.' : '';
   const [reload, setReload] = useState(0);
+  const processing = useRef(false);
   const request = useRef<AbortController>();
   const refresh = useCallback(() => setReload(v => v + 1), []);
-  usePageRefresh(() => { if (!request.current) refresh(); }, true, list?.items.some(pendingJob) ? 3000 : 60_000);
+  usePageRefresh(() => { if (!request.current) refresh(); }, true, ['documents', 'learning-contexts']);
+  usePendingWork(() => { if (!request.current) refresh(); }, !!list?.items.some(pendingJob));
   useEffect(() => {
     const abort = new AbortController(); request.current = abort; setError('');
     async function load() {
       try {
         const [data, ctx] = await Promise.all([listMaterials(offset, archive === 'all' ? undefined : archive === 'archived', abort.signal, contextId || undefined, query), listContexts(abort.signal)]);
         if (abort.signal.aborted) return;
+        const isProcessing = data.items.some(pendingJob);
+        if (processing.current && !isProcessing) invalidatePageCache(['documents', 'learning'], true);
+        processing.current = isProcessing;
         setList(data); setLoadedQuery(queryKey); setContexts(ctx); setError('');
 
       } catch (e) { if (!abort.signal.aborted) setError(materialError(e)); }

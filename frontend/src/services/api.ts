@@ -1,4 +1,4 @@
-import { cachedPage, cacheablePage, invalidatePageCache } from './pageCache';
+import { cachedPage, cacheablePage, invalidateMutation } from './pageCache';
 import { errorMessage } from './userError';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -128,7 +128,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     return cachedPage(path + headers, signal => request<T>(path, { ...init, signal }), init.signal);
   }
   const value = await request<T>(path, init);
-  if (init.method && init.method !== 'GET' && init.method !== 'HEAD') invalidatePageCache();
+  if (init.method && init.method !== 'GET' && init.method !== 'HEAD') invalidateMutation(path);
   return value;
 }
 

@@ -1,3 +1,5 @@
+import { AnswerContent } from '../content/AnswerContent';
+import { selectedAnswer } from './AssessmentPaper';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
@@ -5,7 +7,7 @@ import { Button, Select, buttonStyles } from '../ui';
 import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { WorkspaceEmpty } from '../workspace/WorkspaceHeader';
-import { AssessmentGenerationCard } from '../assessments/AssessmentGenerationCard';
+import { AssessmentGenerationCard } from './AssessmentGenerationCard';
 import { assessments } from '../../services/assessments';
 import { ApiError } from '../../services/api';
 import { usePageRefresh } from '../../hooks/usePageRefresh';
@@ -17,19 +19,21 @@ export function MistakesPractice() {
   const selectedAssessments = params.getAll('mistake_assessment'), topics = params.getAll('mistake_topic');
   const key = JSON.stringify([selectedAssessments, topics]);
   const [page, setPage] = useState<MistakesPage>();
+  const [loadedKey, setLoadedKey] = useState('');
   const [facets, setFacets] = useState<Pick<MistakesPage, 'topics' | 'assessments'>>({ topics: [], assessments: [] });
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0), [offset, setOffset] = useState(0);
+  const queryKey = JSON.stringify([key, offset]);
   const [count, setCount] = useState('5');
   const active = useRef<AbortController>();
   const lock = useRef(false), operation = useRef<{ payload: string; id: string }>();
   const job = params.get('revision_job');
   useEffect(() => () => active.current?.abort(), []);
-  usePageRefresh(() => setReload(value => value + 1), !busy && !job);
+  usePageRefresh(() => setReload(value => value + 1), !busy && !job, ['assessments']);
   useEffect(() => {
     const controller = new AbortController(); setLoading(true); setError('');
     void assessments.mistakes(selectedAssessments, topics, offset, controller.signal).then(value => {
-      if (!controller.signal.aborted) { setPage(value); setFacets(value); }
+      if (!controller.signal.aborted) { setPage(value); setLoadedKey(queryKey); setFacets(value); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load your mistakes.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -64,10 +68,11 @@ export function MistakesPractice() {
     {job && <div className="space-y-3"><Button variant="ghost" size="sm" onClick={() => { const next = new URLSearchParams(params); next.delete('revision_job'); setParams(next); }}>Back to mistake history</Button><AssessmentGenerationCard key={job} id={job} title="Revision assessment" onComplete={result => navigate(`/assessments?assessment=${encodeURIComponent('assessment' in result ? result.assessment.id : result.id)}`)} /></div>}
     {error && <div role="alert" className="workspace-panel flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" size="sm" onClick={() => setReload(value => value+1)}>Refresh mistakes</Button></div>}
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-medium text-heading">Your mistake history</h2>{page && <p className="text-xs text-muted">{page.active_count} to revisit · {page.total - page.active_count} corrected</p>}</div>
-    {loading ? <Skeleton variant="list" /> : page?.total === 0 ? <WorkspaceEmpty icon={CheckCircle2} title="Nothing to revisit here" description="Mistakes and partial answers from graded assessments will appear here. Try different filters if you expected more." /> : <ul className="space-y-3">{page?.items.map(item => <li key={item.id} className="workspace-panel space-y-3">
+    {loading && (!page || loadedKey !== queryKey) ? <Skeleton variant="list" /> : page?.total === 0 ? <WorkspaceEmpty icon={CheckCircle2} title="Nothing to revisit here" description="Mistakes and partial answers from graded assessments will appear here. Try different filters if you expected more." /> : <ul className="space-y-3">{page?.items.map(item => <li key={item.id} className="workspace-panel space-y-3">
       <div className="flex flex-wrap items-center gap-2"><span className="workspace-status">{item.resolved ? 'Corrected in later practice' : item.priority}</span>{item.topics.map(topic => <span key={topic.id} className="text-xs text-muted">{topic.name}</span>)}<span className="ml-auto text-xs tabular-nums text-muted">{item.score}/{item.marks} · {item.occurrences} {item.occurrences === 1 ? 'mistake' : 'mistakes'}</span></div>
       <div className="min-w-0 break-words text-sm"><MarkdownContent content={item.prompt} /></div>
       {item.context && <details><summary className="ui-disclosure cursor-pointer text-xs text-muted">Question context</summary><MarkdownContent content={item.context} /></details>}
+      <AnswerContent content={selectedAnswer(item, item.answer)} />
       <div className="rounded-control bg-surface p-3 text-sm text-muted"><MarkdownContent content={item.feedback} /></div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><Link className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/assessments?assessment=${encodeURIComponent(item.assessment_id)}&attempt=${encodeURIComponent(item.attempt_id)}`}><span className="min-w-0 break-words">{item.assessment_title}</span><ArrowUpRight size={14} className="shrink-0" aria-hidden="true" /></Link><time className="text-xs text-subtle" dateTime={item.occurred_at}>{new Date(item.occurred_at).toLocaleDateString()}</time></div>
     </li>)}</ul>}

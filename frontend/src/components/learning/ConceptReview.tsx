@@ -17,7 +17,7 @@ export function ConceptReview({ onReviewed, contexts }: { onReviewed: () => void
   const [actionError, setActionError] = useState('');
   const active = useRef<AbortController | null>(null);
   useEffect(() => () => active.current?.abort(), []);
-  usePageRefresh(() => setReload(value => value + 1), !busy);
+  usePageRefresh(() => setReload(value => value + 1), !busy, ['learning']);
   useEffect(() => {
     const controller = new AbortController(); setError('');
     void pendingConcepts(controller.signal).then(values => { if (!controller.signal.aborted) setItems(values); }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load topic suggestions.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });

@@ -212,7 +212,7 @@ test('shared tabs preserve assessment drafts, URL history and keyboard focus', a
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
 });
 
-test('refresh keeps understanding rows and coalesces focus and visibility events', async ({ page }) => {
+test('relevant writes keep understanding rows and coalesce invalidation events', async ({ page }) => {
   await workspace(page, false, true);
   let requests = 0;
   await page.route('**/api/v1/learning/understanding*', async route => {
@@ -224,7 +224,7 @@ test('refresh keeps understanding rows and coalesces focus and visibility events
   const row = page.getByRole('row').filter({ hasText: 'Forces' });
   await expect(row).toBeVisible();
   const count = requests;
-  await page.evaluate(() => { const now = Date.now.bind(Date); Date.now = () => now() + 31_000; window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.evaluate(() => { const changes = new BroadcastChannel('mentra-pages-polish-user'); changes.postMessage(['learning']); changes.postMessage(['learning']); changes.close(); });
   await expect(row).toBeVisible();
   await expect.poll(() => requests).toBe(count + 1);
   await expect(row).toBeVisible();
@@ -249,7 +249,7 @@ test('material refresh protects dirty details and source dialogs remain open unt
   await page.goto('/library/material-1');
   await page.getByLabel('Title', { exact: true }).fill('Unsent draft');
   document = { ...document, revision: 2, title: 'Changed elsewhere' };
-  await page.evaluate(() => { const now = Date.now.bind(Date); Date.now = () => now() + 31_000; window.dispatchEvent(new Event('focus')); });
+  await page.evaluate(() => { const changes = new BroadcastChannel('mentra-pages-polish-user'); changes.postMessage(['documents']); changes.close(); });
   await expect(page.getByRole('alert')).toContainText('Your draft is preserved');
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Unsent draft');
   await expect(page.getByRole('button', { name: 'Save material details' })).toBeDisabled();

@@ -53,16 +53,14 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
   const fetchKey = useRef('');
   const detailId = useRef<string>();
   detailId.current = detail?.id;
-  usePageRefresh(() => setRefresh(value => value + 1), active && !busy && !editor);
+  usePageRefresh(() => setRefresh(value => value + 1), active && !busy && !editor, ['memories']);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; pageRequest.current?.abort(); detailRequest.current?.abort(); }; }, []);
   useEffect(() => { const timer = setTimeout(() => setSearch(query), 250); return () => clearTimeout(timer); }, [query]);
   useEffect(() => {
     const bc = new BroadcastChannel(`mentra-memory-${owner}`);
     channel.current = bc;
     bc.onmessage = () => refreshPage(() => setRefresh(value => value + 1));
-    const focus = () => { if (active) refreshPage(() => setRefresh(value => value + 1)); };
-    window.addEventListener('focus', focus);
-    return () => { bc.close(); channel.current = undefined; window.removeEventListener('focus', focus); };
+    return () => { bc.close(); channel.current = undefined; };
   }, [owner, active]);
   useEffect(() => {
     listEpoch.current++;
@@ -167,7 +165,7 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
     })} />}
     <Button variant="ghost" size="sm" disabled={loading} onClick={() => refreshPage(() => setRefresh(value => value + 1))}>Refresh memories</Button><div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">Search memories</span><Search aria-hidden="true" className="absolute left-3 top-3.5 text-subtle" size={16} /><Input className="pl-9" placeholder="Search your memories" disabled={busy} value={query} onChange={event => setQuery(event.target.value)} maxLength={300} /></label><label><span className="sr-only">Memory status</span><Select disabled={busy} value={status} onChange={event => { setItems([]); setLoading(true); setStatus(event.target.value); }}><option value="">All memories</option><option value="active">Saved</option><option value="pending">Needs confirmation</option><option value="conflict">Conflicting</option></Select></label></div>
     {!loaded && !error && <Skeleton variant="form" />}
-    {loading && loaded && <Skeleton variant="list" rows={2} />}
+    {loading && loaded && items.length === 0 && <Skeleton variant="list" rows={2} />}
     {loaded && !loading && items.length === 0 && <div className="rounded-xl border border-dashed border-border py-10 text-center"><p className="text-heading">{search || status ? 'No matching memories' : 'A fresh start'}</p><p className="mt-2 text-sm text-muted">{search || status ? 'Try another search or status.' : 'Add a memory yourself, or ask Mentra to remember something useful.'}</p></div>}
     <MemoryList items={items} busy={busy} editing={!!editor} onEvidence={item => void openDetails(item.id)} onEdit={setEditor} onConfirm={item => void mutate(async () => merge(await memoryApi.edit(item, { confirm: true, clear_expiration: true })))} onResolve={item => { setError(''); void memoryApi.detail(item.id).then(value => { if (mounted.current) { if (value.status === 'conflict') { setConflictDraft(undefined); setResolving(value); } else { setRefresh(previous => previous + 1); setNotice('This conflict was already resolved.'); } } }).catch(cause => { if (mounted.current) setError(cause instanceof ApiError ? cause.message : 'Your memories could not be loaded.'); }); }} onPin={item => void mutate(async () => merge(await memoryApi.edit(item, { pinned: !item.pinned })))} onDelete={setDeleting} />
     {cursor && <Button variant="secondary" disabled={loading} onClick={() => void more()}>Load more memories</Button>}

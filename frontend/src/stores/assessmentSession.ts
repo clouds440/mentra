@@ -1,3 +1,4 @@
+import { invalidatePageCache } from '../services/pageCache';
 import { useSyncExternalStore } from 'react';
 import { assessments } from '../services/assessments';
 import type { AssessmentAttempt } from '../types/assessments';
@@ -31,6 +32,9 @@ class AssessmentSession {
     const previous = this.attempts.get(attempt.id);
     if (previous && (previous.revision > attempt.revision || previous.revision === attempt.revision && previous.state === 'graded' && attempt.state !== 'graded')) return;
     if (previous === attempt) return;
+    if (previous && (previous.state !== attempt.state || previous.grade_revision !== attempt.grade_revision || previous.evidence_status !== attempt.evidence_status)) {
+      invalidatePageCache(['assessments', 'learning'], true);
+    }
     this.attempts.set(attempt.id, attempt); this.publish();
   }
   setOwner(owner: string | null) {

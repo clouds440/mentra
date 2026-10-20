@@ -95,11 +95,11 @@ subject-quality or educational-effectiveness evaluation.
 
 ## Revision practice workspace (2026-10-19)
 
-Progress → **Practice my mistakes** centralizes graded mistakes and partial answers. Assessment results now link to this workspace with their assessment filter preselected. The topic and assessment dropdowns support multiple selections; the filtered action is **Practice selected**.
+Assessments → **Practice my mistakes** centralizes graded mistakes and partial answers. Assessment results now link to this workspace with their assessment filter preselected. The topic and assessment dropdowns support multiple selections; the filtered action is **Practice selected**.
 
 | Contract | Behavior |
 | --- | --- |
-| `GET /api/v1/assessments/mistakes` | Owner-scoped history, 30 rows per page, repeated `assessment_id` / `topic_id` filters, source assessment and attempt links, feedback and topic labels. Never returns private answers or rubrics. |
+| `GET /api/v1/assessments/mistakes` | Owner-scoped history, 30 rows per page, repeated `assessment_id` / `topic_id` filters, source assessment and attempt links, feedback and topic labels. Includes the learner’s submitted answer and public option labels; never returns private answer keys or rubrics. |
 | History | One row per source question, with its most recent mistake and accumulated failures across its revision lineage. A later correct graded answer marks the lineage corrected without removing earlier mistake records. Corrections use the current authoritative grade revision. |
 | Automatic selection | Unresolved mistakes only; descending failure count, proportional score gap, marks, then recency. Duplicate root questions are removed before applying the requested maximum of 1–20. This is a transparent heuristic, not an LLM judgment of curricular importance. |
 | `POST /api/v1/assessments/mistakes/practice` | Accepts `client_request_id`, optional assessment/topic ID arrays, and count. Owner transaction checks selected assessments and the existing two-active-job admission limit. |
@@ -110,3 +110,10 @@ Progress → **Practice my mistakes** centralizes graded mistakes and partial an
 | Learning evidence | Revision remains known-exposure/repeated practice. Cross-context revisions submit each question’s evidence in its original learning context and retain its specific source attempt and grade revision. |
 
 Verification: 40 distinct backend cases passed across the 39-case regression run and final seven-case revision suite (six overlap). These include owner isolation, API metadata rejection, filters, concurrency, replay, multi-source generation, corrected history and cross-context evidence. A synthetic live-provider run produced three fresh schema-valid questions with server tags and source IDs intact. This is a generation contract smoke test, not a broad educational-quality evaluation.
+
+
+### October 20: stable page caches and assessment review
+
+Settled pages no longer refresh on timers, focus, visibility changes or reconnect. Owner-scoped in-memory caches persist until relevant writes, explicit refresh, bounded capacity eviction or account changes. Successful writes invalidate dependent domains and notify mounted views and same-owner tabs. Generation, grading and ingestion continue to poll only while unfinished, and completion invalidates their dependent views. Authentication checks still verify session access without resetting page content.
+
+Mistake practice lives in Assessments; old Progress links redirect with filters and revision jobs intact. Mistake cards reuse the assessment answer component, resolving choice IDs to labels. Assessment list cards summarize the latest graded attempt with correct/incorrect counts (partial credit is included in incorrect and disclosed separately). Unattempted and ungraded attempts have distinct status badges. Summaries use one bounded, owner-scoped query for each page of assessments.
