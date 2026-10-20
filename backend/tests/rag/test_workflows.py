@@ -1,8 +1,7 @@
 import io
-import tempfile
+import hashlib
 import unittest
 from unittest.mock import patch
-from pathlib import Path
 from datetime import timedelta
 from sqlalchemy import update
 from qdrant_client import QdrantClient
@@ -14,7 +13,7 @@ from app.learner.schemas import ResolveLearningContextRequest, ContextTransition
 from app.rag.repositories.postgres import RAGRepository, now
 from app.rag.repositories.tables import jobs, generations
 from app.rag.qdrant_store import QdrantVectorStore
-from app.rag.storage import FileStorage
+from testing.files import create_test_files
 from app.rag.service import RAGService
 from app.rag.worker import IngestionWorker
 from app.rag.schemas import SearchRequest, DocumentUpdate, RevisionRequest, AssessmentGroundingRequest, ChatSelection
@@ -134,14 +133,15 @@ class WorkflowTests(unittest.TestCase):
                          warnings=['OCR may contain errors.'], reader_revision='verified-reader', media_type='text/plain')
         with patch.object(self.service.parser, 'parse', side_effect=AssertionError('must reuse extraction')), \
              patch.object(self.service.parser, 'detect', side_effect=AssertionError('already detected')):
-            result = self.service.accept_extracted(self.owner, source=io.BytesIO(b'original image bytes'),
+            file=self.files.upload(self.owner,io.BytesIO(b'original image bytes'),'notes.txt','chat','chat-source')
+            result = self.service.accept_extracted(self.owner, file_id=file['id'],
                 filename='notes.png', title='Notes', context_ids=[self.context.context_id], key='chat:one', extracted=extracted)
             self.assertTrue(self.worker.run_once())
             self.assertEqual(self.repo.get_job(self.owner, result['job_id'])['state'], 'SUCCEEDED')
             found = self.search()
             self.assertEqual(found.chunks[0].source.spans[0].page, 3)
             self.assertIn('OCR may contain errors.', found.chunks[0].source.warnings)
-            replay = self.service.accept_extracted(self.owner, source=io.BytesIO(b'original image bytes'),
+            replay = self.service.accept_extracted(self.owner, file_id=file['id'],
                 filename='notes.png', title='Notes', context_ids=[self.context.context_id], key='chat:one', extracted=extracted)
             self.assertEqual(result['document_id'], replay['document_id'])
 
@@ -150,8 +150,8 @@ class WorkflowTests(unittest.TestCase):
             ('notes.html', b'<h1>Decorators</h1><script>const decorators = "wrappers";</script><style>.decorators {color: red;}</style>', 'const decorators')]
         for filename, data, expected in cases:
             with self.subTest(filename=filename):
-                accepted = self.service.accept_upload(self.owner, io.BytesIO(data), filename, filename,
-                    [self.context.context_id], 'shared-' + filename)
+                file=self.files.upload(self.owner,io.BytesIO(data),filename,'library','shared-'+filename)
+                accepted = self.service.accept_upload(self.owner,file['id'],filename,[self.context.context_id],'shared-'+filename)
                 self.worker.run_once()
                 self.assertEqual(self.repo.get_job(self.owner, accepted['job_id'])['state'], 'SUCCEEDED')
                 result = self.service.search_document(self.owner, accepted['document_id'], 'decorators')
@@ -233,22 +233,22 @@ class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.db = PostgresSandbox()
         self.addCleanup(self.db.close)
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
         self.owner, self.other = [learner_id(n) for n in TEST_LEARNERS[:2]]
         self.learner = LearnerEngine(self.db.repository)
         self.context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner, name='Python', activate=True))
-        self.settings = Settings(qdrant_url='http://test', qdrant_api_key='test', qdrant_collection='materials', rag_storage_dir=self.temp.name)
+        self.settings = Settings(qdrant_url='http://test', qdrant_api_key='test', qdrant_collection='materials')
         self.client = QdrantClient(':memory:')
         self.embedding = TestEmbedding()
         self.vector = QdrantVectorStore(self.settings, self.embedding, self.client)
         self.addCleanup(self.vector.close)
-        self.repo = RAGRepository(self.db.sessions)
-        self.service = RAGService(self.repo, self.learner, self.embedding, self.vector, FileStorage(self.temp.name), self.settings)
+        self.files=create_test_files(self.db.sessions,self.settings)
+        self.repo = RAGRepository(self.db.sessions,self.files)
+        self.service = RAGService(self.repo, self.learner, self.embedding, self.vector, self.files, self.settings)
         self.worker = IngestionWorker(self.service)
 
     def upload(self, content=b'Python decorators wrap functions. A decorator adds reusable behavior.', key='upload', **kwargs):
-        return self.service.accept_upload(self.owner, io.BytesIO(content), 'notes.txt', 'Python Notes', [self.context.context_id], key, **kwargs)
+        file=self.files.upload(self.owner,io.BytesIO(content),'notes.txt','library','file:'+key+':'+hashlib.sha256(content).hexdigest()[:16])
+        return self.service.accept_upload(self.owner,file['id'],'Python Notes',[self.context.context_id],key,**kwargs)
 
     def search(self, **kwargs):
         return self.service.search(self.owner, SearchRequest(query='decorators', **kwargs))
@@ -266,7 +266,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result.chunks[0].source.document_id, accepted['document_id'])
         self.assertEqual(result.chunks[0].source.spans[0].start, 0)
         source = result.chunks[0].source
-        self.assertTrue(self.service.source(self.owner, source.document_id, source.version_id)[0].is_file())
+        self.assertTrue(self.files.read(self.owner,self.service.source(self.owner,source.document_id,source.version_id)[0]))
         for action in (lambda: self.repo.get_document(self.other, source.document_id),
                        lambda: self.service.source(self.other, source.document_id, source.version_id),
                        lambda: self.repo.get_job(self.other, accepted['job_id'])):
@@ -284,7 +284,7 @@ class WorkflowTests(unittest.TestCase):
         first = self.upload()
         second = self.upload()
         self.assertEqual(first['job_id'], second['job_id'])
-        self.assertEqual(len(list(Path(self.temp.name).iterdir())), 1)
+        self.assertEqual(self.files.provider.uploads, 1)
         with self.assertRaises(AppError) as error:
             self.upload(b'different content')
         self.assertEqual(error.exception.code, 'RAG_IDEMPOTENCY_CONFLICT')
@@ -306,7 +306,7 @@ class WorkflowTests(unittest.TestCase):
         self.worker.run_once()
         self.assertEqual(self.search().chunks[0].source.generation_id, second['generation_id'])
         old_version = doc['versions'][0]['id']
-        self.assertTrue(self.service.source(self.owner, doc['id'], old_version)[0].exists())
+        self.assertTrue(self.files.read(self.owner,self.service.source(self.owner,doc['id'],old_version)[0]))
 
     def test_archive_unarchive_and_context_policy(self):
         first = self.ready()
@@ -328,7 +328,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.repo.get_job(self.owner, accepted['job_id'])['state'], 'CANCELLED')
         self.vector.ensure_collection()
         self.worker.run_once()
-        self.assertFalse(list(Path(self.temp.name).iterdir()))
+        self.files.cleanup()
+        self.assertFalse(self.files.provider.objects)
         self.assertEqual(self.repo.request_delete(self.owner, accepted['document_id'])['state'], 'purged')
 
     def test_expired_worker_is_fenced(self):
@@ -432,14 +433,17 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(archived['archived'])
         self.assertNotEqual(archived['active_generation_id'], first['generation_id'])
         self.assertEqual(self.service.get_chunk(self.owner, citation.chunk_id, include_archived=True)['generation_id'], first['generation_id'])
-        self.assertTrue(self.service.source(self.owner, citation.document_id, citation.version_id, include_archived=True)[0].is_file())
+        self.assertTrue(self.files.read(self.owner,self.service.source(self.owner,citation.document_id,citation.version_id,include_archived=True)[0]))
         self.assertEqual(self.vector.count_chunks(self.owner, first['generation_id']), 0)
         self.assertTrue(self.search(mode='SOURCE_SPECIFIC', document_ids=[doc['id']], include_archived=True).chunks)
 
     def test_embedding_reset_recovers_retained_text_when_original_file_is_missing(self):
         first = self.ready()
         source = self.search().chunks[0].source
-        self.service.source(self.owner, source.document_id, source.version_id)[0].unlink()
+        file_id=self.service.source(self.owner,source.document_id,source.version_id)[0]
+        from app.files.tables import assets
+        with self.db.sessions.begin() as session:
+            session.execute(update(assets).where(assets.c.id==file_id).values(state='DELETED'))
         self.embedding.model_name = 'intfloat/multilingual-e5-small'
         self.vector.reset_collection()
         queued = self.repo.queue_rebuild(self.owner, str(__import__('uuid').uuid4()),

@@ -26,8 +26,9 @@ from app.core.logging import workflow_logger
     'accept': {'transaction': True, 'result': lambda value: dict(duplicate=value.get('duplicate',False), job_id=value.get('job_id')), 'outcome': 'deferred'},
 })
 class RAGRepository:
-    def __init__(self, sessions):
+    def __init__(self, sessions, files=None):
         self.sessions = sessions
+        self.files = files
 
     def _document(self, session, owner, document_id, *, lock=False, deleted=False):
         query = select(documents).where(documents.c.learner_id == owner, documents.c.id == document_id)
@@ -51,7 +52,7 @@ class RAGRepository:
         session.execute(associations.insert(), [dict(learner_id=owner, document_id=document_id, context_id=c) for c in context_ids])
 
     def accept(self, owner, *, title, filename, context_ids, blob, key, request_hash, config, quota,
-               document_id=None, expected_revision=None):
+               document_id=None, expected_revision=None, reuse=False):
         with self.sessions.begin() as session:
             # Serializes quota, exact duplicates and idempotency for this owner only.
             session.execute(select(learner.c.id).where(learner.c.id == owner).with_for_update()).scalar_one()
@@ -95,6 +96,7 @@ class RAGRepository:
             version_id, generation_id = new_id(), new_id()
             session.execute(versions.insert().values(id=version_id, learner_id=owner, document_id=document_id,
                 filename=filename, created_at=now(), **blob))
+            self.files.bind(session,owner,blob['file_id'],'library',dict(document_version_id=version_id),reuse=reuse)
             session.execute(generations.insert().values(id=generation_id, learner_id=owner, document_id=document_id,
                 version_id=version_id, state='PENDING', config=config, warnings=[], chunk_count=0, created_at=now()))
             job = self._job(owner, document_id, generation_id, 'INGEST', key, request_hash, revision)
@@ -435,14 +437,11 @@ class RAGRepository:
                 session.execute(update(generations).where(generations.c.id == job['generation_id']).values(state='PENDING' if retry else 'FAILED'))
         workflow_logger.event('job.retry_scheduled' if retry else 'job.failed', job_id=job['id'], attempt=job['attempts'])
 
-    def deletion_sources(self, job):
-        with self.sessions() as session:
-            return list(session.execute(select(versions.c.storage_key).where(versions.c.learner_id == job['learner_id'],
-                versions.c.document_id == job['document_id'])).scalars())
-
     def complete_delete(self, job):
         with self.sessions.begin() as session:
             self._lease(session, job)
+            for identifier in session.scalars(select(versions.c.id).where(versions.c.learner_id==job['learner_id'],versions.c.document_id==job['document_id'])):
+                self.files.release(session,job['learner_id'],document_version_id=identifier)
             session.execute(delete(chunks).where(chunks.c.learner_id == job['learner_id'], chunks.c.document_id == job['document_id']))
             session.execute(delete(document_concepts).where(document_concepts.c.document_id == job['document_id']))
             session.execute(update(versions).where(versions.c.learner_id == job['learner_id'],
@@ -540,16 +539,6 @@ class RAGRepository:
     def mark_reconciled(self, generation_id):
         with self.sessions.begin() as session:
             session.execute(update(generations).where(generations.c.id == generation_id).values(reconciled_at=now()))
-
-    def storage_keys(self):
-        with self.sessions() as session:
-            return set(session.execute(select(versions.c.storage_key)).scalars())
-
-    def referenced_storage_keys(self, keys):
-        if not keys:
-            return set()
-        with self.sessions() as session:
-            return set(session.scalars(select(versions.c.storage_key).where(versions.c.storage_key.in_(keys))))
 
     def index_health(self, owner=None, limit=100):
         """Bounded operator metadata; never returns source names or content."""

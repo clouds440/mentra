@@ -1,14 +1,13 @@
 """Authenticated material APIs. Synchronous workflows run off the event loop."""
-import json
 from typing import Annotated
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.learner.schemas import ResolveLearningContextRequest, ContextTransitionRequest, ActivateLearningContextRequest
 from app.rag.schemas import DocumentUpdate, RevisionRequest, SearchRequest, RetrievalResult
-from app.core.exceptions import AppError
+from app.files.schemas import FileReference
+from app.files.delivery import deliver
 
 router = APIRouter(tags=['materials'])
 
@@ -71,34 +70,28 @@ def list_documents(offset: int = Query(default=0, ge=0), limit: int = Query(defa
     return service.repository.list_documents(identity.learner_id, offset, limit, archived, context_id, query)
 
 
-async def accept(file, title, contexts, key, identity, service, document_id=None, expected_revision=None):
-    try:
-        ids = json.loads(contexts)
-        if not isinstance(ids, list) or not all(isinstance(v, str) for v in ids):
-            raise ValueError()
-    except (ValueError, TypeError):
-        raise AppError('RAG_INVALID_CONTEXTS', 'Context IDs must be a JSON string array.', 422)
-    try:
-        return await run_in_threadpool(service.accept_upload, identity.learner_id, file.file, file.filename or 'material',
-            title, ids, key, document_id, expected_revision)
-    finally:
-        await file.close()
+class MaterialUpload(FileReference):
+    title: str = Field(default='',max_length=200)
+    context_ids: list[str] = Field(min_length=1,max_length=20)
+    idempotency_key: str = Field(min_length=1,max_length=120)
+
+
+class MaterialReplacement(FileReference):
+    expected_revision: int = Field(ge=1)
+    idempotency_key: str = Field(min_length=1,max_length=120)
 
 
 @router.post('/documents', status_code=202)
-async def upload_document(file: Annotated[UploadFile, File()], context_ids: Annotated[str, Form()],
-    idempotency_key: Annotated[str, Form()], title: Annotated[str, Form()] = '',
+async def upload_document(body: MaterialUpload,
     service=Depends(rag), identity=Depends(require_onboarded_identity)):
-    return await accept(file, title, context_ids, idempotency_key, identity, service)
+    return await run_in_threadpool(service.accept_upload,identity.learner_id,str(body.file_id),body.title,body.context_ids,body.idempotency_key)
 
 
 @router.post('/documents/{document_id}/versions', status_code=202)
-async def replace_document(document_id: str, file: Annotated[UploadFile, File()],
-    expected_revision: Annotated[int, Form(ge=1)], idempotency_key: Annotated[str, Form()],
+async def replace_document(document_id: str, body: MaterialReplacement,
     service=Depends(rag), identity=Depends(require_onboarded_identity)):
     doc = await run_in_threadpool(service.get_document, identity.learner_id, document_id)
-    return await accept(file, doc['title'], json.dumps(doc['context_ids']), idempotency_key, identity, service,
-                        document_id, expected_revision)
+    return await run_in_threadpool(service.accept_upload,identity.learner_id,str(body.file_id),doc['title'],doc['context_ids'],body.idempotency_key,document_id,body.expected_revision)
 
 
 @router.get('/documents/{document_id}')
@@ -153,11 +146,10 @@ def get_chunk(chunk_id: str, include_archived: bool = False, service=Depends(rag
 
 
 @router.get('/documents/{document_id}/versions/{version_id}/source')
-def source(document_id: str, version_id: str, include_archived: bool = False,
+async def source(document_id: str, version_id: str, request: Request, include_archived: bool = False,
            service=Depends(rag), identity=Depends(require_onboarded_identity)):
-    path, version = service.source(identity.learner_id, document_id, version_id, include_archived)
-    return FileResponse(path, media_type=version['media_type'], filename=version['filename'],
-                        headers={'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'})
+    file_id,binding_id=await run_in_threadpool(service.source,identity.learner_id,document_id,version_id,include_archived)
+    return await deliver(request,identity.learner_id,file_id,binding_id,'attachment',include_archived)
 
 
 @router.get('/documents/{document_id}/versions/{version_id}/chunks')

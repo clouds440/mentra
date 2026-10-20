@@ -200,11 +200,10 @@ def create_workflow_tools(owner, scope, budget):
             card['attempt_id'] = str(attempt.id)
             if not replay and attempt.state in ('draft','pending_transcription'):
                 if attachment_id:
-                    from io import BytesIO
                     if attempt.state == 'draft':
                         try:
                             attempt = await service.upload_paper_with_vision(owner, str(attempt.id), attempt.revision,
-                                BytesIO(attachment['data']), attachment['filename'])
+                                attachment['file_id'],from_chat=True)
                         except Exception as error:
                             return dict(outcome='answer_preparation_failed', assessment_id=card['assessment_id'],
                                 attempt_id=str(attempt.id), assessment_saved=True,

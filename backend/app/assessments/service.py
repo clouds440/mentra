@@ -14,9 +14,10 @@ from app.core.logging import workflow_logger
                'outcome': lambda value: 'deferred' if value.state in ('submitted','grading') else 'success'},
 })
 class AssessmentService:
-    def __init__(self, repository, workflows, reader=None, admission=None):
+    def __init__(self, repository, workflows, reader=None, admission=None, files=None):
         self.repository, self.workflows = repository, workflows
         self.admission = admission
+        self.files=files or repository.files
         self.reader = reader or create_document_reader(isolated=True)
         self.paper_graph = EventConfirmationGraph(repository.sessions.kw['bind'], 'assessment-transcription-v1')
         from .chat import ChatAssessments
@@ -141,12 +142,11 @@ class AssessmentService:
             self.paper_graph.decide(owner, identifier, 'confirmed')
         return self.repository.submit(owner, identifier, body)
 
-    def upload_paper(self, owner, identifier, expected_revision, source, filename, *, store=True):
+    def _extract_paper(self, owner, identifier, data, filename):
+        """Assessment processing only; Files owns intake and durable storage."""
         filename = Path((filename or 'answers').replace('\\', '/')).name[:200]
         attempt = self.repository.attempt(owner, identifier)
         assessment = self.repository.detail(owner, str(attempt.assessment_id))
-        data = source.read(25*1024*1024+1)
-        if not data or len(data)>25*1024*1024: raise AppError('ASSESSMENT_UPLOAD_SIZE', 'Upload a nonempty answer sheet of at most 25 MiB.', 413)
         with TemporaryDirectory(prefix='mentra-assessment-') as directory:
             path = Path(directory)/'source'
             path.write_bytes(data)
@@ -166,19 +166,17 @@ class AssessmentService:
         extracted = dict(answers=answers, text=text, blocks=document.blocks[:200], warnings=document.warnings,
             reader_revision=document.reader_revision, extraction_confidence=None, mapping_confidence=None,
             requires_confirmation=True, handwriting_support='unverified', truncated=False)
-        if not store:
-            return extracted, data, filename
-        return self.repository.store_extraction(owner, identifier, expected_revision, extracted, data, filename)
+        return extracted
 
-    async def upload_paper_with_vision(self, owner, identifier, expected_revision, source, filename):
-        from io import BytesIO
+    async def upload_paper_with_vision(self, owner, identifier, expected_revision, file_id, *, from_chat=False):
         from app.core.config import settings
-        data = await run_in_threadpool(source.read, 25*1024*1024+1)
-        if not data or len(data)>25*1024*1024:
-            raise AppError('ASSESSMENT_UPLOAD_SIZE', 'Upload a nonempty answer sheet of at most 25 MiB.', 413)
-        attempt = await run_in_threadpool(self.repository.attempt, owner, identifier)
+        file=await run_in_threadpool(self.files.metadata,owner,file_id,'chat' if from_chat else 'assessment')
+        filename=file['filename']
+        attempt,previous = await run_in_threadpool(self.repository.attempt_source, owner, identifier)
+        if previous==file_id and attempt.state=='pending_transcription': return attempt
         if attempt.revision != expected_revision or attempt.state not in ('draft','pending_transcription'):
             raise AppError('REVISION_CONFLICT', 'This attempt changed. Reload before uploading.', 409)
+        data=await run_in_threadpool(self.files.read,owner,file_id)
         safe_filename = Path((filename or 'answers').replace('\\','/')).name[:200]
         is_image = data.startswith((b'%PDF', b'\xff\xd8\xff', b'\x89PNG\r\n\x1a\n'))
         vision_failed = False
@@ -192,10 +190,9 @@ class AssessmentService:
                 workflow_logger.event('assessment.vision_fallback', code='VISION_UNAVAILABLE')
             else:
                 return await run_in_threadpool(self.repository.store_extraction, owner, identifier,
-                    expected_revision, extracted, data, safe_filename)
+                    expected_revision, extracted, file_id, safe_filename, reuse=from_chat)
         try:
-            extracted, _, safe_filename = await run_in_threadpool(self.upload_paper, owner, identifier,
-                expected_revision, BytesIO(data), filename, store=False)
+            extracted = await run_in_threadpool(self._extract_paper, owner, identifier, data, filename)
         except AppError as error:
             if error.code != 'ASSESSMENT_UNREADABLE': raise
             safe_filename = Path((filename or 'answers').replace('\\','/')).name[:200]
@@ -204,13 +201,15 @@ class AssessmentService:
                 requires_confirmation=True, handwriting_support='unverified', truncated=False)
         if vision_failed:
             extracted['warnings'].append('Vision extraction was unavailable. Review and correct the OCR text before grading.')
-        return await run_in_threadpool(self.repository.store_extraction, owner, identifier, expected_revision, extracted, data, safe_filename)
+        return await run_in_threadpool(self.repository.store_extraction, owner, identifier, expected_revision, extracted, file_id, safe_filename,reuse=from_chat)
 
 
 @workflow_logger.operation(outcome='success')
-def create_assessments(sessions, llm, learner, rag=None, profile=None):
+def create_assessments(sessions, llm, learner, rag=None, profile=None, files=None):
     from .repositories.postgres import AssessmentRepository
     from app.langchain.assessment_workflows import AssessmentWorkflows
     from app.db.admission import Admission
     from app.core.config import settings
-    return AssessmentService(AssessmentRepository(sessions), AssessmentWorkflows(llm, learner, rag, profile), admission=Admission(sessions, settings=settings))
+    from app.files.factory import create_files
+    files=files or create_files(sessions)
+    return AssessmentService(AssessmentRepository(sessions,files=files), AssessmentWorkflows(llm, learner, rag, profile), admission=Admission(sessions, settings=settings),files=files)

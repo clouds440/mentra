@@ -1,6 +1,6 @@
 """Bound JSON bytes before framework parsing, including chunked requests."""
 from starlette.responses import JSONResponse
-from app.rag.upload_limit import UploadTooLarge
+from app.files.upload_limit import UploadTooLarge
 
 
 class JsonBodyLimit:

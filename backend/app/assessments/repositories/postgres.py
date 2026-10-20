@@ -9,7 +9,7 @@ from .tables import assessments as a, attempts as t, generation_claims as g
 
 # Upload bytes are only needed when explicitly reading the original artifact.
 # Polling, claiming and corrections must not download them from PostgreSQL.
-ATTEMPT_COLUMNS = [column for column in t.c if column.name not in ('source','grading_progress')]
+ATTEMPT_COLUMNS = [column for column in t.c if column.name != 'grading_progress']
 
 
 from app.core.logging import workflow_logger
@@ -19,9 +19,10 @@ from app.core.logging import workflow_logger
                 'outcome': lambda value: 'deferred' if value.state in ('submitted','grading') else 'success'},
 })
 class AssessmentRepository:
-    def __init__(self, sessions, clock=None):
+    def __init__(self, sessions, clock=None, files=None):
         self.sessions, self.transactions = sessions, OwnerTransactions(sessions)
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.files=files
 
     def _assessment(self, session, owner, identifier):
         row = session.execute(select(a).where(a.c.learner_id == owner, a.c.id == identifier)).mappings().first()
@@ -196,6 +197,11 @@ class AssessmentRepository:
     def attempt(self, owner, identifier):
         with self.sessions() as session: return self.attempt_public(self._attempt(session, owner, identifier))
 
+    def attempt_source(self, owner, identifier):
+        with self.sessions() as session:
+            row=self._attempt(session,owner,identifier)
+            return self.attempt_public(row),row['source_file_id']
+
     def attempts(self, owner, assessment_id):
         with self.sessions() as session:
             self._assessment(session, owner, assessment_id)
@@ -276,12 +282,15 @@ class AssessmentRepository:
             delete_thread(session, f'assessment-transcription-v1:{owner}:{identifier}')
             return self.attempt_public(dict(row, **values))
 
-    def store_extraction(self, owner, identifier, expected_revision, extraction, data, filename):
+    def store_extraction(self, owner, identifier, expected_revision, extraction, file_id, filename, *, reuse=False):
         with self.transactions.write(owner) as tx:
             row = self._attempt(tx._session, owner, identifier)
+            if row['source_file_id']==file_id and row['state']=='pending_transcription':
+                return self.attempt_public(row)
             if row['revision'] != expected_revision or row['state'] not in ('draft','pending_transcription'):
                 raise AppError('REVISION_CONFLICT', 'This attempt changed. Reload before uploading.', 409)
-            values = dict(extraction=extraction, source=data, filename=filename, state='pending_transcription', revision=row['revision']+1)
+            values = dict(extraction=extraction, source_file_id=file_id, filename=filename, state='pending_transcription', revision=row['revision']+1)
+            self.files.bind(tx._session,owner,file_id,'assessment',dict(assessment_attempt_id=identifier),reuse=reuse)
             tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
             return self.attempt_public(dict(row, **values))
 

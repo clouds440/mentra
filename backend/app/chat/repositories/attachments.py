@@ -10,34 +10,38 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class AttachmentRepository:
-    def __init__(self, sessions):
+    def __init__(self, sessions, files=None):
         self.sessions = sessions
+        self.files = files
 
-    def create(self, owner, filename, data):
+    def create(self, owner, filename, file):
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as session:
             lock_owner(session, owner)
             session.execute(delete(attachments).where(attachments.c.learner_id == owner,
                 attachments.c.conversation_id.is_(None), attachments.c.created_at < now - timedelta(days=1)))
             size = session.execute(select(func.coalesce(func.sum(attachments.c.size_bytes), 0)).where(attachments.c.learner_id == owner)).scalar_one()
-            if size + len(data) > 100 * 1024 * 1024:
+            existing = session.execute(select(attachments).where(attachments.c.learner_id==owner,attachments.c.file_id==file['id'])).mappings().first()
+            if existing:
+                return dict(id=existing['id'],filename=existing['filename'],size_bytes=existing['size_bytes'])
+            if size + file['size_bytes'] > 100 * 1024 * 1024:
                 raise AppError('CHAT_ATTACHMENT_CAPACITY', 'Chat file storage is full. Remove files or their conversations before uploading more.', 409)
             identifier = str(uuid4())
             session.execute(attachments.insert().values(id=identifier, learner_id=owner, filename=filename,
-                data=data, size_bytes=len(data), created_at=now))
-            return dict(id=identifier, filename=filename, size_bytes=len(data))
+                file_id=file['id'], media_type=file['media_type'], size_bytes=file['size_bytes'], created_at=now))
+            self.files.bind(session,owner,file['id'],'chat',dict(chat_attachment_id=identifier))
+            return dict(id=identifier, filename=filename, size_bytes=file['size_bytes'])
 
     @staticmethod
     def bind(session, owner, identifiers, conversation_id):
         if not identifiers:
             return []
         rows = session.execute(select(attachments.c.id, attachments.c.conversation_id, attachments.c.filename,
-            attachments.c.size_bytes, attachments.c.created_at, func.substr(attachments.c.data, 1, 12).label('header')).where(attachments.c.learner_id == owner,
+            attachments.c.size_bytes, attachments.c.created_at, attachments.c.media_type).where(attachments.c.learner_id == owner,
             attachments.c.id.in_(identifiers))).mappings().all()
         if len(rows) != len(set(identifiers)) or any(row['conversation_id'] not in (None, conversation_id) for row in rows):
             raise AppError('CHAT_ATTACHMENT_NOT_FOUND', 'An attachment is unavailable for this conversation.', 404)
-        image_count = sum(row['header'].startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff', b'GIF87a', b'GIF89a'))
-            or row['header'][:4] == b'RIFF' and row['header'][8:12] == b'WEBP' for row in rows)
+        image_count = sum(row['media_type'].startswith('image/') for row in rows)
         if image_count > 3:
             raise AppError('CHAT_IMAGE_LIMIT', 'Attach up to three images per message.', 422)
         if any(row['conversation_id'] is None and row['created_at'] < datetime.now(timezone.utc) - timedelta(days=1) for row in rows):

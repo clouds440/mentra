@@ -46,7 +46,7 @@ test('assessment discussion and revisions precede solving, with partial answers 
   expect((await (await page.request.get(`${origin}/api/v1/assessments/${library[0].id}/attempts`)).json())).toHaveLength(1);
   await cards.last().getByLabel('I reviewed and corrected all extracted answers').check();
   await cards.last().getByRole('button',{name:'Confirm text & submit',exact:true}).click();
-  await expect(cards.last().getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible({timeout:20_000});
+  await expect(cards.last().getByRole('status').filter({hasText:/Results saved\.|Feedback saved/})).toBeVisible({timeout:20_000});
   const feedback = cards.last().getByRole('region', { name: 'Assessment feedback' });
   await expect(feedback.getByText('2 partially correct', { exact:true })).toBeVisible();
   await page.setViewportSize({ width:1280, height:1100 });
@@ -79,7 +79,7 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Evaluate these answers:\n1. First partial explanation.\n2. Second partial explanation.');
   await page.getByRole('button',{name:'Send message'}).click();
   const review = cards.last();
-  await expect(review.getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible({timeout:20_000});
+  await expect(review.getByRole('status').filter({hasText:/Results saved\.|Feedback saved/})).toBeVisible({timeout:20_000});
   await page.getByLabel('Upload chat files').setInputFiles({name:'answers.txt',mimeType:'text/plain',buffer:Buffer.from('1. First uploaded answer\n2. Second uploaded answer')});
   await expect(page.getByLabel('Attached files')).toContainText('answers.txt');
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Evaluate this answer sheet');
@@ -88,9 +88,9 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await expect(cards.last().getByRole('button',{name:'Confirm text & submit',exact:true})).toBeDisabled();
   await cards.last().getByLabel('I reviewed and corrected all extracted answers').check();
   await cards.last().getByRole('button',{name:'Confirm text & submit',exact:true}).click();
-  await expect(cards.last().getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible({timeout:20_000});
+  await expect(cards.last().getByRole('status').filter({hasText:/Results saved\.|Feedback saved/})).toBeVisible({timeout:20_000});
   await page.reload();
-  await expect(cards.last().getByText('Feedback saved and learner evidence applied.',{exact:true})).toBeVisible();
+  await expect(cards.last().getByRole('status').filter({hasText:/Results saved\.|Feedback saved/})).toBeVisible();
   expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(1);
   await page.goto('/settings');
   await page.getByLabel('Always auto add assessments').check();

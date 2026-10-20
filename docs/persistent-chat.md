@@ -120,3 +120,8 @@ Answers render with Markdown/Prism and a bounded top-to-bottom reveal, with a co
 ## New exchange positioning
 
 `useChatScroll` groups messages by their user exchange and anchors newly sent questions below the floating controls. Only the current exchange receives a viewport-sized minimum height: the answer consumes that room as it grows, with no appended tail spacer and no second jump on completion. Exchange groups remain stable so attachments and assessment controls are not remounted during a send. Manual scrolling takes precedence, restored chats use their actual content height and open at the bottom, and earlier-page loading retains its scroll position. The disclaimer sits at the bottom of the conversation region, above the composer.
+
+
+## Unified files — 20 October 2026
+
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.

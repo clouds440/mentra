@@ -42,11 +42,12 @@ export function useVoiceInput(onText: (text: string) => void, disabled: boolean)
     resources.current.blob = blob;
     setPhase('processing'); setError(''); setCanRetry(false);
     const request = new AbortController(); resources.current.request = request;
-    const timeout = setTimeout(() => request.abort(), 25_000);
+    const timeout = setTimeout(() => request.abort(), 120_000);
     try {
-      const body = new FormData(); body.append('audio', blob, 'recording');
+      const { uploadFile } = await import('../../services/files');
+      const stored = await uploadFile(blob, 'recording', 'speech', request.signal);
       const result = await apiRequest<{ text: string; language: string }>('/api/v1/speech/transcriptions', {
-        method: 'POST', body, signal: request.signal,
+        method: 'POST', body: JSON.stringify({ file_id: stored.id }), signal: request.signal,
       });
       if (generation !== resources.current.generation) return;
       if (!result.text.trim()) throw new Error('No speech was detected. Please record again.');

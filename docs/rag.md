@@ -4,7 +4,7 @@ The Library and chat workflow is implemented. Upload owned material into a learn
 
 ## Runtime and startup
 
-Use the existing PostgreSQL URL and remote Qdrant configuration. The API and `rag-worker` use the same backend image and private `mentra_materials` volume. Set the normal chat provider variables for answers. Sources, parsing, English OCR and embeddings stay local; vectors and filter IDs go to Qdrant, and only selected excerpts go to the configured chat provider.
+Use the existing PostgreSQL URL and remote Qdrant configuration. The API and `rag-worker` use the same backend image and shared authenticated Cloudinary originals through Files. Set the normal chat provider variables for answers. Originals live in Cloudinary; parsing, English OCR and embeddings run locally; vectors and filter IDs go to Qdrant, and only selected excerpts go to the configured chat provider.
 
 ```bash
 docker compose up -d --build --force-recreate
@@ -99,3 +99,8 @@ through owned detail reads. Grounding still goes through the RAG service.
 context and three-MCQ preset; generating remains explicit. Citation readers first
 fetch the authorized chunk and validate document/version/generation identity,
 then offer full-source browsing. PDF page targeting is a browser-viewer hint.
+
+
+## Unified files — 20 October 2026
+
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.

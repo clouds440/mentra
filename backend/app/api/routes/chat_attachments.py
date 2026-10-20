@@ -1,8 +1,10 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, Response, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
+from app.files.schemas import FileReference
+from app.files.delivery import deliver
 
 def private_response(response: Response):
     response.headers['Cache-Control'] = 'no-store'
@@ -18,13 +20,8 @@ class LibraryAdmission(BaseModel):
 
 
 @router.post('')
-async def upload(request: Request, file: UploadFile = File(...), identity=Depends(require_onboarded_identity)):
-    try:
-        from app.db.admission import request_capacity
-        async with request_capacity(request, identity.learner_id, 'parse'):
-            return await run_in_threadpool(request.app.state.attachment_service.upload, identity.learner_id, file.file, file.filename)
-    finally:
-        await file.close()
+async def upload(request: Request, body: 'FileReference', identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.attachment_service.attach,identity.learner_id,str(body.file_id))
 
 
 @router.delete('/{identifier}', status_code=204)
@@ -47,12 +44,6 @@ async def library(identifier: UUID, body: LibraryAdmission, request: Request, id
 @router.get('/{identifier}/source')
 async def source(identifier: UUID, conversation_id: UUID, request: Request,
                  identity=Depends(require_onboarded_identity)):
-    from urllib.parse import quote
     original = await run_in_threadpool(request.app.state.attachment_service.original,
         identity.learner_id, str(identifier), str(conversation_id))
-    disposition = 'inline' if original['media_type'].startswith('image/') else 'attachment'
-    return Response(original['data'], media_type=original['media_type'], headers={
-        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
-        'Content-Disposition': f"{disposition}; filename*=UTF-8''{quote(original['filename'], safe='')}",
-        'Content-Security-Policy': "default-src 'none'; sandbox",
-    })
+    return await deliver(request,identity.learner_id,original['file_id'],original['binding_id'],'inline')

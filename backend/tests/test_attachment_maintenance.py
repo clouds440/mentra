@@ -7,6 +7,8 @@ from app.chat.repositories.postgres import ChatRepository
 from app.chat.repositories.tables import attachments
 from app.chat.schemas import SendTurn
 from testing.postgres import PostgresSandbox
+from testing.files import create_test_files
+from io import BytesIO
 from testing.identities import learner_id
 
 
@@ -14,9 +16,10 @@ class AttachmentMaintenanceTests(unittest.TestCase):
     def test_cleanup_is_bounded_and_preserves_bound_files(self):
         with PostgresSandbox() as db:
             owner = learner_id('alice')
-            repository = AttachmentRepository(db.sessions)
-            repository.create(owner, 'old.txt', b'old')
-            bound = repository.create(owner, 'bound.txt', b'bound')
+            files=create_test_files(db.sessions)
+            repository = AttachmentRepository(db.sessions,files)
+            repository.create(owner, 'old.txt', files.upload(owner,BytesIO(b'old'),'old.txt','chat','old'))
+            bound = repository.create(owner, 'bound.txt', files.upload(owner,BytesIO(b'bound'),'bound.txt','chat','bound'))
             ChatRepository(db.sessions).begin_turn(owner, SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(),
                 expected_revision=0, content='File', attachment_ids=[bound['id']]))
             with db.sessions.begin() as session:

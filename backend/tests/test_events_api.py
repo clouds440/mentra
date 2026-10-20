@@ -22,7 +22,7 @@ class EventsAPITests(unittest.TestCase):
         path = '/api/v1/events/' + event['id'] + '/calendar'
         response = self.client.get(path, headers=self.headers)
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('no-store',response.headers['cache-control'])
         self.assertIn('text/calendar', response.headers['content-type'])
         self.assertTrue(all(len(line) <= 75 for line in response.content.split(b'\r\n')))
         unfolded = response.text.replace('\r\n ', '')
@@ -52,6 +52,8 @@ class EventsAPITests(unittest.TestCase):
         register_exception_handlers(app)
         app.include_router(router, prefix='/api/v1')
         app.state.history_management = SimpleNamespace(events=create_events_service(self.db.sessions))
+        from testing.files import create_test_files
+        app.state.files_service=create_test_files(self.db.sessions)
         class Auth:
             def authenticate(self, token):
                 if token not in ('alice', 'bob', 'new'):

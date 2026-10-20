@@ -97,9 +97,10 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
   const files: { id: string; filename: string; size_bytes: number }[] = [];
   const items: Record<string, unknown>[] = [];
   const sent: Record<string, unknown>[] = [];
-  let uploads = 0, rejected = false, metadataReads = 0, sourceReads = 0, sourceUnavailable = preview?.sourceUnavailable ?? false;
+  let uploads = 0, staged = 0, rejected = false, metadataReads = 0, sourceReads = 0, sourceUnavailable = preview?.sourceUnavailable ?? false;
   const admitted = new Set<string>();
-  const snapshot = () => ({ conversation, items, has_more: false, next_cursor: null, turn: null });
+  let turn: unknown = null;
+  const snapshot = () => ({ conversation, items, has_more: false, next_cursor: null, turn });
   await page.route('**/api/v1/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     if (path.endsWith('/source')) {
@@ -114,6 +115,9 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
       onboarding_phase: 'complete', calibration_status: 'skipped', evaluation_status: 'not_started', version: 1, context_version: 1 };
     else if (path.endsWith('/conversations/sync')) body = { reset: false, cursor: conversation.revision, has_more: false, conversations: [conversation], deleted_ids: [], list_cursor: null };
     else if (path.endsWith('/status')) body = snapshot();
+    else if (path.endsWith('/files/uploads') && request.method() === 'POST') {
+      body = {id:`upload-${++staged}`,filename:`image-${staged}.png`,size_bytes:png.length,media_type:'image/png',state:'STAGED',purpose:'chat'};
+    }
     else if (path.endsWith('/chat-attachments') && request.method() === 'POST') {
       uploads++;
       if (failSecondUpload && uploads === 2 && !rejected) {
@@ -127,6 +131,7 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
       items.push({ id: `user-${sent.length}`, conversation_id: conversation.id, sequence: items.length + 1, role: 'user', content: payload.content,
         attachments: files.filter(file => payload.attachment_ids.includes(file.id)), created_at: conversation.created_at });
       items.push({ id: `reply-${sent.length}`, conversation_id: conversation.id, sequence: items.length + 1, role: 'assistant', content: 'Here is the image comparison.', created_at: conversation.created_at });
+      turn = {id:payload.client_turn_id,state:'SUCCEEDED',attempt:1,user_sequence:items.length-1,selection:payload.selection,error:null};
       conversation.revision++; conversation.message_count = items.length; body = snapshot();
     } else if (path.endsWith('/library') && request.method() === 'POST') {
       const id = files.find(file => path.includes(file.id))!.id; admitted.add(id);

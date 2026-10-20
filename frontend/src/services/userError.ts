@@ -36,6 +36,15 @@ export function materialWarningMessage(message: string): string {
 }
 
 export function errorMessage(status: number, code: string): string {
+  if (code === 'FILES_SIZE') return 'This file exceeds the upload size limit.';
+  if (code === 'FILES_EMPTY') return 'Choose a non-empty file.';
+  if (code === 'FILES_FORMAT') return 'This file format could not be read. Choose a supported file.';
+  if (code === 'FILES_NOT_FOUND') return 'This file is no longer available. Upload it again to continue.';
+  if (code === 'FILES_UNAVAILABLE') return 'File storage is temporarily unavailable. Please retry.';
+  if (code === 'FILES_PENDING') return 'This upload is still processing. Retry shortly.';
+  if (code === 'FILES_CAPACITY') return 'Finish or remove pending uploads before adding more files.';
+  if (code === 'FILES_BUSY') return 'File transfer capacity is busy. Please retry shortly.';
+  if (code === 'FILES_INTEGRITY') return 'This file could not be verified. Please retry the upload.';
   if (code === 'CHAT_SEARCH_BUSY') return 'This search took too long. Try a more specific phrase.';
   if (code === 'CHAT_SEARCH_QUERY_INVALID') return 'Use a search phrase of at most 200 characters.';
   if (code === 'ASSESSMENT_PRACTICE_DELETED') return 'This follow-up was deleted. Refresh the results before choosing new practice.';

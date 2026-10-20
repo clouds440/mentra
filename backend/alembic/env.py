@@ -18,6 +18,7 @@ from app.langchain.repositories import evidence_tables  # noqa: F401 - Register 
 from app.web_search.repositories import tables as web_search_tables  # noqa: F401 - Register domain tables.
 from app.db import admission as admission_tables  # noqa: F401 - Register domain tables.
 from app.db import health as health_tables  # noqa: F401 - Register domain tables.
+from app.files import tables as file_tables  # noqa: F401 - Register file registry.
 
 config = context.config
 

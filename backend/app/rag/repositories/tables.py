@@ -33,10 +33,12 @@ associations = Table('rag_document_context', metadata,
 versions = Table('rag_document_version', metadata,
     Column('id', Text, primary_key=True), owner(), Column('document_id', Text, nullable=False),
     Column('file_hash', Text, nullable=False), Column('media_type', Text, nullable=False),
-    Column('size_bytes', Integer, nullable=False), Column('storage_key', Text, nullable=False),
+    Column('size_bytes', Integer, nullable=False), Column('file_id', Uuid(as_uuid=False), nullable=False),
     Column('filename', Text, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
     Column('extracted_content', JSONB),
     owned_parent('rag_document', ['document_id'], ['id']), UniqueConstraint('learner_id', 'document_id', 'id'),
+    ForeignKeyConstraint(['learner_id', 'file_id'], ['file_asset.learner_id', 'file_asset.id']),
+    UniqueConstraint('learner_id','id',name='uq_rag_version_owner_id'),
     CheckConstraint('size_bytes > 0', name='size'))
 
 generations = Table('rag_generation', metadata,

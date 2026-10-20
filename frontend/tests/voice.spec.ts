@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/files/uploads', async route => {
+    expect(route.request().postData()).toContain('audio');
+    expect(route.request().postData()).toContain('speech');
+    await route.fulfill({json:{id:'11111111-1111-4111-8111-111111111111',filename:'voice.webm',size_bytes:5,media_type:'audio/webm',state:'STAGED',purpose:'speech'}});
+  });
   await page.addInitScript(() => {
     const track = { stop() {}, onended: null };
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, writable: true,
@@ -22,13 +27,13 @@ for (const width of [390, 1280]) test(`voice fills editable multilingual draft a
   await page.setViewportSize({ width, height: 844 });
   let requests = 0;
   await page.route('**/api/v1/speech/transcriptions', async route => {
-    requests++; expect(route.request().postData()).toContain('audio');
-    expect(route.request().postData()).not.toContain('name="language"');
+    requests++; expect(route.request().postDataJSON()).toEqual({file_id:'11111111-1111-4111-8111-111111111111'});
     await route.fulfill({ json: { text: 'مجھے Newton’s second law سمجھائیں۔', language: 'ur' } });
   });
   await page.goto('/tests/voice-harness.html');
   const input = page.getByRole('textbox', { name: 'Ask Mentra anything' });
   await input.fill('My draft:');
+  await input.blur();
   await expect(page.getByRole('combobox', { name: 'Spoken language' })).toHaveCount(0);
   const mic = page.getByRole('button', { name: 'Record voice message', exact: true });
   const send = page.getByRole('button', { name: 'Send message' });

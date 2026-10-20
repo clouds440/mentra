@@ -187,9 +187,14 @@ test('a second signed-in learner cannot fetch or ground chat with another learne
   const created = await page.request.post('http://127.0.0.1:18003/api/v1/learning-contexts', { headers, data: { name: 'Private course', activate: true } });
   expect(created.ok()).toBe(true);
   const context = await created.json();
-  const upload = await page.request.post('http://127.0.0.1:18003/api/v1/documents', { headers, multipart: {
-    context_ids: JSON.stringify([context.context_id]), idempotency_key: randomUUID(), title: 'Private notes',
+  const staged = await page.request.post('http://127.0.0.1:18003/api/v1/files/uploads', { headers, multipart: {
+    purpose: 'library', operation_key: randomUUID(),
     file: { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Private decorators wrap functions.') },
+  } });
+  expect(staged.ok()).toBe(true);
+  const stored = await staged.json();
+  const upload = await page.request.post('http://127.0.0.1:18003/api/v1/documents', { headers, data: {
+    file_id: stored.id, context_ids: [context.context_id], idempotency_key: randomUUID(), title: 'Private notes',
   } });
   expect(upload.status()).toBe(202); const material = await upload.json();
   const second = await browser.newContext();

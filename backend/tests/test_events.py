@@ -440,13 +440,14 @@ class EventPersistenceTests(unittest.TestCase):
                         'web_search_guard', 'web_search_call', 'web_search_cache', 'chat_summary',
                         'work_admission', 'request_rate', 'worker_health'}
         later_columns = {('chat_turn', 'attachment_ids'), ('rag_document_version', 'extracted_content'),
+                         ('rag_document_version', 'file_id'),
                          ('chat_turn', 'log_context'), ('rag_job', 'log_context')}
         def snapshots():
             with self.db.sessions() as session:
                 return {table.name: sorted(json.dumps(dict(row), sort_keys=True, default=str) for row in
                         session.execute(select(*(column for column in table.c if (table.name, column.name) not in later_columns))).mappings())
                         for table in metadata.sorted_tables
-                        if not table.name.startswith(('hm_event', 'notification_', 'checkpoint', 'assessment')) and table.name not in later_tables}
+                        if not table.name.startswith(('hm_event', 'notification_', 'checkpoint', 'assessment', 'file_')) and table.name not in later_tables}
         baseline = snapshots()
         with self.db.engine.connect() as connection:
             self.assertEqual(compare_metadata(MigrationContext.configure(connection), metadata), [])

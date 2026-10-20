@@ -1,4 +1,5 @@
 import { apiRequest } from './api';
+import { uploadFile } from './files';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData } from '../types/assessments';
 const base = '/api/v1/assessments';
 export const assessments = {
@@ -21,7 +22,7 @@ export const assessments = {
   attempt: (id: string, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${id}`, { signal }),
   saveDraft: (attempt: AssessmentAttempt, answers: Record<string, string>, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/draft`, { method: 'PUT', signal, body: JSON.stringify({ expected_revision: attempt.revision, answers }) }),
   submit: (attempt: AssessmentAttempt, answers: Record<string, string>, operation: string, confirmed: boolean, signal: AbortSignal, assistance: 'unknown' | 'independent' | 'assisted' = 'unknown') => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/submission`, { method: 'POST', signal, body: JSON.stringify({ expected_revision: attempt.revision, client_request_id: operation, answers, transcription_confirmed: confirmed, assistance }) }),
-  paper: (attempt: AssessmentAttempt, file: File, signal: AbortSignal) => { const body = new FormData(); body.append('file', file); body.append('expected_revision', String(attempt.revision)); return apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/source`, { method: 'POST', signal, body }); },
+  paper: async (attempt: AssessmentAttempt, file: File, signal: AbortSignal) => { const stored = await uploadFile(file, file.name, 'assessment', signal); return apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/source`, { method: 'POST', signal, body: JSON.stringify({ file_id: stored.id, expected_revision: attempt.revision }) }); },
   remove: (id: string, signal: AbortSignal) => apiRequest<void>(`${base}/${id}`, { method: 'DELETE', signal }),
   correct: (attempt: AssessmentAttempt, answers: Record<string,string>, operation: string, confirmed: boolean, signal: AbortSignal, assistance: 'unknown' | 'independent' | 'assisted' = 'unknown') => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/corrections`, { method:'POST', signal,body:JSON.stringify({expected_revision:attempt.revision,client_request_id:operation,answers,transcription_confirmed:confirmed,assistance}) }),
 };

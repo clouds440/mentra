@@ -17,6 +17,8 @@ from app.chat.schemas import SendTurn
 from app.core.exceptions import AppError
 from app.documents import DocumentContent
 from testing.postgres import PostgresSandbox
+from testing.files import create_test_files
+from PIL import Image
 from testing.identities import learner_id
 
 
@@ -46,10 +48,20 @@ class DurableOrchestrationTests(unittest.TestCase):
         cls.owner, cls.other = learner_id('alice'), learner_id('bob')
         cls.chat = ChatRepository(cls.db.sessions)
         cls.activity = ActivityRepository(cls.db.sessions)
-        cls.files = AttachmentRepository(cls.db.sessions)
+        cls.storage=create_test_files(cls.db.sessions)
+        cls.files = AttachmentRepository(cls.db.sessions,cls.storage)
 
     @classmethod
     def tearDownClass(cls): cls.db.close()
+
+    def create_file(self,owner,filename,data):
+        file=self.storage.upload(owner,io.BytesIO(data),filename,'chat',str(uuid4()))
+        return self.files.create(owner,filename,file)
+
+    @staticmethod
+    def png():
+        output=io.BytesIO();Image.new('RGB',(16,16),'blue').save(output,format='PNG')
+        return output.getvalue()
 
     def turn(self, ids=()):
         body = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0,
@@ -57,13 +69,13 @@ class DurableOrchestrationTests(unittest.TestCase):
         return body, self.chat.begin_turn(self.owner, body)
 
     def test_original_files_survive_reload_and_keep_owner_and_chat_authorization(self):
-        data = b'\x89PNG\r\n\x1a\n' + b'original file bytes'
-        saved = self.files.create(self.owner, 'study.png', data)
+        data = self.png()
+        saved = self.create_file(self.owner, 'study.png', data)
         body, job = self.turn([saved['id']])
-        service = AttachmentService(AttachmentRepository(self.db.sessions))
+        service = AttachmentService(AttachmentRepository(self.db.sessions,self.storage))
         original = service.original(self.owner, saved['id'], job['conversation_id'])
-        self.assertEqual(original['data'], data)
-        self.assertEqual(original['media_type'], 'image/png')
+        self.assertEqual(self.storage.read(self.owner,original['file_id']),data)
+        self.assertEqual(self.storage.metadata(self.owner,original['file_id'])['media_type'],'image/png')
         with self.assertRaises(AppError): service.original(self.other, saved['id'], job['conversation_id'])
         with self.assertRaises(AppError): service.original(self.owner, saved['id'], str(uuid4()))
         self.chat.finish(self.owner, job, dict(content='Read the file'))
@@ -72,10 +84,9 @@ class DurableOrchestrationTests(unittest.TestCase):
         self.chat.edit(self.owner, job['conversation_id'], page['conversation']['revision'], remove=True)
         with self.assertRaises(AppError): service.original(self.owner, saved['id'], job['conversation_id'])
 
-    def test_active_content_disguised_as_image_is_download_only(self):
-        saved = self.files.create(self.owner, 'fake.png', b'<html><script>private()</script></html>')
-        body, job = self.turn([saved['id']])
-        self.assertEqual(AttachmentService(self.files).original(self.owner, saved['id'], job['conversation_id'])['media_type'], 'application/octet-stream')
+    def test_active_content_disguised_as_image_rejects_before_storage(self):
+        with self.assertRaises(AppError):
+            self.create_file(self.owner,'fake.png',b'<html><script>private()</script></html>')
 
     def test_stop_and_original_http_contracts(self):
         from types import SimpleNamespace
@@ -92,14 +103,15 @@ class DurableOrchestrationTests(unittest.TestCase):
         register_exception_handlers(app)
         app.state.conversation_service = ConversationService(self.chat)
         app.state.attachment_service = AttachmentService(self.files)
+        app.state.files_service=self.storage
         app.dependency_overrides[require_onboarded_identity] = lambda: SimpleNamespace(learner_id=self.owner)
-        saved = self.files.create(self.owner, 'study file.png', b'\x89PNG\r\n\x1a\noriginal')
+        saved = self.create_file(self.owner, 'study file.png', self.png())
         body, job = self.turn([saved['id']])
         path = f"/chat-attachments/{saved['id']}/source?conversation_id={job['conversation_id']}"
         with TestClient(app) as client:
             original = client.get(path)
             self.assertEqual(original.status_code, 200)
-            self.assertEqual(original.headers['cache-control'], 'no-store')
+            self.assertIn('no-store',original.headers['cache-control'])
             self.assertEqual(original.headers['x-content-type-options'], 'nosniff')
             self.assertIn('study%20file.png', original.headers['content-disposition'])
             stopped = client.post(f"/conversations/{job['conversation_id']}/turns/{job['turn_id']}/stop", json={'attempt':1})
@@ -142,7 +154,7 @@ class DurableOrchestrationTests(unittest.TestCase):
         reader = Mock()
         reader.read.return_value = DocumentContent('txt', 'text/plain', [dict(text='Photosynthesis converts light energy.', page=2, method='ocr')], [], 'test-reader')
         service = AttachmentService(self.files, reader)
-        file = service.upload(self.owner, io.BytesIO(b'Photosynthesis'), 'lesson.txt')
+        file=self.create_file(self.owner,'lesson.txt',b'Photosynthesis')
         body, job = self.turn([file['id']])
         for _ in range(2): service.extract(self.owner, file['id'], job['conversation_id'])
         self.assertEqual(reader.read.call_count, 1)
@@ -164,8 +176,8 @@ class DurableOrchestrationTests(unittest.TestCase):
             self.assertIsNone(session.execute(select(attachments.c.id).where(attachments.c.id == file['id'])).first())
 
     def test_attachment_change_is_not_an_idempotent_turn_retry(self):
-        one = self.files.create(self.owner, 'one.txt', b'one')
-        two = self.files.create(self.owner, 'two.txt', b'two')
+        one = self.create_file(self.owner, 'one.txt', b'one')
+        two = self.create_file(self.owner, 'two.txt', b'two')
         body, job = self.turn([one['id']])
         with self.assertRaises(AppError) as error:
             self.chat.begin_turn(self.owner, body.model_copy(update={'attachment_ids': [two['id']]}))

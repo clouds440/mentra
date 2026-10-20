@@ -11,7 +11,8 @@ export default defineConfig({
   globalTeardown: './tests/auth-teardown.ts',
   fullyParallel: false,
   workers: 1,
-  timeout: 30_000,
+  timeout: Number(process.env.E2E_TEST_TIMEOUT_MS ?? 30_000),
+  expect: { timeout: Number(process.env.E2E_EXPECT_TIMEOUT_MS ?? 5_000) },
   use: {
     baseURL: 'http://127.0.0.1:15173',
     browserName: 'chromium',

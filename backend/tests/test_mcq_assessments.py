@@ -123,7 +123,8 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
             attempt=self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
             answers={ids[0]:'a',ids[1]:'b'} if mode=='interactive' else {ids[0]:'A supported explanation.',ids[1]:' B) '}
             if mode=='ocr':
-                attempt=self.service.upload_paper(self.owner,str(attempt.id),attempt.revision,BytesIO(b'paper'),'answers.txt')
+                file=self.files.upload(self.owner,BytesIO(b'paper'),'answers.txt','assessment','mcq-paper')
+                attempt=await self.service.upload_paper_with_vision(self.owner,str(attempt.id),attempt.revision,file['id'])
                 answers=attempt.extraction['answers']
             body=SubmitAnswers(expected_revision=attempt.revision,client_request_id=uuid4(),answers=answers,transcription_confirmed=mode=='ocr')
             if mode=='ocr':

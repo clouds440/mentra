@@ -8,6 +8,7 @@ x-database-budget: &database-budget
   DATABASE_LOCK_MS: ${DATABASE_LOCK_MS:-5000}
 
 x-runtime-settings: &runtime-settings
+  APP_ENV: ${APP_ENV:-development}
   LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-14}
   LOG_MAX_FILE_BYTES: ${LOG_MAX_FILE_BYTES:-67108864}
   LOG_QUEUE_BYTES: ${LOG_QUEUE_BYTES:-8388608}
@@ -26,6 +27,12 @@ x-runtime-settings: &runtime-settings
   PARSE_GLOBAL_CAPACITY: ${PARSE_GLOBAL_CAPACITY:-4}
   PARSE_OWNER_CAPACITY: ${PARSE_OWNER_CAPACITY:-1}
 
+x-files-settings: &file-settings
+  CLOUDINARY_URL: ${CLOUDINARY_URL:?Set server-only CLOUDINARY_URL for private file storage}
+  FILES_NAMESPACE: mentra
+  FILES_CONCURRENCY: ${FILES_CONCURRENCY:-8}
+  FILES_TIMEOUT_SECONDS: ${FILES_TIMEOUT_SECONDS:-60}
+
 x-retrieval-settings: &retrieval-settings
   EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
   EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
@@ -33,7 +40,6 @@ x-retrieval-settings: &retrieval-settings
   QDRANT_API_KEY: ${QDRANT_API_KEY:-}
   QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
   QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
-  RAG_STORAGE_DIR: /var/lib/mentra/materials
   RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
   RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
   RAG_HYBRID_ENABLED: ${RAG_HYBRID_ENABLED:-true}
@@ -95,7 +101,7 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     environment:
-      <<: [*database-budget, *runtime-settings, *model-settings]
+      <<: [*database-budget, *runtime-settings, *model-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -146,7 +152,6 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
-      RAG_STORAGE_DIR: /var/lib/mentra/materials
       RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
       RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
       RAG_HYBRID_ENABLED: ${RAG_HYBRID_ENABLED:-true}
@@ -163,7 +168,6 @@ services:
       OMP_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
       MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
     volumes:
-      - mentra_materials:/var/lib/mentra/materials
       - ./logs/backend:/var/log/mentra
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${BACKEND_PORT:-8000}/api/v1/health').read()"]
@@ -178,7 +182,7 @@ services:
     command: ["python", "-m", "app.rag.worker"]
     stop_grace_period: 150s
     environment:
-      <<: [*database-budget, *runtime-settings]
+      <<: [*database-budget, *runtime-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -196,7 +200,6 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
-      RAG_STORAGE_DIR: /var/lib/mentra/materials
       RAG_MAX_UPLOAD_BYTES: ${RAG_MAX_UPLOAD_BYTES:-26214400}
       RAG_STORAGE_QUOTA_BYTES: ${RAG_STORAGE_QUOTA_BYTES:-536870912}
       RAG_MAX_PAGES: ${RAG_MAX_PAGES:-200}
@@ -206,7 +209,6 @@ services:
       OMP_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
       MKL_NUM_THREADS: ${RAG_INFERENCE_THREADS:-2}
     volumes:
-      - mentra_materials:/var/lib/mentra/materials
       - ./logs/backend:/var/log/mentra
     depends_on:
       backend:
@@ -241,7 +243,7 @@ services:
     command: ["python", "-m", "app.assessments.worker"]
     stop_grace_period: 100s
     environment:
-      <<: [*database-budget, *runtime-settings, *model-settings, *retrieval-settings]
+      <<: [*database-budget, *runtime-settings, *model-settings, *retrieval-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -254,8 +256,19 @@ services:
       LOG_POLL_REQUESTS: ${LOG_POLL_REQUESTS:-false}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
     volumes:
-      - mentra_materials:/var/lib/mentra/materials
       - ./logs/backend:/var/log/mentra
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  files-worker:
+    image: mentra-backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.files.worker"]
+    environment:
+      <<: [*database-budget, *runtime-settings, *file-settings]
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
     depends_on:
       backend:
         condition: service_healthy
@@ -286,4 +299,3 @@ services:
 
 volumes:
   mentra_postgres:
-  mentra_materials:

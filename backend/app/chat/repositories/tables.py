@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Text, BigInteger, Integer, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column, LargeBinary
+from sqlalchemy import Table, Column, Text, BigInteger, Integer, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
@@ -71,10 +71,12 @@ TABLES = (*TABLES, activity)
 attachments = Table('chat_attachment', metadata,
     Column('id', Uuid(as_uuid=False), primary_key=True), owner(),
     Column('conversation_id', Uuid(as_uuid=False)), Column('filename', Text, nullable=False),
-    Column('data', LargeBinary, nullable=False), Column('extraction', JSONB),
+    Column('file_id', Uuid(as_uuid=False), nullable=False), Column('media_type', Text, nullable=False), Column('extraction', JSONB),
     Column('library_result', JSONB), Column('extraction_error', Text),
     Column('size_bytes', BigInteger, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
     ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
+    ForeignKeyConstraint(['learner_id', 'file_id'], ['file_asset.learner_id', 'file_asset.id']),
+    UniqueConstraint('learner_id','id',name='uq_chat_attachment_owner_id'),
     CheckConstraint('size_bytes > 0 AND size_bytes <= 26214400', name='chat_attachment_size'),
     Index('idx_chat_attachment_owner', 'learner_id', 'conversation_id'))
 TABLES = (*TABLES, attachments)

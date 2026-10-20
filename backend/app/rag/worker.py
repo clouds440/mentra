@@ -34,8 +34,6 @@ class IngestionWorker:
                 if job['operation'] == 'DELETE':
                     self.stage(job, 'deleting')
                     self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
-                    for key in self.repository.deletion_sources(job):
-                        self.service.storage.remove(key)
                     self.repository.complete_delete(job)
                     execution.outcome = 'success'
                     return True
@@ -48,11 +46,14 @@ class IngestionWorker:
                     self.stage(job, 'resuming')
                 else:
                     parsed = version.get('extracted_content')
-                    if parsed is None and job['request_hash'].startswith('embedding-reset:') and not self.service.storage.path(version['storage_key']).is_file():
-                        parsed = self.repository.retained_extraction(job['learner_id'], job['document_id'], version['id'])
                     if parsed is None:
-                        parsed = self.service.parser.parse(self.service.storage.path(version['storage_key']), version['media_type'],
-                            self.service.settings.rag_max_pages, self.service.settings.rag_parser_timeout)
+                        try:
+                            with self.service.files.materialize(job['learner_id'],version['file_id']) as path:
+                                parsed = self.service.parser.parse(path, version['media_type'],
+                                    self.service.settings.rag_max_pages, self.service.settings.rag_parser_timeout)
+                        except AppError as error:
+                            if error.code!='FILES_NOT_FOUND' or not job['request_hash'].startswith('embedding-reset:'): raise
+                            parsed=self.repository.retained_extraction(job['learner_id'],job['document_id'],version['id'])
                     else:
                         self.stage(job, 'reusing_extraction')
                     self.stage(job, 'chunking')
@@ -88,7 +89,7 @@ class IngestionWorker:
             except AppError as exc:
                 execution.outcome = 'failed'
                 if exc.code != 'RAG_LEASE_LOST':
-                    self.repository.fail(job, exc.message, False)
+                    self.repository.fail(job, exc.message, exc.status_code in (429,502,503,504))
             except Exception:
                 execution.outcome = 'failed'
                 logger.exception('RAG worker job failed: %s', job['id'])
@@ -106,7 +107,6 @@ class IngestionWorker:
             if row['id'] != row['active_generation_id']:
                 self.service.vector_store.delete_chunks(row['learner_id'], row['document_id'], row['id'])
                 self.repository.mark_reconciled(row['id'])
-        self.service.storage.sweep_unknown_batch(self.repository.referenced_storage_keys, age)
 
 
 def main():

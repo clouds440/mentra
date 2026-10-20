@@ -104,7 +104,9 @@ class ProductFollowupTests(unittest.IsolatedAsyncioTestCase):
                 command.downgrade(migration_config(connection), '20261015_0025')
         self.assertEqual(self.service.repository.detail(self.owner, str(child.id)), child)
         with self.db.engine.connect() as connection:
-            self.assertEqual(connection.scalar(text('SELECT version_num FROM alembic_version')), '20261017_0027')
+            from alembic.script import ScriptDirectory
+            self.assertEqual(connection.scalar(text('SELECT version_num FROM alembic_version')),
+                             ScriptDirectory.from_config(migration_config()).get_current_head())
         from app.chat.repositories.postgres import ChatRepository
         from app.chat.schemas import SendTurn
         conversation = str(uuid4())

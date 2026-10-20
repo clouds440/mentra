@@ -89,7 +89,10 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     qdrant_collection: str = ""
     qdrant_distance: str = "Cosine"
-    rag_storage_dir: str = "/var/lib/mentra/materials"
+    cloudinary_url: str = Field(default='', repr=False)
+    files_namespace: str = Field(default='mentra', pattern=r'^[a-zA-Z0-9_-]{1,50}$')
+    files_timeout_seconds: int = Field(default=60, ge=10, le=120)
+    files_concurrency: int = Field(default=8, ge=1, le=32)
     rag_max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1024)
     rag_max_pages: int = Field(default=200, ge=1, le=1000)
     rag_max_chunks: int = Field(default=5000, ge=1)

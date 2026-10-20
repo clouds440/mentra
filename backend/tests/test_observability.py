@@ -272,6 +272,7 @@ class LoggingTests(unittest.IsolatedAsyncioTestCase):
                 'create_rag_service':rag,'create_history_management':history,'get_session_factory':None,
             }.items():
                 patches.enter_context(patch.object(main,name,return_value=value))
+            patches.enter_context(patch('app.files.factory.create_files',return_value=SimpleNamespace(check_configuration=lambda:None,close=lambda:closed.append('files'))))
             patches.enter_context(patch('app.assessments.service.create_assessments',return_value=SimpleNamespace()))
             patches.enter_context(patch('app.history_management.events.proposal_service.create_event_proposals',return_value=SimpleNamespace()))
             patches.enter_context(patch('app.chat.attachments.create_document_reader',return_value=SimpleNamespace()))
@@ -282,7 +283,7 @@ class LoggingTests(unittest.IsolatedAsyncioTestCase):
             async with app.router.lifespan_context(app):
                 self.assertIs(app.state.rag_service,rag)
                 self.assertIsNone(current.get())
-        self.assertEqual(closed,['rag','vector'])
+        self.assertEqual(closed,['rag','files','vector'])
         startup=[event for event in self.events('workflow.completed') if event['workflow']=='backend.startup']
         self.assertEqual(startup[0]['outcome'],'success')
         self.assertEqual(len(self.events('process.stopped')),1)

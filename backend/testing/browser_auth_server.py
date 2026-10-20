@@ -18,12 +18,11 @@ from testing.profile_evaluator import UnavailableTestProfileEvaluator
 from pydantic import BaseModel
 from typing import Literal
 import asyncio
-import tempfile
 from qdrant_client import QdrantClient
 from app.learner.engine import LearnerEngine
 from app.rag.repositories.postgres import RAGRepository
 from app.rag.service import RAGService
-from app.rag.storage import FileStorage
+from testing.files import create_test_files
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.worker import IngestionWorker
 from app.api.routes.rag import router as rag_router
@@ -52,12 +51,13 @@ async def lifespan(application):
         PostgresIdentityRepository(database.sessions), ExternalTokenVerifier({}), admission=application.state.work_admission)
     application.state.student_profile_service = StudentProfileService(
         PostgresStudentProfileRepository(database.sessions), TestProfileEvaluator())
-    storage = tempfile.TemporaryDirectory()
+    files=create_test_files(database.sessions,settings)
+    application.state.files_service=files
     embedding = TestEmbedding()
     vector = QdrantVectorStore(settings.model_copy(update={'qdrant_url':'http://test', 'qdrant_api_key':'test', 'qdrant_collection':'browser'}),
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
-    application.state.rag_service = RAGService(RAGRepository(database.sessions), LearnerEngine(database.repository),
-        embedding, vector, FileStorage(storage.name), settings, admission=application.state.work_admission)
+    application.state.rag_service = RAGService(RAGRepository(database.sessions,files), LearnerEngine(database.repository),
+        embedding, vector, files, settings, admission=application.state.work_admission)
     llm = MentraLLM(HistoryChatFactory())
     from app.langchain.concept_identity import ConceptIdentityResolver
     application.state.learner_service = LearnerEngine(database.repository, generated_concept_resolver=ConceptIdentityResolver(llm))
@@ -70,13 +70,13 @@ async def lifespan(application):
     from app.history_management.events.proposal_service import create_event_proposals
     application.state.event_proposal_service = create_event_proposals(database.sessions, application.state.history_management.events)
     from app.assessments.service import create_assessments
-    application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service, application.state.student_profile_service)
+    application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service, application.state.student_profile_service,files=files)
     from app.assessments.worker import AssessmentWorker
     grading_worker = AssessmentWorker(application.state.assessment_service)
     from app.chat.attachments import AttachmentService
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
-    application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions), admission=application.state.work_admission)
+    application.state.attachment_service = AttachmentService(AttachmentRepository(database.sessions,files), admission=application.state.work_admission)
     from app.web_search import WebSearchService
     from app.web_search.repositories.postgres import UsageRepository
     from testing.web_search_provider import BrowserSearchProvider
@@ -107,7 +107,7 @@ async def lifespan(application):
         stopping.set()
         await task
         vector.close()
-        storage.cleanup()
+        files.close()
         cleanup_database()
 
 
@@ -122,6 +122,8 @@ app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin],
 app.include_router(auth_router, prefix='/api/v1')
 app.include_router(health_router, prefix='/api/v1')
 app.include_router(profile_router, prefix='/api/v1')
+from app.api.routes.files import router as files_router
+app.include_router(files_router,prefix='/api/v1')
 app.include_router(rag_router, prefix='/api/v1')
 app.include_router(chat_router, prefix='/api/v1')
 app.include_router(conversations_router, prefix='/api/v1')

@@ -158,3 +158,8 @@ and temporary schemas, never the application's database. Dated verification repo
   cancel the other build in a combined invocation; it is not an application-test failure.
 
 For code conventions, see [frontend/standards.md](../frontend/standards.md) and [backend/standards.md](../backend/standards.md).
+
+
+## Unified files — 20 October 2026
+
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.

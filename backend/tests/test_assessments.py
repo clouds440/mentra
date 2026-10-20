@@ -13,6 +13,7 @@ from app.learner.repositories.tables.evidence import learning_evidence
 from app.core.exceptions import AppError
 from testing.history_model import HistoryChatFactory
 from testing.postgres import PostgresSandbox
+from testing.files import create_test_files
 from testing.identities import learner_id
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'Requires dedicated database')
@@ -22,7 +23,8 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.owner,self.other=learner_id('alice'),learner_id('bob')
         self.learner=LearnerEngine(self.db.repository)
         context=self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner,name='Algebra'))
-        self.service=create_assessments(self.db.sessions,MentraLLM(HistoryChatFactory()),self.learner)
+        self.files=create_test_files(self.db.sessions)
+        self.service=create_assessments(self.db.sessions,MentraLLM(HistoryChatFactory()),self.learner,files=self.files)
         self.request=GenerationRequest(client_request_id=uuid4(),context_id=context.context_id,topic='Equations',concept_names=['Linear equations'],confirm_new_concepts=True,count=2)
 
     async def prepared(self):
@@ -79,7 +81,8 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         class Reader:
             def read(self,*args,**kwargs): return DocumentContent(format='text',media_type='text/plain',blocks=[{'text':'1. First answer\n2. Second answer','page':1,'method':'OCR'}],warnings=['OCR confidence is unknown'],reader_revision='test-ocr')
         self.service.reader=Reader()
-        extracted=self.service.upload_paper(self.owner,str(attempt.id),1,BytesIO(b'answers'),'answers.txt')
+        file=self.files.upload(self.owner,BytesIO(b'answers'),'answers.txt','assessment','paper')
+        extracted=await self.service.upload_paper_with_vision(self.owner,str(attempt.id),1,file['id'])
         self.assertEqual(extracted.state,'pending_transcription')
         self.assertIsNone(extracted.extraction['extraction_confidence'])
         self.assertFalse(await run_assessment_pipeline(self.service))
@@ -246,13 +249,15 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.learner.review_owned_candidate(self.owner,candidates[0]['id']).id,concept.id)
         self.assertFalse(self.learner.get_pending_concepts(self.owner))
 
-    async def test_blob_is_excluded_from_routine_attempt_reads(self):
+    async def test_original_bytes_are_external_to_attempt_rows(self):
         assessment,attempt=await self.prepared()
         from app.assessments.repositories.tables import attempts
-        from sqlalchemy import update
-        with self.db.sessions.begin() as session:
-            session.execute(update(attempts).where(attempts.c.id==str(attempt.id)).values(source=b'x'*1024))
+        file=self.files.upload(self.owner,BytesIO(b'x'*1024),'answers.txt','assessment','external-source')
+        self.service.repository.store_extraction(self.owner,str(attempt.id),attempt.revision,{},file['id'],'answers.txt')
+        self.assertNotIn('source',attempts.c)
         with self.db.sessions() as session:
             internal=self.service.repository._attempt(session,self.owner,str(attempt.id))
             self.assertNotIn('source',internal)
+            self.assertEqual(internal['source_file_id'],file['id'])
+        self.assertEqual(self.files.read(self.owner,file['id']),b'x'*1024)
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).id,attempt.id)

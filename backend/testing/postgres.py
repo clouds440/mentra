@@ -18,33 +18,58 @@ from testing.identities import TEST_LEARNERS, learner_id
 
 class PostgresSandbox:
     def __init__(self, *, seed_learners=True):
-        url = os.environ.get('TEST_DATABASE_URL', '')
+        url = os.environ.get("TEST_DATABASE_URL", "")
         if not url:
-            raise RuntimeError('Set TEST_DATABASE_URL to a dedicated PostgreSQL test database; DATABASE_URL is never used for tests')
-        self.schema = 'mentra_test_' + uuid4().hex
-        self.admin = build_engine(url, connect_args={'connect_timeout': 5})
+            raise RuntimeError(
+                "Set TEST_DATABASE_URL to a dedicated PostgreSQL test database; DATABASE_URL is never used for tests"
+            )
+        self.schema = "mentra_test_" + uuid4().hex
+        self.admin = build_engine(url, connect_args={"connect_timeout": 5})
         with self.admin.begin() as connection:
             connection.execute(CreateSchema(self.schema))
-        self.engine = build_engine(postgres_url(url).update_query_dict({'options': '-csearch_path=' + self.schema}).render_as_string(hide_password=False), connect_args={'connect_timeout': 5})
+        self.engine = build_engine(
+            postgres_url(url)
+            .update_query_dict({"options": "-csearch_path=" + self.schema})
+            .render_as_string(hide_password=False),
+            connect_args={"connect_timeout": 5},
+        )
         self.connections = 0
-        event.listen(self.engine, 'checkout', self._checkout)
+        event.listen(self.engine, "checkout", self._checkout)
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
         self.repository = PostgresLearnerRepository(self.sessions)
         try:
             upgrade(self.engine)
             if seed_learners:
                 with self.engine.begin() as connection:
-                    connection.execute(learner.insert(), [{'id': learner_id(name)} for name in TEST_LEARNERS])
+                    connection.execute(
+                        learner.insert(),
+                        [{"id": learner_id(name)} for name in TEST_LEARNERS],
+                    )
         except Exception:
             self.close()
             raise
 
     def _checkout(self, *args):
         self.connections += 1
+        # Poolers may ignore startup `options`. Pin and verify the schema on
+        # every checkout so fixtures can never fall through to public tables.
+        connection = args[0]
+        autocommit = connection.autocommit
+        connection.autocommit = True
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    'SET search_path TO "' + self.schema + '"; SELECT current_schema()'
+                )
+                cursor.nextset()
+                if cursor.fetchone()[0] != self.schema:
+                    raise RuntimeError("Test schema isolation failed")
+        finally:
+            connection.autocommit = autocommit
 
     def close(self):
-        if not re.fullmatch(r'mentra_test_[0-9a-f]{32}', self.schema):
-            raise RuntimeError('Refusing to drop an unrecognized test schema')
+        if not re.fullmatch(r"mentra_test_[0-9a-f]{32}", self.schema):
+            raise RuntimeError("Refusing to drop an unrecognized test schema")
         self.engine.dispose()
         with self.admin.begin() as connection:
             connection.execute(DropSchema(self.schema, cascade=True))

@@ -9,29 +9,14 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class AttachmentService:
-    def __init__(self, repository, reader=None, maximum=25 * 1024 * 1024, admission=None):
+    def __init__(self, repository, reader=None, maximum=25 * 1024 * 1024, admission=None, files=None):
         self.repository, self.reader, self.maximum = repository, reader or create_document_reader(), maximum
         self.admission = admission
+        self.files = files or repository.files
 
-    def upload(self, owner, stream, filename):
-        filename = Path((filename or 'attachment').replace('\\', '/')).name[:200]
-        data = stream.read(self.maximum + 1)
-        if not data:
-            raise AppError('CHAT_EMPTY_FILE', 'Choose a non-empty file.', 422)
-        if len(data) > self.maximum:
-            raise AppError('CHAT_FILE_TOO_LARGE', 'This file exceeds the upload size limit.', 413)
-        if self._image_media(data):
-            from app.vision.chat_images import prepare_chat_image
-            prepare_chat_image(data)
-            return self.repository.create(owner, filename, data)
-        with TemporaryDirectory(prefix='mentra-chat-check-') as directory:
-            path = Path(directory) / 'source'
-            path.write_bytes(data)
-            try:
-                self.reader.detect(path, filename)
-            except DocumentReadError as error:
-                raise AppError('CHAT_UNSUPPORTED_FILE', str(error), 422) from None
-        return self.repository.create(owner, filename, data)
+    def attach(self, owner, file_id):
+        file=self.files.metadata(owner,file_id,'chat')
+        return self.repository.create(owner,file['filename'],file)
 
     def extract(self, owner, identifier, conversation_id):
         if self.admission:
@@ -43,11 +28,9 @@ class AttachmentService:
         row = self.repository.read(owner, identifier, conversation_id)
         if row['extraction'] is not None and row['extraction'].get('reader_revision') != 'chat-image-direct-v1':
             return row['extraction']
-        with TemporaryDirectory(prefix='mentra-chat-') as directory:
-            path = Path(directory) / 'source'
-            path.write_bytes(row['data'])
+        with self.files.materialize(owner,row['file_id']) as path, TemporaryDirectory(prefix='mentra-chat-') as directory:
             reader_filename = row['filename']
-            if self._image_media(row['data']) in ('image/gif', 'image/webp'):
+            if row['media_type'] in ('image/gif', 'image/webp'):
                 from PIL import Image, ImageOps
                 with Image.open(path) as image:
                     converted = ImageOps.exif_transpose(image).convert('RGB')
@@ -67,11 +50,11 @@ class AttachmentService:
     def image_input(self, owner, identifier, conversation_id):
         """Authorize first, then prepare raster bytes; documents retain their reader."""
         row = self.repository.read(owner, identifier, conversation_id)
-        media = self._image_media(row['data']) or 'application/octet-stream'
+        media = row['media_type']
         if not media.startswith('image/'):
             return None
         from app.vision.chat_images import prepare_chat_image
-        block = prepare_chat_image(row['data'])
+        block = prepare_chat_image(self.files.read(owner,row['file_id']))
         if row['extraction'] is None:
             self.repository.save_extraction(owner, identifier, conversation_id, dict(
                 id=identifier, filename=row['filename'], format=media.split('/')[1], media_type=media,
@@ -79,7 +62,6 @@ class AttachmentService:
         return dict(id=identifier, filename=row['filename'], block=block)
 
     def add_to_library(self, owner, identifier, conversation_id, context_ids, rag):
-        from io import BytesIO
         row = self.repository.read(owner, identifier, conversation_id)
         if row['library_result']:
             self._validate_library_result(owner, row['library_result'], context_ids, rag)
@@ -89,7 +71,7 @@ class AttachmentService:
             row = self.repository.read(owner, identifier, conversation_id)
         if row['extraction'] is None:
             raise AppError('CHAT_EXTRACTION_PENDING', 'Wait until the file has been read before adding it to Library.', 409)
-        result = rag.accept_extracted(owner, source=BytesIO(row['data']), filename=row['filename'],
+        result = rag.accept_extracted(owner, file_id=row['file_id'], filename=row['filename'],
             title=row['filename'], context_ids=context_ids, key='chat-attachment:' + identifier, extracted=row['extraction'])
         self._validate_library_result(owner, result, context_ids, rag)
         self.repository.link_library(owner, identifier, result)
@@ -109,19 +91,7 @@ class AttachmentService:
 
     def original(self, owner, identifier, conversation_id):
         row = self.repository.read(owner, identifier, conversation_id)
-        data = row['data']
-        # Only recognized raster bytes may render inline. Documents/HTML/SVG
-        # remain downloads, independent of the untrusted filename extension.
-        media = self._image_media(data) or 'application/octet-stream'
-        return dict(data=data, media_type=media, filename=row['filename'])
-
-    @staticmethod
-    def _image_media(data):
-        if data.startswith(b'\x89PNG\r\n\x1a\n'): return 'image/png'
-        if data.startswith(b'\xff\xd8\xff'): return 'image/jpeg'
-        if data.startswith((b'GIF87a', b'GIF89a')): return 'image/gif'
-        if data[:4] == b'RIFF' and data[8:12] == b'WEBP': return 'image/webp'
-        return None
+        return dict(file_id=row['file_id'],binding_id=self.files.binding(owner,row['file_id'],'chat',dict(chat_attachment_id=identifier)))
 
     @staticmethod
     def context(extracted, query, maximum=8000):

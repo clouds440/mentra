@@ -1,4 +1,5 @@
-import { apiRequest, apiBlob, ApiError } from './api';
+import { apiRequest, ApiError } from './api';
+import { uploadFile, downloadFile } from './files';
 import type { MaterialList, MaterialDocument, MaterialVersion, MaterialJob, LearningContext, UploadResult, RAGCapabilities, SourceChunk } from '../types/rag';
 
 const path = (id: string) => `/api/v1/documents/${encodeURIComponent(id)}`;
@@ -17,10 +18,10 @@ export async function listContexts(signal?: AbortSignal): Promise<LearningContex
 }
 export const createContext = (name: string, activate: boolean, signal?: AbortSignal) => apiRequest<LearningContext>('/api/v1/learning-contexts', { method: 'POST', body: JSON.stringify({ name, activate }), signal });
 export const transitionContext = (id: string, status: string) => apiRequest<LearningContext>(`/api/v1/learning-contexts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) });
-export function uploadMaterial(file: File, title: string, contextIds: string[], key: string, signal?: AbortSignal, replacement?: MaterialDocument) {
-  const body = new FormData();
-  body.append('file', file); body.append('title', title); body.append('context_ids', JSON.stringify(contextIds)); body.append('idempotency_key', key);
-  if (replacement) body.append('expected_revision', String(replacement.revision));
+export async function uploadMaterial(file: File, title: string, contextIds: string[], key: string, signal?: AbortSignal, replacement?: MaterialDocument) {
+  const stored = await uploadFile(file, file.name, 'library', signal);
+  const body = JSON.stringify(replacement ? { file_id: stored.id, expected_revision: replacement.revision, idempotency_key: key }
+    : { file_id: stored.id, title, context_ids: contextIds, idempotency_key: key });
   return apiRequest<UploadResult>(replacement ? `${path(replacement.id)}/versions` : '/api/v1/documents', { method: 'POST', body, signal });
 }
 export const updateMaterial = (doc: MaterialDocument, values: { title?: string; archived?: boolean; context_ids?: string[] }) => apiRequest<MaterialDocument>(path(doc.id), { method: 'PATCH', body: JSON.stringify({ expected_revision: doc.revision, ...values }) });
@@ -29,7 +30,7 @@ export const reindexMaterial = (doc: MaterialDocument) => apiRequest<MaterialJob
 export const retryJob = (id: string) => apiRequest<MaterialJob>(`/api/v1/rag/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST' });
 export const tagMaterial = (doc: MaterialDocument, labels: string[]) => apiRequest<{ document: MaterialDocument; unresolved_labels: string[] }>(`${path(doc.id)}/concepts`, { method: 'POST', body: JSON.stringify({ expected_revision: doc.revision, labels }) });
 const versionPath = (id: string, version: string) => `${path(id)}/versions/${encodeURIComponent(version)}`;
-export const downloadSource = (id: string, version: string, archived: boolean, signal?: AbortSignal) => apiBlob(`${versionPath(id, version)}/source?include_archived=${archived}`, signal);
+export const downloadSource = (id: string, version: string, archived: boolean, signal?: AbortSignal) => downloadFile(`${versionPath(id, version)}/source?include_archived=${archived}`, signal);
 export const getSourceChunks = (id: string, version: string, archived: boolean, signal?: AbortSignal, offset = 0, generation?: string) => apiRequest<SourceChunk[]>(`${versionPath(id, version)}/chunks?include_archived=${archived}&offset=${offset}${generation ? `&generation_id=${encodeURIComponent(generation)}` : ''}`, { signal });
 export const getSourceChunk = (id: string, archived: boolean, signal?: AbortSignal) => apiRequest<SourceChunk & { document_id: string; version_id: string; generation_id: string }>(`/api/v1/rag/chunks/${encodeURIComponent(id)}?include_archived=${archived}`, { signal });
 export const pendingJob = (doc: MaterialDocument) => doc.jobs.find(j => ['QUEUED', 'RUNNING', 'RETRY_WAIT'].includes(j.state));

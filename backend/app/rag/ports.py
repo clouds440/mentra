@@ -1,22 +1,6 @@
 """Ports used by current ingestion; adapters retain their own file/tool details."""
 from pathlib import Path
-from typing import BinaryIO, Protocol, TypedDict, Any, NotRequired
-
-
-class StoredBlob(TypedDict):
-    storage_key: str
-    size_bytes: int
-    file_hash: str
-    media_type: NotRequired[str]
-
-
-class PrivateSourceStorage(Protocol):
-    def store(self, file: BinaryIO, maximum: int) -> StoredBlob: ...
-    def staged_store(self, file: BinaryIO, maximum: int): ...
-    def path(self, key: str) -> Path: ...
-    def remove(self, key: str) -> None: ...
-    def sweep_unknown(self, known_keys: set[str], minimum_age: int) -> None: ...
-    def sweep_unknown_batch(self, referenced_keys, minimum_age: int, batch_size: int = 100) -> None: ...
+from typing import Protocol, Any
 
 
 class DocumentParser(Protocol):

@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, LargeBinary, Boolean
+from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 
@@ -28,7 +28,7 @@ attempts = Table('assessment_attempt', metadata,
     Column('attempt_number', Integer, nullable=False), Column('revision', BigInteger, nullable=False),
     Column('state', Text, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
     Column('submitted_at', DateTime(timezone=True)), Column('answers', JSONB, nullable=False), Column('grades', JSONB),
-    Column('extraction', JSONB), Column('source', LargeBinary), Column('filename', Text),
+    Column('extraction', JSONB), Column('source_file_id', Uuid(as_uuid=False)), Column('filename', Text),
     Column('submission_id', Uuid(as_uuid=False)), Column('submission_hash', Text),
     Column('grading_progress', JSONB, nullable=False, server_default='{}'),
     Column('retry_request_id', Uuid(as_uuid=False)),
@@ -44,6 +44,8 @@ attempts = Table('assessment_attempt', metadata,
     Column('chat_inputs', JSONB, nullable=False, server_default='{}'),
     ForeignKeyConstraint(['learner_id', 'assessment_id'], ['assessment.learner_id', 'assessment.id'], ondelete='CASCADE'),
     UniqueConstraint('learner_id', 'operation_id'),
+    ForeignKeyConstraint(['learner_id', 'source_file_id'], ['file_asset.learner_id', 'file_asset.id']),
+    UniqueConstraint('learner_id','id',name='uq_assessment_attempt_owner_id'),
     CheckConstraint("revision >= 1 AND attempt_number >= 1 AND worker_attempts BETWEEN 0 AND 3 AND state IN ('draft','pending_transcription','submitted','grading','graded','failed')", name='assessment_attempt_state'),
     CheckConstraint("evidence_status IN ('pending','applied','partial','unavailable','none')", name='assessment_evidence_state'),
     CheckConstraint("assistance IN ('unknown','independent','assisted')", name='assessment_assistance'),

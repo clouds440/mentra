@@ -23,7 +23,7 @@ from app.rag.embedding_process import ProcessEmbeddingService as SentenceTransfo
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.vector_store import VectorStore
 from app.rag.factory import create_rag_service
-from app.rag.upload_limit import MaterialUploadLimit
+from app.files.upload_limit import FileUploadLimit
 from app.history_management.factory import create_history_management
 from app.speech.service import SpeechService
 from starlette.concurrency import run_in_threadpool
@@ -39,6 +39,9 @@ def create_app() -> FastAPI:
         try:
             with workflow_logger.workflow('backend.startup') as startup:
                 init_db()
+                from app.files.factory import create_files
+                application.state.files_service=create_files()
+                application.state.files_service.check_configuration()
                 application.state.speech_service = SpeechService(settings)
                 if settings.speech_warm_on_startup:
                     try:
@@ -57,7 +60,7 @@ def create_app() -> FastAPI:
                 application.state.auth_service = create_auth_service()
                 application.state.student_profile_service = create_student_profile_service(model_factory, application.state.llm)
                 application.state.vector_store = vector_store
-                application.state.rag_service = create_rag_service(application.state.learner_service, embedding_service, vector_store)
+                application.state.rag_service = create_rag_service(application.state.learner_service, embedding_service, vector_store,application.state.files_service)
                 application.state.model_factory = model_factory
                 application.state.chat_service = ChatService(application.state.llm)
                 from app.web_search.factory import create_web_search
@@ -73,11 +76,11 @@ def create_app() -> FastAPI:
                 application.state.event_proposal_service = create_event_proposals(get_session_factory(), application.state.history_management.events,application.state.llm)
                 from app.assessments.service import create_assessments
                 application.state.assessment_service = create_assessments(get_session_factory(), application.state.llm,
-                    application.state.learner_service, application.state.rag_service, application.state.student_profile_service)
+                    application.state.learner_service, application.state.rag_service, application.state.student_profile_service,files=application.state.files_service)
                 from app.langchain.orchestration_service import OrchestrationService
                 from app.chat.attachments import AttachmentService
                 from app.chat.repositories.attachments import AttachmentRepository
-                application.state.attachment_service = AttachmentService(AttachmentRepository(get_session_factory()),
+                application.state.attachment_service = AttachmentService(AttachmentRepository(get_session_factory(),application.state.files_service),
                     admission=application.state.work_admission)
                 application.state.orchestration_service = OrchestrationService(application.state.chat_service,
                     rag=application.state.rag_service, learner=application.state.learner_service,
@@ -96,6 +99,8 @@ def create_app() -> FastAPI:
                 await application.state.web_search_service.close()
             if hasattr(application.state, 'rag_service'):
                 application.state.rag_service.close()
+            if hasattr(application.state,'files_service'):
+                application.state.files_service.close()
             if vector_store is not None:
                 vector_store.close()
             close_embedding = getattr(getattr(application.state, 'embedding_service', None), 'close', None)
@@ -115,9 +120,7 @@ def create_app() -> FastAPI:
     from app.core.http_privacy import PrivateApiResponses
     app.add_middleware(PrivateApiResponses)
 
-    app.add_middleware(MaterialUploadLimit, maximum=settings.rag_max_upload_bytes)
-    from app.speech.upload_limit import SpeechUploadLimit
-    app.add_middleware(SpeechUploadLimit, maximum=settings.speech_max_upload_bytes)
+    app.add_middleware(FileUploadLimit, maximum=max(25*1024*1024,settings.rag_max_upload_bytes,settings.speech_max_upload_bytes))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins + [settings.frontend_origin],

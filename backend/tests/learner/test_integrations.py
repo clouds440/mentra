@@ -15,6 +15,7 @@ from app.learner.calibration import CalibrationRequest
 from app.learner.evaluation import Prediction, evaluate_predictions
 from app.learner.repositories import PostgresLearnerRepository
 from testing.postgres import PostgresSandbox
+from testing.files import create_test_files
 from app.rag.learner_scope import resolve_retrieval_scope
 
 
@@ -179,7 +180,8 @@ class LearnerIntegrationTests(unittest.TestCase):
         from app.main import create_app
 
         with (patch.object(database, 'get_engine', return_value=self.db.engine),
-              patch('app.main.SentenceTransformerEmbeddingService'), patch('app.main.QdrantVectorStore')):
+              patch('app.main.SentenceTransformerEmbeddingService'), patch('app.main.QdrantVectorStore'),
+              patch('app.files.factory.create_files', return_value=create_test_files(self.db.sessions))):
             application = create_app()
             with TestClient(application):
                 learner = application.state.learner_service

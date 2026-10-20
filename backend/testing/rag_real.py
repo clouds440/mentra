@@ -19,7 +19,7 @@ from app.rag.embeddings import SentenceTransformerEmbeddingService
 from app.rag.qdrant_store import QdrantVectorStore
 from app.rag.repositories.postgres import RAGRepository
 from app.rag.service import RAGService
-from app.rag.storage import FileStorage
+from testing.files import create_test_files
 from app.rag.worker import IngestionWorker
 from app.rag.schemas import SearchRequest
 from app.rag.evaluation import evaluate
@@ -75,7 +75,8 @@ def main():
         learner = LearnerEngine(database.repository)
         owner = learner_id(TEST_LEARNERS[0])
         context = learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=owner, name='Python', activate=True))
-        service = RAGService(RAGRepository(database.sessions), learner, embedding, vector, FileStorage(folder), settings)
+        files=create_test_files(database.sessions,settings)
+        service = RAGService(RAGRepository(database.sessions,files), learner, embedding, vector, files, settings)
         worker = IngestionWorker(service)
         report['parser_revision'] = service.parser.version
         reranker = service.reranker
@@ -85,7 +86,8 @@ def main():
         try:
             for number, (suffix, data) in enumerate(formats()):
                 started = time.monotonic()
-                accepted = service.accept_upload(owner, io.BytesIO(data), f'fixture-{number}.{suffix}', f'Fixture {number}', [context.context_id], str(uuid4()))
+                file=files.upload(owner,io.BytesIO(data),f'fixture-{number}.{suffix}','library',str(uuid4()))
+                accepted = service.accept_upload(owner,file['id'],f'Fixture {number}',[context.context_id],str(uuid4()))
                 worker.run_once()
                 job = service.repository.get_job(owner, accepted['job_id'])
                 if job['state'] != 'SUCCEEDED':
@@ -111,7 +113,8 @@ def main():
             ]
             ids = {}
             for label, text in corpus:
-                accepted = service.accept_upload(owner, io.BytesIO(text.encode()), label + '.txt', label, [context.context_id], label)
+                file=files.upload(owner,io.BytesIO(text.encode()),label+'.txt','library',label)
+                accepted = service.accept_upload(owner,file['id'],label,[context.context_id],label)
                 worker.run_once(); ids[label] = accepted['document_id']
             items = json.loads((Path(__file__).with_name('rag_corpus.json')).read_text())
             for label, hybrid, ranker in [('dense',False,None), ('hybrid',True,None)] + ([('reranked',True,reranker)] if reranker else []):

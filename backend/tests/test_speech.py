@@ -16,7 +16,7 @@ from app.core.exception_handlers import register_exception_handlers
 from app.core.exceptions import AppError
 from app.speech.engine import decode_audio, FasterWhisperEngine
 from app.speech.service import SpeechService
-from app.speech.upload_limit import SpeechUploadLimit
+from app.files.upload_limit import FileUploadLimit
 
 
 def echo_worker(connection, config):
@@ -128,37 +128,28 @@ class SpeechTests(unittest.TestCase):
                 transcribe.assert_called_once()
                 self.assertIsNone(transcribe.call_args.kwargs['language'])
 
-    def test_api_auth_origin_validation_and_no_store(self):
-        app = FastAPI(); register_exception_handlers(app)
-        app.include_router(router, prefix='/api/v1')
-        app.add_middleware(SpeechUploadLimit, maximum=1024)
+    def test_http_auth_origin_and_json_file_reference(self):
+        app=FastAPI();register_exception_handlers(app)
+        app.include_router(router,prefix='/api/v1')
         class Auth:
-            def authenticate(self, token):
-                if token != 'valid': raise AuthenticationError()
-                return SimpleNamespace(learner_id='test')
-        class Service:
-            maximum = 16384
-            def transcribe(self, data, language):
-                if len(data) > self.maximum: raise AppError('SPEECH_SIZE', 'Too large', 413)
-                return dict(text='مجھے equation سمجھائیں', language=language or 'ur', language_probability=0.9,
-                            duration_seconds=0.3, processing_seconds=0.1)
-        app.state.auth_service = Auth(); app.state.speech_service = Service()
-        with TestClient(app) as client:
-            url = '/api/v1/speech/transcriptions'
-            headers = {'Authorization': 'Bearer valid'}
-            file = {'audio': ('voice.wav', wav(), 'audio/wav')}
-            self.assertEqual(client.post(url, files=file).status_code, 401)
-            result = client.post(url, files=file, headers=headers, data={'language':'ur'})
-            self.assertEqual(result.status_code, 200, result.text)
-            self.assertEqual(result.headers['cache-control'], 'no-store')
-            self.assertIn('equation', result.json()['text'])
-            # Product voice input always auto-detects, even with an unsolicited language field.
-            forced = client.post(url, files=file, headers=headers, data={'language':'ar'})
-            self.assertEqual(forced.json()['language'], 'ur')
-            self.assertEqual(client.post(url, files={'audio': ('x.txt', b'x', 'text/plain')}, headers=headers).status_code, 415)
-            self.assertEqual(client.post(url, content=b'x' * 70000, headers=headers).status_code, 413)
-            client.cookies.set('mentra_session', 'valid')
-            self.assertEqual(client.post(url, files=file, headers={'Origin':'https://attacker.example'}).status_code, 403)
+            def authenticate(self,token):
+                if token!='valid':raise AuthenticationError()
+                return SimpleNamespace(learner_id='student-1')
+        app.state.auth_service=Auth()
+        app.state.files_service=object();app.state.speech_service=object()
+        result=dict(text='Explain this equation',language='ur',language_probability=0.9,duration_seconds=0.3,processing_seconds=0.1)
+        from uuid import uuid4
+        body={'file_id':str(uuid4())}
+        with TestClient(app) as client,patch('app.api.routes.speech.transcribe_file',return_value=result) as call:
+            url='/api/v1/speech/transcriptions';headers={'Authorization':'Bearer valid'}
+            self.assertEqual(client.post(url,json=body).status_code,401)
+            response=client.post(url,json=body,headers=headers)
+            self.assertEqual(response.status_code,200,response.text)
+            self.assertEqual(response.json()['language'],'ur')
+            self.assertEqual(call.call_args.args[-1],body['file_id'])
+            self.assertEqual(client.post(url,json={**body,'language':'ar'},headers=headers).status_code,422)
+            client.cookies.set('mentra_session','valid')
+            self.assertEqual(client.post(url,json=body,headers={'Origin':'https://attacker.example'}).status_code,403)
 
     def test_chunked_transport_size_limit(self):
         import asyncio
@@ -170,5 +161,5 @@ class SpeechTests(unittest.TestCase):
                          {'type':'http.request', 'body':b'x' * 40000, 'more_body':False}])
         async def receive(): return next(messages)
         async def send(message): sent.append(message)
-        asyncio.run(SpeechUploadLimit(app, 1024)({'type':'http', 'path':'/api/v1/speech/transcriptions', 'headers':[]}, receive, send))
+        asyncio.run(FileUploadLimit(app, 1024)({'type':'http', 'method':'POST', 'path':'/api/v1/files/uploads', 'headers':[]}, receive, send))
         self.assertEqual(sent[0]['status'], 413)

@@ -3,7 +3,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.api.routes.rag import router
 from app.core.exception_handlers import register_exception_handlers
-from app.rag.upload_limit import MaterialUploadLimit
+from app.files.upload_limit import FileUploadLimit
+from app.api.routes.files import router as files_router
 from app.student_profile.dependencies import require_onboarded_identity
 
 
@@ -12,8 +13,9 @@ class APIBoundaryTests(unittest.TestCase):
         app = FastAPI()
         app.state.rag_service = object()
         register_exception_handlers(app)
-        app.add_middleware(MaterialUploadLimit, maximum=1024)
+        app.add_middleware(FileUploadLimit, maximum=1024)
         app.include_router(router, prefix='/api/v1')
+        app.include_router(files_router,prefix='/api/v1')
         app.dependency_overrides[require_onboarded_identity] = lambda: None
         self.client = TestClient(app)
 
@@ -23,14 +25,14 @@ class APIBoundaryTests(unittest.TestCase):
         self.assertIn('error', response.json())
 
     def test_multipart_transport_is_bounded_before_spooling(self):
-        response = self.client.post('/api/v1/documents', content=b'x' * (70 * 1024), headers={'Content-Type':'multipart/form-data; boundary=test'})
+        response = self.client.post('/api/v1/files/uploads', content=b'x' * (70 * 1024), headers={'Content-Type':'multipart/form-data; boundary=test'})
         self.assertEqual(response.status_code, 413)
-        self.assertEqual(response.json()['error']['code'], 'RAG_FILE_TOO_LARGE')
+        self.assertEqual(response.json()['error']['code'], 'FILES_SIZE')
 
     def test_chunked_upload_without_content_length_is_also_bounded(self):
         def content():
             yield b'--test\r\nContent-Disposition: form-data; name="file"; filename="big.txt"\r\n\r\n'
             yield b'x' * (70 * 1024)
             yield b'\r\n--test--\r\n'
-        response = self.client.post('/api/v1/documents', content=content(), headers={'Content-Type':'multipart/form-data; boundary=test'})
+        response = self.client.post('/api/v1/files/uploads', content=content(), headers={'Content-Type':'multipart/form-data; boundary=test'})
         self.assertEqual(response.status_code, 413)

@@ -19,7 +19,9 @@ class LearnerContractTests(unittest.TestCase):
     def test_database_access_stays_in_repositories_and_infrastructure(self):
         app = Path(__file__).resolve().parents[2] / 'app'
         for path in app.rglob('*.py'):
-            if 'repositories' in path.parts or 'db' in path.parts:
+            # Files is the shared storage infrastructure module; consumers
+            # still must keep database access in their repositories.
+            if 'repositories' in path.parts or 'db' in path.parts or path.is_relative_to(app / 'files'):
                 continue
             tree = ast.parse(path.read_text(encoding='utf-8'))
             for node in ast.walk(tree):

@@ -1,7 +1,6 @@
 """Source workflows and scoped retrieval, independent of FastAPI and LangChain."""
 import hashlib
 import json
-from pathlib import Path
 from threading import BoundedSemaphore
 from collections import OrderedDict
 import time
@@ -15,7 +14,7 @@ from app.learner.services import LearnerService
 from app.core.config import Settings
 from app.rag.errors import ExtractionError, not_found
 from app.rag.parsers import NativeDocumentParser
-from app.rag.ports import DocumentParser, PrivateSourceStorage
+from app.rag.ports import DocumentParser
 from app.rag.processing import CHUNKER_VERSION, reciprocal_rank_fusion
 from app.rag.schemas import RetrievalResult, RetrievedChunk, SourceReference, RetrievalDiagnostics, SearchRequest, AssessmentGroundingRequest
 from app.rag.vector_store import VectorStoreError, VectorStore
@@ -31,9 +30,9 @@ from app.core.logging import workflow_logger
 })
 class RAGService:
     def __init__(self, repository, learner: LearnerService, embedding: EmbeddingService, vector_store: VectorStore,
-                 storage: PrivateSourceStorage, settings: Settings, *, parser: DocumentParser | None = None, admission=None):
+                 files, settings: Settings, *, parser: DocumentParser | None = None, admission=None):
         self.repository, self.learner, self.embedding = repository, learner, embedding
-        self.vector_store, self.storage, self.settings = vector_store, storage, settings
+        self.vector_store, self.files, self.settings = vector_store, files, settings
         self.parser = parser or NativeDocumentParser()
         self.admission = admission
         self._inference = BoundedSemaphore(1)
@@ -47,8 +46,6 @@ class RAGService:
     def close(self):
         if self.reranker:
             self.reranker.close()
-        if hasattr(self.storage, 'close'):
-            self.storage.close()
 
     def _canonical_tags(self, identifiers):
         identifiers = list(dict.fromkeys(identifiers))
@@ -85,45 +82,42 @@ class RAGService:
             raise AppError('RAG_CONTEXT_ARCHIVED', 'Choose an available learning context.', 409)
         return ids
 
-    def accept_upload(self, owner, file, filename, title, context_ids, key, document_id=None, expected_revision=None):
+    def accept_upload(self, owner, file_id, title, context_ids, key, document_id=None, expected_revision=None):
         if self.admission:
             with self.admission.reserve('upload', owner, capacity=4, owner_capacity=1, seconds=180,
                 rate_keys=[('owner', owner, 30)]):
-                return self._accept_upload(owner, file, filename, title, context_ids, key, document_id, expected_revision)
-        return self._accept_upload(owner, file, filename, title, context_ids, key, document_id, expected_revision)
+                return self._accept_upload(owner, file_id, title, context_ids, key, document_id, expected_revision)
+        return self._accept_upload(owner, file_id, title, context_ids, key, document_id, expected_revision)
 
-    def _accept_upload(self, owner, file, filename, title, context_ids, key, document_id=None, expected_revision=None):
-        filename = Path(filename.replace('\\', '/')).name[:200] or 'material'
+    def _accept_upload(self, owner, file_id, title, context_ids, key, document_id=None, expected_revision=None):
+        file=self.files.metadata(owner,file_id,'library')
+        filename=file['filename']
         title = title.strip() or filename
         if len(title) > 200 or not 1 <= len(key) <= 120:
             raise AppError('RAG_INVALID_UPLOAD', 'Title or upload key exceeds the limit.', 422)
         contexts = self.validate_contexts(owner, context_ids)
-        with self.storage.staged_store(file, self.settings.rag_max_upload_bytes) as blob:
-            return self._publish_upload(owner, filename, title, contexts, key, document_id, expected_revision, blob)
+        blob=dict(file_id=file_id,size_bytes=file['size_bytes'],file_hash=file['sha256'],media_type=file['media_type'])
+        return self._publish_upload(owner, filename, title, contexts, key, document_id, expected_revision, blob)
 
     def _publish_upload(self, owner, filename, title, contexts, key, document_id, expected_revision, blob):
-        retained = False
         try:
-            blob['media_type'] = self.parser.detect(self.storage.path(blob['storage_key']), filename)
             fingerprint = hashlib.sha256(json.dumps(dict(hash=blob['file_hash'], title=title, contexts=contexts,
                 target=document_id, revision=expected_revision), sort_keys=True).encode()).hexdigest()
             result = self.repository.accept(owner, title=title, filename=filename, context_ids=contexts,
                 blob=blob, key=key, request_hash=fingerprint, config=self.config(), quota=self.settings.rag_storage_quota_bytes,
                 document_id=document_id, expected_revision=expected_revision)
-            retained = not result['duplicate']
+            if result['duplicate']:
+                self.files.cancel(owner,blob['file_id'])
             return result
         except ExtractionError as exc:
             raise AppError('RAG_UNSUPPORTED_FILE', str(exc), 422) from exc
-        finally:
-            if not retained:
-                self.storage.remove(blob['storage_key'])
 
     def capabilities(self):
         return dict(**self.parser.capabilities(), max_upload_bytes=self.settings.rag_max_upload_bytes,
                     max_pages=self.settings.rag_max_pages, hybrid=self.settings.rag_hybrid_enabled,
                     reranking=self.reranker is not None, languages=['en'])
 
-    def accept_extracted(self, owner, *, source, filename, title, context_ids, key, extracted):
+    def accept_extracted(self, owner, *, file_id, filename, title, context_ids, key, extracted):
         """Trusted service-only entry: reuse Documents output; never parse/OCR again.
 
         Original bytes remain the downloadable source. The immutable extraction
@@ -133,23 +127,16 @@ class RAGService:
         contexts = self.validate_contexts(owner, context_ids)
         if not extracted.get('blocks') or not extracted.get('reader_revision'):
             raise AppError('RAG_EMPTY_EXTRACTION', 'This file has no extracted content to save.', 422)
-        with self.storage.staged_store(source, self.settings.rag_max_upload_bytes) as blob:
-            return self._publish_extracted(owner, filename, title, contexts, key, extracted, blob)
+        file=self.files.metadata(owner,file_id)
+        blob=dict(file_id=file_id,size_bytes=file['size_bytes'],file_hash=file['sha256'],media_type=file['media_type'])
+        return self._publish_extracted(owner, filename, title, contexts, key, extracted, blob)
 
     def _publish_extracted(self, owner, filename, title, contexts, key, extracted, blob):
-        retained = False
-        try:
-            blob['media_type'] = extracted['media_type']
-            blob['extracted_content'] = {name: extracted[name] for name in ('blocks', 'warnings', 'reader_revision')}
-            fingerprint = hashlib.sha256(json.dumps(dict(hash=blob['file_hash'], contexts=contexts,
-                title=title, extraction=blob['extracted_content']), sort_keys=True).encode()).hexdigest()
-            result = self.repository.accept(owner, title=title[:200], filename=filename[:200], context_ids=contexts,
-                blob=blob, key=key, request_hash=fingerprint, config=self.config(), quota=self.settings.rag_storage_quota_bytes)
-            retained = not result['duplicate']
-            return result
-        finally:
-            if not retained:
-                self.storage.remove(blob['storage_key'])
+        blob['extracted_content'] = {name: extracted[name] for name in ('blocks', 'warnings', 'reader_revision')}
+        fingerprint = hashlib.sha256(json.dumps(dict(hash=blob['file_hash'], contexts=contexts,
+            title=title, extraction=blob['extracted_content']), sort_keys=True).encode()).hexdigest()
+        return self.repository.accept(owner, title=title[:200], filename=filename[:200], context_ids=contexts,
+            blob=blob, key=key, request_hash=fingerprint, config=self.config(), quota=self.settings.rag_storage_quota_bytes,reuse=True)
 
     def get_document(self, owner, document_id):
         return self.repository.get_document(owner, document_id)
@@ -191,11 +178,8 @@ class RAGService:
     def source(self, owner, document_id, version_id, include_archived=False):
         doc, version = self.repository.source(owner, document_id, version_id)
         self._source_policy(owner, doc, include_archived)
-        path = self.storage.path(version['storage_key'])
-        if not path.is_file():
-            raise not_found()
         self.repository.record_usage(owner, [document_id])
-        return path, version
+        return version['file_id'], self.files.binding(owner,version['file_id'],'library',dict(document_version_id=version_id))
 
     def _source_policy(self, owner, doc, include_archived):
         contexts = self.context_summaries(owner, doc['context_ids'])

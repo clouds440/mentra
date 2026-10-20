@@ -1,8 +1,8 @@
-"""Verify production API/worker processes and a shared volume against test services.
+"""Verify production API/worker processes and private Cloudinary originals.
 
 Requires the mentra-rag-verify image and dedicated mentra-rag-test-postgres /
 mentra-rag-test-qdrant containers. Creates and removes only uniquely named test
-database, collection, volume and API/worker containers. No application .env used.
+database, collection and API/worker containers. Uses server-side CLOUDINARY_URL.
 The chat provider is a deterministic local HTTP stub, not a quality judge.
 """
 import json
@@ -12,6 +12,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 import httpx
 
@@ -69,33 +70,34 @@ def main():
     image = os.environ.get('RAG_RUNTIME_IMAGE', 'mentra-rag-verify:latest')
     database = 'rag_runtime_test_' + suffix
     collection = 'mentra_runtime_test_' + suffix
-    volume = 'mentra_rag_verify_' + suffix
     api, worker = 'mentra-rag-verify-api-' + suffix, 'mentra-rag-verify-worker-' + suffix
     frontend = 'mentra-rag-verify-frontend-' + suffix
     root = Path(__file__).resolve().parents[2]
     provider = ThreadingHTTPServer(('0.0.0.0', 18402), Provider)
     threading.Thread(target=provider.serve_forever, daemon=True).start()
-    env = dict(APP_ENV='test', DATABASE_URL=f'postgresql://rag_test:rag_test_only@host.docker.internal:15438/{database}',
+    from app.core.config import settings
+    if not settings.cloudinary_url: raise RuntimeError('Set CLOUDINARY_URL for the real private-file runtime check')
+    env = dict(APP_ENV='test', CLOUDINARY_URL=settings.cloudinary_url, DATABASE_URL=f'postgresql://rag_test:rag_test_only@host.docker.internal:15438/{database}',
         QDRANT_URL='http://host.docker.internal:16335', QDRANT_API_KEY='test-only', QDRANT_COLLECTION=collection,
         AI_MODEL='rag-test', AI_BASE_URL='http://host.docker.internal:18402/v1', AI_API_KEY='test-only',
         FRONTEND_ORIGIN='http://127.0.0.1:15174', CORS_ORIGINS='http://127.0.0.1:15173,http://127.0.0.1:15174',
-        RAG_STORAGE_DIR='/var/lib/mentra/materials', RAG_RERANKER_PATH='', OMP_NUM_THREADS='2', MKL_NUM_THREADS='2')
-    common = ['--mount', f'type=volume,source={volume},target=/var/lib/mentra/materials', '-w', '/app']
-    for key, value in env.items():
-        common += ['-e', f'{key}={value}']
-    report = dict(production_api=True, durable_worker=True, private_shared_volume=True, real_embeddings=True,
+        RAG_RERANKER_PATH='', OMP_NUM_THREADS='2', MKL_NUM_THREADS='2')
+    environment_directory=TemporaryDirectory(prefix='mentra-file-runtime-')
+    environment_file=Path(environment_directory.name)/'runtime.env'
+    environment_file.write_text(''.join(key+'='+value+'\n' for key,value in env.items()),encoding='utf-8')
+    common = ['--env-file',str(environment_file),'-w','/app']
+    report = dict(production_api=True, durable_worker=True, cloudinary_private_originals=True, real_embeddings=True,
         real_server_qdrant=True, chat_provider='local deterministic HTTP fixture', checks=[])
     client = httpx.Client(base_url='http://127.0.0.1:18401', headers={'Origin':'http://127.0.0.1:15173'}, timeout=30)
     try:
         docker('exec','mentra-rag-test-postgres','psql','-U','rag_test','-d','rag_test','-c',f'CREATE DATABASE {database}')
-        docker('volume','create',volume)
         docker('run','-d','--name',api,'-p','127.0.0.1:18401:8000',*common,'--entrypoint','sh',image,
             '-c','python -m app.db.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000')
         wait_ready(client); register(client)
         context = client.post('/api/v1/learning-contexts', json=dict(name='Python', activate=True)); context.raise_for_status()
         source_bytes = b'Python decorators wrap functions to add reusable behavior and logging.'
-        upload = client.post('/api/v1/documents', data=dict(title='Runtime notes',context_ids=json.dumps([context.json()['context_id']]),idempotency_key=uuid4().hex),
-            files={'file':('notes.txt',source_bytes,'text/plain')}); upload.raise_for_status(); accepted = upload.json()
+        staged=client.post('/api/v1/files/uploads',data=dict(purpose='library',operation_key=uuid4().hex),files={'file':('notes.txt',source_bytes,'text/plain')});staged.raise_for_status()
+        upload=client.post('/api/v1/documents',json=dict(file_id=staged.json()['id'],title='Runtime notes',context_ids=[context.json()['context_id']],idempotency_key=uuid4().hex));upload.raise_for_status();accepted=upload.json()
         assert client.get('/api/v1/rag/jobs/'+accepted['job_id']).json()['state'] == 'QUEUED'
         report['checks'].append('upload survives while the worker is stopped')
         docker('run','-d','--name',worker,*common,'--entrypoint','python',image,'-m','app.rag.worker')
@@ -114,7 +116,7 @@ def main():
         report['checks'].append('real HTTP chat orchestration returns a resolvable authorized citation')
         docker('restart',api); wait_ready(client)
         assert client.get(path).content == source_bytes
-        report['checks'].append('API restart preserves the session, source metadata and shared-volume bytes')
+        report['checks'].append('API restart preserves the session, source metadata and Cloudinary original bytes')
         docker('stop','--time','10',worker)
         doc = client.get('/api/v1/documents/'+accepted['document_id']).json()
         rebuilt = client.post(f"/api/v1/documents/{doc['id']}/reindex", json=dict(expected_revision=doc['revision'],idempotency_key=uuid4().hex)); rebuilt.raise_for_status()
@@ -137,12 +139,13 @@ def main():
         assert client.get(path).status_code == 404
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
-            files = docker('exec',api,'find','/var/lib/mentra/materials','-type','f')
-            if not files: break
+            remaining=docker('exec','mentra-rag-test-postgres','psql','-U','rag_test','-d',database,'-tAc',
+                "SELECT count(*) FROM file_binding WHERE released_at IS NULL")
+            if remaining.strip()=='0': break
             time.sleep(0.5)
-        assert not files
-        report['checks'].append('deletion immediately excludes source access and the worker purges persisted bytes')
-        docker('run','-d','--name',frontend,'-p','127.0.0.1:15174:80','mentra-rag-frontend-verify:latest')
+        assert remaining.strip()=='0'
+        report['checks'].append('deletion immediately excludes source access and releases original file bindings')
+        docker('run','-d','--name',frontend,'-p','127.0.0.1:15174:8080','mentra-rag-frontend-verify:latest')
         browser = subprocess.run(['node', str(root / 'frontend/scripts/verify-rag-runtime.mjs')], capture_output=True, text=True, timeout=180)
         if browser.returncode:
             raise RuntimeError(browser.stderr)
@@ -150,8 +153,19 @@ def main():
         print(json.dumps(report, indent=2))
     finally:
         client.close(); provider.shutdown(); provider.server_close()
+        # This API points exclusively at this run's disposable database. Delete
+        # its exact registered originals before removing their registry rows.
+        docker('exec',api,'python','-c',
+            'from sqlalchemy import update; from app.files.factory import create_files; '
+            'from app.files.tables import assets, bindings; from app.files.service import now; '
+            'files=create_files(); '
+            'session=files.sessions(); '
+            'session.execute(update(bindings).values(released_at=now())); '
+            'session.execute(update(assets).values(expires_at=now(),lease_until=None,retry_at=None)); '
+            'session.commit(); session.close(); '
+            '[files.cleanup(limit=100) for _ in range(3)]; files.close()',check=False)
+        environment_directory.cleanup()
         docker('rm','-f',frontend,worker,api,check=False)
-        docker('volume','rm',volume,check=False)
         httpx.delete('http://127.0.0.1:16335/collections/'+collection, timeout=10)
         docker('exec','mentra-rag-test-postgres','psql','-U','rag_test','-d','rag_test','-c',f'DROP DATABASE IF EXISTS {database} WITH (FORCE)',check=False)
 

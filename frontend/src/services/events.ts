@@ -1,4 +1,5 @@
-import { apiBlob, apiRequest } from './api';
+import { apiRequest } from './api';
+import { downloadFile } from './files';
 import type { EventDraft, EventRecord, EventPage, EventOutcome, EventStatus, TemporalPreview } from '../types/events';
 const base = '/api/v1/events';
 function details(value: EventDraft): EventDraft {
@@ -6,7 +7,7 @@ function details(value: EventDraft): EventDraft {
   return { title, description, kind, context_id, timezone, local_date, starts_at, ends_at, reminder };
 }
 export const events = {
-  calendar: (id: string, signal: AbortSignal) => apiBlob(`${base}/${encodeURIComponent(id)}/calendar`, signal),
+  calendar: (id: string, signal: AbortSignal) => downloadFile(`${base}/${encodeURIComponent(id)}/calendar`, signal),
   list: (params: URLSearchParams, signal: AbortSignal) => apiRequest<EventPage>(`${base}?${params}`, { signal }),
   detail: (id: string, signal: AbortSignal) => apiRequest<EventRecord>(`${base}/${encodeURIComponent(id)}`, { signal }),
   preview: (body: unknown, signal: AbortSignal) => apiRequest<TemporalPreview>(`${base}/temporal-preview`, { method: 'POST', body: JSON.stringify(body), signal }),

@@ -19,6 +19,11 @@ from app.langchain.orchestration_service import OrchestrationService
 from app.langchain.prompts import PromptSource
 from app.rag.schemas import ChatSelection
 from app.vision.chat_images import prepare_chat_image
+from app.files.service import FilesService
+from app.core.config import Settings
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 
 def raster(kind='PNG', size=(24, 16)):
@@ -39,10 +44,11 @@ class ChatImageTests(unittest.TestCase):
 
     def test_invalid_and_oversized_images_reject_before_storage(self):
         repository = Mock()
-        service = AttachmentService(repository, Mock())
+        provider=Mock()
+        service=FilesService(repository,provider,Settings())
         with self.assertRaises(AppError):
-            service.upload('owner', io.BytesIO(b'\x89PNG\r\n\x1a\ninvalid'), 'bad.png')
-        repository.create.assert_not_called()
+            service.upload('owner',io.BytesIO(b'\x89PNG\r\n\x1a\ninvalid'),'bad.png','chat','invalid')
+        provider.upload.assert_not_called()
         with patch('app.vision.chat_images.Image.open') as opened:
             opened.return_value.__enter__.return_value.format = 'PNG'
             opened.return_value.__enter__.return_value.width = 30_000_001
@@ -51,27 +57,35 @@ class ChatImageTests(unittest.TestCase):
                 prepare_chat_image(b'data')
             self.assertEqual(error.exception.code, 'CHAT_IMAGE_SIZE')
 
-    def test_image_upload_does_not_depend_on_ocr_and_stores_original_bytes(self):
-        repository, reader = Mock(), Mock()
-        data = raster()
-        AttachmentService(repository, reader).upload('owner', io.BytesIO(data), 'photo.png')
+    def test_image_attachment_references_the_unified_original_without_ocr(self):
+        repository,reader,files=Mock(),Mock(),Mock()
+        file=dict(id='file',filename='photo.png',size_bytes=100,media_type='image/png')
+        files.metadata.return_value=file
+        AttachmentService(repository,reader,files=files).attach('owner','file')
         reader.detect.assert_not_called()
-        repository.create.assert_called_once_with('owner', 'photo.png', data)
+        repository.create.assert_called_once_with('owner','photo.png',file)
 
     def test_owned_image_preparation_skips_ocr_and_documents_still_route_to_reader(self):
         repository, reader = Mock(), Mock()
-        repository.read.return_value = dict(data=raster(), filename='photo.png', extraction=None)
+        repository.read.return_value = dict(file_id='file',media_type='image/png', filename='photo.png', extraction=None)
+        repository.files.read.return_value=raster()
         service = AttachmentService(repository, reader)
         self.assertEqual(service.image_input('owner', 'file', 'chat')['filename'], 'photo.png')
         repository.read.assert_called_with('owner', 'file', 'chat')
         reader.read.assert_not_called()
         self.assertEqual(repository.save_extraction.call_args.args[-1]['reader_revision'], 'chat-image-direct-v1')
-        repository.read.return_value['data'] = b'notes'
+        repository.read.return_value['media_type'] = 'text/plain'
         self.assertIsNone(service.image_input('owner', 'file', 'chat'))
 
     def test_direct_image_marker_does_not_poison_ocr_cache_or_library(self):
         repository, reader = Mock(), Mock()
-        row = dict(data=raster(), filename='photo.png', extraction=dict(reader_revision='chat-image-direct-v1'), library_result=None)
+        row = dict(file_id='file',media_type='image/png', filename='photo.png', extraction=dict(reader_revision='chat-image-direct-v1'), library_result=None)
+        @contextmanager
+        def materialized(*args):
+            with TemporaryDirectory() as directory:
+                path=Path(directory)/'image';path.write_bytes(raster())
+                yield path
+        repository.files.materialize.side_effect=materialized
         repository.read.side_effect = lambda *args: row.copy()
         repository.save_extraction.side_effect = lambda owner, identifier, chat, result: row.update(extraction=result)
         reader.read.return_value = DocumentContent('png', 'image/png', [dict(text='Original text', method='ocr')], [], 'ocr-v1')
@@ -102,7 +116,7 @@ class ChatImageTests(unittest.TestCase):
 
     def test_three_image_limit_is_enforced_before_binding(self):
         session = Mock()
-        rows = [dict(id=str(i), header=raster()[:12], conversation_id=None, filename='photo.png', size_bytes=10) for i in range(4)]
+        rows = [dict(id=str(i), media_type='image/png', conversation_id=None, filename='photo.png', size_bytes=10) for i in range(4)]
         session.execute.return_value.mappings.return_value.all.return_value = rows
         with self.assertRaises(AppError) as error:
             AttachmentRepository.bind(session, 'owner', [str(i) for i in range(4)], 'chat')

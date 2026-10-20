@@ -20,6 +20,13 @@ from tests import test_assessments as fixtures
 class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
     setUp = fixtures.AssessmentTests.setUp
     # Reuse setup only, rather than re-running the inherited assessment cases.
+    def _attachment(self,repository,filename,data):
+        from io import BytesIO
+        from unittest.mock import patch
+        with patch('app.vision.chat_images.prepare_chat_image',return_value={}):
+            file=self.files.upload(self.owner,BytesIO(data),filename,'chat',str(uuid4()))
+        return repository.create(self.owner,filename,self.files.metadata(self.owner,file['id']))
+
     def conversation(self, owner=None):
         identifier = str(uuid4())
         ChatRepository(self.db.sessions).begin_turn(owner or self.owner, SendTurn(conversation_id=identifier,
@@ -34,7 +41,7 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
     def answer_tool(self, conversation, text='', attachment_ids=()):
         scope = dict(assessment_service=self.service, conversation_id=conversation,
             current_user_message_id=str(uuid4()), current_answer_text=text,
-            attachment_service=AttachmentService(AttachmentRepository(self.db.sessions)),
+            attachment_service=AttachmentService(AttachmentRepository(self.db.sessions,self.files)),
             assessment_attachment_ids=list(attachment_ids))
         tool = next(t for t in create_workflow_tools(self.owner, scope, ToolBudget()) if t.name=='assessment_answer')
         return tool, scope
@@ -80,8 +87,8 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_chat_document_upload_and_foreign_file_rejection(self):
         conversation,card = await self.draft()
-        attachments = AttachmentRepository(self.db.sessions)
-        file = attachments.create(self.owner,'answers.txt',b'1. First answer\n2. Second answer')
+        attachments = AttachmentRepository(self.db.sessions,self.files)
+        file = self._attachment(attachments,'answers.txt',b'1. First answer\n2. Second answer')
         with self.db.sessions.begin() as session: attachments.bind(session,self.owner,[file['id']],conversation)
         tool,_ = self.answer_tool(conversation,attachment_ids=[file['id']])
         result = await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id']))
@@ -100,8 +107,8 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_handwritten_chat_image_uses_vision_and_requires_review(self):
         conversation,card = await self.draft()
-        attachments = AttachmentRepository(self.db.sessions)
-        file = attachments.create(self.owner,'handwritten.png',b'\x89PNG\r\n\x1a\nimage-fixture')
+        attachments = AttachmentRepository(self.db.sessions,self.files)
+        file = self._attachment(attachments,'handwritten.png',b'\x89PNG\r\n\x1a\nimage-fixture')
         with self.db.sessions.begin() as session: attachments.bind(session,self.owner,[file['id']],conversation)
         extraction = dict(answers={q['id']:f'Written answer {i}' for i,q in enumerate(card['assessment']['questions'],1)},
             warnings=[], requires_confirmation=True, handwriting_support='vision_requires_review')
@@ -160,8 +167,8 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_upload_retains_saved_card_and_retryable_attempt(self):
         conversation,card = await self.draft()
-        attachments = AttachmentRepository(self.db.sessions)
-        file = attachments.create(self.owner,'answers.txt',b'1. First answer')
+        attachments = AttachmentRepository(self.db.sessions,self.files)
+        file = self._attachment(attachments,'answers.txt',b'1. First answer')
         with self.db.sessions.begin() as session: attachments.bind(session,self.owner,[file['id']],conversation)
         tool,scope = self.answer_tool(conversation,attachment_ids=[file['id']])
         with patch.object(self.service,'upload_paper_with_vision',new=AsyncMock(side_effect=RuntimeError('provider failure'))):

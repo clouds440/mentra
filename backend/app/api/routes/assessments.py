@@ -1,5 +1,11 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, Response, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Request, Response, Query
+from app.files.schemas import FileReference
+from pydantic import Field
+
+
+class AssessmentSource(FileReference):
+    expected_revision: int = Field(ge=1)
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.assessments.schemas import GenerationRequest, AssessmentIntent, StartAttempt, SubmitAnswers, SaveDraftAnswers, Assessment, Attempt
@@ -87,12 +93,10 @@ async def submit(identifier: UUID, body: SubmitAnswers, request: Request, identi
     return await run_in_threadpool(request.app.state.assessment_service.submit, identity.learner_id, str(identifier), body)
 
 @router.post('/attempts/{identifier}/source', response_model=Attempt)
-async def source(identifier: UUID, request: Request, expected_revision: int = Form(ge=1), file: UploadFile = File(...), identity=Depends(require_onboarded_identity)):
-    try:
-        from app.db.admission import request_capacity
-        async with request_capacity(request, identity.learner_id, 'parse', seconds=600):
-            return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), expected_revision, file.file, file.filename)
-    finally: await file.close()
+async def source(identifier: UUID, request: Request, body: 'AssessmentSource', identity=Depends(require_onboarded_identity)):
+    from app.db.admission import request_capacity
+    async with request_capacity(request, identity.learner_id, 'parse', seconds=600):
+        return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), body.expected_revision, str(body.file_id))
 
 @router.post('/attempts/{identifier}/retry', response_model=Attempt)
 async def retry(identifier: UUID, body: RetryGrading, request: Request, identity=Depends(require_onboarded_identity)):

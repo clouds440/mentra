@@ -543,7 +543,7 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | :--- | :--- |
 | Owns | Private source lifecycle, document versions, ingestion generations/jobs, source chunks, canonical retrieval, provenance and citations. |
 | Used by | Library, source selector/viewer, chat retrieval, grounded assessment generation, chat-attachment promotion. |
-| Depends on | Learner scope, Documents/Vision extraction, local process embeddings, Qdrant, PostgreSQL, private FileStorage, optional local reranker. |
+| Depends on | Learner scope, Documents/Vision extraction, local process embeddings, Qdrant, PostgreSQL, shared Files/Cloudinary, optional local reranker. |
 | Important distinction | Qdrant and candidate caches are derived indexes; current ownership/source eligibility is checked when hydrating results. |
 | Frontend connection | `services/rag.ts` manages sources/contexts/downloads. Chat and assessment workflows invoke retrieval server-side. |
 
@@ -595,8 +595,8 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | [`backend/app/rag/reranker.py`](../backend/app/rag/reranker.py) | Optional local-only cross-encoder; one bounded task, safe timeout fallback. |
 | [`backend/app/rag/schemas.py`](../backend/app/rag/schemas.py) | Public RAG contracts; ownership is always bound by the caller, never HTTP data. |
 | [`backend/app/rag/service.py`](../backend/app/rag/service.py) | Source workflows and scoped retrieval, independent of FastAPI and LangChain. |
-| [`backend/app/rag/storage.py`](../backend/app/rag/storage.py) | Private immutable blobs. Generated keys, bounded streaming, no user paths. |
-| [`backend/app/rag/upload_limit.py`](../backend/app/rag/upload_limit.py) | Bound multipart transport before Starlette spools an unbounded upload. |
+| [`backend/app/files/service.py`](../backend/app/files/service.py) | Private immutable blobs. Generated keys, bounded streaming, no user paths. |
+| [`backend/app/files/upload_limit.py`](../backend/app/files/upload_limit.py) | Bound multipart transport before Starlette spools an unbounded upload. |
 | [`backend/app/rag/vector_store.py`](../backend/app/rag/vector_store.py) | Defines VectorStore, vector chunk/match contracts, and vector-store errors for replaceable retrieval adapters. |
 | [`backend/app/rag/worker.py`](../backend/app/rag/worker.py) | Durable ingestion worker: python -m app.rag.worker. No in-request background jobs. |
 
@@ -687,7 +687,7 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | [`backend/app/speech/__init__.py`](../backend/app/speech/__init__.py) | CPU speech input, independent of chat and the LLM. |
 | [`backend/app/speech/engine.py`](../backend/app/speech/engine.py) | Validates/decodes audio, detects speech regions, and runs the CPU Faster Whisper transcription engine. |
 | [`backend/app/speech/service.py`](../backend/app/speech/service.py) | One reusable CPU worker per API process. Hard deadlines can stop native inference. |
-| [`backend/app/speech/upload_limit.py`](../backend/app/speech/upload_limit.py) | Bound speech multipart uploads, including chunked bodies, before parsing/spooling. |
+| [`backend/app/files/upload_limit.py`](../backend/app/files/upload_limit.py) | Bound speech multipart uploads, including chunked bodies, before parsing/spooling. |
 
 <a id="module-history"></a>
 
@@ -987,7 +987,7 @@ Table names below are extracted from the current SQLAlchemy mappings. Migrations
 | :--- | :--- | :--- |
 | PostgreSQL | Identity, profiles, chat and attachment bytes, learning evidence/state, source metadata/chunks, assessments/jobs, memory/events, notifications, workflow checkpoints, quota/cache records. | Canonical business records and durable job/receipt state. |
 | Qdrant | Derived dense chunk vectors, searchable payloads, reserved model identity marker. | Derived retrieval index; hydrate current authorized content from canonical metadata. |
-| Private source storage | Original Library blobs under configured private storage; chat attachment bytes are stored in PostgreSQL `chat_attachment.data`. | Generated storage keys; authenticated source APIs; mounted as `mentra_materials` in Compose. |
+| Private source storage | All original uploads are authenticated Cloudinary assets; PostgreSQL stores owned file references. | Opaque immutable file identities; authenticated streaming source APIs; no persistent originals volume. |
 | Image-baked model assets | Local embedding weights, speech model weights, optional reranker assets. | Created by bake scripts during backend image build; model configuration affects index compatibility. |
 | Backend logs | Sanitized correlated operational events; Compose binds `./logs/backend` to `/var/log/mentra`. | Diagnostics with configured retention/size bounds; not a transcript or evidence store. |
 | Browser state | Chat IndexedDB cache, owner-scoped page cache, local interaction drafts, selected theme. | Speeds UI; PostgreSQL reconciles chat/records, and server ownership/revisions govern writes. |
@@ -1213,3 +1213,8 @@ The checked-out chain currently ends at **`20261015_0025`**. This is the reposit
 
 **Coverage at this snapshot:** 328 production Python files under `backend/app/` (including nonempty package entry points), all registered domain route decorators, all current SQLAlchemy table declarations, and the migration ledger. Build/operator/test entry points are indexed separately. This was a static source inspection; no application requests, model calls, migrations, or runtime tests were executed to create the atlas.
 
+
+
+## Unified file storage — 20 October 2026
+
+All accepted uploads use `app/files` and authenticated Cloudinary assets under `mentra/<APP_ENV>/`; PostgreSQL retains metadata/references. Chat, Library and assessment original reads, speech transient recordings and ICS exports use that facade. Legacy database byte columns and RAG filesystem keys were removed by `20261020_0028`. See [Files module contract](../backend/app/files/README.md).
