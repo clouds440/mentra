@@ -3,6 +3,67 @@ import { chooseOption } from './select-helpers';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6YZsAAAAASUVORK5CYII=', 'base64');
 const image = (number: number) => ({ name: `image-${number}.png`, mimeType: 'image/png', buffer: png });
+async function sendImage(target: Page) {
+    await target.getByLabel('Upload chat files').setInputFiles(image(1));
+    await target.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Keep this image.');
+    await target.getByRole('button',{name:'Send message',exact:true}).click();
+    await expect(target.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+}
+
+test('session cache falls back to tab memory when shared workers are unavailable', async ({page}) => {
+  await page.addInitScript(()=>Object.defineProperty(window,'SharedWorker',{value:undefined}));
+  const state=await setup(page);
+  await sendImage(page);
+  expect(state.sourceReads()).toBe(1);
+  await page.getByRole('link',{name:'Notifications',exact:true}).click();
+  await page.getByRole('link',{name:'Image discussion',exact:true}).click();
+  await expect(page.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(state.sourceReads()).toBe(1);
+});
+
+test('originals stay cached across navigation and tabs, isolate owners, and end with the last tab', async ({page,context}) => {
+  const first = await setup(page,false,{shared:true});
+  await sendImage(page);
+  expect(first.sourceReads()).toBe(1);
+  await page.getByRole('link',{name:'Notifications',exact:true}).click();
+  await page.getByRole('link',{name:'Image discussion',exact:true}).click();
+  await expect(page.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(1);
+
+  const peer = await context.newPage();
+  await peer.goto('/chat/image-chat');
+  await expect(peer.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(1);
+  await page.reload();
+  await expect(page.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(1);
+
+  const different = await context.newPage();
+  const otherOwner = await setup(different,false,{owner:'another-owner'});
+  await sendImage(different);
+  expect(otherOwner.sourceReads()).toBeGreaterThan(0);
+  await different.close();
+  await page.getByRole('button',{name:'Account menu for learner'}).click();
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByLabel('Username',{exact:true}).fill('learner');
+  await page.getByLabel('Password',{exact:true}).fill('a secure test password');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.getByRole('link',{name:'Image discussion',exact:true}).click();
+  await expect(page.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(2);
+  await peer.reload();
+  await peer.getByRole('link',{name:'Image discussion',exact:true}).click();
+  await expect(peer.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(2);
+  await page.close(); await peer.close();
+
+  const fresh = await context.newPage();
+  await fresh.goto('/chat/image-chat');
+  await expect(fresh.getByLabel('Attachment image-1.png').getByRole('img')).toBeVisible();
+  expect(first.sourceReads()).toBe(3);
+  await fresh.close();
+});
 
 for (const width of [1280,390]) test(`saved portrait preview fits above text and opens a downloadable overlay at ${width}`, async ({page}, info) => {
   await page.setViewportSize({width,height:900});
@@ -33,6 +94,11 @@ for (const width of [1280,390]) test(`saved portrait preview fits above text and
   expect(sizes.width/sizes.height).toBeCloseTo(720/1920,2);
   expect(sizes.frameWidth).toBeCloseTo(sizes.width,1); expect(sizes.frameHeight).toBeCloseTo(sizes.height,1);
   const bubble = message.locator('.bg-message');
+  expect((await image.boundingBox())!.x + (await image.boundingBox())!.width).toBeCloseTo((await bubble.boundingBox())!.x + (await bubble.boundingBox())!.width, 0);
+  const actionBounds = (await add.boundingBox())!, imageBounds = (await image.boundingBox())!;
+  expect(actionBounds.x).toBeGreaterThanOrEqual(imageBounds.x);
+  expect(actionBounds.x + actionBounds.width).toBeLessThanOrEqual(imageBounds.x + imageBounds.width);
+  expect(actionBounds.y + actionBounds.height).toBeLessThanOrEqual(imageBounds.y + imageBounds.height);
   await expect(bubble.getByLabel('Attachment portrait.png')).toHaveCount(0);
   expect((await card.boundingBox())!.y+(await card.boundingBox())!.height).toBeLessThanOrEqual((await bubble.boundingBox())!.y);
   expect(await add.evaluate(element => ({border:getComputedStyle(element).borderTopWidth,background:getComputedStyle(element).backgroundColor}))).toMatchObject({border:'1px'});
@@ -91,7 +157,7 @@ async function pasteFiles(page: Page, files: { name: string; mimeType: string; b
   }, { files: files.map(file => ({ name: file.name, mimeType: file.mimeType, data: file.buffer.toString('base64') })), itemsOnly });
 }
 
-async function setup(page: Page, failSecondUpload = false, preview?: {filename?: string; body?: Buffer; media?: string; transientMetadata?: boolean; sourceUnavailable?: boolean}) {
+async function setup(page: Page, failSecondUpload = false, preview?: {filename?: string; body?: Buffer; media?: string; transientMetadata?: boolean; sourceUnavailable?: boolean; owner?: string; shared?: boolean}) {
   const conversation = { id: 'image-chat', title: 'Image discussion', revision: 1, message_count: 0,
     selection: { mode: 'STANDARD' }, created_at: '2026-10-12T00:00:00Z', updated_at: '2026-10-12T00:00:00Z', deleted_at: null };
   const files: { id: string; filename: string; size_bytes: number }[] = [];
@@ -100,8 +166,10 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
   let uploads = 0, staged = 0, rejected = false, metadataReads = 0, sourceReads = 0, sourceUnavailable = preview?.sourceUnavailable ?? false;
   const admitted = new Set<string>();
   let turn: unknown = null;
+  let authenticated = true;
+  const identity = {learner_id:preview?.owner ?? 'image-user',username:'learner',user_id:null,provider:null};
   const snapshot = () => ({ conversation, items, has_more: false, next_cursor: null, turn });
-  await page.route('**/api/v1/**', async route => {
+  await (preview?.shared ? page.context() : page).route('**/api/v1/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     if (path.endsWith('/source')) {
       sourceReads++;
@@ -109,7 +177,10 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
       return route.fulfill({ contentType: preview?.media ?? 'image/png', body: preview?.body ?? png });
     }
     let body: unknown = [];
-    if (path.endsWith('/auth/me')) body = { learner_id: 'image-user', username: 'learner', user_id: null, provider: null };
+    if (path.endsWith('/auth/logout')) { authenticated=false; return route.fulfill({status:204}); }
+    if (path.endsWith('/auth/login')) { authenticated=true; return route.fulfill({json:identity}); }
+    if (path.endsWith('/auth/me') && !authenticated) return route.fulfill({status:401,json:{error:{code:'UNAUTHORIZED'}}});
+    if (path.endsWith('/auth/me')) body = identity;
     else if (path.endsWith('/student-profile')) body = { learner_id: 'image-user', details: { education_level: 'college', field_of_study: 'Physics', learning_goal: 'Understand motion', learning_preference: 'balanced', explanation_depth: 'standard' },
       estimates: Object.fromEntries(['overall_proficiency', 'reasoning', 'quantitative', 'comprehension', 'domain_familiarity'].map(key => [key, { value: null, confidence: 0, evidence_count: 0 }])),
       onboarding_phase: 'complete', calibration_status: 'skipped', evaluation_status: 'not_started', version: 1, context_version: 1 };
@@ -143,6 +214,7 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
       body = { ...file, ready: !preview?.transientMetadata || metadataReads > 2, warnings: [], error: null, library_result: admitted.has(file!.id) ? {document_id:'saved-document',generation_id:'generation-1',job_id:'job-1',duplicate:false} : null };
     } else if (path.endsWith('/learning-contexts')) body = [{context_id:'context-1',name:'Biology',status:'ACTIVE'}];
     else if (path.endsWith('/notifications/unread-count')) body = { count: 0 };
+    else if (path.endsWith('/notifications')) body = {items:[],next_cursor:null};
     else if (path.endsWith('/assessments/preferences')) body = { auto_add: false, revision: 1 };
     await route.fulfill({ json: body });
   });

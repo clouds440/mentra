@@ -1,4 +1,5 @@
 import { setPageCacheOwner } from '../../services/pageCache';
+import { setFileCacheOwner } from '../../services/fileSessionCache';
 import { assessmentSession } from '../../stores/assessmentSession';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as authApi from '../../services/auth';
@@ -21,6 +22,11 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+function setSessionOwner(owner: string | null) {
+  setPageCacheOwner(owner);
+  setFileCacheOwner(owner);
+  assessmentSession.setOwner(owner);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading', identity: null, error: null });
@@ -39,15 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const identity = await authApi.getSession(controller.signal);
       if (requestGeneration === generation.current) {
-        setPageCacheOwner(identity.learner_id);
-        assessmentSession.setOwner(identity.learner_id);
+        setSessionOwner(identity.learner_id);
         setState({ status: 'authenticated', identity, error: null });
       }
     } catch (error) {
       if (controller.signal.aborted || requestGeneration !== generation.current) return;
       if (error instanceof ApiError && error.status === 401) {
-        setPageCacheOwner(null);
-        assessmentSession.setOwner(null);
+        setSessionOwner(null);
         setState({ status: 'anonymous', identity: null, error: null });
       } else {
         setState((current) => current.status === 'loading' || current.status === 'error'
@@ -83,8 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ++generation.current;
     try {
       const identity = await authApi[kind](credentials);
-      setPageCacheOwner(identity.learner_id);
-      assessmentSession.setOwner(identity.learner_id);
+      setSessionOwner(identity.learner_id);
       setState({ status: 'authenticated', identity, error: null });
       channel.current?.postMessage('changed');
     } finally {
@@ -99,8 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ++generation.current;
     try {
       await authApi.logout();
-      setPageCacheOwner(null);
-      assessmentSession.setOwner(null);
+      setSessionOwner(null);
       setState({ status: 'anonymous', identity: null, error: null });
       channel.current?.postMessage('changed');
     } finally {

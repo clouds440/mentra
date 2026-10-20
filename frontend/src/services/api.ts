@@ -2,6 +2,11 @@ import { cachedPage, cacheablePage, invalidateMutation } from './pageCache';
 import { errorMessage } from './userError';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const mutationListeners = new Set<(path: string, method: string) => void>();
+export function subscribeApiMutations(listener: (path: string, method: string) => void) {
+  mutationListeners.add(listener);
+  return () => { mutationListeners.delete(listener); };
+}
 
 export async function apiEvents(path: string, signal: AbortSignal, onEvent: (name: string, data: unknown) => void): Promise<void> {
   const url = `${apiBaseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
@@ -128,7 +133,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     return cachedPage(path + headers, signal => request<T>(path, { ...init, signal }), init.signal);
   }
   const value = await request<T>(path, init);
-  if (init.method && init.method !== 'GET' && init.method !== 'HEAD') invalidateMutation(path);
+  if (init.method && init.method !== 'GET' && init.method !== 'HEAD') {
+    invalidateMutation(path);
+    mutationListeners.forEach(listener => listener(path, init.method!));
+  }
   return value;
 }
 

@@ -16,6 +16,6 @@ export function MemoryEditor({ memory, busy, onSave, onCancel }: {
     </label>
     <p id="memory-editor-help" className="text-xs text-muted">Keep one clear fact, preference or goal. {content.length}/500 characters. Manual entries are your own assertions.</p>
     {!memory && <label className="block text-sm text-heading">Category<Select className="mt-2" disabled={busy} value={category} onChange={event => setCategory(event.target.value as UserMemory['category'])}><option value="fact">Fact</option><option value="preference">Preference</option><option value="goal">Goal</option></Select></label>}
-    <div className="action-row"><Button type="submit" disabled={busy || !content.trim()} loading={busy}>{'Save memory'}</Button><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button></div>
+    <div className="action-row"><Button type="submit" disabled={busy || !content.trim()} loading={busy}>{'Save memory'}</Button><Button variant="secondary" disabled={busy} onClick={onCancel}>Cancel</Button></div>
   </form>;
 }

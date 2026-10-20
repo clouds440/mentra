@@ -18,6 +18,38 @@ async function send(page: Page, content: string) {
   await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toBeVisible();
 }
 
+test('memory cards have distinct surfaces and button controls in both themes and on mobile', async ({page}, info) => {
+  await register(page);
+  for (const [category,content] of [
+    ['preference','I prefer concise TypeScript examples.'],
+    ['goal','I am preparing for my database systems exam.'],
+    ['fact','My current project is a small study planner.'],
+  ]) {
+    const response = await page.request.post('http://127.0.0.1:18003/api/v1/memories', {
+      headers:{Origin:'http://127.0.0.1:15173'}, data:{content,category,client_request_id:randomUUID()},
+    });
+    expect(response.ok()).toBe(true);
+  }
+  await page.goto('/settings?tab=memories');
+  for (const width of [1280,390]) for (const theme of ['light','dark']) {
+    await page.setViewportSize({width,height:900});
+    await page.evaluate(value=>localStorage.setItem('mentra-theme',value),theme);
+    await page.reload();
+    const cards=page.getByRole('list',{name:'Saved memories'}).getByRole('listitem');
+    await expect(cards).toHaveCount(3);
+    expect(await cards.first().evaluate(node=>getComputedStyle(node).borderTopWidth)).toBe('1px');
+    for (const name of ['Evidence','Edit','Pin','Delete']) {
+      const button=cards.first().getByRole('button',{name,exact:true});
+      await expect(button).toBeEnabled();
+      expect(await button.evaluate(node=>getComputedStyle(node).borderTopWidth)).toBe('1px');
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:info.outputPath(`memories-cards-${theme}-${width}.png`),fullPage:true,animations:'disabled'});
+    await cards.last().scrollIntoViewIfNeeded();
+    await page.screenshot({path:info.outputPath(`memories-cards-${theme}-${width}-detail.png`),animations:'disabled'});
+  }
+});
+
 test('Settings drawer, tabs, manual CRUD, evidence and draft retention', async ({ page }, info) => {
   await register(page);
   let prefetches = 0;
@@ -76,7 +108,7 @@ test('actual memory/history tool calls, references, chat deletion retention and 
   await page.goto(sourceChat);
   await page.getByRole('link', { name: 'Remember that I prefer mermaid diagrams.', exact: true }).hover();
   await page.getByRole('button', { name: 'Delete Remember that I prefer mermaid diagrams.', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete chat', exact: true }).click();
   await page.goto('/settings?tab=memories');
   await page.getByRole('button', { name: 'Evidence', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Memory evidence' })).toContainText('Source chat deleted');

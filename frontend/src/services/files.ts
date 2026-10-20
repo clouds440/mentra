@@ -1,4 +1,5 @@
-import { apiRequest, apiBlob, ApiError } from './api';
+import { apiRequest, ApiError } from './api';
+import { sessionFile } from './fileSessionCache';
 
 export type FilePurpose = 'chat' | 'library' | 'assessment' | 'speech';
 export interface StoredFile { id: string; filename: string; size_bytes: number; media_type: string; state: string; purpose: string }
@@ -32,5 +33,5 @@ export async function uploadFile(file: Blob, filename: string, purpose: FilePurp
 }
 
 /** Domain routes resolve their binding and delegate to the Files delivery layer. */
-export const downloadFile = (path: string, signal?: AbortSignal) => apiBlob(path, signal);
+export const downloadFile = (path: string, signal?: AbortSignal) => sessionFile(path, signal);
 export const cancelUpload = (id: string, signal?: AbortSignal) => apiRequest<void>(`/api/v1/files/uploads/${id}`, { method: 'DELETE', signal });
