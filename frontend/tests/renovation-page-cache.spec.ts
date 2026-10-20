@@ -99,7 +99,9 @@ test('material processing updates until completion and then stops polling', asyn
   completed = true;
   await page.clock.runFor(3500);
   await expect(page.getByText('Ready',{exact:true})).toBeVisible();
-  await page.clock.runFor(3500);
+  // Completion invalidates dependent material views once. Wait for that
+  // revalidation before measuring the absence of further polling.
+  await expect.poll(async () => { await page.clock.runFor(100); return reads; }).toBe(3);
   const final = reads;
   await page.clock.fastForward(180000);
   await page.clock.runFor(1000);
