@@ -401,8 +401,14 @@
   .workspace-grid { @apply grid gap-3 sm:grid-cols-2; }
   .workspace-item { @apply min-w-0 rounded-panel border border-border bg-card p-4 transition-colors duration-150 hover:border-border-hover; }
   .workspace-empty { @apply flex flex-col items-center rounded-panel border border-dashed border-border-strong bg-surface px-4 py-8 text-center; }
-  .workspace-tabs { @apply flex w-fit max-w-full flex-wrap gap-1 rounded-control border border-border bg-surface p-1; }
-  .workspace-tabs [role=tab] { @apply min-h-8 rounded-md border-0 px-3 py-1.5 text-sm text-muted transition-colors duration-150 hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50; }
+  .workspace-tabs { @apply relative w-fit min-w-0 max-w-full overflow-hidden rounded-control border border-border bg-surface; }
+  .workspace-tabs-track { @apply flex flex-nowrap gap-1 overflow-x-auto p-1; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .workspace-tabs-track::-webkit-scrollbar { display: none; }
+  .workspace-tabs-edge { @apply pointer-events-none absolute inset-y-0 flex w-12 items-center; }
+  .workspace-tabs-edge-left { @apply left-0 justify-start pl-1; background: linear-gradient(to right, rgb(var(--surface)) 55%, transparent); }
+  .workspace-tabs-edge-right { @apply right-0 justify-end pr-1; background: linear-gradient(to left, rgb(var(--surface)) 55%, transparent); }
+  .workspace-tabs-scroll { @apply pointer-events-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-sm transition-colors duration-150 hover:bg-hover hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent; }
+  .workspace-tabs [role=tab] { @apply shrink-0 whitespace-nowrap min-h-8 rounded-md border-0 px-3 py-1.5 text-sm text-muted transition-colors duration-150 hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50; }
   .workspace-tabs [role=tab][aria-selected=true] { @apply bg-card font-medium text-heading shadow-sm; }
   .workspace-status { @apply inline-flex max-w-full items-center rounded-md border border-border bg-surface px-2 py-0.5 text-xs leading-5 text-muted; }
   .action-row { @apply flex flex-wrap items-center gap-2; }
