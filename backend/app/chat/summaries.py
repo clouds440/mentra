@@ -2,11 +2,13 @@
 import asyncio
 import json
 import logging
+from datetime import timedelta
 from langchain_core.messages import HumanMessage
 from app.core.config import settings
 from app.core.observability.timing import run_in_threadpool
 from app.langchain.token_policy import count_messages
 from .repositories.summaries import SummaryRepository
+from app.summarization.execution import generation, SummaryDeferred
 
 logger = logging.getLogger('mentra')
 
@@ -37,7 +39,12 @@ def batch(rows):
     for row in rows:
         text = row['content']
         if count_messages([HumanMessage(content=text)]) > 2000:
-            text = text[:800]+'\n[Large original message: retrieve by ID for exact content]\n'+text[-800:]
+            edge = 800
+            while True:
+                text = row['content'][:edge]+'\n[Large original message: retrieve by ID for exact content]\n'+row['content'][-edge:]
+                if count_messages([HumanMessage(content=text)]) <= 1800:
+                    break
+                edge //= 2
         item = dict(id=row['id'], sequence=row['sequence'], role=row['role'], content=text)
         size = count_messages([HumanMessage(content=json.dumps(item, ensure_ascii=False))]) - protocol + 2
         if cost + size > 5000:
@@ -65,6 +72,12 @@ def enough_history(rows):
     return False
 
 
+def valid_content(content):
+    return (isinstance(content, str) and bool(content.strip())
+            and len(content) <= settings.chat_summary_max_characters
+            and count_messages([HumanMessage(content=content)]) <= settings.chat_summary_max_tokens)
+
+
 from app.core.logging import workflow_logger
 
 
@@ -85,6 +98,10 @@ class ConversationSummaries:
                 raise
             logger.warning('Chat summary read deferred (%s)', type(error).__name__)
             return None
+        if row and row['content'] and not valid_content(row['content']):
+            from .repositories.summary_jobs import ChatSummaryJobs
+            await run_in_threadpool(ChatSummaryJobs(self.chats.sessions).retry, owner, chat)
+            return None
         return dict(content=row['content'], through_sequence=row['through_sequence'], revision=row['revision']) if row and row['content'] else None
 
     async def candidates(self, owner, chat, through):
@@ -95,7 +112,7 @@ class ConversationSummaries:
         before = old[-1]['sequence']+1 if old else recent[0]['sequence'] if recent else 0
         return await run_in_threadpool(self.chats.summary_rows, owner, chat, through, before)
 
-    async def refresh(self, owner, chat):
+    async def refresh(self, owner, chat, *, durable=False):
         if not settings.chat_summary_enabled:
             return
         claim = None
@@ -104,43 +121,86 @@ class ConversationSummaries:
             existing = await run_in_threadpool(self.repository.load, owner, chat)
             from .repositories.postgres import now
             if existing and existing['lease_until'] and existing['lease_until'] > now():
+                if durable:
+                    raise SummaryDeferred(existing['lease_until'])
                 return  # A pending job or cooldown needs no backlog scan/tokenization.
             candidates = await self.candidates(owner, chat, (existing or {}).get('through_sequence', 0))
-            if not enough_history(candidates):
+            repair = bool(existing and existing['content'] and not valid_content(existing['content']))
+            if not enough_history(candidates) and not repair:
                 return
             claim = await run_in_threadpool(self.repository.claim, owner, chat)
             if not claim:
+                if durable:
+                    raise SummaryDeferred(now()+timedelta(seconds=2))
                 return
             new_rows = await self.candidates(owner, chat, claim['through_sequence'])
-            if not enough_history(new_rows):
+            repair = bool(claim['content'] and not valid_content(claim['content']))
+            enough = enough_history(new_rows)
+            if not enough and not repair:
                 return  # Another process may have finished since our initial read.
-            candidates = batch(new_rows)
-            if not candidates:
-                return
+            candidates = batch(new_rows) if enough else []
+            if enough and not candidates:
+                raise ValueError('A displaced exchange could not fit the compaction packet')
             from app.langchain.prompts import PromptSource
-            from app.langchain.workflow_budget import current_budget
-            token = current_budget.set(None)  # Independent of the finished answer's deadline/budget.
-            try:
-                async with asyncio.timeout(45):
-                    response = await self.llm.ainvoke(PromptSource.CHAT_SUMMARY,
-                        dict(previous_summary=claim['content'], messages=candidates))
-            finally:
-                current_budget.reset(token)
+            async with generation():
+                response = await self.llm.ainvoke(PromptSource.CHAT_SUMMARY,
+                    dict(previous_summary=claim['content'], messages=candidates,
+                         limits=dict(max_tokens=settings.chat_summary_max_tokens, max_characters=settings.chat_summary_max_characters)))
             content = response.content
             if (getattr(response, 'response_metadata', {}).get('finish_reason') == 'length'
-                    or not isinstance(content, str) or not content.strip()
-                    or count_messages([HumanMessage(content=content)]) > 650):
+                    or not valid_content(content)):
                 raise ValueError('Invalid summary')
-            await run_in_threadpool(self.repository.publish, owner, chat, claim, content.strip(), candidates[-1]['sequence'])
+            published = await run_in_threadpool(self.repository.publish, owner, chat, claim, content.strip(),
+                candidates[-1]['sequence'] if candidates else claim['through_sequence'], replace=repair)
+            if durable and not published:
+                raise SummaryDeferred()
+            return published
         except asyncio.CancelledError:
             failed = True
             raise
         except Exception as error:
             failed = True
+            if durable:
+                raise
             logger.warning('Chat summary deferred (%s)', type(error).__name__)
         finally:
             if claim:
                 try:
-                    await run_in_threadpool(self.repository.release, owner, chat, claim['lease_token'], failed=failed)
+                    await run_in_threadpool(self.repository.release, owner, chat, claim['lease_token'], failed=failed and not durable)
                 except Exception as error:
                     logger.warning('Chat summary lease release deferred (%s)', type(error).__name__)
+
+
+class ChatSummaryConsumer:
+    """Durable adapter; the chat domain keeps compaction and publication rules."""
+    def __init__(self, chats, llm):
+        from .repositories.summary_jobs import ChatSummaryJobs
+        self.jobs = ChatSummaryJobs(chats.sessions)
+        self.summaries = ConversationSummaries(chats, llm)
+
+    async def run_once(self):
+        if not settings.chat_summary_enabled:
+            return False
+        from starlette.concurrency import run_in_threadpool as dispatch
+        claim = await dispatch(self.jobs.claim)
+        if not claim:
+            return False
+        with workflow_logger.workflow('chat.summarize') as execution:
+            try:
+                more = await self.summaries.refresh(claim['learner_id'], claim['conversation_id'], durable=True)
+                await run_in_threadpool(self.jobs.finish, claim, more=bool(more))
+                execution.outcome = 'success'
+            except SummaryDeferred as error:
+                await run_in_threadpool(self.jobs.finish, claim, more=True, retry_at=error.until)
+                execution.outcome = 'deferred'
+            except asyncio.CancelledError:
+                await run_in_threadpool(self.jobs.finish, claim, more=True)
+                raise
+            except Exception as error:
+                from app.core.exceptions import AppError
+                unavailable = isinstance(error, AppError) and error.status_code in (403, 404)
+                await run_in_threadpool(self.jobs.finish, claim, error=None if unavailable else error)
+                execution.outcome = 'skipped' if unavailable else 'failed'
+                if not unavailable:
+                    logger.warning('Chat summary deferred (%s)', type(error).__name__)
+        return True

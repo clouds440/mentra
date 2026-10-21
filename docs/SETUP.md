@@ -163,3 +163,5 @@ For code conventions, see [frontend/standards.md](../frontend/standards.md) and 
 ## Unified files — 20 October 2026
 
 Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+
+Chat and persistent memory summaries share one durable `summarizer` worker and the configured LLM, while retaining independent prompts and token/character limits. Apply migrations through `20261021_0030` before starting the updated services. The old `memory-summary-worker` service is replaced; remove its orphan container during the upgrade. See [memory summaries](memory-summaries.md) for settings, recovery and verification.

@@ -2,6 +2,8 @@
 
 The standalone `app.history_management` module provides on-demand conversation retrieval and evidence-backed persistent user memory. Canonical transcripts remain in `app.chat`; there is no second transcript. Chat owns separate private rolling summaries for prompt compaction; these are not evidence-backed user memories.
 
+Every authenticated chat turn also receives a bounded persistent memory overview, maintained incrementally by the shared LLM in a durable background worker. It is separate from the per-chat summary and does not replace full recall. System prompts require relevance for both retrieval and response generation. See [persistent memory summaries](memory-summaries.md) for independent limits, freshness guarantees, deployment and recovery.
+
 It also composes Events as `HistoryManagement.events`. Events owns schedules/proposals and its PostgreSQL adapter; memory tools do not write events. The Progress UI provides Learning and Events tabs, and the Events worker publishes into independent Notifications. See [Events](events.md) and [Notifications](notifications.md).
 
 ## User interface

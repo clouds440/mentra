@@ -30,6 +30,7 @@ LABELS = {
     'assessment_lookup': 'Finding your assessment',
     'enable_workflow_tools': 'Preparing to help',
     'profile_context': 'Checking your learning preferences',
+    'memory_summary_context': 'Preparing your conversation context',
     'document_extract': 'Reading your attached document',
 }
 

@@ -29,6 +29,7 @@ class ChatService:
         document_context: list[dict] | None = None,
         image_context: list[dict] | None = None,
         profile_context: dict | None = None,
+        memories_summary: dict | None = None,
         recovery_context: list[dict] | None = None,
     ) -> str:
         conversation = [
@@ -57,7 +58,8 @@ class ChatService:
                 message.content = historical_web_markers(message.content)
         try:
             sources = []
-            context = {}
+            context = dict(memories_summary=memories_summary or dict(state='unavailable', content='', revision=0),
+                           conversation_summary=dict(state='empty', content='', revision=0))
             if recovery_context:
                 sources.append(PromptSource.TOOL_RECOVERY)
                 context['missing_context'] = recovery_context

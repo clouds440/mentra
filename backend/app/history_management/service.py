@@ -14,6 +14,13 @@ from app.core.logging import workflow_logger
                'outcome': lambda value: 'rejected' if value.get('outcome') == 'rejected' else 'degraded' if value.get('outcome') == 'unavailable' else 'success'},
 })
 class HistoryManagement:
+    def summary_context(self, owner):
+        from app.core.config import settings
+        if not settings.memory_summary_enabled:
+            return dict(state='unavailable', content='', revision=0), None
+        from .repositories.memory_summaries import MemorySummaryRepository
+        return MemorySummaryRepository(self.repository.sessions).context(owner)
+
     def __init__(self, repository, reader, validator, profile=None, freshness_days=None, events=None):
         self.repository, self.reader, self.validator = repository, reader, validator
         self.profile = profile

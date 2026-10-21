@@ -1,10 +1,11 @@
 """Private summaries, with durable single-flight leases and fenced publication."""
 from datetime import timedelta
 from uuid import uuid4
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from .tables import summaries as s
 from .postgres import now
+from app.summarization.execution import LEASE_SECONDS
 
 
 from app.core.logging import workflow_logger
@@ -30,15 +31,16 @@ class SummaryRepository:
             if row['lease_until'] and row['lease_until'] > now():
                 return None
             token = str(uuid4())
-            session.execute(update(s).where(s.c.conversation_id == chat).values(lease_token=token, lease_until=now()+timedelta(seconds=120)))
+            session.execute(update(s).where(s.c.conversation_id == chat).values(lease_token=token, lease_until=now()+timedelta(seconds=LEASE_SECONDS)))
             return dict(row, lease_token=token)
 
-    def publish(self, owner, chat, claim, content, through):
+    def publish(self, owner, chat, claim, content, through, *, replace=False):
         with self.chats.sessions.begin() as session:
             self.chats._conversation(session, owner, chat, lock=True)
             result = session.execute(update(s).where(s.c.conversation_id == chat, s.c.learner_id == owner,
                 s.c.lease_token == claim['lease_token'], s.c.revision == claim['revision'],
-                s.c.lease_until > now(), s.c.through_sequence < through).values(content=content,
+                s.c.lease_until > now(), or_(s.c.through_sequence < through,
+                    and_(s.c.through_sequence == through, replace))).values(content=content,
                 through_sequence=through, revision=claim['revision']+1, lease_token=None, lease_until=None))
             return bool(result.rowcount)
 

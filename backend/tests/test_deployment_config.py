@@ -12,6 +12,10 @@ class DeploymentConfigTests(unittest.TestCase):
         for key, value in config['x-model-settings'].items():
             self.assertEqual(api[key], value, key)
             self.assertEqual(worker[key], value, key)
-        for role in ('backend', 'rag-worker', 'events-worker', 'assessment-worker'):
-            for key, value in config['x-database-budget'].items():
+        for role in ('backend', 'rag-worker', 'events-worker', 'assessment-worker', 'summarizer', 'files-worker'):
+            budget = config['x-database-budget'] if role == 'backend' else config['x-worker-database-budget']
+            for key, value in budget.items():
                 self.assertEqual(config['services'][role]['environment'][key], value)
+        summary = config['services']['summarizer']['environment']
+        for key, value in config['x-model-settings'].items():
+            self.assertEqual(summary[key], value, key)

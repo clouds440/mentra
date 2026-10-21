@@ -1,6 +1,6 @@
 # Persistent memory summaries for Mentra
 
-Status: implementation plan only. Created 2026-10-21.
+Status: implemented 2026-10-21; operational details and verification commands are in [memory-summaries.md](memory-summaries.md). Created 2026-10-21.
 
 ## 1. Intended behavior
 
@@ -42,14 +42,14 @@ Keep the feature in History Management. Do not put summary construction in API r
 | Summary state, queue/delta transactions, leases, publication fencing | New `backend/app/history_management/repositories/memory_summaries.py` |
 | Transaction hooks for every effective memory change | Existing `history_management/repositories/postgres.py`; one shared helper accepting the existing transaction |
 | Table registration | Existing `history_management/repositories/tables.py` and normal metadata registration |
-| Durable background execution | New `backend/app/history_management/memory/worker.py`, one Compose service using the backend image |
+| Durable background execution | Shared `backend/app/summarization/worker.py`, one Compose `summarizer` service for both chat and memory queues |
 | Summary prompt and token policy | New `langchain/prompts/memory_summary.py`; existing prompt registry/token policy |
 | Public domain facade and construction | Existing `history_management/service.py`, `factory.py` |
 | Turn context loading and prompt assembly | Existing `langchain/orchestration_service.py`, `chat_service.py`, `history_orchestration.py` |
 | Chat-summary bounds and envelope | Existing `chat/summaries.py`, `langchain/prompts/chat_summary.py` |
 | Migration and verification | One additive Alembic migration; focused repository, worker, prompt, and integration tests |
 
-The worker uses the same configured Mentra LLM/model factory and credentials. Give the summary workflow its own prompt, finite input/output allowance, timeout, and background concurrency limit. Do not introduce another model provider or a generic job framework for this feature.
+The worker uses one configured Mentra LLM/model factory and shared bounded execution pool for both summary types. Each domain has its own prompt and finite input/output allowance. Common code owns the timeout/background-budget boundary and retry/lease helpers. Chat completion queues work transactionally in `chat_summary_job`; the API no longer generates summaries in detached tasks. Do not introduce another model provider or a generic job framework for this feature.
 
 ## 4. Durable storage
 
@@ -135,18 +135,18 @@ Reconciliation must be restartable with a persisted snapshot/checkpoint or resta
 
 ## 8. Limits and prompt rules
 
-Proposed initial defaults, centralized in settings and referenced by prompts:
+Each summary has its own independently configurable token and character limits, centralized in settings and referenced by its own generation prompt. There is no combined summary allowance, borrowing between summaries, or dynamic split to manage. Proposed initial defaults:
 
 | Budget | Limit |
 | --- | --- |
-| Chat-summary content | 600 counted tokens and 2,400 Unicode characters, whichever binds first |
-| Rendered memory-summary context, including its metadata/support overhead | 800 counted tokens and 3,200 Unicode characters, whichever binds first |
+| Chat-summary content | `chat_summary_max_tokens=600` and `chat_summary_max_characters=2400`, whichever binds first |
+| Rendered memory-summary context, including its metadata/support overhead | `memory_summary_max_tokens=800` and `memory_summary_max_characters=3200`, whichever binds first |
 | Memory generation input | 6,000 counted tokens including instructions, schemas, previous summary, and deltas; delta content additionally capped at 16,000 characters |
-| Memory generation output | Separate sufficient schema/output allowance, initially 1,400 tokens; validated rendered context still must fit 800 tokens / 3,200 characters |
+| Memory generation output | Separate schema/output allowance of `memory_summary_max_tokens + 1200` (2,000 tokens by default); validated rendered context still must fit 800 tokens / 3,200 characters |
 | Summary call timeout / lease | 45 seconds / 120 seconds, with fenced renewal if implementation needs it |
 | Background concurrency | Start at two calls per worker and one per learner; configure against provider/database capacity |
 
-Tokens and characters are different limits. Use the repository's centralized token accounting, with its conservative fallback; do not claim exact provider token counts. The total model input must still pass the existing chat context admission checks, including images, tool schemas, recent messages, and output reserve.
+Tokens and characters are different limits. Use the repository's centralized token accounting, with its conservative fallback; do not claim exact provider token counts. Validate each summary against only its own limits. Choose these defaults with the final prompt size in mind; the existing full-prompt admission check remains the overall guard for system instructions, both summaries, profile, images, tool schemas, recent messages, and output reserve. Do not add a separate combined-summary calculation or quota.
 
 Tell the LLM both limits explicitly and ask it to leave margin for formatting. Enforce them in code as well: prompts alone cannot guarantee length. Allow at most one bounded compression repair for otherwise valid oversized output, then retry/defer. Never slice prose mid-sentence or accept provider-truncated JSON. Chat-summary output allowance must leave enough headroom to complete a response within its requested content bound.
 
@@ -166,13 +166,21 @@ Load the memory context through History Management alongside the existing profil
 
 `empty`, `updating`, and `unavailable` are explicit alternatives to `ready`; never fabricate text to fill an empty slot. The chat-summary envelope is per chat and must never accidentally load another chat's summary. It remains empty on a new chat; recent messages still provide its current context. The memory-summary envelope is owner-scoped and survives chat switching, reloads, process restarts, and devices.
 
-For a mutation that commits before the worker catches up, the context loader builds a **safe temporary view**: remove blocks whose support revisions are no longer current, retain valid blocks, and insert compact canonical changed facts where the shared budget permits. This avoids either serving a deleted fact or dropping every unaffected fact. If dirty deltas are large, return a bounded safe subset with `state=updating` and an explicit retrieval-needed indication. No synchronous LLM call on the chat path. Block support checks and targeted reads remain bounded; an unrecoverable delta gap suppresses the unsafe summary and requests rebuild.
+For a mutation that commits before the worker catches up, the context loader builds a **safe temporary view**: remove blocks whose support revisions are no longer current, retain valid blocks, and insert compact canonical changed facts where the memory summary's own limits permit. This avoids either serving a deleted fact or dropping every unaffected fact. If dirty deltas are large, return a bounded safe subset with `state=updating` and an explicit retrieval-needed indication. No synchronous LLM call on the chat path. Block support checks and targeted reads remain bounded; an unrecoverable delta gap suppresses the unsafe summary and requests rebuild.
 
 Use a consistent snapshot for this view. Pass its private source fence through orchestration to chat completion. Extend the existing revision checks so a concurrent edit/deletion cannot publish an answer grounded in an obsolete memory summary; use the existing changed-context response or one bounded regeneration policy. Include time-based expiry in this fence. Do not expose internal IDs as new `M` citations: only real recall results can supply those tokens. Already streamed content cannot be retracted, so cancel/reset active generation on detected invalidation where supported and never claim retroactive erasure of prior chat messages.
 
 When a summary has content or pending facts, expose `user_memory` recall and its instructions initially; preserve workflow discovery for empty/unavailable summaries and cross-chat lookup. Explain to the answering model that the overview is lossy, full records are available by relevant keywords, current user corrections and manual profile values take precedence, and summary content cannot authorize writes.
 
-Reserve space for both bounded summaries during normal context selection. If the full request cannot fit even after permitted history reduction, return the established context-limit outcome; do not silently omit one of the requested summaries or truncate the current question.
+### Relevance rules for retrieval and response generation
+
+Update the answering LLM's system prompt, including the core chat and memory/history instructions, to enforce this rule on every turn:
+
+> Reference saved memories or past conversations only when genuinely relevant to the current user query and conversational context. Do not mention, inject into the answer, or retrieve personal context merely because it is available. Memory should enhance an appropriate response, not influence unrelated answers. Apply this rule both when deciding whether to retrieve additional context and when generating the response from context already supplied.
+
+The two summary envelopes remain automatically available as specified above. Their presence does not imply relevance, authorize a tool call, or require acknowledgement in the answer. For retrieval, require an identifiable connection to the current request or an unresolved conversational reference; skip memory/history searches that cannot help answer it. For generation, leave unrelated summary facts unused, avoid unsolicited personal references or reminders of earlier topics, and do not steer the answer toward remembered projects, goals, or preferences without a relevant reason. A relevant durable response preference may guide presentation without being explicitly mentioned. Current user instructions take precedence.
+
+Assemble both independently bounded summaries before normal full-prompt context selection. Unused chat-summary space does not enlarge the memory summary, and unused memory-summary space does not enlarge the chat summary. If the full request cannot fit even after permitted history reduction, return the established context-limit outcome; do not silently omit one of the requested summaries or truncate the current question.
 
 ## 10. Reliability, privacy, and operations
 
@@ -206,25 +214,26 @@ No public summary endpoint or frontend redesign is required for the first implem
 
 | Phase | Deliverable | Acceptance evidence |
 | --- | --- | --- |
-| 1. Contracts and persistence | Shared limits, structured blocks, migration, transaction hooks and coalescing queue | Real PostgreSQL tests prove rollback, idempotency, conflict-resolution fanout, ordering, owner isolation and account cleanup. |
+| 1. Contracts and persistence | Independent limits for each summary, structured blocks, migration, transaction hooks and coalescing queue | Real PostgreSQL tests prove rollback, idempotency, conflict-resolution fanout, ordering, owner isolation and account cleanup. |
 | 2. Incremental worker | Claim/retry/recovery, delta reduction, generation and fenced publication | Crash/restart and two-worker tests; edit/delete during model call cannot publish stale facts; unchanged saves cause no paid call. |
 | 3. Safe context | Every-turn envelopes, temporary canonical delta view, expiry filtering and completion fence | First turn in chat B sees memories from chat A; chat B never receives chat A's conversation summary; deletion is effective before worker completion. |
 | 4. Prompt integration | Memory instructions/tool availability, separate bounds and total input accounting | Inspect captured model packets for normal/greeting/direct/tool paths, oversized inputs, multilingual fixtures and no secret payload logging. |
 | 5. Summarization quality | Real same-model calls using nonsensitive fixtures | Explicit facts stay accurate; changed preferences replace old ones; deleted/expired/pending/conflicting facts disappear; unrelated facts survive edits; prompt injection in a memory stays data. |
-| 6. Retrieval compatibility | Existing memory/history tools retained | Full-memory lookup and `all_chats` keyword search still retrieve originals with existing ownership/deletion/sequence rules; only retrieval returns valid citations/evidence. |
+| 6. Retrieval compatibility and relevance | Existing memory/history tools retained; system prompts require relevance for retrieval and generation | Full-memory lookup and `all_chats` keyword search still retrieve originals with existing ownership/deletion/sequence rules; only retrieval returns valid citations/evidence. With unrelated summaries present, unrelated queries cause no unnecessary memory/history calls, personal mentions, or topic steering. Relevant queries and conversational references still benefit from recall. |
 | 7. Deployment | Migrated PostgreSQL, built backend image and durable worker | Container startup, worker restart, API readiness and a complete manual-save → summary → new-chat test, plus an AI-save equivalent. |
 
 Also test pinned-priority overflow, removing a mixed-support block, omitted-fact reintroduction, bootstrap across multiple pages, compaction limits in non-Latin scripts, bounded compression retry, disabled automatic saving with existing recall, queue exhaustion/operator retry, and summary changes during streamed replies. Static checks and mocked tests are necessary but do not establish summarization quality; real provider calls are part of completion evidence.
 
 ## 13. Completion criteria
 
-- Every authenticated turn has separate, bounded chat and memory context envelopes.
+- Every authenticated turn has separate chat and memory context envelopes, each with its own configurable token and character limits and no pooled summary quota.
 - Memory context persists across chats and devices; conversation context stays scoped to its chat.
 - Every effective canonical memory update schedules durable incremental work centrally.
 - Ordinary updates send the previous summary and bounded changes/supports, not the full memory collection.
 - Edited, deleted, expired, pending or conflicting facts are not presented as current merely because a worker is delayed.
 - Full memory recall and cross-chat original-history retrieval retain their current behavior.
+- System prompts enforce relevance for both retrieval and generation: automatically available summaries do not cause unnecessary searches, personal references, or influence on unrelated answers. Verify this with paired relevant/unrelated queries against the same saved context, including multi-turn topic changes.
 - No summary model call blocks a normal chat turn or memory write.
 - Live summarization, real database concurrency, prompt-budget, restart and deployment checks have documented results.
 
-Approval of this plan authorizes a later implementation; this document itself does not change memory behavior.
+Implementation uses the existing canonical repository revision hook for transaction capture. Support IDs stay server-side, so the rendered memory context budget includes only its actual envelope metadata, not private database fences. The operational guide records the implemented settings and recovery commands.

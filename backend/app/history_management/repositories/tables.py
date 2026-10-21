@@ -52,5 +52,43 @@ receipts = Table('hm_tool_receipt', metadata, owner(True), Column('operation_key
     Index('idx_hm_receipt_source', 'learner_id', 'conversation_id'))
 
 TABLES = (memories, evidence, revisions, preferences, suppression, receipts)
+
+summary_state = Table('hm_memory_summary_state', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
+    Column('source_revision', BigInteger, nullable=False, server_default='0'),
+    Column('published_source_revision', BigInteger, nullable=False, server_default='0'),
+    Column('summary_revision', BigInteger, nullable=False, server_default='0'),
+    Column('blocks', JSONB, nullable=False, server_default='[]'),
+    Column('prompt_version', Text, nullable=False, server_default=''),
+    Column('updated_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('reconciled_at', DateTime(timezone=True)),
+    Column('reconciled_revision', BigInteger, nullable=False, server_default='0'),
+    Column('next_expiry_at', DateTime(timezone=True)),
+    CheckConstraint('source_revision >= published_source_revision AND published_source_revision >= 0 AND summary_revision >= 0', name='memory_summary_revisions'),
+    CheckConstraint("jsonb_typeof(blocks) = 'array' AND octet_length(blocks::text) <= 32768", name='memory_summary_blocks'),
+    Index('idx_memory_summary_expiry', 'next_expiry_at'))
+
+summary_changes = Table('hm_memory_summary_change', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('hm_memory_summary_state.learner_id', ondelete='CASCADE'), primary_key=True),
+    Column('source_revision', BigInteger, primary_key=True),
+    Column('memory_id', Uuid(as_uuid=False), nullable=False),
+    Column('after', JSONB),
+    Column('created_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint('source_revision > 0', name='memory_summary_change_revision'))
+
+summary_jobs = Table('hm_memory_summary_job', metadata,
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('hm_memory_summary_state.learner_id', ondelete='CASCADE'), primary_key=True),
+    Column('available_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('queued_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('lease_token', Uuid(as_uuid=False)), Column('lease_until', DateTime(timezone=True)),
+    Column('attempts', BigInteger, nullable=False, server_default='0'),
+    Column('failed', Boolean, nullable=False, server_default='false'), Column('error_code', Text),
+    Column('rebuild', Boolean, nullable=False, server_default='false'),
+    Column('checkpoint', JSONB, nullable=False, server_default='{}'),
+    CheckConstraint('attempts >= 0 AND ((lease_token IS NULL) = (lease_until IS NULL))', name='memory_summary_lease'),
+    CheckConstraint('octet_length(checkpoint::text) <= 32768', name='memory_summary_checkpoint'),
+    Index('idx_memory_summary_claim', 'failed', 'available_at', 'lease_until'))
+
+TABLES = (*TABLES, summary_state, summary_changes, summary_jobs)
 memories.append_constraint(Index('idx_hm_memory_fts', func.to_tsvector(literal_column("'simple'"), memories.c.content), postgresql_using='gin'))
 Index('idx_hm_memory_trgm', memories.c.content, postgresql_using='gin', postgresql_ops={'content': 'public.gin_trgm_ops'})

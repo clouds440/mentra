@@ -74,6 +74,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     for tool in tools:
         tool.metadata = dict(tool.metadata or {}, domain=domains.get(tool.name, 'unknown'))
     selection = ToolSelection(tools, domains, scope)
+    if context.get('memories_summary', {}).get('content') and 'user_memory' in selection.by_name:
+        selection.active.add('user_memory')
     discovery = selection.discovery()
     tools.append(discovery)
     def tool_enabled(name):
@@ -98,7 +100,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             guidance='Acknowledge saved events using these canonical receipts. Review pending details when needed. Offer preparation advice and ask whether practice is wanted; an event announcement alone is not a request to create an assessment. Do not recreate captured events.')
     summary = scope.get('conversation_summary')
     if summary and summary['through_sequence'] < scope['user_sequence']:
-        context['conversation_summary'] = summary
+        context['conversation_summary'] = dict(summary, state='ready')
     if scope.get('retrieval_selection'):
         selection_scope = scope['retrieval_selection']
         context['study_source_selection'] = dict(mode=selection_scope.mode, document_count=len(selection_scope.document_ids or []), context_count=len(selection_scope.context_ids or []))

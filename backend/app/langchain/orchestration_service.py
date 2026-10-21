@@ -100,6 +100,8 @@ class OrchestrationService:
             prepare('rag', lambda: read('search_study_material', self.rag.search, owner, SearchRequest(query=query[:4000], **selection), required=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)), speculative=True))
         if self.history is not None and self.history.profile is not None and 'profile' in modules:
             prepare('profile', lambda: read('profile_context', self.history.profile.prompt_context, owner))
+        if self.history is not None and owner and hasattr(self.history, 'summary_context'):
+            prepare('memories_summary', lambda: read('memory_summary_context', self.history.summary_context, owner))
         if self.learner is not None and owner and 'learner' in modules:
             prepare('learner', lambda: read('get_relevant_learner_context', self.learner.get_relevant_context,
                 LearnerContextRequest(learner_id=owner, query=query[:4000], context_ids=retrieval.context_ids if retrieval else None)))
@@ -152,6 +154,10 @@ class OrchestrationService:
         if 'profile' in prepared:
             value = prepared['profile']
             kwargs['profile_context'] = value.model_dump(mode='json') if value is not None else None
+        memory_context = prepared.get('memories_summary')
+        kwargs['memories_summary'] = memory_context[0] if memory_context else dict(state='unavailable', content='', revision=0)
+        if history_scope is not None and memory_context:
+            history_scope['_memory_summary_fence'] = memory_context[1]
         if 'learner' in prepared:
             kwargs['learner_context'] = prepared['learner']
             if prepared['learner'] is not None:

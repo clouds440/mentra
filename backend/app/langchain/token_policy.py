@@ -53,7 +53,11 @@ def count_messages(messages):
 
 def output_budget(source, config=settings):
     if source.value == 'chat_summary':
-        return 600
+        return config.chat_summary_max_tokens + 100
+    if source.value == 'memory_summary':
+        # Content has its own cap; structured support references need additional
+        # provider output room without enlarging the rendered chat context.
+        return config.memory_summary_max_tokens + 1200
     if source.value in ('assessment_generation', 'assessment_design'):
         return min(config.assessment_generation_output_tokens, config.chat_context_window_tokens // 2)
     if source.value in ('assessment_grading', 'assessment_transcription'):
@@ -81,7 +85,9 @@ def check_input(messages, source, *, tools=None, config=settings):
     # Bound dimensions in the extractor and reserve a conservative per-page cost.
     tokens = count_messages(messages) + schema_tokens(tools)
     limit = (max(config.chat_input_tokens, config.chat_recovery_input_tokens) if source.value == 'chat' else
-             7000 if source.value == 'chat_summary' else config.chat_context_window_tokens - output_budget(source, config) - 256)
+             min(7000, config.chat_context_window_tokens - output_budget(source, config) - 256) if source.value == 'chat_summary' else min(config.memory_summary_input_tokens,
+                 config.chat_context_window_tokens - output_budget(source, config) - 256) if source.value == 'memory_summary'
+             else config.chat_context_window_tokens - output_budget(source, config) - 256)
     if tokens > limit:
         raise AppError('AI_CONTEXT_LIMIT', 'This workflow exceeds the model context budget. Reduce its input or split the work.', 422)
     return tokens

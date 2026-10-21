@@ -1,11 +1,16 @@
 x-database-budget: &database-budget
   DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-5}
-  DATABASE_POOL_OVERFLOW: ${DATABASE_POOL_OVERFLOW:-5}
+  DATABASE_POOL_OVERFLOW: ${DATABASE_POOL_OVERFLOW:-0}
   DATABASE_POOL_TIMEOUT: ${DATABASE_POOL_TIMEOUT:-5}
   DATABASE_CONNECT_TIMEOUT: ${DATABASE_CONNECT_TIMEOUT:-5}
   DATABASE_API_STATEMENT_MS: ${DATABASE_API_STATEMENT_MS:-30000}
   DATABASE_WORKER_STATEMENT_MS: ${DATABASE_WORKER_STATEMENT_MS:-120000}
   DATABASE_LOCK_MS: ${DATABASE_LOCK_MS:-5000}
+
+x-worker-database-budget: &worker-database-budget
+  <<: *database-budget
+  DATABASE_POOL_SIZE: ${WORKER_DATABASE_POOL_SIZE:-1}
+  DATABASE_POOL_OVERFLOW: ${WORKER_DATABASE_POOL_OVERFLOW:-0}
 
 x-runtime-settings: &runtime-settings
   APP_ENV: ${APP_ENV:-development}
@@ -68,6 +73,14 @@ x-model-settings: &model-settings
   CHAT_RECOVERY_INPUT_TOKENS: ${CHAT_RECOVERY_INPUT_TOKENS:-12288}
   CHAT_CONTEXT_WINDOW_TOKENS: ${CHAT_CONTEXT_WINDOW_TOKENS:-16384}
   CHAT_OUTPUT_TOKEN_RESERVE: ${CHAT_OUTPUT_TOKEN_RESERVE:-2048}
+  CHAT_SUMMARY_MAX_TOKENS: ${CHAT_SUMMARY_MAX_TOKENS:-600}
+  CHAT_SUMMARY_MAX_CHARACTERS: ${CHAT_SUMMARY_MAX_CHARACTERS:-2400}
+  MEMORY_SUMMARY_ENABLED: ${MEMORY_SUMMARY_ENABLED:-true}
+  MEMORY_SUMMARY_MAX_TOKENS: ${MEMORY_SUMMARY_MAX_TOKENS:-800}
+  MEMORY_SUMMARY_MAX_CHARACTERS: ${MEMORY_SUMMARY_MAX_CHARACTERS:-3200}
+  MEMORY_SUMMARY_INPUT_TOKENS: ${MEMORY_SUMMARY_INPUT_TOKENS:-6000}
+  CHAT_SUMMARY_ENABLED: ${CHAT_SUMMARY_ENABLED:-true}
+  SUMMARIZER_CONCURRENCY: ${SUMMARIZER_CONCURRENCY:-2}
 
 services:
   postgres:
@@ -182,7 +195,7 @@ services:
     command: ["python", "-m", "app.rag.worker"]
     stop_grace_period: 150s
     environment:
-      <<: [*database-budget, *runtime-settings, *file-settings]
+      <<: [*worker-database-budget, *runtime-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -219,7 +232,7 @@ services:
     restart: unless-stopped
     command: ["python", "-m", "app.history_management.events.worker"]
     environment:
-      <<: [*database-budget, *runtime-settings]
+      <<: [*worker-database-budget, *runtime-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -243,7 +256,7 @@ services:
     command: ["python", "-m", "app.assessments.worker"]
     stop_grace_period: 100s
     environment:
-      <<: [*database-budget, *runtime-settings, *model-settings, *retrieval-settings, *file-settings]
+      <<: [*worker-database-budget, *runtime-settings, *model-settings, *retrieval-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-console}
       LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
@@ -261,12 +274,27 @@ services:
       backend:
         condition: service_healthy
 
+  summarizer:
+    image: mentra-backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.summarization.worker"]
+    stop_grace_period: 60s
+    environment:
+      <<: [*worker-database-budget, *runtime-settings, *model-settings]
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+      LOG_DIRECTORY: /var/log/mentra
+    volumes:
+      - ./logs/backend:/var/log/mentra
+    depends_on:
+      backend:
+        condition: service_healthy
+
   files-worker:
     image: mentra-backend
     restart: unless-stopped
     command: ["python", "-m", "app.files.worker"]
     environment:
-      <<: [*database-budget, *runtime-settings, *file-settings]
+      <<: [*worker-database-budget, *runtime-settings, *file-settings]
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
     depends_on:

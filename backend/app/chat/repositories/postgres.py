@@ -246,6 +246,7 @@ class ChatRepository:
                 if not MemoryRepository.references_current(session, owner, payload):
                     payload = dict(content='The referenced memory or conversation changed while I was answering. Please send your question again so I can use the current information.', history_references=[], memory_references=[])
                     generated_title = None
+                payload.pop('_memory_summary_fence', None)
                 if generated_title is not None and turn['user_sequence'] == 1 and row['revision'] == job.get('title_revision'):
                     first_content = session.execute(select(m.c.content).where(m.c.conversation_id == row['id'], m.c.learner_id == owner, m.c.sequence == 1)).scalar_one()
                     if row['title'] == provisional_title(first_content):
@@ -263,6 +264,9 @@ class ChatRepository:
                 from app.langchain.repositories.evidence import ChatEvidenceRepository
                 ChatEvidenceRepository.queue(session, owner, job)
             session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now(), **conversation_values))
+            if not error:
+                from .summary_jobs import queue
+                queue(session, owner, row['id'], sequence)
             self._change(session, owner, row['id'], state)
 
         return True
@@ -342,6 +346,8 @@ class ChatRepository:
                 raise conflict()
             values = dict(revision=revision+1, updated_at=now())
             if remove:
+                from .tables import summary_jobs
+                session.execute(delete(summary_jobs).where(summary_jobs.c.learner_id == owner, summary_jobs.c.conversation_id == conversation_id))
                 values['deleted_at'] = now()
                 from app.history_management.repositories.postgres import MemoryRepository
                 MemoryRepository.detach_chat(session, owner, conversation_id)

@@ -70,6 +70,13 @@ class Settings(BaseSettings):
     chat_input_tokens: int = Field(default=8192, ge=4096, le=16384)
     chat_recovery_input_tokens: int = Field(default=12288, ge=4096, le=16384)
     chat_summary_enabled: bool = True
+    chat_summary_max_tokens: int = Field(default=600, ge=128, le=2000)
+    chat_summary_max_characters: int = Field(default=2400, ge=256, le=8000)
+    memory_summary_enabled: bool = True
+    memory_summary_max_tokens: int = Field(default=800, ge=128, le=2000)
+    memory_summary_max_characters: int = Field(default=3200, ge=256, le=8000)
+    memory_summary_input_tokens: int = Field(default=6000, ge=3000, le=12000)
+    summarizer_concurrency: int = Field(default=2, ge=1, le=4)
     chat_context_window_tokens: int = Field(default=16384, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
     assessment_generation_output_tokens: int = Field(default=8192, ge=512, le=32768)

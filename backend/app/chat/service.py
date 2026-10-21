@@ -83,7 +83,7 @@ class ConversationService:
         # canonical page rather than making that new turn appear finished.
         return await run_in_threadpool(self.repository.status, owner, conversation_id)
 
-    async def _watch_active(self, owner, job, generation):
+    async def _watch_active(self, owner, job, generation, history_scope=None):
         # Durable fencing also cancels work when another process handles Stop.
         from .repositories.activity import ActivityRepository
         repository = ActivityRepository(self.repository.sessions)
@@ -92,6 +92,19 @@ class ConversationService:
             await asyncio.sleep(.5)
             try:
                 await run_in_threadpool(repository.ensure_active, owner, job)
+                if history_scope and history_scope.get('_memory_summary_fence') and not history_scope.get('_memory_writes_pending'):
+                    from app.history_management.repositories.memory_summaries import MemorySummaryRepository
+                    fence = history_scope['_memory_summary_fence']
+                    valid = await run_in_threadpool(MemorySummaryRepository(self.repository.sessions).fence_current,
+                        owner, fence)
+                    if history_scope.get('_memory_writes_pending') or history_scope['_memory_summary_fence'] is not fence:
+                        failures = 0
+                        continue  # Our own write committed while this read was in flight.
+                    if not valid:
+                        history_scope['_memory_context_changed'] = True
+                        await history_scope['activity'].emit('response-stream', 'running', 'Saved memories changed', token_reset=True)
+                        generation.cancel()
+                        return
                 failures = 0
             except AppError as error:
                 from app.langchain.tool_execution import LIFECYCLE_CODES
@@ -112,6 +125,7 @@ class ConversationService:
         from time import monotonic
         deadline = monotonic() + 150
         activity_sink = None
+        scope = None
         try:
             rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
             summary = await self.summaries.load(owner, job['conversation_id']) if self.summaries else None
@@ -135,7 +149,7 @@ class ConversationService:
             else:
                 invocation = generate(history, job['selection'])
             generation = asyncio.ensure_future(invocation)
-            watcher = asyncio.create_task(self._watch_active(owner, job, generation))
+            watcher = asyncio.create_task(self._watch_active(owner, job, generation, scope if with_scope else None))
             try:
                 response = await asyncio.wait_for(generation, timeout=max(.001, deadline - monotonic()))
             finally:
@@ -144,16 +158,15 @@ class ConversationService:
                 await asyncio.gather(generation, watcher, return_exceptions=True)
             if activity_sink is not None:
                 await activity_sink.flush()
-            published = await run_in_threadpool(self.repository.finish, owner, job, response, None)
-            if self.summaries and published:
-                task = workflow_logger.start_task(self.summaries.refresh(owner, job['conversation_id']), name='chat.summarize')
-                self.tasks.add(task)
-                task.add_done_callback(self.tasks.discard)
+            if with_scope and scope.get('_memory_summary_fence'):
+                response['_memory_summary_fence'] = scope['_memory_summary_fence']
+            await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
             if current.get().outcome == 'unknown':
                 current.get().outcome = 'degraded' if response.get('retrieval_warning') or response.get('tool_warnings') else 'success'
         except asyncio.CancelledError:
-            await run_in_threadpool(self.repository.finish, owner, job, None, 'Generation interrupted. Retry this message.')
+            message = 'Saved memories changed while answering. Retry this message to use current context.' if scope and scope.get('_memory_context_changed') else 'Generation interrupted. Retry this message.'
+            await run_in_threadpool(self.repository.finish, owner, job, None, message)
             raise
         except Exception as error:
             from app.core.observability.context import current

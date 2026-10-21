@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import re
+from contextlib import contextmanager
 from uuid import uuid4, UUID
 from sqlalchemy import select, update, delete, func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
@@ -35,6 +36,22 @@ class MemoryRepository:
     def __init__(self, sessions, active_limit=200, pending_limit=50):
         self.sessions = sessions
         self.active_limit, self.pending_limit = active_limit, pending_limit
+
+    @contextmanager
+    def _write_transaction(self, scope):
+        # The watcher must never observe a fence for an uncommitted write. The
+        # pointer is replaced only after commit; readers can detect that change.
+        if scope is not None:
+            scope['_memory_writes_pending'] = scope.get('_memory_writes_pending', 0)+1
+        try:
+            with self.sessions.begin() as session:
+                yield session
+                fence = session.info.get('committed_memory_fence')
+            if scope is not None and fence is not None:
+                scope['_memory_summary_fence'] = fence
+        finally:
+            if scope is not None:
+                scope['_memory_writes_pending'] -= 1
 
     def _lock(self, session, owner):
         lock_owner(session, owner)
@@ -148,10 +165,22 @@ class MemoryRepository:
                 return []
             return [dict(x) for x in session.execute(base.limit(5)).mappings()]
 
-    def _revision(self, session, owner, identifier, revision, actor):
+    def _revision(self, session, owner, identifier, revision, actor, before=None):
         session.execute(r.insert().values(learner_id=owner, memory_id=identifier, revision=revision, actor=actor, created_at=now()))
+        from .memory_summaries import capture
+        capture(session, owner, before, self._get(session, owner, identifier))
 
     def _receipt(self, session, owner, operation, outcome, identifier=None, scope=None, request_hash=None):
+        if scope and scope.get('_memory_summary_fence'):
+            from .tables import summary_state
+            fence = dict(scope['_memory_summary_fence'])
+            fence['source_revision'] = session.scalar(select(summary_state.c.source_revision).where(summary_state.c.learner_id == owner)) or 0
+            ids = [x['id'] for x in fence.get('supports', [])]
+            live = list(session.execute(select(m.c.id, m.c.revision, m.c.expires_at).where(m.c.learner_id == owner, m.c.id.in_(ids))).mappings())
+            fence['supports'] = [dict(id=str(x['id']), revision=x['revision']) for x in live]
+            expiry = min((x['expires_at'] for x in live if x['expires_at']), default=None)
+            fence['expires_at'] = expiry.isoformat() if expiry else None
+            session.info['committed_memory_fence'] = fence
         session.execute(rc.insert().values(learner_id=owner, operation_key=operation, outcome=outcome,
             memory_id=identifier, turn_id=scope['turn_id'] if scope else None,
             request_hash=request_hash or operation,
@@ -159,6 +188,9 @@ class MemoryRepository:
 
     def _fence(self, session, owner, scope):
         if scope:
+            from .memory_summaries import MemorySummaryRepository
+            if not MemorySummaryRepository.current(session, owner, scope.get('_memory_summary_fence')):
+                raise AppError('MEMORY_CONTEXT_CHANGED', 'Saved memories changed while answering. Retry using current context.', 409)
             row = session.execute(select(turns).where(turns.c.id == scope['turn_id'], turns.c.learner_id == owner)).mappings().first()
             if not row or row['attempt'] != scope['attempt'] or row['state'] != 'RUNNING' or row['lease_until'] <= now():
                 raise AppError('MEMORY_TURN_EXPIRED', 'This generation is no longer active.', 409)
@@ -169,7 +201,7 @@ class MemoryRepository:
         if SECRET.search(content):
             raise AppError('MEMORY_SECRET', 'Do not store passwords, credentials or secrets in memory.', 422)
         request_hash = sha256(json.dumps([content, category, pinned, expires_at.isoformat() if expires_at else None], ensure_ascii=False).encode()).hexdigest()
-        with self.sessions.begin() as session:
+        with self._write_transaction(scope) as session:
             prefs = self._lock(session, owner)
             self._fence(session, owner, scope)
             previous = session.execute(select(rc).where(rc.c.learner_id == owner, rc.c.operation_key == operation)).mappings().first()
@@ -215,7 +247,7 @@ class MemoryRepository:
                     session.execute(delete(e).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id']))
                     session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=duplicate['id'],
                         quote=content, source_date=stamp, source_deleted=False, explicit_consent=True))
-                    self._revision(session, owner, duplicate['id'], values['revision'], 'manual')
+                    self._revision(session, owner, duplicate['id'], values['revision'], 'manual', duplicate)
                     self._receipt(session, owner, operation, 'saved', duplicate['id'], scope, request_hash)
                     return dict(outcome='saved', memory=self._public(dict(duplicate, **values)))
                 if evidence and status == 'active' and not session.execute(select(e.c.id).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id'], e.c.message_id == evidence['message_id'])).first():
@@ -236,7 +268,7 @@ class MemoryRepository:
                     if duplicate['origin'] == 'ai' and duplicate['status'] == 'active' and expires_at is not None:
                         values.update(expires_at=expires_at, confirmed_at=evidence['source_date'])
                     session.execute(update(m).where(m.c.learner_id == owner, m.c.id == duplicate['id']).values(**values))
-                    self._revision(session, owner, duplicate['id'], duplicate['revision']+1, origin)
+                    self._revision(session, owner, duplicate['id'], duplicate['revision']+1, origin, duplicate)
                     duplicate = dict(duplicate, **values)
                 self._receipt(session, owner, operation, 'already_known', duplicate['id'], scope, request_hash)
                 return dict(outcome='already_known', memory=self._public(duplicate))
@@ -281,7 +313,7 @@ class MemoryRepository:
             else:
                 session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=identifier,
                     quote=content, source_date=stamp, source_deleted=False, explicit_consent=True))
-            self._revision(session, owner, identifier, revision, origin)
+            self._revision(session, owner, identifier, revision, origin, current if memory_id else None)
             outcome = 'saved' if status == 'active' else status
             self._receipt(session, owner, operation, outcome, identifier, scope, request_hash)
             return dict(outcome=outcome, memory=self._public(self._get(session, owner, identifier)))
@@ -308,7 +340,7 @@ class MemoryRepository:
                         raise conflict()
                     session.execute(update(m).where(m.c.learner_id == owner, m.c.id == other['id']).values(status='conflict', revision=other['revision'] + 1, updated_at=now(),
                         conflicts=[dict(memory_id=identifier, revision=row['revision']+1, content=body.content or row['content'])]))
-                    self._revision(session, owner, other['id'], other['revision'] + 1, 'manual')
+                    self._revision(session, owner, other['id'], other['revision'] + 1, 'manual', other)
                 values['conflicts'] = []
             if body.content is not None:
                 values.update(content=body.content, fingerprint=fingerprint(body.content), status='active', confirmed_at=now())
@@ -333,7 +365,7 @@ class MemoryRepository:
             if body.clear_expiration or body.expires_at:
                 values['expires_at'] = None if body.clear_expiration else body.expires_at
             session.execute(update(m).where(m.c.learner_id == owner, m.c.id == identifier).values(**values))
-            self._revision(session, owner, identifier, values['revision'], 'manual')
+            self._revision(session, owner, identifier, values['revision'], 'manual', row)
             return self._public(dict(row, **values))
 
     def maintain(self, owner, limit=100, *, prune_receipts=True):
@@ -374,12 +406,17 @@ class MemoryRepository:
             for dependent in dependents:
                 session.execute(update(m).where(m.c.id == dependent['id'], m.c.learner_id == owner).values(
                     conflicts=[x for x in dependent['conflicts'] if x['memory_id'] != identifier], revision=dependent['revision']+1, updated_at=now()))
-                self._revision(session, owner, dependent['id'], dependent['revision']+1, 'manual')
+                self._revision(session, owner, dependent['id'], dependent['revision']+1, 'manual', dependent)
             session.execute(delete(m).where(m.c.learner_id == owner, m.c.id == identifier))
+            from .memory_summaries import capture
+            capture(session, owner, row, None)
             return dict(deleted=True)
 
     @staticmethod
     def references_current(session, owner, payload):
+        from .memory_summaries import MemorySummaryRepository
+        if not MemorySummaryRepository.current(session, owner, payload.get('_memory_summary_fence')):
+            return False
         for reference in payload.get('memory_references', []):
             row = session.execute(select(m.c.revision).where(m.c.learner_id == owner, m.c.id == reference['memory_id'], m.c.status == 'active',
                 or_(m.c.expires_at.is_(None), m.c.expires_at > now()))).first()

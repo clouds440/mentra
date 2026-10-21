@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Text, BigInteger, Integer, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
+from sqlalchemy import Table, Column, Text, BigInteger, Integer, Boolean, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
@@ -59,6 +59,18 @@ summaries = Table('chat_summary', metadata,
     ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
     CheckConstraint('through_sequence >= 0 AND revision >= 0', name='chat_summary_revision'))
 TABLES = (*TABLES, summaries)
+summary_jobs = Table('chat_summary_job', metadata,
+    Column('conversation_id', Uuid(as_uuid=False), primary_key=True), owner(),
+    Column('target_sequence', BigInteger, nullable=False),
+    Column('queued_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('available_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('lease_token', Uuid(as_uuid=False)), Column('lease_until', DateTime(timezone=True)),
+    Column('attempts', BigInteger, nullable=False, server_default='0'),
+    Column('failed', Boolean, nullable=False, server_default='false'), Column('error_code', Text),
+    ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
+    CheckConstraint('target_sequence > 0 AND attempts >= 0 AND ((lease_token IS NULL) = (lease_until IS NULL))', name='chat_summary_job_bounds'),
+    Index('idx_chat_summary_job_claim', 'failed', 'available_at', 'lease_until'))
+TABLES = (*TABLES, summary_jobs)
 activity = Table('chat_activity', metadata,
     Column('learner_id', Uuid(as_uuid=False), nullable=False),
     Column('turn_id', Uuid(as_uuid=False), primary_key=True),
