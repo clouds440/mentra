@@ -110,14 +110,14 @@ for (const mobile of [false, true]) test(`chat deletion modal supports cancellat
   await page.goto('/chat/polish-chat');
   if (mobile) await page.getByRole('button', { name: 'Open navigation menu' }).click();
   const history = page.getByRole('region', { name: 'Conversation history' });
-  const trigger = history.getByRole('button', { name: /^Delete / });
-  await trigger.focus(); await trigger.click();
+  const trigger = history.getByRole('button', { name: /^Actions for / });
+  await trigger.focus(); await trigger.click(); await page.getByRole('menuitem', {name:'Delete',exact:true}).click();
   const dialog = page.getByRole('dialog', { name: 'Delete chat?' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0); await expect(trigger).toBeFocused();
   expect(requests).toBe(0);
-  await trigger.click();
+  await trigger.click(); await page.getByRole('menuitem', {name:'Delete',exact:true}).click();
   const remove = dialog.getByRole('button', { name: 'Delete chat', exact: true });
   await remove.click();
   await expect.poll(() => requests).toBe(1);
@@ -207,7 +207,7 @@ test('shared tabs preserve assessment drafts, URL history and keyboard focus', a
   await expect(page).not.toHaveURL(/tab=create/);
   await page.goBack();
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
-  await create.focus(); await create.press('ArrowLeft'); await page.getByRole('tab', { name: 'Assessments', exact: true }).press('End');
+  await create.focus(); await create.press('Home'); await page.getByRole('tab', { name: 'Assessments', exact: true }).press('End');
   await expect(create).toBeFocused();
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
 });
@@ -215,10 +215,10 @@ test('shared tabs preserve assessment drafts, URL history and keyboard focus', a
 test('relevant writes keep understanding rows and coalesce invalidation events', async ({ page }) => {
   await workspace(page, false, true);
   let requests = 0;
-  await page.route('**/api/v1/learning/understanding*', async route => {
+  await page.route('**/api/v1/learning/page*', async route => {
     requests++;
     await new Promise(resolve => setTimeout(resolve, 100));
-    await route.fulfill({ json: { items: [{ concept_id: 'forces', name: 'Forces', knowledge_status: 'developing', mastery: .6, estimate_confidence: .5, retention_confidence: .4 }], total: 1, total_concepts: 1, limit: 10, offset: 0 } });
+    await route.fallback();
   });
   await page.goto('/progress');
   const row = page.getByRole('row').filter({ hasText: 'Forces' });

@@ -23,7 +23,7 @@ export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean
     const keydown = (event: KeyboardEvent) => {
       // Native top-layer dialogs own focus and Escape while above navigation.
       if (document.querySelector('dialog[open]')) return;
-      if (event.key === 'Escape' && !event.defaultPrevented && !navigation.querySelector('#sidebar-account-panel, [role="listbox"]')) { event.preventDefault(); close.current(); }
+      if (event.key === 'Escape' && !event.defaultPrevented && !navigation.querySelector('#sidebar-account-panel, [role="listbox"], [role="menu"]')) { event.preventDefault(); close.current(); }
       if (event.key !== 'Tab' || event.defaultPrevented) return;
       const targets = focusable(); const first = targets[0], last = targets[targets.length - 1];
       if (!first) { event.preventDefault(); navigation.focus(); return; }

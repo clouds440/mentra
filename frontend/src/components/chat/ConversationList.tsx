@@ -1,7 +1,9 @@
+import { ActionMenu } from '../ui/ActionMenu';
+import { useLongPress } from '../../hooks/useLongPress';
 import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { Spinner } from '../ui/Spinner';
-import { Check, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Trash2, X, MoreVertical } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router-dom';
 import { chatStore, useChatList } from '../../stores/chatStore';
@@ -14,6 +16,10 @@ import { ChatSearch } from './ChatSearch';
 
 function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => void }) {
   const [editing, setEditing] = useState(false), [deleting, setDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchor = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+  const longPress = useLongPress(() => setMenuOpen(true));
   const [title, setTitle] = useState(chat.title);
   const [deleteBusy, setDeleteBusy] = useState(false), [deleteError, setDeleteError] = useState('');
   const deletePending = useRef(false);
@@ -34,7 +40,7 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
     }
   };
   const control = 'history-action grid h-7 w-7 shrink-0 place-items-center rounded-md text-subtle hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent';
-  const rowControls = 'lg:opacity-0 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:pointer-events-auto lg:group-focus-within:opacity-100 lg:group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto motion-safe:transition-opacity';
+  const rowControls = 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto motion-safe:transition-opacity';
   return <div className="group my-1 rounded-lg">
     {editing ? <form className="flex items-center gap-1 px-2 py-1" onSubmit={event => { event.preventDefault(); void chatStore.rename(chat.id, title); setEditing(false); }}>
       <Input autoFocus aria-label="Conversation title" value={title} onChange={event => setTitle(event.target.value)} maxLength={120} required
@@ -42,11 +48,17 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
       <button type="submit" aria-label="Save conversation title" className={control}><Check size={14} /></button>
       <button type="button" aria-label="Cancel rename" className={control} onClick={() => setEditing(false)}><X size={14} /></button>
     </form> : <div className="relative min-w-0">
-      <NavLink to={`/chat/${chat.id}`} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('block w-full min-w-0 truncate rounded-lg pl-3 pr-20 py-2 lg:pr-3 lg:group-hover:pr-16 lg:group-focus-within:pr-16 [@media(hover:none)]:pr-20 text-xs text-muted group-hover:bg-hover group-focus-within:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
+      <NavLink to={`/chat/${chat.id}`} {...longPress} onClick={onOpen} title={chat.title} className={({ isActive }) => cn('block w-full min-w-0 truncate rounded-lg select-none pl-3 pr-10 py-2 [-webkit-touch-callout:none] text-xs text-muted group-hover:bg-hover group-focus-within:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent', isActive && 'bg-active font-medium text-foreground')}>
         {chat.title}
       </NavLink>
-      <div className={cn("absolute right-1 top-1/2 -translate-y-1/2 flex items-center", rowControls)}><button type="button" aria-label={`Rename ${chat.title}`} className={control} onClick={() => { setTitle(chat.title); setEditing(true); setDeleting(false); }}><Pencil size={13} /></button>
-      <button type="button" aria-label={`Delete ${chat.title}`} className={control} onClick={() => { setDeleteError(''); setDeleting(true); }}><Trash2 size={13} /></button></div>
+      <div className={cn('absolute right-1 top-1/2 -translate-y-1/2', !menuOpen && rowControls)}>
+        <button ref={menuAnchor} type="button" aria-label={`Actions for ${chat.title}`} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined}
+          className={control} onClick={() => setMenuOpen(value => !value)} onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setMenuOpen(true); } }}><MoreVertical size={15} aria-hidden="true" /></button>
+      </div>
+      <ActionMenu anchor={menuAnchor} open={menuOpen} onClose={() => setMenuOpen(false)} id={menuId} label={`Actions for ${chat.title}`} items={[
+        {id:'rename', label:'Rename', icon:Pencil, onSelect:() => { setTitle(chat.title); setEditing(true); setDeleting(false); }},
+        {id:'delete', label:'Delete', icon:Trash2, destructive:true, onSelect:() => { setDeleteError(''); setDeleting(true); }},
+      ]} />
     </div>}
     {deleting && <Dialog open busy={deleteBusy} onDismiss={() => setDeleting(false)} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`} className="max-w-sm">
       <div className="flex items-center gap-2 text-heading"><Trash2 size={17} className="shrink-0 text-danger" aria-hidden="true" /><h2 id={`${dialogId}-title`} className="text-sm font-semibold">Delete chat?</h2></div>

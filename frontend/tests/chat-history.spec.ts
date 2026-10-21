@@ -50,7 +50,9 @@ test('durable history, incremental requests, cached navigation, rename and delet
   await expect(page.getByRole('article', { name: 'Your message' })).toHaveCount(2);
   await expect.poll(() => loads).toBe(1);
   await page.getByRole('link', { name: 'First saved question', exact: true }).hover();
-  await page.getByRole('button', { name: 'Rename First saved question', exact: true }).click();
+  await page.getByRole('button', { name: 'Actions for First saved question', exact: true }).focus();
+  await page.getByRole('button', { name: 'Actions for First saved question', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByLabel('Conversation title', { exact: true }).fill('Renamed persistent chat');
   await page.getByRole('button', { name: 'Save conversation title' }).click();
   await expect(page.getByRole('link', { name: 'Renamed persistent chat', exact: true })).toBeVisible();
@@ -64,7 +66,9 @@ test('durable history, incremental requests, cached navigation, rename and delet
   expect(cached).toBe(1);
   await page.getByRole('link', { name: 'Renamed persistent chat', exact: true }).click();
   await page.getByRole('link', { name: 'Renamed persistent chat', exact: true }).hover();
-  await page.getByRole('button', { name: 'Delete Renamed persistent chat', exact: true }).click();
+  await page.getByRole('button', { name: 'Actions for Renamed persistent chat', exact: true }).focus();
+  await page.getByRole('button', { name: 'Actions for Renamed persistent chat', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('link', { name: 'Renamed persistent chat', exact: true })).toHaveCount(0);
@@ -90,7 +94,9 @@ test('cross-tab synchronization and logout isolate persistent caches', async ({ 
   await other.goto('/');
   await expect(other.getByRole('link', { name: 'Shared tab conversation', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Shared tab conversation', exact: true }).hover();
-  await page.getByRole('button', { name: 'Rename Shared tab conversation', exact: true }).click();
+  await page.getByRole('button', { name: 'Actions for Shared tab conversation', exact: true }).focus();
+  await page.getByRole('button', { name: 'Actions for Shared tab conversation', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByLabel('Conversation title', { exact: true }).fill('Updated in another tab');
   await page.getByRole('button', { name: 'Save conversation title' }).click();
   await expect(other.getByRole('link', { name: 'Updated in another tab', exact: true })).toBeVisible();
@@ -194,7 +200,9 @@ test('a delayed completion cannot resurrect a chat deleted in another tab', asyn
   await expect(other.getByRole('article', { name: 'Mentra response' })).toHaveCount(2);
   await expect(other.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEnabled();
   await other.getByRole('link', { name: 'Deletion race conversation', exact: true }).hover();
-  await other.getByRole('button', { name: 'Delete Deletion race conversation', exact: true }).click();
+  await other.getByRole('button', { name: 'Actions for Deletion race conversation', exact: true }).focus();
+  await other.getByRole('button', { name: 'Actions for Deletion race conversation', exact: true }).click();
+  await other.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await other.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Deletion race conversation', exact: true })).toHaveCount(0);
   release();

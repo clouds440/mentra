@@ -107,7 +107,9 @@ test('actual memory/history tool calls, references, chat deletion retention and 
   await page.getByRole('button', { name: 'Close reference' }).click();
   await page.goto(sourceChat);
   await page.getByRole('link', { name: 'Remember that I prefer mermaid diagrams.', exact: true }).hover();
-  await page.getByRole('button', { name: 'Delete Remember that I prefer mermaid diagrams.', exact: true }).click();
+  await page.getByRole('button', { name: 'Actions for Remember that I prefer mermaid diagrams.', exact: true }).focus();
+  await page.getByRole('button', { name: 'Actions for Remember that I prefer mermaid diagrams.', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await page.getByRole('button', { name: 'Delete chat', exact: true }).click();
   await page.goto('/settings?tab=memories');
   await page.getByRole('button', { name: 'Evidence', exact: true }).click();

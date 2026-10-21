@@ -392,14 +392,14 @@ test('full width titles reveal overlay controls and history opens at the bottom'
   await workspace(page, false, true);
   await page.goto('/chat/polish-chat');
   const nav = page.getByRole('link', {name:title, exact:true});
-  const actions = page.getByRole('button', {name:`Rename ${title}`}).locator('..');
+  const actions = page.getByRole('button', {name:`Actions for ${title}`}).locator('..');
   await page.getByRole('textbox', {name:'Ask Mentra anything'}).hover();
   await expect(actions).toHaveCSS('opacity', '0');
   const full = await nav.evaluate(el => ({width:el.getBoundingClientRect().width, parent:el.parentElement!.getBoundingClientRect().width, padding:getComputedStyle(el).paddingRight}));
   expect(full.width).toBe(full.parent);
   await nav.hover();
   await expect(actions).toHaveCSS('opacity', '1');
-  expect(await nav.evaluate(el => parseFloat(getComputedStyle(el).paddingRight))).toBeGreaterThan(parseFloat(full.padding));
+  expect(await nav.evaluate(el => parseFloat(getComputedStyle(el).paddingRight))).toBe(parseFloat(full.padding));
   await expect.poll(() => page.getByRole('log').evaluate(el => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(3);
   await expect(page.getByLabel('Attachment study.png').getByRole('img')).toBeVisible();
   await page.reload();
@@ -410,6 +410,7 @@ test('full width titles reveal overlay controls and history opens at the bottom'
   await expect.poll(() => page.getByRole('log').evaluate(el => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(3);
   await page.setViewportSize({width:390, height:844});
   await page.getByRole('button', {name:'Open navigation menu'}).click();
+  await nav.focus();
   await expect(actions).toHaveCSS('opacity', '1');
   await expect(page.getByText('A quieter way to learn.')).toHaveCount(0);
 });
