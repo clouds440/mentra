@@ -158,10 +158,13 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         candidate_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(candidate_tools)))
         candidate_context = dict(context, missing_context=scope.get('tool_warnings', []))
         total = count_tokens_approximately([SystemMessage(content=candidate_instructions + json.dumps(candidate_context, ensure_ascii=False, default=str, separators=(',', ':'))), *conversation]) + schema_tokens(candidate_tools)
-        if total + 1024 > input_limit and total + 1024 <= settings.chat_recovery_input_tokens:
+        # Fitting schemas alone is insufficient: discovery must leave room for
+        # its receipt and a real lookup, rather than forcing the next round final.
+        required = total + 1024 + min(1024, result_token_ceiling)
+        if required > input_limit and required <= settings.chat_recovery_input_tokens:
             input_limit = settings.chat_recovery_input_tokens
             scope['_chat_input_limit'] = input_limit
-        admitted = total + 1024 <= input_limit
+        admitted = required <= input_limit
         if admitted:
             remaining = max(0, input_limit - total - 1024)
             budget.max_result_tokens = min(result_token_ceiling, budget.result_tokens + remaining)
@@ -210,7 +213,13 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         from .workflow_budget import current_budget
         envelope = current_budget.get()
         results_full = budget.result_tokens > budget.max_result_tokens - 600 or budget.result_characters > budget.max_result_bytes - 1800
-        final = iteration == 4 or budget.calls >= budget.max_calls or scope.get('_repair_exhausted', False) or scope.get('_exhausted_repeat', False) or bool(envelope and envelope.remaining <= envelope.answer_reserve) or results_full
+        final_reasons = [name for name, condition in (
+            ('round_limit', iteration == 4), ('call_limit', budget.calls >= budget.max_calls),
+            ('repair_limit', scope.get('_repair_exhausted', False)),
+            ('repeated_failure', scope.get('_exhausted_repeat', False)),
+            ('deadline', bool(envelope and envelope.remaining <= envelope.answer_reserve)),
+            ('result_budget', results_full)) if condition]
+        final = bool(final_reasons)
         if direct_candidate and scope.get('_domain_tool_used'):
             answer_schema = output_schema
         available_tools = [] if final else selected()
@@ -225,7 +234,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         if round_cost + count_tokens_approximately(conversation) + 256 > input_limit:
             raise AppError('CHAT_CONTEXT_LIMIT', 'Tool execution exceeded the configured context budget.', 422)
         from app.core.logging import workflow_logger
-        workflow_logger.event('model.round', round=iteration+1, tool_count=len(available_tools), schema_tokens=schema_tokens(available_tools), final_round=final)
+        workflow_logger.event('model.round', round=iteration+1, tool_count=len(available_tools), schema_tokens=schema_tokens(available_tools), final_round=final, final_reasons=final_reasons,
+            result_tokens_remaining=max(0, budget.max_result_tokens-budget.result_tokens),
+            result_bytes_remaining=max(0, budget.max_result_bytes-budget.result_characters))
         workflow_logger.event('chat.context_budget', input_limit=input_limit, estimated_input_tokens=round_cost+count_tokens_approximately(conversation),
             summary_revision=summary['revision'] if summary else 0, recent_history_target=history_target)
         try:
@@ -234,6 +245,15 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 **({'tool_choice': answer_schema.__name__ if final else 'required'} if answer_schema else {}),
                 on_delta=None if answer_schema or scope.get('tool_warnings') else scope.get('on_delta'))
         except Exception as error:
+            from .provider_protocol import ProviderProtocolError
+            if isinstance(error, ProviderProtocolError):
+                if repairs >= 1 or final:
+                    raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502) from error
+                repairs += 1
+                budget.call()
+                conversation.append(SystemMessage(content='The provider returned tool-control markup as plain text. No tool executed. Use native function calls with the provided schemas, or give a truthful final answer. Never print tool-control markup.'))
+                await publisher.emit('protocol-repair', 'failed', 'The tool request was invalid. Correcting it once.', error_code='TOOL_PROTOCOL_INVALID')
+                return dict(iteration=iteration+1, response=None, done=False, repair=True)
             from openai import BadRequestError
             unsupported = isinstance(error, (NotImplementedError, AttributeError)) or (isinstance(error, BadRequestError)
                 and any(word in str(error).lower() for word in ('tools', 'function', 'tool_choice'))

@@ -7,6 +7,7 @@ from langchain_core.messages.utils import message_chunk_to_message
 from .workflow_budget import current_budget
 from app.core.logging import workflow_logger
 from .provider_activity import provider_attempt_scope
+from .provider_protocol import raw_tool_markup, validate_response
 
 
 async def invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3):
@@ -39,7 +40,7 @@ async def _invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3
     try:
         async with asyncio.timeout(envelope.remaining if envelope else None):
             if on_delta is None or not hasattr(model, 'astream'):
-                return await model.ainvoke(prepared)
+                return validate_response(await model.ainvoke(prepared))
             aggregate, pending = None, ''
             emitted = time.monotonic()
             async for chunk in model.astream(prepared):
@@ -54,6 +55,11 @@ async def _invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3
                 aggregate = chunk if aggregate is None else aggregate + chunk
                 if isinstance(chunk.content, str):
                     pending += chunk.content
+                # Hold an incomplete leading tag so protocol tokens split across
+                # chunks cannot leak into the public preview before validation.
+                head = aggregate.content.lstrip() if isinstance(aggregate.content, str) else ''
+                if raw_tool_markup(head) or not head or (head.startswith('<') and '>' not in head and len(head) < 256):
+                    continue
                 if pending and (len(pending) >= 512 or time.monotonic() - emitted >= .2):
                     for start in range(0, len(pending), 1000):
                         await delta(pending[start:start+1000])
@@ -61,6 +67,11 @@ async def _invoke_provider(model, prepared, *, on_delta=None, maximum_attempts=3
             if aggregate is None:
                 raise ValueError('Provider returned no response chunks')
             result = message_chunk_to_message(aggregate)
+            try:
+                validate_response(result)
+            except ValueError:
+                await delta(None)
+                raise
             if getattr(result, 'tool_calls', None):
                 await delta(None)
             elif pending:
