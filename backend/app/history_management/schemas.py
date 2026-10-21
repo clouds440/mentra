@@ -83,6 +83,17 @@ class HistoryLookup(Contract):
         return self
 
 
+class ConversationSummarySearch(Contract):
+    query: str = Field(min_length=1, max_length=300)
+    limit: int = Field(default=3, ge=1, le=3)
+
+    @model_validator(mode='after')
+    def searchable(self):
+        if '\x00' in self.query:
+            raise ValueError('Search must not contain null characters.')
+        return self
+
+
 class MemoryToolInput(Contract):
     action: Literal['recall', 'remember', 'revise']
     query: str = Field(default='', max_length=300)

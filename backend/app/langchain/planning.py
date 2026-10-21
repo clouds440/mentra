@@ -45,7 +45,7 @@ from app.core.logging import workflow_logger
 @workflow_logger.operation(outcome='success')
 def plan_request(query: str, *, attachments=False, selected_sources=False, context_rows=()):
     text = query.strip().casefold()
-    personal = bool(re.search(r'\b(remember|preference|previous chat|earlier conversation|my profile|saved memory)\b', text))
+    personal = bool(re.search(r'\b(remember|preference|(?:past|previous|earlier) (?:chat|conversation)s?|my profile|saved memory)\b', text))
     event = bool(re.search(r'\b(agenda|deadline|remind|upcoming|schedule|event)\b|\bwhen\b.*\bexam\b', text))
     assessment = bool(re.search(r'\b(assessment|quiz|mock paper|mock exam|answer sheet|test)\b|\b(grade|evaluate|mark)\b.*\b(answers?|paper)\b', text))
     from app.history_management.events.capture import event_candidate, practice_request
@@ -74,7 +74,7 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     intent = 'compound' if sum((personal, event, assessment)) > 1 else 'assessment' if assessment else 'events' if event else 'personal' if personal else 'learning' if learning else 'conversation'
     allocation = {'chat':0, 'learner':1800, 'profile':600, 'rag':3200, 'documents':2400, 'history':1500, 'memory':800, 'events':800, 'assessment':0}
     names = []
-    if personal: names.extend(['history_lookup', 'user_memory'])
+    if personal: names.extend(['conversation_summary_search', 'history_lookup', 'user_memory'])
     if event: names.append('event_manage' if scheduled or re.search(r'\b(add|create|schedule|remind|move|reschedule|cancel)\b', text) else 'event_lookup')
     if learning: names.extend(['get_active_learning_contexts', 'get_relevant_learner_context'])
     if re.search(r'\b(next|weakness|progress|practice target|recommend)\b', text) and learning: names.append('get_study_recommendations')

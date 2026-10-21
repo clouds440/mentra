@@ -7,7 +7,7 @@ DOMAINS = {
     'memory_summary_context': 'memory',
     'web_research': 'web',
     'web_search': 'web',
-    'history_lookup': 'history', 'user_memory': 'memory',
+    'history_lookup': 'history', 'conversation_summary_search': 'history', 'user_memory': 'memory',
     'event_lookup': 'events', 'event_manage': 'events',
     'get_active_learning_contexts': 'learner', 'get_relevant_learner_context': 'learner',
     'get_study_recommendations': 'learner', 'get_verification_candidates': 'learner',

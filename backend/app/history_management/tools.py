@@ -1,5 +1,5 @@
 from langchain_core.tools import StructuredTool
-from .schemas import HistoryLookup, MemoryToolInput
+from .schemas import HistoryLookup, MemoryToolInput, ConversationSummarySearch
 
 
 def create_history_tools(service, owner, scope, budget):
@@ -25,7 +25,16 @@ def create_history_tools(service, owner, scope, budget):
                 budget.cache.pop(key)
         return result
 
+    async def conversation_summary_search(**kwargs):
+        budget.call()
+        body = ConversationSummarySearch(**kwargs)
+        key = 'summary-search:' + body.model_dump_json()
+        if key not in budget.cache:
+            budget.cache[key] = await service.search_summaries(owner, scope, body)
+        return budget.cache[key]
+
     return [
         StructuredTool.from_function(name='history_lookup', description='Retrieve original past exchanges when relevant context is missing. Use message_id from a conversation summary to recover exact code or wording; continue with content_offset=next_content_offset for large messages. Otherwise search by keywords or sequence anchors. Summary references alone are not evidence. Cross-chat search requires keywords. Owner and current chat are server-bound.', args_schema=HistoryLookup, coroutine=history_lookup, metadata={'parallel_read': True}),
         StructuredTool.from_function(name='user_memory', description='Recall relevant saved user facts by keywords, or propose an evidence-backed durable memory. Writes need an exact quote and visible user-message ID. Never save secrets. Sensitive information requires explicit remember consent.', args_schema=MemoryToolInput, coroutine=user_memory, metadata={'parallel_read': True}),
+        StructuredTool.from_function(name='conversation_summary_search', description='Search summaries and titles of this user\'s other saved conversations by specific keywords. Use to locate relevant past chats quickly; the current chat summary is already supplied. Returns up to three summaries with conversation IDs. Summaries are lossy, not evidence: use history_lookup with selected_chats and keywords to recover original messages. Chats without summaries remain searchable with history_lookup. Owner and current chat are server-bound.', args_schema=ConversationSummarySearch, coroutine=conversation_summary_search, metadata={'parallel_read': True}),
     ]

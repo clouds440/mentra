@@ -12,6 +12,31 @@ class ChatReadFacade:
     def __init__(self, repository):
         self.repository = repository
 
+    def search_summaries(self, owner, current_chat, body):
+        from .tables import summaries as s
+        from app.core.config import settings
+        from sqlalchemy.exc import DBAPIError
+        text_value = c.c.title + ' ' + s.c.content
+        vector = func.to_tsvector('simple', text_value)
+        query = func.websearch_to_tsquery('simple', body.query)
+        pattern = '%' + body.query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        statement = select(c.c.id.label('conversation_id'), c.c.title, s.c.content.label('summary'),
+            s.c.revision, s.c.through_sequence, c.c.updated_at).join(s,
+                and_(s.c.conversation_id == c.c.id, s.c.learner_id == c.c.learner_id)).where(
+            c.c.learner_id == owner, s.c.learner_id == owner, c.c.deleted_at.is_(None),
+            c.c.id != current_chat, s.c.revision > 0, s.c.through_sequence > 0,
+            func.length(s.c.content).between(1, settings.chat_summary_max_characters),
+            or_(vector.op('@@')(query), text_value.ilike(pattern, escape='\\'))
+        ).order_by(func.ts_rank_cd(vector, query).desc(), c.c.updated_at.desc(), c.c.id).limit(body.limit)
+        try:
+            with self.repository.sessions() as session:
+                session.execute(text('SET LOCAL statement_timeout = 2000'))
+                return [dict(row) for row in session.execute(statement).mappings()]
+        except DBAPIError as error:
+            if getattr(error.orig, 'sqlstate', None) == '57014':
+                raise AppError('CHAT_SEARCH_BUSY', 'This search took too long. Try more specific keywords.', 503) from None
+            raise
+
     def search_saved(self, owner, query: str, offset: int = 0):
         from sqlalchemy import case, literal, union_all
         from sqlalchemy.exc import DBAPIError

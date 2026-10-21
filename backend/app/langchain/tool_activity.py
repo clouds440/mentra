@@ -13,6 +13,7 @@ LABELS = {
     'event_lookup': 'Checking your events',
     'event_manage': 'Preparing an event for your review',
     'history_lookup': 'Searching earlier conversations',
+    'conversation_summary_search': 'Searching past conversation summaries',
     'user_memory': 'Checking your saved memories',
     'get_active_learning_contexts': 'Checking what you’re studying',
     'get_relevant_learner_context': 'Checking your learning progress',

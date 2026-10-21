@@ -13,7 +13,8 @@ notifications and settings; browser caches accelerate navigation and synchroniza
   finds literal phrases in owned titles/messages and opens the exact saved exchange,
   including messages outside the current window.
 - **Chat context:** private rolling summaries stored by chat ID, recent verbatim
-  context, and exact/keyword history recovery. Normal chat input is 8,192 tokens,
+  context, exact/keyword history recovery, and an owner-scoped tool for searching
+  past conversation summaries before retrieving original exchanges. Normal chat input is 8,192 tokens,
   with a bounded 12,288-token recovery allowance and a separate 2,048-token output
   reserve. Original displayed messages remain intact.
 - **Rich answers:** Markdown, shared Prism code blocks, rendered equations, citations, interactive

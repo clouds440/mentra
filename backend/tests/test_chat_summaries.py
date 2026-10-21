@@ -22,6 +22,65 @@ from app.core.config import Settings
 
 
 class SummaryTests(unittest.TestCase):
+    def test_summary_search_is_owner_scoped_excludes_current_and_deleted_and_recovers_originals(self):
+        from app.history_management.schemas import ConversationSummarySearch
+        from testing.identities import learner_id
+        keyword = 'summarytopic' + uuid4().hex
+        cid, revision = self.conversation(2, keyword + ' original detail ')
+        claim = self.repo.claim(self.owner, cid)
+        self.assertTrue(self.repo.publish(self.owner, cid, claim, keyword + ' summarized decisions', 4))
+        current, _ = self.conversation()
+        claim = self.repo.claim(self.owner, current)
+        self.repo.publish(self.owner, current, claim, keyword + ' current chat', 2)
+        other = learner_id('bob')
+        request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='Private question')
+        job = self.chats.begin_turn(other, request)
+        self.chats.finish(other, job, dict(content='Private answer'))
+        foreign = str(request.conversation_id)
+        claim = self.repo.claim(other, foreign)
+        self.repo.publish(other, foreign, claim, keyword + ' private chat', 2)
+        reader = ChatReadFacade(self.chats)
+        body = ConversationSummarySearch(query=keyword)
+        rows = reader.search_summaries(self.owner, current, body)
+        self.assertEqual([row['conversation_id'] for row in rows], [cid])
+        windows = reader.lookup(self.owner, current, 3,
+            HistoryLookup(scope='selected_chats', chat_ids=[cid], query=keyword))
+        self.assertTrue(windows)
+        self.assertIn('original detail', str(windows))
+        self.chats.edit(self.owner, cid, revision, remove=True)
+        self.assertEqual(reader.search_summaries(self.owner, current, body), [])
+
+    def test_summary_tool_is_discoverable_bounded_and_does_not_create_evidence(self):
+        from app.history_management.tools import create_history_tools
+        from app.history_management.budgets import ToolBudget
+        from app.langchain.tool_policy import DOMAINS
+        from app.langchain.tool_selection import ToolSelection
+        from app.langchain.planning import plan_request
+        from unittest.mock import Mock
+        from pydantic import ValidationError
+        from app.history_management.schemas import ConversationSummarySearch
+        for arguments in ({'query': '   '}, {'query': 'x', 'limit': 4}, {'query': '\x00'}, {'query': 'x', 'owner': 'other'}):
+            with self.assertRaises(ValidationError):
+                ConversationSummarySearch(**arguments)
+        reader = Mock()
+        reader.search_summaries.return_value = [dict(conversation_id=str(uuid4()), title='Earlier chat',
+            summary='A useful summary', revision=1, through_sequence=2)]
+        service = HistoryManagement(None, reader, None)
+        scope = dict(conversation_id=str(uuid4()), evidence_ids=set(), history_references=[], workflow_modules={'chat'})
+        tools = create_history_tools(service, self.owner, scope, ToolBudget())
+        selection = ToolSelection(tools, DOMAINS, scope)
+        async def run():
+            discovered = await selection.discovery().ainvoke({'tool_names': ['conversation_summary_search']})
+            self.assertIn('conversation_summary_search', discovered['newly_enabled'])
+            tool = next(tool for tool in selection.selected() if tool.name == 'conversation_summary_search')
+            for _ in range(2):
+                self.assertEqual(len((await tool.ainvoke({'query': 'earlier'}))['summaries']), 1)
+        asyncio.run(run())
+        reader.search_summaries.assert_called_once()
+        self.assertEqual(scope['evidence_ids'], set())
+        self.assertEqual(scope['history_references'], [])
+        self.assertIn('conversation_summary_search', plan_request('Find our past conversations').tool_names)
+
     def test_cached_summary_reuses_content_and_detects_other_process_publication(self):
         from sqlalchemy import event
         cid, revision = self.conversation(2)
