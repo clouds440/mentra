@@ -28,4 +28,4 @@ export interface ChatAssessmentCardData {
 }
 
 export interface MistakeItem { answer: string; answer_mode?: AssessmentQuestion['answer_mode']; options?: AssessmentQuestion['options']; id: string; assessment_id: string; assessment_title: string; attempt_id: string; grade_revision: number; question_id: string; prompt: string; context: string; topics: { id: string; name: string }[]; score: number; marks: number; feedback: string; occurrences: number; resolved: boolean; occurred_at: string; priority: string }
-export interface MistakesPage { items: MistakeItem[]; total: number; active_count: number; next_offset: number | null; assessments: { id: string; title: string }[]; topics: { id: string; name: string }[] }
+export interface MistakesPage { contexts: { id: string; name: string }[]; items: MistakeItem[]; total: number; active_count: number; next_offset: number | null; assessments: { id: string; title: string }[]; topics: { id: string; name: string }[] }

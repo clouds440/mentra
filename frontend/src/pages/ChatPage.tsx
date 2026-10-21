@@ -151,7 +151,7 @@ export function ChatPage() {
           onPointerDown={event => { if (event.target === event.currentTarget) scroll.noteUserScroll(); }}
           onKeyDown={event => { if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Tab',' '].includes(event.key)) scroll.noteUserScroll(); }}
           onScroll={scroll.onScroll}>
-          <div className="mx-auto flex min-h-[var(--chat-content-height,0px)] w-full max-w-[52rem] flex-col">
+          <div className="mx-auto flex min-h-[var(--chat-content-height,0px)] w-full max-w-[60rem] flex-col">
             <div className="flex flex-col gap-8">
             {view.before !== null && <button type="button" disabled={view.loading} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'self-center' })}
               onClick={() => { const done = scroll.preparePrepend(); void chatStore.older(id).finally(done); }}>
@@ -159,7 +159,7 @@ export function ChatPage() {
             </button>}
             {scroll.groups.map((group, index) => <div key={group.key} data-user-sequence={group.userSequence}
               data-latest-turn={scroll.anchor !== null && group.userSequence === scroll.anchor || undefined} ref={scroll.anchor !== null && group.userSequence === scroll.anchor ? scroll.latest : undefined}
-              className={`flex flex-col gap-8 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
+              className={`flex flex-col gap-7 sm:gap-9 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
               {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
               {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} stopping={stopping} />}
             </div>)}

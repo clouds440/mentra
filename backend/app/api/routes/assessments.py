@@ -42,10 +42,12 @@ async def assessment_page(request: Request, offset: int = Query(0, ge=0, le=200)
 @router.get('/mistakes')
 async def mistake_history(request: Request, assessment_id: list[UUID] = Query(default=[], max_length=200),
                           topic_id: list[str] = Query(default=[], max_length=200), offset: int = Query(default=0, ge=0),
+                          context_id: list[str] = Query(default=[], max_length=200),
+                          limit: int = Query(default=30, ge=1, le=30), recent: bool = False,
                           identity=Depends(require_onboarded_identity)):
     from app.assessments.repositories.revision_practice import list_mistakes
     return await run_in_threadpool(list_mistakes, request.app.state.assessment_service.repository,
-        identity.learner_id, list(map(str, assessment_id)), topic_id, offset)
+        identity.learner_id, list(map(str, assessment_id)), topic_id, offset, context_id, limit, recent)
 
 from app.assessments.schemas import RevisionPracticeRequest
 

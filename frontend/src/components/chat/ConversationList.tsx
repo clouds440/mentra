@@ -74,7 +74,7 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
 
 export function ConversationList({ onOpen }: { onOpen: () => void }) {
   const view = useChatList();
-  return <section aria-label="Conversation history" className="mt-8 min-h-0 flex-1 overflow-y-auto px-3">
+  return <section aria-label="Conversation history" className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-2">
     <div className="mb-1 flex items-center justify-between gap-2 pl-3"><h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Recent chats</h2><ChatSearch onOpen={onOpen} /></div>
     {view.items.map(chat => <ConversationRow key={chat.id} chat={chat} onOpen={onOpen} />)}
     {!view.items.length && (view.loading ? <Skeleton variant="list" rows={5} className="px-3 py-3" /> : <p className="px-3 py-3 text-xs leading-5 text-subtle">Your conversations will appear here.</p>)}

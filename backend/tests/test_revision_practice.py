@@ -16,6 +16,28 @@ class RevisionPracticeTests(unittest.IsolatedAsyncioTestCase):
     setUp = AssessmentTests.setUp
     graded = ProductFollowupTests.graded
 
+    async def test_recent_pages_and_context_filters_keep_owned_resolution(self):
+        source, _ = await self.graded()
+        context = source.context_id
+        first = list_mistakes(self.service.repository, self.owner, context_ids=[context], limit=2, recent=True)
+        second = list_mistakes(self.service.repository, self.owner, offset=2, context_ids=[context], limit=2, recent=True)
+        last = list_mistakes(self.service.repository, self.owner, offset=4, context_ids=[context], limit=2, recent=True)
+        self.assertEqual([len(x['items']) for x in (first, second, last)], [2, 2, 1])
+        self.assertEqual([x['next_offset'] for x in (first, second, last)], [2, 4, None])
+        self.assertEqual(len({item['id'] for x in (first, second, last) for item in x['items']}), 5)
+        self.assertIn(dict(id=context, name='Algebra'), first['contexts'])
+        self.assertEqual(list_mistakes(self.service.repository, self.owner, context_ids=['missing'])['total'], 0)
+        self.assertEqual(list_mistakes(self.service.repository, self.other, context_ids=[context])['contexts'], [])
+        body = RevisionPracticeRequest(client_request_id=uuid4(), context_ids=['missing'])
+        with self.assertRaises(AppError) as error:
+            enqueue_revision(self.service, self.owner, body)
+        self.assertEqual(error.exception.code, 'NO_PRACTICE_MISTAKES')
+        newer, _ = await self.graded()
+        recent = list_mistakes(self.service.repository, self.owner, limit=10, recent=True)
+        self.assertEqual([item['assessment_id'] for item in recent['items'][:5]], [str(newer.id)] * 5)
+        self.assertEqual([item['occurred_at'] for item in recent['items']],
+                         sorted((item['occurred_at'] for item in recent['items']), reverse=True))
+
     async def test_narrow_cards_and_sql_mistakes_match_the_legacy_projection(self):
         from app.assessments.repositories.list_view import summaries
         from app.assessments.repositories.revision_practice import collect, matches

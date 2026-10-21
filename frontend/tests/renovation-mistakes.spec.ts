@@ -23,18 +23,20 @@ for (const [width, theme] of [[320,'light'],[390,'dark'],[1440,'light']] as cons
     await page.setViewportSize({width,height:900});
     await page.addInitScript(value => localStorage.setItem('mentra-theme',value),theme);
     await fixture(page);
-    await page.goto('/assessments?tab=mistakes');
+    await page.goto('/assessments?tab=mistakes&mistake_view=list');
     await expect(page.getByRole('group',{name:'Your answer'}).first()).toContainText('4 N to the left');
     await expect(page.getByRole('group',{name:'Your answer'}).last()).toContainText('Mass times acceleration');
     await expect(page.getByRole('tab',{name:'Practice my mistakes'})).toHaveAttribute('aria-selected','true');
     await expect(page.getByRole('link',{name:'Forces and motion'})).toHaveAttribute('href','/assessments?assessment=paper-1&attempt=attempt-0');
+    await page.getByRole('button',{name:'Practice my mistakes',exact:true}).click();
     await page.getByRole('combobox',{name:'Mistake assessments',exact:true}).click();
     await page.getByRole('option',{name:'Forces and motion',exact:true}).click();
     await page.keyboard.press('Escape');
+    await page.getByRole('button',{name:'Close practice options'}).click();
     await expect(page).toHaveURL(/mistake_assessment=paper-1/);
     await expect(page.getByText('1 to revisit · 0 corrected')).toBeVisible();
     await expect(page.getByRole('link',{name:'Applied mechanics',exact:true})).toHaveCount(0);
-    await expect(page.getByRole('button',{name:'Practice selected'})).toBeEnabled();
+    await expect(page.getByRole('button',{name:'Practice my mistakes',exact:true})).toBeEnabled();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({path:info.outputPath('mistakes.png'),fullPage:true});
     await page.reload();
@@ -54,12 +56,14 @@ test('automatic practice retries the same operation and opens the tagged revisio
       : route.fulfill({json:{id:'revision-job',state:'queued',title:'Revision assessment',completed_parts:0,total_parts:2,result:null,error:null,can_retry:false}});
   });
   await page.route('**/api/v1/assessments/generation-jobs/revision-job', route => route.fulfill({json:{id:'revision-job',state:'completed',title:'Revision assessment',completed_parts:2,total_parts:2,result,error:null,can_retry:false}}));
+  await page.route('**/api/v1/assessments/page?**', route => route.fulfill({json:{items:[],next_offset:null,contexts:[],detail:new URL(route.request().url()).searchParams.get('assessment_id') === 'revision-1' ? result : null,attempts:[]}}));
   await page.route('**/api/v1/assessments/revision-1', route => route.fulfill({json:result}));
   await page.route('**/api/v1/assessments/revision-1/attempts', route => route.fulfill({json:[]}));
-  await page.goto('/assessments?tab=mistakes');
+  await page.goto('/assessments?tab=mistakes&mistake_view=list');
   await page.getByRole('button',{name:'Practice my mistakes',exact:true}).click();
+  await page.getByRole('button',{name:'Generate practice',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('Mentra could not complete this request.');
-  await page.getByRole('button',{name:'Practice my mistakes',exact:true}).click();
+  await page.getByRole('button',{name:'Generate practice',exact:true}).click();
   await expect(page).toHaveURL(/assessment=revision-1/);
   expect(bodies[0]).toEqual(bodies[1]);
   expect(bodies[0]).toMatchObject({assessment_ids:[],topic_ids:[],count:5});
@@ -69,7 +73,8 @@ test('automatic practice retries the same operation and opens the tagged revisio
 
 test('topic filters reach the server and an empty history cannot generate', async ({page}) => {
   await fixture(page);
-  await page.goto('/assessments?tab=mistakes');
+  await page.goto('/assessments?tab=mistakes&mistake_view=list');
+  await page.getByRole('button',{name:'Practice my mistakes',exact:true}).click();
   await page.getByRole('combobox',{name:'Mistake topics',exact:true}).click();
   const requested = page.waitForRequest(request => request.url().includes('/mistakes?') && request.url().includes('topic_id=topic-1'));
   await page.getByRole('option',{name:topic.name,exact:true}).click();
@@ -78,7 +83,8 @@ test('topic filters reach the server and an empty history cannot generate', asyn
   await page.route('**/api/v1/assessments/mistakes?**', route => route.fulfill({json:{items:[],total:0,active_count:0,next_offset:null,assessments:[],topics:[]}}));
   await page.reload();
   await expect(page.getByRole('heading',{name:'Nothing to revisit here'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Practice selected'})).toBeDisabled();
+  await page.getByRole('button',{name:'Practice my mistakes',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Generate practice',exact:true})).toBeDisabled();
 });
 
 
@@ -87,7 +93,7 @@ test('mistakes stay mounted and cached across idle time and tab navigation', asy
   await page.clock.install();
   let reads = 0;
   page.on('request', request => { if (request.url().includes('/assessments/mistakes?')) reads++; });
-  await page.goto('/assessments?tab=mistakes');
+  await page.goto('/assessments?tab=mistakes&mistake_view=list');
   await expect(page.getByRole('group', {name:'Your answer'}).first()).toBeVisible();
   await page.locator('details').first().locator('summary').click();
   await page.clock.runFor(1000);
@@ -116,7 +122,7 @@ test('only relevant same-owner changes refresh mistakes without replacing the ca
   await fixture(page);
   let reads=0;
   page.on('request', request => { if(request.url().includes('/assessments/mistakes?')) reads++; });
-  await page.goto('/assessments?tab=mistakes');
+  await page.goto('/assessments?tab=mistakes&mistake_view=list');
   await expect(page.getByRole('group',{name:'Your answer'}).first()).toBeVisible();
   await page.locator('details').first().locator('summary').click();
   const initial=reads;

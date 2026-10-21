@@ -34,10 +34,10 @@ export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
       <p className="mt-3 max-w-md text-sm leading-6 text-subtle">
         Start with a question, or choose a prompt to find your next step.
       </p>
-      <div className="mt-8 flex max-w-xl flex-wrap justify-center gap-2">
+      <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
         {suggestions.map(({ label, prompt, icon: Icon }) => (
           <Button
-            className="gap-2 rounded-full border-border px-3.5 text-xs font-normal text-body hover:border-border-strong hover:text-foreground"
+            className="h-auto min-h-12 justify-start gap-3 rounded-panel border-border bg-card px-4 py-3 text-sm font-normal text-body hover:border-border-strong hover:text-foreground"
             key={label}
             onClick={() => onChooseSuggestion(prompt)}
             size="sm"

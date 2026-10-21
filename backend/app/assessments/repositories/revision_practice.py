@@ -61,15 +61,15 @@ def matches(item, assessment_ids, topic_ids):
     return (not assessment_ids or item['assessment_id'] in assessment_ids) and (not topic_ids or bool(set(item['topic_ids']) & set(topic_ids)))
 
 
-def list_mistakes(repository, owner, assessment_ids=(), topic_ids=(), offset=0):
+def list_mistakes(repository, owner, assessment_ids=(), topic_ids=(), offset=0, context_ids=(), limit=30, recent=False):
     from .mistake_view import page
-    return page(repository, owner, assessment_ids, topic_ids, offset)
+    return page(repository, owner, assessment_ids, topic_ids, offset, context_ids, limit, recent)
 
 
 def enqueue_revision(service, owner, body):
     repository = service.repository
     fingerprint = request_hash(dict(kind='revision-practice-v1', assessment_ids=sorted(set(map(str, body.assessment_ids))),
-        topic_ids=sorted(set(body.topic_ids)), count=body.count))
+        topic_ids=sorted(set(body.topic_ids)), **(dict(context_ids=sorted(set(body.context_ids))) if body.context_ids else {}), count=body.count))
     with repository.transactions.write(owner) as tx:
         session = tx._session
         previous = session.execute(select(generation_jobs).where(generation_jobs.c.learner_id == owner,
@@ -81,7 +81,8 @@ def enqueue_revision(service, owner, body):
         if selected_ids:
             owned = set(session.scalars(select(assessments.c.id).where(assessments.c.learner_id == owner, assessments.c.id.in_(selected_ids))))
             if owned != selected_ids: raise AppError('ASSESSMENT_NOT_FOUND', 'One or more assessments are unavailable.', 404)
-        eligible = [x for x in collect(session, owner) if not x['resolved'] and matches(x, selected_ids, body.topic_ids)]
+        eligible = [x for x in collect(session, owner) if not x['resolved'] and matches(x, selected_ids, body.topic_ids)
+            and (not body.context_ids or x['_context_id'] in body.context_ids)]
         unique = {}
         for item in eligible: unique.setdefault(item['_root_id'], item)
         chosen = list(unique.values())[:body.count]

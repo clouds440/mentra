@@ -9,6 +9,7 @@ These standards describe the current React, TypeScript, Vite, and Tailwind CSS c
 - Default buttons and fields are 36px; small buttons are 32px and large buttons 40px. Coarse-pointer controls grow to 40px and icon controls to 44px. Keep glyphs compact while preserving usable hit areas.
 - `rounded-control` (9px), `rounded-panel` (14px), semantic surfaces and restrained `shadow-panel`/`shadow-overlay` define shared geometry. `Card` is quiet by default; elevation is explicit. Workspace panels use 16px padding and pages use 16–32px horizontal padding.
 - Use `buttonStyles` for real navigation links, `IconButton` for standalone icon controls, `FormField` for shared label/help/error association, controlled `Tabs` for workspace tabs, and native `Dialog` for modal frames. Features own URLs, drafts, mutations, revision checks and panel mounting.
+- Numbered collection pages reuse `Pagination`: 28px desktop controls with chevrons only, accessible Previous/Next labels, equally sized page numbers, a visible current page and disabled boundaries. Coarse-pointer targets retain the shared 40px minimum. Keep page and filter state together and reset to page one when filters change.
 - Loading overlays a spinner without changing button width or accessible labels. Track the active operation separately from disabling dependent controls; unrelated actions do not all spin.
 - Motion is explicit and short: controls 100–150ms, overlays 130–160ms, navigation up to 200ms. New completed chat answers reveal as one formatted surface with a soft downward mask over 900ms, independent of length; history and reduced-motion answers appear immediately. Markdown renders synchronously before the reveal, with no raw-text fallback. Never apply transitions to every element, animate form dimensions, or delay dismissal for exit motion. Reduced motion and forced colors retain useful state/focus indicators.
 - Workspace headers have one H1; actions wrap beneath the full-width description on narrow screens. The shell does not repeat route titles. Preserve sidebar/composer/account placement and record substantive changes in the renovation report.
@@ -123,6 +124,7 @@ It uses `clsx` for conditional class inputs and `tailwind-merge` so caller overr
 - Use Tailwind CSS utilities and the global base rules in `src/styles/global.css`.
 - Use the shared `Select` for all single/multiple choice dropdowns. Its listbox renders through `Popover`, remains anchored to the trigger and supports keyboard/typeahead interaction. Native select elements are hidden form adapters only.
 - Use `FileInput` for full file-picker fields and the existing icon picker for chat. Never expose the native file chooser chrome. Use `Toggle` for every interactive binary setting or confirmation; theme radios remain a mutually exclusive choice.
+- Nested dropdowns consume Escape only while open; a closed field lets Escape dismiss its parent dialog.
 - Menus and dialogs use the central `popover` surface and overlay scrim tokens. `Popover` handles portal placement, viewport margins, resize/scroll, outside dismissal and Escape; modal dropdowns portal inside the active dialog top layer.
 - Feature pages share `page-container`, `page-title`, `page-description` and `field-control` for layout, typography and fields.
 - Reuse semantic theme tokens and common spacing, radius, focus, and responsive patterns. Both palettes live centrally in `styles/global.css`; avoid raw palette colors or component-specific theme branches.
@@ -155,6 +157,11 @@ Prioritize meaningful primitive behavior, user interactions, and important rende
 
 - Standalone card/footer navigation and recovery actions use compact shared button styling. Keep inline prose citations as links. Application disclosures use `ui-disclosure` for a consistent padded focus target while retaining native disclosure markers and keyboard behavior.
 
+- Conversations use a 60rem maximum reading width on wide screens; the composer retains its 52rem maximum. On narrow screens both keep the same side margins.
 - On phones, assistant avatars sit above the response instead of reserving a left column. Chat text and composer share equal side margins. Floating menu and notification glyphs stay quiet while their hit areas remain 44px. Mobile composer text is at least 16px, and long drafts are height-bounded by the viewport.
 
 - The mobile composer starts in one row with attachment and send controls at opposite ends; text grows vertically as needed. Hide the microphone only while the textarea is focused, retain its recording controls, and keep the send button position stable.
+
+- Mistake history requests ten recent records per page, with learning-context/assessment/topic filters and URL-backed card/list views. Reuse the owner-scoped page cache (five-minute reuse for visited mistake pages, bounded by shared capacity); relevant writes, explicit refresh and account changes invalidate it. Practice setup opens in the shared Dialog and preserves operation IDs for uncertain retries.
+
+- Grid/list collection toggles reuse `ViewToggle`. Grid view means two equal columns using `workspace-compact-grid`, with fixed-height compact cards, two-line ellipsis previews and truncated metadata. Full content opens in the shared Dialog; long text never expands grid rows. Mistake practice has one toolbar action beside the view toggle; its filters and generation options appear only in that dialog.

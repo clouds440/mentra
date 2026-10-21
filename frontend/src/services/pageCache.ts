@@ -66,7 +66,7 @@ function inProgress(value: unknown): boolean {
 export async function cachedPage<T>(key: string, load: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal | null): Promise<T> {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const saved = entries.get(key);
-  if (saved && Date.now() - saved.saved < 30_000) return saved.value as T;
+  if (saved && Date.now() - saved.saved < (key.startsWith('/api/v1/assessments/mistakes?') ? 300_000 : 30_000)) return saved.value as T;
   if (saved) entries.delete(key);
   let request = pending.get(key);
   if (!request) {

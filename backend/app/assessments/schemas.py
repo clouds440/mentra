@@ -259,6 +259,7 @@ class MistakePracticeRequest(Contract):
         return self
 
 class RevisionPracticeRequest(Contract):
+    context_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(default_factory=list, max_length=200)
     client_request_id: UUID
     assessment_ids: list[UUID] = Field(default_factory=list, max_length=200)
     topic_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(default_factory=list, max_length=200)

@@ -65,7 +65,7 @@ export function Select({ className, children, value, defaultValue, multiple, dis
           const position = enabled.indexOf(active);
           setActive(event.key === 'Home' ? enabled[0] : event.key === 'End' ? enabled[enabled.length-1] : enabled[(position + (event.key === 'ArrowDown' ? 1 : -1) + enabled.length) % enabled.length] ?? 0);
         } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (open) choose(active); else show(); }
-        else if (event.key === 'Escape') { event.preventDefault(); setOpen(false); }
+        else if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); }
         else if (event.key === 'Tab') setOpen(false);
         else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
           const now = Date.now(); typeahead.current = { value: now - typeahead.current.at > 700 ? event.key.toLowerCase() : typeahead.current.value + event.key.toLowerCase(), at: now };

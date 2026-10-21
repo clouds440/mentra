@@ -9,6 +9,7 @@ WITH expanded AS (
     SELECT a.id::text assessment_id, a.title assessment_title,
            r.id::text attempt_id, r.grade_revision,
            q.value->>'id' question_id, q.value question,
+           coalesce(a.practice_lineage->'question_contexts'->>(q.value->>'id'), a.context_id::text) context_id,
            coalesce(a.practice_lineage->'question_items'->>(q.value->>'id'),
                     a.id::text || ':' || (q.value->>'id')) root,
            (g.value->>'score')::double precision score,
@@ -40,12 +41,14 @@ WITH expanded AS (
     FROM wrong WHERE latest_wrong=1
 ), filtered AS (
     SELECT * FROM catalog WHERE
+        (cardinality(CAST(:context_ids AS text[]))=0 OR context_id=ANY(CAST(:context_ids AS text[]))) AND
         (cardinality(CAST(:assessment_ids AS text[]))=0 OR assessment_id=ANY(CAST(:assessment_ids AS text[]))) AND
         (cardinality(CAST(:topic_ids AS text[]))=0 OR EXISTS (
             SELECT 1 FROM jsonb_array_elements_text(question->'concept_ids') topic(value)
             WHERE topic.value=ANY(CAST(:topic_ids AS text[]))))
 ), page AS (
-    SELECT * FROM filtered ORDER BY catalog_order LIMIT 30 OFFSET :offset
+    SELECT * FROM filtered ORDER BY CASE WHEN :recent THEN occurred_at END DESC,
+        CASE WHEN :recent THEN attempt_id END DESC, CASE WHEN :recent THEN question_id END, catalog_order LIMIT :limit OFFSET :offset
 ), assessment_facets AS (
     SELECT assessment_id, assessment_title, min(catalog_order) first_seen
     FROM catalog GROUP BY assessment_id, assessment_title
@@ -56,7 +59,9 @@ WITH expanded AS (
         WITH ORDINALITY topic(value, position)
     ORDER BY topic.value, catalog_order, topic.position
 )
-SELECT (SELECT count(*) FROM filtered) total,
+SELECT coalesce((SELECT jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name) ORDER BY c.name, c.id)
+        FROM learning_context c WHERE c.learner_id=:owner AND c.id::text IN (SELECT context_id FROM catalog)), '[]'::jsonb) contexts,
+    (SELECT count(*) FROM filtered) total,
     (SELECT count(*) FROM filtered WHERE NOT resolved) active_count,
     coalesce((SELECT jsonb_agg(jsonb_build_object(
         'id', assessment_id || ':' || question_id, 'assessment_id', assessment_id,
@@ -72,7 +77,8 @@ SELECT (SELECT count(*) FROM filtered) total,
             'name', coalesce(c.canonical_name, 'Learning topic')) ORDER BY topic.position)
             FROM jsonb_array_elements_text(question->'concept_ids') WITH ORDINALITY topic(value, position)
             LEFT JOIN concept c ON c.id=topic.value), '[]'::jsonb)
-        ) ORDER BY catalog_order) FROM page), '[]'::jsonb) items,
+        ) ORDER BY CASE WHEN :recent THEN occurred_at END DESC,
+            CASE WHEN :recent THEN attempt_id END DESC, CASE WHEN :recent THEN question_id END, catalog_order) FROM page), '[]'::jsonb) items,
     coalesce((SELECT jsonb_agg(jsonb_build_object('id', assessment_id, 'title', assessment_title)
         ORDER BY first_seen) FROM assessment_facets), '[]'::jsonb) assessments,
     coalesce((SELECT jsonb_agg(jsonb_build_object('id', f.id, 'name', coalesce(c.canonical_name,'Learning topic'))
@@ -80,13 +86,13 @@ SELECT (SELECT count(*) FROM filtered) total,
 """)
 
 
-def page(repository, owner, assessment_ids=(), topic_ids=(), offset=0):
+def page(repository, owner, assessment_ids=(), topic_ids=(), offset=0, context_ids=(), limit=30, recent=False):
     with repository.sessions() as session:
         result = dict(session.execute(PAGE, dict(owner=owner, assessment_ids=list(assessment_ids),
-            topic_ids=list(topic_ids), offset=offset)).mappings().one())
+            topic_ids=list(topic_ids), offset=offset, context_ids=list(context_ids), limit=limit, recent=recent)).mappings().one())
     # Match the existing Python ISO representation used by clients and exports.
     from datetime import datetime
     for item in result['items']:
         item['occurred_at'] = datetime.fromisoformat(item['occurred_at']).isoformat()
-    result['next_offset'] = offset+30 if offset+30 < result['total'] else None
+    result['next_offset'] = offset+limit if offset+limit < result['total'] else None
     return result

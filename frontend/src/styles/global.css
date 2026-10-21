@@ -9,23 +9,23 @@
 :root {
   --radius-control: 9px;
   --radius-panel: 14px;
-  --background: 248 250 252;
-  --card: 255 255 255;
-  --surface: 246 248 251;
-  --input: 255 255 255;
-  --popover: 255 255 255;
+  --background: 235 239 244;
+  --card: 250 251 253;
+  --surface: 225 231 239;
+  --input: 250 251 253;
+  --popover: 250 251 253;
   --overlay-opacity: 0.36;
-  --border: 223 229 237;
+  --border: 200 210 223;
   --border-strong: 128 145 168;
   --border-hover: 148 163 184;
   --foreground: 15 23 42;
   --heading: 30 41 59;
   --body: 51 65 85;
   --muted: 71 85 105;
-  --subtle: 91 107 129;
-  --hover: 233 238 245;
-  --active: 226 232 240;
-  --message: 237 242 248;
+  --subtle: 80 96 118;
+  --hover: 216 225 236;
+  --active: 207 220 234;
+  --message: 220 230 241;
   --accent: 3 105 161;
   --accent-foreground: 255 255 255;
   --primary: 3 105 161;
@@ -49,13 +49,13 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --background: 9 13 21;
-  --card: 16 22 32;
-  --surface: 18 25 36;
-  --input: 12 18 28;
-  --popover: 22 30 43;
+  --background: 4 7 12;
+  --card: 11 16 24;
+  --surface: 14 20 29;
+  --input: 9 14 21;
+  --popover: 17 24 34;
   --overlay-opacity: 0.52;
-  --border: 36 45 59;
+  --border: 44 54 69;
   --border-strong: 85 99 119;
   --border-hover: 85 99 119;
   --foreground: 241 245 249;
@@ -398,6 +398,8 @@
   .workspace-header { @apply flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4; }
   .workspace-panel { @apply min-w-0 rounded-panel border border-border bg-card p-4; }
   .workspace-toolbar { @apply flex flex-wrap items-end justify-between gap-3 rounded-panel border border-border bg-surface px-3 py-3; }
+  .workspace-compact-grid { @apply grid min-w-0 grid-cols-2 gap-3; }
+  .workspace-compact-grid p { margin: 0; white-space: normal; flex-shrink: 0; }
   .workspace-grid { @apply grid gap-3 sm:grid-cols-2; }
   .workspace-item { @apply min-w-0 rounded-panel border border-border bg-card p-4 transition-colors duration-150 hover:border-border-hover; }
   .workspace-empty { @apply flex flex-col items-center rounded-panel border border-dashed border-border-strong bg-surface px-4 py-8 text-center; }

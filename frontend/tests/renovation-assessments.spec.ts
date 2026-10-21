@@ -149,7 +149,7 @@ test('simple grading shows correctness and feedback without marks or letter grad
   await page.reload();
   const feedback=page.getByRole('region',{name:'Assessment feedback'});
   await expect(feedback).toBeVisible();
-  await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(1);
+  await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(4);
   await feedback.getByRole('button',{name:'List view',exact:true}).click();
   await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(4);
   await expect(feedback).not.toContainText(/marks|8\/8|2\/2|Practice grade|A ≥/i);
@@ -174,9 +174,10 @@ test('retry evaluation preserves the same submitted attempt and answers', async 
   await expect(page.getByRole('group',{name:'Your answer'}).filter({hasText:'Inertia resists change in motion.'})).toBeVisible();
 });
 
-test('results default to colored numbered navigation with an optional list view', async ({page},info) => {
+test('results use compact two-column grids with full review and list views', async ({page},info) => {
   await page.setViewportSize({width:390,height:844});
   const state=await chat(page);
+  state.value.questions.forEach(question => { question.prompt += ' A long explanation that must stay within the compact preview.'.repeat(50); });
   state.setAttempt({id:'flex-attempt',assessment_id:state.value.id,revision:3,state:'graded',attempt_number:1,
     answers:{q1:'a',q2:'false',q3:'An incomplete explanation',q4:'["a","b"]'},
     grades:state.value.questions.map((q,i)=>({question_id:q.id,score:i===1?0:i===2?1:2,confidence:1,
@@ -184,24 +185,25 @@ test('results default to colored numbered navigation with an optional list view'
     extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]});
   await page.reload();
   const feedback=page.getByRole('region',{name:'Assessment feedback'});
-  const navigation=feedback.getByRole('navigation',{name:'Result questions'});
-  await expect(navigation.getByRole('button')).toHaveCount(4);
-  await expect(navigation.getByRole('button',{name:'Question 1: correct',exact:true})).toHaveClass(/bg-success/);
-  await expect(navigation.getByRole('button',{name:'Question 2: incorrect',exact:true})).toHaveClass(/bg-danger/);
-  await navigation.getByRole('button',{name:'Question 2: incorrect',exact:true}).click();
-  await expect(feedback.locator('.question-transition')).toHaveAttribute('data-navigation','forward');
-  const wrong=feedback.getByRole('region',{name:'Question 2 feedback',exact:true});
+  const cards=feedback.locator('.workspace-compact-grid > article');
+  await expect(cards).toHaveCount(4);
+  const boxes=await cards.evaluateAll(items=>items.map(item=>({x:item.getBoundingClientRect().x,y:item.getBoundingClientRect().y,height:item.getBoundingClientRect().height})));
+  expect(boxes[0].y).toBe(boxes[1].y); expect(boxes[1].x).toBeGreaterThan(boxes[0].x);
+  expect(boxes.every(box=>box.height===224)).toBe(true);
+  expect(await cards.first().locator('p').first().evaluate(element => getComputedStyle(element).marginTop)).toBe('0px');
+  await cards.nth(1).getByRole('button',{name:'Review result'}).click();
+  const dialog=page.getByRole('dialog');
+  const wrong=dialog.getByRole('region',{name:'Question 2 feedback',exact:true});
   await expect(wrong).toHaveClass(/bg-danger/);
   await expect(wrong.getByRole('group',{name:'Your answer'})).toContainText('False');
-  await feedback.getByRole('button',{name:'Next result',exact:true}).click();
-  await expect(feedback.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();
-  await feedback.getByRole('button',{name:'Previous result',exact:true}).click();
-  await expect(feedback.locator('.question-transition')).toHaveAttribute('data-navigation','backward');
+  await dialog.getByRole('button',{name:'Next result',exact:true}).click();
+  await expect(dialog.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');
   await feedback.getByRole('button',{name:'List view',exact:true}).click();
   await expect(feedback.getByRole('group',{name:'Your answer'})).toHaveCount(4);
+  await feedback.getByRole('button',{name:'Grid view',exact:true}).click();
+  await expect(cards).toHaveCount(4);
   await page.screenshot({path:info.outputPath('assessment-results-mobile.png')});
-  await feedback.getByRole('button',{name:'Question view',exact:true}).click();
-  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
 });
 
 test('question transitions follow button and numbered navigation while preserving answers', async ({page}) => {
@@ -238,9 +240,10 @@ test('results remain usable while learning updates run in the background', async
   await expect(feedback).toBeVisible();
   await expect(page.getByText('Results saved. Learning progress updates in the background.',{exact:true})).toBeVisible();
   await expect(page.getByText('Evaluating your answers…',{exact:true})).toHaveCount(0);
-  await feedback.getByRole('button',{name:'Next result',exact:true}).click();
-  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
+  await feedback.getByRole('button',{name:'Review result',exact:true}).first().click();
+  await page.getByRole('dialog').getByRole('button',{name:'Next result',exact:true}).click();
+  await expect(page.getByRole('dialog').getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
   state.setAttempt({...attempt,evidence_status:'applied',revision:4});
   await expect(page.getByText('Feedback saved and learning progress updated.',{exact:true})).toBeVisible({timeout:15000});
-  await expect(feedback.getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
 });
