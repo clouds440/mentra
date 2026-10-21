@@ -13,6 +13,13 @@ from app.core.logging import workflow_logger
     'publish': {'result': lambda value: dict(domain_status=value['outcome']), 'outcome': lambda value: 'skipped' if value['outcome'] == 'disabled' else 'success'},
 })
 class NotificationRepository:
+    def unread(self, owner):
+        with self.sessions() as session:
+            revision = select(s.c.revision).where(s.c.learner_id == owner).scalar_subquery()
+            row = session.execute(select(func.count().label('unread_count'), func.coalesce(revision, 0).label('sync_revision'))
+                .select_from(n).where(n.c.learner_id == owner, n.c.read_at.is_(None), n.c.dismissed_at.is_(None))).mappings().one()
+            return dict(row)
+
     def __init__(self, sessions, clock=None):
         self.sessions, self.transactions = sessions, OwnerTransactions(sessions)
         self.clock = clock or (lambda: datetime.now(timezone.utc))

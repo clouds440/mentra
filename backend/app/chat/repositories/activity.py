@@ -19,7 +19,7 @@ class ActivityRepository:
     def __init__(self, sessions):
         self.sessions = sessions
 
-    def ensure_active(self, owner, job):
+    def ensure_active(self, owner, job, fence=None):
         with self.sessions.begin() as session:
             session.execute(text("SET LOCAL statement_timeout = '5s'"))
             turn = session.execute(select(turns).join(conversations, turns.c.conversation_id == conversations.c.id).where(
@@ -27,6 +27,10 @@ class ActivityRepository:
                 conversations.c.deleted_at.is_(None))).mappings().first()
             if not turn or turn['state'] != 'RUNNING' or turn['attempt'] != job['attempt'] or turn['lease_until'] <= datetime.now(timezone.utc):
                 raise AppError('CHAT_ATTEMPT_EXPIRED', 'This response is no longer running.', 409)
+            if fence:
+                from app.history_management.repositories.memory_summaries import MemorySummaryRepository
+                return MemorySummaryRepository.current(session, owner, fence)
+            return True
 
     def append(self, owner, job, update: ActivityUpdate):
         events = self.append_many(owner, job, [update])

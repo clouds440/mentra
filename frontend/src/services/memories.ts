@@ -3,6 +3,11 @@ import type { HistoryWindow, MemoryPage, MemoryPreferences, UserMemory } from '.
 
 const base = '/api/v1/memories';
 export const memoryApi = {
+  page: (query: string, status: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ query });
+    if (status) params.set('status', status);
+    return apiRequest<MemoryPage & { preferences: MemoryPreferences }>(`${base}/page?${params}`, { signal });
+  },
   list: (query: string, status: string, cursor?: string, signal?: AbortSignal) => {
     const params = new URLSearchParams({ query });
     if (status) params.set('status', status);

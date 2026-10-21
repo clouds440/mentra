@@ -21,7 +21,7 @@ class PostgresIdentityRepository:
 
     @staticmethod
     def _principal(row):
-        return AuthenticatedIdentity(**{field: row[field] for field in AuthenticatedIdentity.__dataclass_fields__})
+        return AuthenticatedIdentity(**{field: row.get(field) for field in AuthenticatedIdentity.__dataclass_fields__})
 
     @staticmethod
     def _create_session(session, learner_id, digest, expires, now, *, user_id=None, provider=None, username=None):
@@ -70,13 +70,25 @@ class PostgresIdentityRepository:
             return self._create_session(session, learner_id, token_digest, expires_at, now, provider=provider)
 
     def get_session(self, token_digest, now):
-        with self.sessions.begin() as session:
-            statement = select(auth_session, mentra_account.c.username.label('username')).select_from(
+        from app.student_profile.repositories.tables import student_profile
+        from sqlalchemy.exc import ProgrammingError
+        with self.sessions() as session:
+            base = select(auth_session, mentra_account.c.username.label('username')).select_from(
                 auth_session.outerjoin(mentra_account, auth_session.c.user_id == mentra_account.c.user_id)
             ).where(auth_session.c.token_digest == token_digest,
                 auth_session.c.revoked_at.is_(None),
                 or_(auth_session.c.expires_at.is_(None), auth_session.c.expires_at > now))
-            row = session.execute(statement).mappings().first()
+            statement = base.add_columns(student_profile.c.onboarding_phase).outerjoin(student_profile,
+                auth_session.c.learner_id == student_profile.c.learner_id)
+            try:
+                row = session.execute(statement).mappings().first()
+            except ProgrammingError as error:
+                if getattr(error.orig, 'sqlstate', None) != '42P01':
+                    raise
+                # Authentication remains usable during a downgrade to the
+                # pre-profile schema. Normal requests still use one query.
+                session.rollback()
+                row = session.execute(base).mappings().first()
             return self._principal(row) if row else None
 
     def revoke_session(self, token_digest, now):

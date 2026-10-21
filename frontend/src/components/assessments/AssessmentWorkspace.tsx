@@ -21,10 +21,9 @@ import { Button, FileInput, Select, Textarea } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { AnswerContent } from '../content/AnswerContent';
 import { assessments } from '../../services/assessments';
-import { listContexts } from '../../services/rag';
 import { practiceDraft } from '../../services/practiceIntent';
 import { AssessmentCreateForm } from './AssessmentCreateForm';
-import type { Assessment, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
+import type { Assessment, AssessmentListItem, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
 import type { LearningContext } from '../../types/rag';
 import { assessmentSession, useEvaluatedAttempt } from '../../stores/assessmentSession';
 import { QuizAnswerReview } from './QuizAnswerReview';
@@ -35,7 +34,7 @@ function Workspace() {
   const id = params.get('assessment');
   const attemptId = params.get('attempt');
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<Assessment[]>([]);
+  const [items, setItems] = useState<AssessmentListItem[]>([]);
   const [contexts, setContexts] = useState<LearningContext[]>([]);
   const [current, setCurrent] = useState<Assessment | null>(null);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
@@ -64,12 +63,14 @@ function Workspace() {
   const generationOperation = useRef<{ payload: string; id: string }>();
   usePageRefresh(() => setReload(value => value + 1), !busy && !attempt, ['assessments']);
   useEffect(() => {
+    if (tab === 'mistakes') { setLoading(false); return; }
     const controller = new AbortController(); setLoading(items.length === 0 || !!id && current?.id !== id); setError(''); if (current?.id !== id) { setCurrent(null); setAttempt(null); }
-    void Promise.all([assessments.list(controller.signal), listContexts(controller.signal), id ? assessments.detail(id, controller.signal) : Promise.resolve(null), id ? assessments.attempts(id, controller.signal) : Promise.resolve([])]).then(([page, choices, detail, history]) => {
-      if (!controller.signal.aborted) { setItems(page.items); setMore(page.next_offset); setContexts(choices); setCurrent(detail); setAttempts(history); if (attemptId) setAttempt(history.find(item => item.id === attemptId) ?? null); else if (history[0]?.state !== 'graded') setAttempt(history[0] ?? null); }
+    void assessments.page(controller.signal, tab, id).then(page => {
+      const history = page.attempts;
+      if (!controller.signal.aborted) { if (tab === 'assessments') { setItems(page.items); setMore(page.next_offset); } if (tab === 'create') setContexts(page.contexts); setCurrent(page.detail); setAttempts(history); if (attemptId) setAttempt(history.find(item => item.id === attemptId) ?? null); else if (history[0]?.state !== 'graded') setAttempt(history[0] ?? null); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessments.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); active.current?.abort(); };
-  }, [id, attemptId, reload]);
+  }, [id, attemptId, reload, tab]);
   function updateAttempt(result: AssessmentAttempt) {
     setAttempt(result);
     setAttempts(previous => [result, ...previous.filter(item => item.id !== result.id)]);
@@ -80,7 +81,7 @@ function Workspace() {
         incorrect: item.attempt_summary?.incorrect ?? 0, partial: item.attempt_summary?.partial ?? 0 };
       if (result.state === 'graded' && result.attempt_number >= summary.graded_attempt_number) {
         summary.graded_attempt_id = result.id; summary.graded_attempt_number = result.attempt_number; summary.correct = 0; summary.incorrect = 0; summary.partial = 0;
-        for (const question of item.questions) {
+        for (const question of current?.id === item.id ? current.questions : []) {
           const grade = result.grades?.find(value => value.question_id === question.id);
           if (!grade) continue;
           if (grade.score >= question.marks) summary.correct++;
@@ -113,7 +114,7 @@ function Workspace() {
   }
   async function loadMore() {
     if (more === null) return; const controller = new AbortController(); active.current = controller;
-    try { const result = await assessments.list(controller.signal, more); if (!controller.signal.aborted) { setItems(previous => [...previous, ...result.items]); setMore(result.next_offset); } }
+    try { const result = await assessments.page(controller.signal, 'assessments', undefined, more); if (!controller.signal.aborted) { setItems(previous => [...previous, ...result.items]); setMore(result.next_offset); } }
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load more assessments.'); }
   }
   return <div className="h-full overflow-y-auto"><div className="page-container">
@@ -131,7 +132,7 @@ function Workspace() {
       {attempt ? !current.paper && current.questions.some(q => !!q.options?.length || (!!q.question_type && q.question_type !== 'written')) && attempt.state === 'draft' ? <MCQAssessment key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <AnswerSheet key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <AssessmentPaper assessment={current} />}
       <h3 className="font-medium">Attempt history</h3>{attempts.length === 0 && <p className="text-sm text-muted">No attempts yet.</p>}<ul className="space-y-2">{attempts.map(value => <li key={value.id}><button type="button" aria-pressed={attempt?.id === value.id} className="w-full rounded-control border border-border px-3 py-2.5 text-left text-sm text-heading transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-active" onClick={() => setAttempt(value)}>Attempt {value.attempt_number} · {value.state} · {new Date(value.created_at).toLocaleString()}</button></li>)}</ul>
     </section>}
-    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.paper?.question_count ?? item.questions.length} questions{item.paper ? ` · ${item.questions.length} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span><AttemptBadges summary={item.attempt_summary} /></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
+    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.question_count} questions{item.has_paper ? ` · ${item.part_count} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span><AttemptBadges summary={item.attempt_summary} /></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
     </section>
   </div></div>;
 }

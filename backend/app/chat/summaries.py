@@ -98,9 +98,36 @@ class ConversationSummaries:
                 raise
             logger.warning('Chat summary read deferred (%s)', type(error).__name__)
             return None
+        return await self._validated(owner, chat, row)
+
+    async def load_context(self, owner, chat, through):
+        """History and summary share a short connection, released before AI work."""
+        def read():
+            from app.db.reads import read_sessions
+            from .repositories.postgres import ChatRepository
+            with read_sessions(self.chats.sessions) as sessions:
+                chats = ChatRepository(sessions)
+                chats._contexts = self.chats._contexts
+                rows = chats.context_rows(owner, chat, through)
+                if not settings.chat_summary_enabled:
+                    return rows, None
+                repository = SummaryRepository(chats)
+                repository._contents = self.repository._contents
+                try:
+                    return rows, repository.load(owner, chat)
+                except Exception as error:
+                    from app.core.exceptions import AppError
+                    if isinstance(error, AppError) and error.status_code in (403, 404):
+                        raise
+                    logger.warning('Chat summary read deferred (%s)', type(error).__name__)
+                    return rows, None
+        rows, summary = await run_in_threadpool(read)
+        return rows, await self._validated(owner, chat, summary)
+
+    async def _validated(self, owner, chat, row):
         if row and row['content'] and not valid_content(row['content']):
             from .repositories.summary_jobs import ChatSummaryJobs
-            await run_in_threadpool(ChatSummaryJobs(self.chats.sessions).retry, owner, chat)
+            await run_in_threadpool(ChatSummaryJobs(self.chats.sessions).retry, owner, chat, invalid_revision=row['revision'])
             return None
         return dict(content=row['content'], through_sequence=row['through_sequence'], revision=row['revision']) if row and row['content'] else None
 

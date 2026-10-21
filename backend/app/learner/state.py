@@ -22,7 +22,12 @@ class StateService:
                 getattr(self.mastery, 'identity', self.mastery.version))
 
     def load(self, learner_id: str, concept_ids: list[str]):
-        states = self.repository.states_for_concepts(learner_id, concept_ids)
+        cache = getattr(self, '_read_states', None)
+        missing = [key for key in concept_ids if cache is None or (learner_id, key) not in cache]
+        states = self.repository.states_for_concepts(learner_id, missing) if missing else {}
+        if cache is not None:
+            states.update({key: cache[(learner_id, key)] for key in concept_ids
+                           if (learner_id, key) in cache and cache[(learner_id, key)] is not None})
         stale = [key for key, state in states.items() if not self.current(state)]
         for start in range(0, len(stale), 32):
             batch = stale[start:start + 32]
@@ -32,6 +37,9 @@ class StateService:
                     current = current_states.get(key)
                     states[key] = (current if self.current(current) else
                                    self.evidence.recompute(learner_id, key, repository))
+        if cache is not None:
+            for key in concept_ids:
+                cache[(learner_id, key)] = states.get(key)
         return states
 
     def response(self, state) -> ConceptStateResponse | None:

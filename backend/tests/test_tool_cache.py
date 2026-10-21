@@ -23,6 +23,14 @@ def make_tool(name, action, domain='history'):
 
 
 class CacheTests(unittest.IsolatedAsyncioTestCase):
+    def test_revision_cache_has_no_time_expiry(self):
+        clock = [0]
+        cache = ReadCache(capacity=2, ttl=None, clock=lambda: clock[0])
+        cache.put(('owner', 1), {'content': 'original'})
+        clock[0] = 10**12
+        self.assertEqual(cache.get(('owner', 1)), {'content': 'original'})
+        self.assertIsNone(cache.get(('owner', 2)))
+
     def test_only_safe_query_equivalence_and_defaults(self):
         tool = make_tool('history_lookup', AsyncMock())
         key = lambda args: tool_cache_key(tool, tool.name, args)

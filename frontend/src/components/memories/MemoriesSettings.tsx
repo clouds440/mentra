@@ -71,9 +71,9 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
     if (fetchKey.current === key) return;
     const controller = new AbortController();
     setLoading(true); setError('');
-    Promise.all([memoryApi.list(search, status, undefined, controller.signal), memoryApi.preferences(controller.signal)])
-      .then(async ([page, preferences]) => { if (!controller.signal.aborted) {
-        fetchKey.current = key; setItems(page.items); setCursor(page.next_cursor); setPrefs(preferences); setLoaded(true);
+    memoryApi.page(search, status, controller.signal)
+      .then(async page => { if (!controller.signal.aborted) {
+        fetchKey.current = key; setItems(page.items); setCursor(page.next_cursor); setPrefs(page.preferences); setLoaded(true);
         if (detailId.current) {
           const id = detailId.current;
           try { const value = await memoryApi.detail(id, controller.signal); if (!controller.signal.aborted && detailId.current === id) setDetail(value); }

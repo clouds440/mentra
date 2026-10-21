@@ -16,6 +16,14 @@ async def preferences(request: Request, identity=Depends(require_onboarded_ident
     return await run_in_threadpool(repository(request).preferences, identity.learner_id)
 
 
+@router.get('/page')
+async def memory_page(request: Request, query: str = Query('', max_length=300),
+        status: str | None = Query(None, pattern='^(active|pending|conflict)$'),
+        cursor: str | None = Query(None, max_length=300), limit: int = Query(30, ge=1, le=50),
+        identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(repository(request).page, identity.learner_id, query, status, cursor, limit)
+
+
 @router.patch('/preferences')
 async def change_preferences(body: PreferencesEdit, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(repository(request).set_preferences, identity.learner_id, body)

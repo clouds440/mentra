@@ -3,6 +3,7 @@ import { uploadFile, downloadFile } from './files';
 import type { MaterialList, MaterialDocument, MaterialVersion, MaterialJob, LearningContext, UploadResult, RAGCapabilities, SourceChunk } from '../types/rag';
 
 const path = (id: string) => `/api/v1/documents/${encodeURIComponent(id)}`;
+export const libraryPage = (offset = 0, archived?: boolean, signal?: AbortSignal, contextId?: string, query = '') => apiRequest<MaterialList & { contexts: LearningContext[] }>(`/api/v1/documents/page?offset=${offset}${archived === undefined ? '' : `&archived=${archived}`}${contextId ? `&context_id=${encodeURIComponent(contextId)}` : ''}${query ? `&query=${encodeURIComponent(query)}` : ''}`, { signal });
 export const listMaterials = (offset = 0, archived?: boolean, signal?: AbortSignal, contextId?: string, query = '') => apiRequest<MaterialList>(`/api/v1/documents?offset=${offset}${archived === undefined ? '' : `&archived=${archived}`}${contextId ? `&context_id=${encodeURIComponent(contextId)}` : ''}${query ? `&query=${encodeURIComponent(query)}` : ''}`, { signal });
 export const getMaterial = (id: string, signal?: AbortSignal) => apiRequest<MaterialDocument>(path(id), { signal });
 export const listVersions = (id: string, offset: number, signal?: AbortSignal) => apiRequest<{ items: MaterialVersion[]; total: number }>(`${path(id)}/versions?offset=${offset}`, { signal });

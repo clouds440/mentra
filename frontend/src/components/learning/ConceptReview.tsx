@@ -8,7 +8,7 @@ import type { LearningContext } from '../../types/rag';
 
 type ReviewState = {id: string; decision: 'confirm' | 'discard'; bulk: boolean; completed: number; total: number};
 
-export function ConceptReview({ onReviewed, contexts }: { onReviewed: () => void; contexts: LearningContext[] }) {
+export function ConceptReview({ onReviewed, contexts, initial }: { onReviewed: () => void; contexts: LearningContext[]; initial?: PendingConcept[] }) {
   const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<PendingConcept[]>([]);
@@ -17,19 +17,20 @@ export function ConceptReview({ onReviewed, contexts }: { onReviewed: () => void
   const [actionError, setActionError] = useState('');
   const active = useRef<AbortController | null>(null);
   useEffect(() => () => active.current?.abort(), []);
-  usePageRefresh(() => setReload(value => value + 1), !busy, ['learning']);
+  usePageRefresh(() => setReload(value => value + 1), !busy && initial === undefined, ['learning']);
   useEffect(() => {
+    if (initial !== undefined) { setItems(initial); setLoading(false); return; }
     const controller = new AbortController(); setError('');
     void pendingConcepts(controller.signal).then(values => { if (!controller.signal.aborted) setItems(values); }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load topic suggestions.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [reload]);
+  }, [reload, initial]);
   async function review(item: PendingConcept, decision: 'confirm' | 'discard') {
     if (active.current) return;
     const controller = new AbortController(); active.current = controller;
     setBusy({id:item.id, decision, bulk:false, completed:0, total:1}); setActionError('');
     try {
       await reviewConcept(item.id, decision, controller.signal);
-      if (!controller.signal.aborted) { setItems(previous => previous.filter(value => value.id!==item.id)); onReviewed(); setReload(value => value + 1); }
+      if (!controller.signal.aborted) { setItems(previous => previous.filter(value => value.id!==item.id)); onReviewed(); if (initial === undefined) setReload(value => value + 1); }
     } catch (reason) { if (!controller.signal.aborted) setActionError(reason instanceof ApiError ? reason.message : 'Unable to review this topic.'); }
     finally { if (!controller.signal.aborted) { active.current = null; setBusy(null); } }
   }
@@ -52,7 +53,7 @@ export function ConceptReview({ onReviewed, contexts }: { onReviewed: () => void
     if (controller.signal.aborted) return;
     active.current = null; setBusy(null);
     if (failed) setActionError('Some suggestions couldn’t be confirmed. Confirmed topics were saved; try the remaining suggestions again.');
-    if (completed > failed) { onReviewed(); setReload(value => value + 1); }
+    if (completed > failed) { onReviewed(); if (initial === undefined) setReload(value => value + 1); }
   }
   if (loading) return <Skeleton variant="list" rows={2} />;
   if (!items.length && !error && !actionError && !busy) return null;

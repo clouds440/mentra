@@ -1,6 +1,6 @@
 // Small, in-memory page cache. Live chat, grading and job polling stay outside it.
-const entries = new Map<string, { value: unknown }>();
-const pending = new Map<string, { controller: AbortController; promise: Promise<unknown> }>();
+const entries = new Map<string, { value: unknown; saved: number }>();
+const pending = new Map<string, { controller: AbortController; promise: Promise<unknown>; consumers: number }>();
 const controllers = new Set<AbortController>();
 let owner: string | null = null;
 let changes: BroadcastChannel | undefined;
@@ -15,7 +15,7 @@ function matches(key: string, scopes?: readonly PageScope[]) {
 }
 export function invalidatePageCache(scopes?: readonly PageScope[], notify = false, broadcast = true) {
   for (const key of entries.keys()) if (matches(key, scopes)) entries.delete(key);
-  for (const key of pending.keys()) if (matches(key, scopes)) pending.delete(key);
+  for (const [key, request] of pending) if (matches(key, scopes)) { pending.delete(key); request.controller.abort(); }
   if (notify) {
     listeners.forEach(listener => listener(scopes));
     if (broadcast) changes?.postMessage(scopes ?? null);
@@ -55,6 +55,7 @@ export function cacheablePage(path: string, init: RequestInit) {
     /^\/api\/v1\/(documents|learning-contexts|rag\/capabilities|learning|events|event-proposals|memories|notifications|assessments)(\/|\?|$)/.test(path) &&
     !/\/assessments\/attempts\/|\/chat-drafts|\/jobs|\/sync|\/unread/.test(path);
 }
+export function hasPendingPages() { return pending.size > 0; }
 function inProgress(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
   if (Array.isArray(value)) return value.some(inProgress);
@@ -65,24 +66,35 @@ function inProgress(value: unknown): boolean {
 export async function cachedPage<T>(key: string, load: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal | null): Promise<T> {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const saved = entries.get(key);
-  if (saved) return saved.value as T;
+  if (saved && Date.now() - saved.saved < 30_000) return saved.value as T;
+  if (saved) entries.delete(key);
   let request = pending.get(key);
   if (!request) {
     const controller = new AbortController();
     controllers.add(controller);
     const promise = Promise.resolve().then(() => load(controller.signal)).then(value => {
+      if (controller.signal.aborted || pending.get(key)?.promise !== promise) throw new DOMException('Aborted', 'AbortError');
       if (pending.get(key)?.promise === promise && !controller.signal.aborted && !inProgress(value)) {
         if (entries.size >= 128) entries.delete(entries.keys().next().value!);
-        entries.set(key, { value });
+        entries.set(key, { value, saved: Date.now() });
       }
       return value;
     }).finally(() => { controllers.delete(controller); if (pending.get(key)?.promise === promise) pending.delete(key); });
-    request = { controller, promise }; pending.set(key, request);
+    request = { controller, promise, consumers: 0 }; pending.set(key, request);
   }
+  request.consumers++;
   return new Promise<T>((resolve, reject) => {
-    const cancel = () => reject(new DOMException('Aborted', 'AbortError'));
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true; request!.consumers--;
+      if (!request!.consumers) setTimeout(() => {
+        if (!request!.consumers && pending.get(key) === request) { pending.delete(key); request!.controller.abort(); }
+      }, 0);
+    };
+    const cancel = () => { release(); reject(new DOMException('Aborted', 'AbortError')); };
     signal?.addEventListener('abort', cancel, { once: true });
     request!.promise.then(value => { if (!signal?.aborted) resolve(value as T); }, reject)
-      .finally(() => signal?.removeEventListener('abort', cancel));
+      .finally(() => { signal?.removeEventListener('abort', cancel); release(); });
   });
 }

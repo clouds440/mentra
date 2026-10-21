@@ -62,14 +62,8 @@ def matches(item, assessment_ids, topic_ids):
 
 
 def list_mistakes(repository, owner, assessment_ids=(), topic_ids=(), offset=0):
-    with repository.sessions() as session:
-        all_items = collect(session, owner)
-    items = [item for item in all_items if matches(item, assessment_ids, topic_ids)]
-    return dict(items=[{key: value for key, value in item.items() if not key.startswith('_')} for item in items[offset:offset+30]],
-        total=len(items), active_count=sum(not item['resolved'] for item in items),
-        next_offset=offset+30 if offset+30 < len(items) else None,
-        assessments=[dict(id=identifier, title=title) for identifier, title in dict((x['assessment_id'], x['assessment_title']) for x in all_items).items()],
-        topics=[dict(id=identifier, name=name) for identifier, name in dict((t['id'], t['name']) for x in all_items for t in x['topics']).items()])
+    from .mistake_view import page
+    return page(repository, owner, assessment_ids, topic_ids, offset)
 
 
 def enqueue_revision(service, owner, body):

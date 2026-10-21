@@ -38,6 +38,27 @@ class SummaryModel:
 
 
 class MemorySummaryTests(unittest.TestCase):
+    def test_unchanged_summary_is_a_single_read_and_external_edits_invalidate_it(self):
+        from sqlalchemy import event
+        memory = self.add('Prefers short examples.')
+        self.run_worker()
+        original = self.context()
+        statements = []
+        def observe(connection, cursor, statement, parameters, context, many):
+            statements.append(statement)
+        event.listen(self.db.engine, 'before_cursor_execute', observe)
+        try:
+            self.assertEqual(self.context(), original)
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', observe)
+        self.assertEqual(len(statements), 1)
+        self.assertTrue(statements[0].lstrip().startswith('SELECT'))
+        other_process = MemoryRepository(self.db.sessions)
+        other_process.edit(self.owner, memory['id'], MemoryEdit(expected_revision=memory['revision'], content='Prefers detailed examples.'))
+        refreshed = self.context()
+        self.assertIn('detailed examples', refreshed['content'])
+        self.assertNotIn('short examples', refreshed['content'])
+
     @classmethod
     def setUpClass(cls):
         cls.db = PostgresSandbox()

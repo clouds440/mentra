@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, delete, func, or_
 from app.core.exceptions import AppError
 from app.db.owner_transactions import OwnerTransactions
 from app.chat.repositories.tables import conversations, messages, turns
@@ -109,10 +109,19 @@ class EventProposalRepository:
             session.execute(delete(p).where(p.c.id == identifier))
 
     def list(self, owner, conversation_id=None):
+        query = select(p).where(p.c.learner_id == owner, p.c.state.in_(['pending', 'deciding']))
+        if conversation_id:
+            query = query.where(p.c.conversation_id == conversation_id)
+        with self.sessions() as session:
+            maintenance = session.scalar(select(or_(
+                select(p.c.id).where(p.c.learner_id == owner, p.c.expires_at <= self.clock(),
+                    p.c.state.in_(['pending', 'deciding'])).exists(),
+                select(p.c.id).where(p.c.learner_id == owner, p.c.state.not_in(['pending', 'deciding']),
+                    p.c.created_at < self.clock()-timedelta(days=30)).exists())))
+            if not maintenance:
+                return [self._public(row) for row in session.execute(query.order_by(p.c.created_at.desc()).limit(30)).mappings()]
         with self.transactions.write(owner) as tx:
             self._prune(tx._session, owner)
-            query = select(p).where(p.c.learner_id == owner, p.c.state.in_(['pending', 'deciding']))
-            if conversation_id: query = query.where(p.c.conversation_id == conversation_id)
             return [self._public(row) for row in tx._session.execute(query.order_by(p.c.created_at.desc()).limit(30)).mappings()]
 
     def detail(self, owner, identifier):

@@ -15,6 +15,37 @@ from testing.identities import learner_id
 
 
 class LearningProgressTests(unittest.TestCase):
+    def test_scoped_reads_reuse_one_connection_without_rebinding_the_singleton(self):
+        concept = self.concept('Practice target'); self.state(concept)
+        expected = self.learner.get_study_targets(self.owner, supported_verification=True)
+        before = self.db.connections
+        with self.learner.read_scope() as reader:
+            self.assertEqual(reader.get_study_targets(self.owner, supported_verification=True), expected)
+            self.assertEqual(reader.get_learning_progress(LearningProgressRequest(learner_id=self.owner)), self.page())
+            self.assertIsNone(self.learner.repository._read_session)
+        # self.page() above deliberately uses the original repository; isolate
+        # the scoped request below when counting checkouts.
+        before = self.db.connections
+        with self.learner.read_scope() as reader:
+            reader.get_study_targets(self.owner)
+            reader.get_learning_progress(LearningProgressRequest(learner_id=self.owner))
+        self.assertEqual(self.db.connections-before, 1)
+        self.assertIsNone(self.learner.repository._read_session)
+
+    def test_combined_page_matches_existing_facades(self):
+        self.concept('AI training')
+        app = FastAPI(); app.include_router(router, prefix='/api/v1'); app.state.learner_service = self.learner
+        app.dependency_overrides[require_onboarded_identity] = lambda:SimpleNamespace(learner_id=self.owner)
+        with TestClient(app) as client:
+            before = self.db.connections
+            response = client.get('/api/v1/learning/page')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(self.db.connections-before, 1)
+            body = response.json()
+            self.assertEqual(body['overview'], client.get('/api/v1/learning').json())
+            self.assertEqual(body['understanding'], client.get('/api/v1/learning/understanding').json())
+            self.assertEqual(body['candidates'], client.get('/api/v1/learning/concept-candidates').json())
+
     def test_exact_practice_targets_require_membership_in_the_owned_context(self):
         from app.core.exceptions import AppError
         owned = self.concept('Owned practice identity')

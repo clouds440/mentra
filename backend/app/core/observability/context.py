@@ -30,6 +30,7 @@ class Collector:
     dropped: int = 0
     overflow: int = 0
     outcome: str = 'unknown'
+    database: dict = field(default_factory=dict)
     lock: RLock = field(default_factory=RLock)
 
     def next_sequence(self):
@@ -76,6 +77,7 @@ class Collector:
     def snapshot(self):
         with self.lock:
             return dict(workflow=self.workflow, outcome=self.outcome,
+                        database={key: round(value, 3) for key, value in self.database.items()},
                         duration_ms=round(((self.closed_at or time.monotonic())-self.started)*1000, 3),
                         modules=list(self.modules), operations=[{k:v for k,v in x.items() if not k.startswith('_')} for x in self.entries],
                         linked_workflows=[dict(x) for x in self.links.values()],

@@ -10,10 +10,10 @@ import type { LearningProgressPage } from '../../types/learning';
 import { progressStatus } from './progressLabels';
 import { ProgressEvidence } from './ProgressEvidence';
 
-interface Props { context: string; reload: number; onTotal: (total: number) => void }
+interface Props { context: string; reload: number; onTotal: (total: number) => void; initial?: LearningProgressPage }
 const percent = (value: number | null) => value === null ? 'Not yet known' : `${Math.round(value * 100)}%`;
 
-export function UnderstandingTable({context, reload, onTotal}: Props) {
+export function UnderstandingTable({context, reload, onTotal, initial}: Props) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -31,6 +31,9 @@ export function UnderstandingTable({context, reload, onTotal}: Props) {
     return () => clearTimeout(timer);
   }, [search, query]);
   useEffect(() => {
+    if (initial && !query && page === 1 && retry === 0) {
+      setData(initial); setLoadedQuery(queryKey); onTotal(initial.total_concepts); setLoading(false); setError(''); return;
+    }
     const controller = new AbortController();
     setLoading(true); setError('');
     void learningProgress(controller.signal, query, (page - 1) * 10, context || undefined).then(value => {
@@ -39,7 +42,7 @@ export function UnderstandingTable({context, reload, onTotal}: Props) {
     }).catch(() => { if (!controller.signal.aborted) setError('Couldn’t load your understanding. Please try again.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [context, query, page, reload, retry, onTotal]);
+  }, [context, query, page, reload, retry, onTotal, initial]);
   const current = visible ? Math.floor(visible.offset / visible.limit) + 1 : page;
   return <section aria-labelledby="understanding-title" className="workspace-panel space-y-4">
     {selected && <ProgressEvidence key={`${context}:${selected}`} concept={selected} context={context} onClose={() => setSelected(undefined)} />}

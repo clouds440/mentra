@@ -91,12 +91,9 @@ class ConversationService:
         while not generation.done():
             await asyncio.sleep(.5)
             try:
-                await run_in_threadpool(repository.ensure_active, owner, job)
-                if history_scope and history_scope.get('_memory_summary_fence') and not history_scope.get('_memory_writes_pending'):
-                    from app.history_management.repositories.memory_summaries import MemorySummaryRepository
-                    fence = history_scope['_memory_summary_fence']
-                    valid = await run_in_threadpool(MemorySummaryRepository(self.repository.sessions).fence_current,
-                        owner, fence)
+                fence = history_scope.get('_memory_summary_fence') if history_scope and not history_scope.get('_memory_writes_pending') else None
+                valid = await run_in_threadpool(repository.ensure_active, owner, job, fence)
+                if fence:
                     if history_scope.get('_memory_writes_pending') or history_scope['_memory_summary_fence'] is not fence:
                         failures = 0
                         continue  # Our own write committed while this read was in flight.
@@ -127,8 +124,11 @@ class ConversationService:
         activity_sink = None
         scope = None
         try:
-            rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
-            summary = await self.summaries.load(owner, job['conversation_id']) if self.summaries else None
+            if self.summaries:
+                rows, summary = await self.summaries.load_context(owner, job['conversation_id'], job['user_sequence'])
+            else:
+                rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
+                summary = None
             if summary and summary['through_sequence'] >= job['user_sequence']:
                 summary = None  # Never give a retried older turn future context.
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]

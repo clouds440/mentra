@@ -16,6 +16,29 @@ from app.assessments.schemas import MistakePracticeRequest
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
 
+
+@router.get('/page')
+async def assessment_page(request: Request, offset: int = Query(0, ge=0, le=200),
+        view: str = Query('assessments', pattern='^(assessments|create)$'), assessment_id: UUID | None = None,
+        identity=Depends(require_onboarded_identity)):
+    def read():
+        from app.db.reads import read_sessions
+        from app.assessments.repositories.postgres import AssessmentRepository
+        from app.assessments.repositories.list_view import summaries
+        source = request.app.state.assessment_service.repository
+        with read_sessions(source.sessions) as sessions:
+            repository = AssessmentRepository(sessions, clock=source.clock, files=source.files)
+            page = summaries(repository, identity.learner_id, offset) if view == 'assessments' else dict(items=[], next_offset=None)
+            contexts = []
+            if view == 'create':
+                with request.app.state.learner_service.read_scope(sessions) as learner:
+                    contexts = sorted(learner.get_context_summaries(identity.learner_id), key=lambda value: value.context_id)
+            identifier = str(assessment_id) if assessment_id and view == 'assessments' else None
+            return dict(page, contexts=contexts,
+                detail=repository.detail(identity.learner_id, identifier) if identifier else None,
+                attempts=repository.attempts(identity.learner_id, identifier) if identifier else [])
+    return await run_in_threadpool(read)
+
 @router.get('/mistakes')
 async def mistake_history(request: Request, assessment_id: list[UUID] = Query(default=[], max_length=200),
                           topic_id: list[str] = Query(default=[], max_length=200), offset: int = Query(default=0, ge=0),

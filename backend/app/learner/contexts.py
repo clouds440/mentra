@@ -85,6 +85,9 @@ class ContextService:
         return summary(context)
 
     def expire_inactive(self, learner_id: str) -> list[LearningContext]:
+        cache = getattr(self, '_read_contexts', None)
+        if cache is not None and learner_id in cache:
+            return cache[learner_id]
         cutoff = self.clock() - timedelta(days=self.dormancy_days)
         contexts = self.repository.list_for_learner(learner_id)
         stale = [c for c in contexts
@@ -101,6 +104,8 @@ class ContextService:
                                          'reason': 'inactivity'}, learner_id)
                     refreshed[old.id] = current
             contexts = [refreshed.get(c.id, c) for c in contexts]
+        if cache is not None:
+            cache[learner_id] = contexts
         return contexts
 
     def select(self, learner_id: str, context_ids: list[str] | None = None,

@@ -22,13 +22,20 @@ class RetrievalService:
 
     def ranking_data(self, request):
         contexts = self.contexts.select(request.learner_id, request.context_ids)
+        cache = getattr(self, '_ranking_cache', None)
+        key = (request.learner_id, tuple((c.id, c.relevance_score) for c in contexts))
+        if cache is not None and key in cache:
+            return cache[key]
         concepts = self.repository.context_concepts(request.learner_id, [c.id for c in contexts])
         ids = [c.id for c in concepts]
         states = self.states.load(request.learner_id, ids)
         prerequisites = self.repository.prerequisite_counts(ids, [c.id for c in contexts], request.learner_id)
         factors = self.repository.context_factors(request.learner_id, contexts)
         now = self.clock()
-        return concepts, states, prerequisites, factors, now
+        data = concepts, states, prerequisites, factors, now
+        if cache is not None:
+            cache[key] = data
+        return data
 
     def recommend(self, request, verification=False, *, data=None, supported_only=False):
         concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request)
@@ -120,8 +127,15 @@ class RetrievalService:
     def project(self, learner_id, concepts, contexts):
         ids = [c.id for c in concepts]
         states = self.states.load(learner_id, ids)
-        misconceptions = self.repository.misconceptions_for_concepts(learner_id, ids)
-        factors = self.repository.context_factors(learner_id, contexts, ids)
+        cache = getattr(self, '_projection_cache', None)
+        key = (learner_id, tuple(ids), tuple((c.id, c.relevance_score) for c in contexts))
+        if cache is not None and key in cache:
+            misconceptions, factors = cache[key]
+        else:
+            misconceptions = self.repository.misconceptions_for_concepts(learner_id, ids)
+            factors = self.repository.context_factors(learner_id, contexts, ids)
+            if cache is not None:
+                cache[key] = misconceptions, factors
         now = self.clock()
         items = []
         for concept in concepts:

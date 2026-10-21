@@ -12,15 +12,25 @@ from app.core.logging import workflow_logger
 class PostgresStudentProfileRepository:
     def __init__(self, session_factory):
         self.sessions = session_factory
+        from app.core.read_cache import ReadCache
+        self._profiles = ReadCache(capacity=128, ttl=None)
 
     def read_profile(self, learner_id):
         from .tables import student_profile
         from ..schemas import StudentProfile
         learner_id = canonical_learner_id(learner_id)
         with self.sessions() as session:
+            revision = session.execute(select(student_profile.c.version, student_profile.c.created_at)
+                .where(student_profile.c.learner_id == learner_id)).first()
+            key = (learner_id, *revision) if revision else None
+            cached = self._profiles.get(key) if revision is not None else None
+            if cached is not None:
+                return cached
             row = session.execute(select(student_profile).where(student_profile.c.learner_id == learner_id)).mappings().first()
             if row is not None:
-                return StudentProfile.model_validate(dict(row))
+                value = StudentProfile.model_validate(dict(row))
+                self._profiles.put((learner_id, value.version, value.created_at), value)
+                return value
         with self.transaction(learner_id) as store:
             return store.profile()
 

@@ -1,6 +1,7 @@
 """Concrete provider-independent facade. LangGraph nodes can inject this service."""
 
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -36,6 +37,20 @@ from app.core.logging import workflow_logger
                             'result': lambda value: dict(concept_count=len(value.concepts), context_count=len(value.context_ids))},
 })
 class LearnerEngine:
+    @contextmanager
+    def read_scope(self, sessions=None):
+        """New service graph per read; the application singleton is never rebound."""
+        with self.repository.read_scope(sessions) as repository:
+            engine = LearnerEngine(repository, mastery_policy=self.mastery_policy,
+                retention_policy=self.retention_policy, ranking_policy=self.retrieval.ranking,
+                semantic_resolver=self.concepts.semantic_resolver,
+                generated_concept_resolver=self.generated_concepts.resolver, clock=self.clock)
+            engine.contexts._read_contexts = {}
+            engine.states._read_states = {}
+            engine.retrieval._ranking_cache = {}
+            engine.retrieval._projection_cache = {}
+            yield engine
+
     def __init__(self, repository: LearnerRepository, *, mastery_policy: MasteryPolicy | None = None,
                  retention_policy: RetentionPolicy | None = None, ranking_policy: RankingPolicy | None = None,
                  semantic_resolver: SemanticResolver | None = None, generated_concept_resolver=None,

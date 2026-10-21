@@ -16,6 +16,25 @@ class RevisionPracticeTests(unittest.IsolatedAsyncioTestCase):
     setUp = AssessmentTests.setUp
     graded = ProductFollowupTests.graded
 
+    async def test_narrow_cards_and_sql_mistakes_match_the_legacy_projection(self):
+        from app.assessments.repositories.list_view import summaries
+        from app.assessments.repositories.revision_practice import collect, matches
+        source, result = await self.graded()
+        self.service.repository.start(self.owner, str(source.id), StartAttempt(client_request_id=uuid4()))
+        old = self.service.repository.list(self.owner)['items'][0]
+        card = summaries(self.service.repository, self.owner)['items'][0]
+        self.assertEqual(card['attempt_summary'].model_dump(mode='json'), old.attempt_summary.model_dump(mode='json'))
+        self.assertEqual(card['question_count'], old.paper.question_count if old.paper else len(old.questions))
+        self.assertEqual(card['part_count'], len(old.questions))
+        self.assertNotIn('questions', card)
+        with self.db.sessions() as session:
+            catalog = collect(session, self.owner)
+        for ids, topics, offset in [([], [], 0), ([str(source.id)], [], 0), ([], [], 1), ([], ['missing'], 0)]:
+            expected = [{key: value for key, value in item.items() if not key.startswith('_')}
+                for item in catalog if matches(item, ids, topics)][offset:offset+30]
+            self.assertEqual(list_mistakes(self.service.repository, self.owner, ids, topics, offset)['items'], expected)
+        self.assertEqual(summaries(self.service.repository, self.other)['items'], [])
+
     async def test_catalog_owner_filters_priority_and_private_keys(self):
         source, result = await self.graded()
         page = list_mistakes(self.service.repository, self.owner)

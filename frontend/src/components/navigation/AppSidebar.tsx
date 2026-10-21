@@ -144,6 +144,8 @@ export function AppSidebar({
             return (
             <Link
               key={to}
+              onPointerEnter={() => { if (!isActive) void import('../../services/pagePrefetch').then(module => module.prefetchPage(to)); }}
+              onFocus={() => { if (!isActive) void import('../../services/pagePrefetch').then(module => module.prefetchPage(to)); }}
               aria-label={collapsed ? label : undefined}
               aria-current={isActive ? 'page' : undefined}
               className={

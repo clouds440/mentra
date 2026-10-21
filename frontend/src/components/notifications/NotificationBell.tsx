@@ -16,7 +16,7 @@ export function NotificationBell({ quiet = false }: { quiet?: boolean }) {
       if (busy || document.hidden) return;
       busy = true;
       try {
-        const page = await notifications.list(controller.signal, undefined, true, 1);
+        const page = await notifications.unread(controller.signal);
         if (!controller.signal.aborted) setBadge({ owner: owner!, count: page.unread_count });
       } catch { /* Keep the last confirmed count; the inbox exposes retry. */ }
       finally { busy = false; }

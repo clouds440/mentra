@@ -5,6 +5,13 @@ export interface PendingConcept { id: string; label: string; context_id: string 
 export const pendingConcepts = (signal: AbortSignal) => apiRequest<PendingConcept[]>('/api/v1/learning/concept-candidates', { signal });
 export const reviewConcept = (id: string, decision: 'confirm' | 'discard', signal: AbortSignal) => apiRequest<{ status: string; concept_id: string | null }>(`/api/v1/learning/concept-candidates/${id}`, { method:'POST', signal, body:JSON.stringify({decision}) });
 import type { LearningOverview, LearningProgressPage } from '../types/learning';
+export interface ProgressPageData {
+  overview: LearningOverview;
+  contexts: import('../types/rag').LearningContext[];
+  candidates: PendingConcept[];
+  understanding: LearningProgressPage;
+}
+export const progressPage = (signal: AbortSignal, context?: string) => apiRequest<ProgressPageData>(`/api/v1/learning/page${context ? `?context_id=${encodeURIComponent(context)}` : ''}`, { signal });
 export const learningOverview = (signal: AbortSignal, context?: string) => apiRequest<LearningOverview>(`/api/v1/learning${context ? `?context_id=${encodeURIComponent(context)}` : ''}`, { signal });
 export const learningProgress = (signal: AbortSignal, query: string, offset: number, context?: string) => {
   const params = new URLSearchParams({query, offset:String(offset), limit:'10'});

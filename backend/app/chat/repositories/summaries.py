@@ -15,12 +15,31 @@ from app.core.logging import workflow_logger
 class SummaryRepository:
     def __init__(self, chats):
         self.chats = chats
+        from app.core.read_cache import ReadCache
+        self._contents = ReadCache(capacity=128, ttl=None)
 
     def load(self, owner, chat):
+        from .tables import conversations
+        from app.core.exceptions import AppError
         with self.chats.sessions() as session:
-            self.chats._conversation(session, owner, chat)
+            meta = session.execute(select(s.c.revision, s.c.through_sequence, s.c.lease_token, s.c.lease_until)
+                .select_from(conversations.outerjoin(s, (s.c.conversation_id == conversations.c.id) & (s.c.learner_id == owner)))
+                .where(conversations.c.id == chat, conversations.c.learner_id == owner,
+                    conversations.c.deleted_at.is_(None))).mappings().first()
+            if meta is None:
+                raise AppError('CHAT_NOT_FOUND', 'Conversation not found.', 404)
+            if meta['revision'] is None:
+                return None
+            key = (owner, chat, meta['revision'], meta['through_sequence'])
+            cached = self._contents.get(key)
+            if cached is not None:
+                return dict(cached, lease_token=meta['lease_token'], lease_until=meta['lease_until'])
             row = session.execute(select(s).where(s.c.conversation_id == chat, s.c.learner_id == owner)).mappings().first()
-            return dict(row) if row else None
+            if row:
+                value = dict(row)
+                self._contents.put((owner, chat, row['revision'], row['through_sequence']), value)
+                return value
+            return None
 
     def claim(self, owner, chat):
         with self.chats.sessions.begin() as session:

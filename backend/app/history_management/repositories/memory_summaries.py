@@ -6,6 +6,10 @@ from sqlalchemy import select, update, delete, func, or_, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from app.db.owner_transactions import lock_owner
 from .tables import memories as m, summary_state as s, summary_changes as c, summary_jobs as j
+from app.core.read_cache import ReadCache
+from app.core.config import settings
+
+_contexts = ReadCache(capacity=128, ttl=None)
 from app.history_management.memory.summary_schemas import bounded, envelope, MemorySummary, fits
 
 
@@ -102,6 +106,54 @@ class MemorySummaryRepository:
         self.sessions = sessions
 
     def context(self, owner):
+        """Unchanged summaries need one freshness SELECT, without an owner lock."""
+        from app.langchain.prompts.memory_summary import VERSION
+        key = (self.sessions, owner, VERSION, settings.memory_summary_max_tokens, settings.memory_summary_max_characters)
+        cached = _contexts.get(key)
+        with self.sessions() as session:
+            if cached is not None:
+                value, fence = cached
+                ids = {x['id']: x['revision'] for x in fence['supports']}
+                valid_count = select(func.count()).select_from(m).where(m.c.learner_id == owner,
+                    tuple_(m.c.id, m.c.revision).in_(list(ids.items())), *eligible()).scalar_subquery()
+                state = session.execute(select(s.c.source_revision, s.c.published_source_revision,
+                    s.c.summary_revision, s.c.prompt_version, s.c.next_expiry_at, s.c.reconciled_at,
+                    valid_count.label('valid_count')).where(s.c.learner_id == owner)).mappings().first()
+                if (self._ready(state, VERSION) and state['source_revision'] == fence['source_revision']
+                        and state['summary_revision'] == value['revision'] and state['valid_count'] == len(ids)
+                        and (not fence['expires_at'] or datetime.fromisoformat(fence['expires_at']) > now())):
+                    return value, fence
+        # Cold reads use a consistent snapshot, not the owner write boundary.
+        with self.sessions() as session:
+            session.connection(execution_options={'isolation_level': 'REPEATABLE READ'})
+            state = session.execute(select(s).where(s.c.learner_id == owner)).mappings().first()
+            if self._ready(state, VERSION):
+                blocks = valid_blocks(state['blocks'])
+                if blocks is not None:
+                    supports = [x for block in blocks for x in block['supports']]
+                    ids = {x['id']: x['revision'] for x in supports}
+                    rows = {str(row['id']): row for row in session.execute(select(m.c.id, m.c.revision,
+                        m.c.pinned, m.c.expires_at).where(m.c.learner_id == owner, m.c.id.in_(ids), *eligible())).mappings()}
+                    if all(identifier in rows and rows[identifier]['revision'] == revision for identifier, revision in ids.items()):
+                        blocks.sort(key=lambda block: not any(rows[x['id']]['pinned'] for x in block['supports']))
+                        blocks = bounded(blocks)
+                        supports = [x for block in blocks for x in block['supports']]
+                        expiry = min((rows[x['id']]['expires_at'] for x in supports if rows[x['id']]['expires_at']), default=None)
+                        value = envelope(blocks, 'ready' if blocks else 'empty', state['summary_revision'])
+                        fence = dict(source_revision=state['source_revision'], supports=supports,
+                                     expires_at=expiry.isoformat() if expiry else None)
+                        _contexts.put(key, (value, fence))
+                        return value, fence
+        return self._context_locked(owner)
+
+    @staticmethod
+    def _ready(state, version):
+        return (state is not None and state['source_revision'] == state['published_source_revision']
+            and (not state['next_expiry_at'] or state['next_expiry_at'] > now())
+            and (not state['source_revision'] or state['prompt_version'] == version
+                 and (not state['reconciled_at'] or state['reconciled_at'] >= now()-timedelta(days=30))))
+
+    def _context_locked(self, owner):
         from app.langchain.prompts.memory_summary import VERSION
         with self.sessions.begin() as session:
             lock_owner(session, owner)

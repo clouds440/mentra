@@ -15,6 +15,38 @@ from testing.identities import learner_id
 
 
 class PersistentChatTests(unittest.TestCase):
+    def test_context_cache_reuses_payload_and_refreshes_changes_and_additions(self):
+        from sqlalchemy import event
+        request, page = self.complete()
+        cid = str(request.conversation_id)
+        payloads = []
+        def observe(connection, cursor, statement, parameters, context, many):
+            if context.compiled is not None:
+                columns = getattr(context.compiled.statement, 'selected_columns', ())
+                if 'content' in getattr(columns, 'keys', lambda: [])():
+                    payloads.append(statement)
+        event.listen(self.db.engine, 'before_cursor_execute', observe)
+        try:
+            original = self.repo.context_rows(self.owner, cid)
+            self.assertEqual(len(payloads), 1)
+            self.assertEqual(self.repo.context_rows(self.owner, cid), original)
+            self.assertEqual(len(payloads), 1)
+            with self.db.sessions.begin() as session:
+                session.execute(update(messages).where(messages.c.id == original[0]['id']).values(content='Edited question'))
+            changed = self.repo.context_rows(self.owner, cid)
+            self.assertEqual(changed[0]['content'], 'Edited question')
+            self.assertEqual(len(payloads), 2)
+            next_request = request.model_copy(update={'client_turn_id': uuid4(),
+                'expected_revision': page['conversation']['revision'], 'content': 'Next question'})
+            self.complete(next_request)
+            payloads.clear()
+            self.assertEqual(len(self.repo.context_rows(self.owner, cid)), 4)
+            self.assertEqual(len(payloads), 1)
+            with self.assertRaises(AppError):
+                self.repo.context_rows(self.other, cid)
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', observe)
+
     @classmethod
     def setUpClass(cls):
         cls.db = PostgresSandbox()

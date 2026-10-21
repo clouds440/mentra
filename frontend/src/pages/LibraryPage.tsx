@@ -7,7 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, Select, buttonStyles } from '../components/ui';
-import { listContexts, listMaterials, pendingJob, materialError, transitionContext } from '../services/rag';
+import { libraryPage, pendingJob, materialError, transitionContext } from '../services/rag';
 import type { LearningContext, MaterialList } from '../types/rag';
 
 export function LibraryPage() {
@@ -38,12 +38,12 @@ export function LibraryPage() {
     const abort = new AbortController(); request.current = abort; setError('');
     async function load() {
       try {
-        const [data, ctx] = await Promise.all([listMaterials(offset, archive === 'all' ? undefined : archive === 'archived', abort.signal, contextId || undefined, query), listContexts(abort.signal)]);
+        const data = await libraryPage(offset, archive === 'all' ? undefined : archive === 'archived', abort.signal, contextId || undefined, query);
         if (abort.signal.aborted) return;
         const isProcessing = data.items.some(pendingJob);
         if (processing.current && !isProcessing) invalidatePageCache(['documents', 'learning'], true);
         processing.current = isProcessing;
-        setList(data); setLoadedQuery(queryKey); setContexts(ctx); setError('');
+        setList(data); setLoadedQuery(queryKey); setContexts(data.contexts); setError('');
 
       } catch (e) { if (!abort.signal.aborted) setError(materialError(e)); }
       finally { if (request.current === abort) request.current = undefined; }

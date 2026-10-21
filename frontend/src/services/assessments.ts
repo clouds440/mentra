@@ -3,6 +3,11 @@ import { uploadFile } from './files';
 import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData } from '../types/assessments';
 const base = '/api/v1/assessments';
 export const assessments = {
+  page: (signal: AbortSignal, view: 'assessments' | 'create' = 'assessments', id?: string | null, offset = 0) => {
+    const params = new URLSearchParams({ view, offset: String(offset) });
+    if (id) params.set('assessment_id', id);
+    return apiRequest<{ items: import('../types/assessments').AssessmentListItem[]; next_offset: number | null; contexts: import('../types/rag').LearningContext[]; detail: Assessment | null; attempts: AssessmentAttempt[] }>(`${base}/page?${params}`, { signal });
+  },
   mistakes: (ids: string[], topics: string[], offset: number, signal: AbortSignal) => { const query = new URLSearchParams({ offset: String(offset) }); ids.forEach(id => query.append('assessment_id', id)); topics.forEach(id => query.append('topic_id', id)); return apiRequest<import('../types/assessments').MistakesPage>(`${base}/mistakes?${query}`, { signal }); },
   reviseMistakes: (body: { client_request_id: string; assessment_ids: string[]; topic_ids: string[]; count: number }, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/mistakes/practice`, { method: 'POST', signal, body: JSON.stringify(body) }),
   practiseMistakes: (attempt: AssessmentAttempt, question_ids: string[], operation: string, signal: AbortSignal) => apiRequest<Assessment>(`${base}/attempts/${attempt.id}/practice`, { method:'POST', signal, body:JSON.stringify({ expected_grade_revision:attempt.grade_revision, question_ids, client_request_id:operation }) }),

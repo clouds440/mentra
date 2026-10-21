@@ -40,6 +40,27 @@ def details(**changes):
 
 
 class StudentProfileTests(unittest.TestCase):
+    def test_profile_cache_reuses_content_until_another_repository_updates_it(self):
+        from sqlalchemy import event
+        initial = self.fill_details()
+        self.service.get(A)
+        self.repository._profiles.clock = lambda: 10**12
+        statements = []
+        def observe(connection, cursor, statement, parameters, context, many):
+            statements.append(statement)
+        event.listen(self.db.engine, 'before_cursor_execute', observe)
+        try:
+            self.assertEqual(self.service.get(A), initial)
+            self.assertEqual(len(statements), 1)
+            other = PostgresStudentProfileRepository(self.db.sessions)
+            with other.transaction(A) as store:
+                profile = store.profile()
+                profile.details.preferred_name = 'Changed elsewhere'
+                store.save_profile(profile)
+            self.assertEqual(self.service.get(A).details.preferred_name, 'Changed elsewhere')
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', observe)
+
     def test_existing_profile_read_needs_no_write_transaction(self):
         initial = self.service.get(A)
         with patch.object(self.repository, 'transaction', side_effect=AssertionError('Read must not acquire a write lock')):
@@ -440,7 +461,7 @@ class StudentProfileTests(unittest.TestCase):
         application.state.auth_service = AuthService(PostgresIdentityRepository(self.db.sessions), ExternalTokenVerifier({}))
         application.state.student_profile_service = self.service
         class Chat:
-            async def reply(self, *_):
+            async def reply(self, *_, **kwargs):
                 return 'Welcome'
         application.state.chat_service = Chat()
         register_exception_handlers(application)

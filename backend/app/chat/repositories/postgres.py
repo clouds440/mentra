@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from hashlib import sha256
 import json
 from uuid import uuid4, UUID
-from sqlalchemy import select, update, delete, and_, or_, text
+from sqlalchemy import select, update, delete, and_, or_, text, func, cast, Text
 from app.core.exceptions import AppError
 from .tables import conversations as c, messages as m, turns as t, sync_state as ss, changes as ch
 from app.chat.titles import NewChatReply, provisional_title
@@ -24,6 +24,8 @@ from app.core.logging import workflow_logger
 class ChatRepository:
     def __init__(self, sessions):
         self.sessions = sessions
+        from app.core.read_cache import ReadCache
+        self._contexts = ReadCache(capacity=32, ttl=None)
 
     def _sync_lock(self, session, owner):
         from app.db.owner_transactions import lock_owner
@@ -377,13 +379,30 @@ class ChatRepository:
             self._conversation(session, owner, conversation_id)
             # Completed exchanges only, plus the current question. Failed questions remain visible in UI history.
             completed = select(t.c.user_sequence).where(t.c.learner_id == owner, t.c.conversation_id == conversation_id, t.c.state == 'SUCCEEDED')
-            query = select(m).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
+            query = select(m.c.id, m.c.sequence, func.md5(m.c.role + m.c.content).label('content_version'),
+                func.md5(cast(m.c.metadata, Text)).label('metadata_version')).where(m.c.learner_id == owner, m.c.conversation_id == conversation_id,
                 m.c.metadata['response_stopped'].as_boolean().is_not(True),
                 or_(m.c.role != 'user', m.c.sequence.in_(completed), m.c.sequence == through if through is not None else False))
             if through is not None:
                 query = query.where(m.c.sequence <= through)
-            rows = session.execute(query.order_by(m.c.sequence.desc()).limit(max(1, min(limit, 1000)))).mappings().all()
-            return [dict(row) for row in reversed(rows)]
+            versions = session.execute(query.order_by(m.c.sequence.desc()).limit(max(1, min(limit, 1000)))).mappings().all()
+            cached = self._contexts.get((owner, conversation_id)) or {}
+            missing = [row['id'] for row in versions if row['id'] not in cached or
+                cached[row['id']][0] != (row['content_version'], row['metadata_version'])]
+            missing_ids = set(missing)
+            fresh = {row['id']: dict(row) for row in session.execute(select(m).where(m.c.learner_id == owner,
+                m.c.conversation_id == conversation_id, m.c.id.in_(missing))).mappings()} if missing else {}
+            result, retained = [], {}
+            for row in reversed(versions):
+                value = fresh.get(row['id']) or (cached[row['id']][1] if row['id'] in cached and row['id'] not in missing_ids else None)
+                if value is not None:
+                    result.append(value)
+                    retained[row['id']] = ((row['content_version'], row['metadata_version']), value)
+            # Bound bytes as well as entry count. Unusually large windows still
+            # load correctly, without occupying unbounded process memory.
+            if len(json.dumps(result, default=str).encode()) <= 262144:
+                self._contexts.put((owner, conversation_id), retained)
+            return result
 
     def summary_rows(self, owner, conversation_id, after, before=None):
         with self.sessions() as session:

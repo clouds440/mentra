@@ -57,10 +57,22 @@ class ChatSummaryJobs:
                     available_at=retry_at or now()+timedelta(seconds=retry_delay(attempts) if error else 0)))
             return True
 
-    def retry(self, owner, chat):
+    def retry(self, owner, chat, *, invalid_revision=None):
         from .tables import summaries
         with self.sessions.begin() as session:
+            if invalid_revision is not None:
+                # An automatic repair must not reset a queued/running repair.
+                current = session.scalar(select(summaries.c.revision).where(summaries.c.learner_id == owner,
+                    summaries.c.conversation_id == chat))
+                if current != invalid_revision or session.scalar(select(j.c.conversation_id).where(
+                        j.c.learner_id == owner, j.c.conversation_id == chat)):
+                    return
             lock_owner(session, owner)
+            if invalid_revision is not None:
+                if (session.scalar(select(summaries.c.revision).where(summaries.c.learner_id == owner,
+                        summaries.c.conversation_id == chat)) != invalid_revision or
+                        session.scalar(select(j.c.conversation_id).where(j.c.learner_id == owner, j.c.conversation_id == chat))):
+                    return
             row = session.execute(select(c).where(c.c.learner_id == owner, c.c.id == chat, c.c.deleted_at.is_(None))).mappings().first()
             if not row:
                 from app.core.exceptions import AppError

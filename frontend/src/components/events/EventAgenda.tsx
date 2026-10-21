@@ -11,10 +11,11 @@ import { Button, Input, Select } from '../ui';
 import { EventEditor } from './EventEditor';
 import { events } from '../../services/events';
 import { notificationChanged } from '../../services/notifications';
-import type { EventPage, EventRecord, EventStatus } from '../../types/events';
+import type { EventPage, EventRecord, EventStatus, EventProposal } from '../../types/events';
 
-export function EventAgenda() { const { identity } = useAuth(); return <Agenda key={identity?.learner_id} />; }
-function Agenda() {
+type Props = { onProposals?: (values: EventProposal[] | null) => void; reload?: number };
+export function EventAgenda(props: Props) { const { identity } = useAuth(); return <Agenda {...props} key={identity?.learner_id} />; }
+function Agenda({ onProposals, reload = 0 }: Props) {
   const [params, setParams] = useSearchParams();
   const selected = params.get('event');
   const [page, setPage] = useState<EventPage | null>(null);
@@ -54,13 +55,13 @@ function Agenda() {
       const filterKey = `${status}:${query}:${range}`;
       if (cursor && previousFilter.current?.key === filterKey) { filter.set('after', previousFilter.current.after); filter.set('before', previousFilter.current.before); }
       else previousFilter.current = { key: filterKey, after: filter.get('after')!, before: filter.get('before')! };
-      const [result, current] = await Promise.all([events.list(filter, controller.signal), selected ? events.detail(selected, controller.signal) : Promise.resolve(null)]);
-      if (!controller.signal.aborted) { setPage(old => ({ ...result, items: cursor ? [...(old?.items ?? []), ...result.items] : result.items })); setDetail(current); }
+      const result = await events.page(filter, controller.signal, selected);
+      if (!controller.signal.aborted) { setPage(old => ({ ...result, items: cursor ? [...(old?.items ?? []), ...result.items] : result.items })); setDetail(result.detail); if (!cursor) onProposals?.(result.proposals_error ? null : result.proposals ?? []); }
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load events.'); }
   }
   const previousFilter = useRef<{ key: string; after: string; before: string } | null>(null);
   usePageRefresh(() => { void load(); }, !busy && !editing, ['events']);
-  useEffect(() => { setPage(null); setDetail(null); setDeleting(false); void load(); return () => active.current?.abort(); }, [selected, status, range]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(null); setDetail(null); setDeleting(false); void load(); return () => active.current?.abort(); }, [selected, status, range, reload]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => mutation.current?.abort(), []);
   async function change(item: EventRecord, action: EventStatus | 'delete') {
     if (busy) return;

@@ -22,6 +22,19 @@ class PostgresRepositoryBase:
         self._locked_learners = set()
         self._read_cache = {}
         self._context_links = set()
+        self._read_session = None
+
+    @contextmanager
+    def read_scope(self, sessions=None):
+        from app.db.reads import read_sessions
+        if sessions is not None:
+            repository = type(self)(self._session_factory)
+            repository._read_session = sessions.session
+            yield repository
+        else:
+            with read_sessions(self._session_factory) as bound:
+                with self.read_scope(bound) as repository:
+                    yield repository
 
     def _cache_allowed(self, learner_id=None):
         return self._active_session is not None and (learner_id is None or
@@ -42,6 +55,8 @@ class PostgresRepositoryBase:
     def _session(self):
         if self._active_session is not None:
             yield self._active_session
+        elif self._read_session is not None:
+            yield self._read_session
         else:
             with self._session_factory.begin() as session:
                 yield session
@@ -50,6 +65,10 @@ class PostgresRepositoryBase:
     def transaction(self, *, learner_ids=(), ontology=False):
         if self._active_session is not None:
             raise RuntimeError('Nested learner repository transactions are not supported')
+        if self._read_session is not None:
+            # Read-triggered policy/dormancy refresh must also work with a pool
+            # of one. Release the read connection before the independent write.
+            self._read_session.rollback()
         with self._session_factory.begin() as session:
             lock = 'pg_advisory_xact_lock' if ontology else 'pg_advisory_xact_lock_shared'
             session.execute(text(f'SELECT {lock}(17483, 2)'))

@@ -18,6 +18,7 @@ class AuthenticatedIdentity:
     user_id: str | None = None
     provider: str | None = None
     username: str | None = None
+    onboarding_phase: str | None = None
 
 
 @dataclass(frozen=True)

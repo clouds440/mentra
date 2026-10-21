@@ -7,6 +7,11 @@ function details(value: EventDraft): EventDraft {
   return { title, description, kind, context_id, timezone, local_date, starts_at, ends_at, reminder };
 }
 export const events = {
+  page: (params: URLSearchParams, signal: AbortSignal, selected?: string | null) => {
+    const query = new URLSearchParams(params);
+    if (selected) query.set('selected', selected);
+    return apiRequest<EventPage & { detail: EventRecord | null; proposals: import('../types/events').EventProposal[] | null; proposals_error: boolean }>(`${base}/page?${query}`, { signal });
+  },
   calendar: (id: string, signal: AbortSignal) => downloadFile(`${base}/${encodeURIComponent(id)}/calendar`, signal),
   list: (params: URLSearchParams, signal: AbortSignal) => apiRequest<EventPage>(`${base}?${params}`, { signal }),
   detail: (id: string, signal: AbortSignal) => apiRequest<EventRecord>(`${base}/${encodeURIComponent(id)}`, { signal }),

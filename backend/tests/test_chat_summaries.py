@@ -22,6 +22,31 @@ from app.core.config import Settings
 
 
 class SummaryTests(unittest.TestCase):
+    def test_cached_summary_reuses_content_and_detects_other_process_publication(self):
+        from sqlalchemy import event
+        cid, revision = self.conversation(2)
+        claim = self.repo.claim(self.owner, cid)
+        self.assertTrue(self.repo.publish(self.owner, cid, claim, 'First summary', 2))
+        statements = []
+        def observe(connection, cursor, statement, parameters, context, many):
+            statements.append(statement)
+        event.listen(self.db.engine, 'before_cursor_execute', observe)
+        try:
+            self.assertEqual(self.repo.load(self.owner, cid)['content'], 'First summary')
+            self.repo._contents.clock = lambda: 10**12
+            statements.clear()
+            self.assertEqual(self.repo.load(self.owner, cid)['content'], 'First summary')
+            self.assertEqual(len(statements), 1)
+            other = SummaryRepository(ChatRepository(self.db.sessions))
+            claim = other.claim(self.owner, cid)
+            self.assertTrue(other.publish(self.owner, cid, claim, 'Updated summary', 4))
+            self.assertEqual(self.repo.load(self.owner, cid)['content'], 'Updated summary')
+            self.chats.edit(self.owner, cid, revision, remove=True)
+            with self.assertRaises(AppError):
+                self.repo.load(self.owner, cid)
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', observe)
+
     @classmethod
     def setUpClass(cls):
         cls.db = PostgresSandbox()
@@ -198,7 +223,7 @@ class SummaryTests(unittest.TestCase):
         asyncio.run(service.refresh(self.owner, cid))
         self.assertEqual(llm.ainvoke.call_count, before)
 
-    def test_persistent_chat_fetches_summary_on_each_request(self):
+    def test_persistent_chat_supplies_current_summary_on_each_request(self):
         from app.chat.service import ConversationService
         cid, revision = self.conversation(2)
         claim = self.repo.claim(self.owner, cid)

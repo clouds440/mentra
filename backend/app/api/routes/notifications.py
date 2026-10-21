@@ -23,6 +23,11 @@ async def preferences(app=Depends(service), identity=Depends(require_onboarded_i
     return await run_in_threadpool(app.preferences, identity.learner_id)
 
 
+@router.get('/unread')
+async def unread(app=Depends(service), identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(app.repository.unread, identity.learner_id)
+
+
 @router.patch('/preferences')
 async def set_preferences(body: NotificationPreferencesEdit, app=Depends(service), identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(app.set_preferences, identity.learner_id, body)

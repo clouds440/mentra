@@ -33,6 +33,12 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class MemoryRepository:
+    def page(self, owner, query='', status=None, cursor=None, limit=30):
+        from app.db.reads import read_sessions
+        with read_sessions(self.sessions) as sessions:
+            repository = MemoryRepository(sessions, self.active_limit, self.pending_limit)
+            return dict(repository.list(owner, query, status, cursor, limit), preferences=repository.preferences(owner))
+
     def __init__(self, sessions, active_limit=200, pending_limit=50):
         self.sessions = sessions
         self.active_limit, self.pending_limit = active_limit, pending_limit

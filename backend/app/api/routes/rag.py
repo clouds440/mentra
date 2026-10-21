@@ -61,6 +61,27 @@ def get_capabilities(service=Depends(rag), identity=Depends(require_onboarded_id
     return service.capabilities()
 
 
+@router.get('/documents/page')
+def library_page(offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100),
+        archived: bool | None = None, context_id: str | None = None, query: str = Query(default='', max_length=200),
+        service=Depends(rag), identity=Depends(require_onboarded_identity)):
+    from app.db.reads import read_sessions
+    from app.rag.repositories.postgres import RAGRepository
+    with read_sessions(service.repository.sessions) as sessions:
+        with service.learner.read_scope(sessions) as learner:
+            if context_id is not None:
+                # Keep the existing material-context error contract.
+                from app.learner.exceptions import LearningContextNotFoundError
+                from app.rag.errors import not_found
+                try:
+                    learner.get_context_summaries(identity.learner_id, [context_id])
+                except LearningContextNotFoundError as error:
+                    raise not_found() from error
+            repository = RAGRepository(sessions, files=service.repository.files)
+            return dict(repository.list_documents(identity.learner_id, offset, limit, archived, context_id, query),
+                contexts=sorted(learner.get_context_summaries(identity.learner_id), key=lambda value: value.context_id))
+
+
 @router.get('/documents')
 def list_documents(offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100),
                    archived: bool | None = None, context_id: str | None = None, query: str = Query(default='', max_length=200),

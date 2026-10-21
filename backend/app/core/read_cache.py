@@ -27,7 +27,7 @@ class ReadCache:
             item = self.entries.get(key)
             if item is None:
                 return None
-            if self.clock() >= item[0]:
+            if item[0] is not None and self.clock() >= item[0]:
                 self.entries.pop(key, None)
                 return None
             self.entries.move_to_end(key)
@@ -36,9 +36,9 @@ class ReadCache:
     def put(self, key, value):
         with self.lock:
             now = self.clock()
-            for expired in [k for k, (deadline, _) in self.entries.items() if deadline <= now]:
+            for expired in [k for k, (deadline, _) in self.entries.items() if deadline is not None and deadline <= now]:
                 self.entries.pop(expired, None)
-            self.entries[key] = (now + self.ttl, deepcopy(value))
+            self.entries[key] = (now + self.ttl if self.ttl is not None else None, deepcopy(value))
             self.entries.move_to_end(key)
             while len(self.entries) > self.capacity:
                 self.entries.popitem(last=False)
