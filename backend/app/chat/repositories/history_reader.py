@@ -21,13 +21,14 @@ class ChatReadFacade:
         query = func.websearch_to_tsquery('simple', body.query)
         pattern = '%' + body.query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
         statement = select(c.c.id.label('conversation_id'), c.c.title, s.c.content.label('summary'),
-            s.c.revision, s.c.through_sequence, c.c.updated_at).join(s,
+            s.c.revision, s.c.through_sequence, c.c.updated_at,
+            (c.c.message_count > s.c.through_sequence).label('has_newer_messages')).join(s,
                 and_(s.c.conversation_id == c.c.id, s.c.learner_id == c.c.learner_id)).where(
             c.c.learner_id == owner, s.c.learner_id == owner, c.c.deleted_at.is_(None),
             c.c.id != current_chat, s.c.revision > 0, s.c.through_sequence > 0,
             func.length(s.c.content).between(1, settings.chat_summary_max_characters),
             or_(vector.op('@@')(query), text_value.ilike(pattern, escape='\\'))
-        ).order_by(func.ts_rank_cd(vector, query).desc(), c.c.updated_at.desc(), c.c.id).limit(body.limit)
+        ).order_by(func.ts_rank_cd(vector, query).desc(), c.c.updated_at.desc(), c.c.id).offset(body.offset).limit(body.limit + 1)
         try:
             with self.repository.sessions() as session:
                 session.execute(text('SET LOCAL statement_timeout = 2000'))
@@ -103,7 +104,9 @@ class ChatReadFacade:
 
     @staticmethod
     def _window_query():
-        return select(m, t.c.state.label('exchange_status')).outerjoin(t, and_(t.c.learner_id == m.c.learner_id,
+        return select(m, t.c.state.label('exchange_status')).join(c,
+            and_(c.c.id == m.c.conversation_id, c.c.learner_id == m.c.learner_id)).where(
+            c.c.deleted_at.is_(None)).outerjoin(t, and_(t.c.learner_id == m.c.learner_id,
             t.c.conversation_id == m.c.conversation_id, or_(t.c.user_sequence == m.c.sequence, t.c.assistant_sequence == m.c.sequence)))
 
     def lookup(self, owner, current_chat, current_sequence, body, visible_ids=()):

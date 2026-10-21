@@ -64,8 +64,8 @@ class HistoryLookup(Contract):
     def scope_query(self):
         if self.before_sequence is not None and self.after_sequence is not None:
             raise ValueError('Choose one sequence pagination direction.')
-        if self.message_id and (self.query or self.before_sequence is not None or self.after_sequence is not None or self.scope != 'current_chat'):
-            raise ValueError('Exact message recovery requires current_chat without search or sequence anchors.')
+        if self.message_id and (self.query or self.before_sequence is not None or self.after_sequence is not None or self.scope == 'all_chats'):
+            raise ValueError('Exact message recovery requires current_chat or selected_chats without search or sequence anchors.')
         if self.content_offset and not self.message_id:
             raise ValueError('Content offsets require an exact message ID.')
         if (self.before_sequence is not None or self.after_sequence is not None) and self.scope != 'current_chat':
@@ -74,7 +74,7 @@ class HistoryLookup(Contract):
             raise ValueError('Dates must include a timezone.')
         if self.created_before and self.created_after and self.created_after >= self.created_before:
             raise ValueError('Start date must precede end date.')
-        if self.scope != 'current_chat' and not self.query:
+        if self.scope != 'current_chat' and not self.query and not self.message_id:
             raise ValueError('Keywords are required for searching multiple chats.')
         if self.scope == 'selected_chats' and not self.chat_ids:
             raise ValueError('Select at least one chat.')
@@ -86,6 +86,7 @@ class HistoryLookup(Contract):
 class ConversationSummarySearch(Contract):
     query: str = Field(min_length=1, max_length=300)
     limit: int = Field(default=3, ge=1, le=3)
+    offset: int = Field(default=0, ge=0, le=180)
 
     @model_validator(mode='after')
     def searchable(self):

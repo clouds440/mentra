@@ -4,7 +4,7 @@ from datetime import timedelta
 from uuid import uuid4
 from unittest.mock import AsyncMock
 from sqlalchemy import select, update
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from testing.postgres import PostgresSandbox
 from testing.identities import learner_id
 from app.chat.repositories.postgres import ChatRepository, now
@@ -59,7 +59,7 @@ class SummaryTests(unittest.TestCase):
         from unittest.mock import Mock
         from pydantic import ValidationError
         from app.history_management.schemas import ConversationSummarySearch
-        for arguments in ({'query': '   '}, {'query': 'x', 'limit': 4}, {'query': '\x00'}, {'query': 'x', 'owner': 'other'}):
+        for arguments in ({'query': '   '}, {'query': 'x', 'limit': 4}, {'query': 'x', 'offset': 181}, {'query': '\x00'}, {'query': 'x', 'owner': 'other'}):
             with self.assertRaises(ValidationError):
                 ConversationSummarySearch(**arguments)
         reader = Mock()
@@ -76,10 +76,158 @@ class SummaryTests(unittest.TestCase):
             for _ in range(2):
                 self.assertEqual(len((await tool.ainvoke({'query': 'earlier'}))['summaries']), 1)
         asyncio.run(run())
-        reader.search_summaries.assert_called_once()
+        self.assertEqual(reader.search_summaries.call_count, 2)
         self.assertEqual(scope['evidence_ids'], set())
         self.assertEqual(scope['history_references'], [])
         self.assertIn('conversation_summary_search', plan_request('Find our past conversations').tool_names)
+
+    def test_summary_search_pages_past_invalid_summaries_and_marks_partial_coverage(self):
+        from app.history_management.schemas import ConversationSummarySearch
+        keyword = 'pagedsummary' + uuid4().hex
+        expected = {}
+        for index in range(5):
+            cid, _ = self.conversation(2)
+            through = 2 if index % 2 else 4
+            claim = self.repo.claim(self.owner, cid)
+            self.repo.publish(self.owner, cid, claim, keyword + ' decision ' + str(index), through)
+            expected[cid] = through < 4
+        invalid, _ = self.conversation()
+        claim = self.repo.claim(self.owner, invalid)
+        self.repo.publish(self.owner, invalid, claim, keyword + ' ' + '漢'*700, 2)
+        service = HistoryManagement(None, ChatReadFacade(self.chats), None)
+        async def run():
+            offset, found = 0, {}
+            for _ in range(10):
+                result = await service.search_summaries(self.owner, {'conversation_id': str(uuid4())},
+                    ConversationSummarySearch(query=keyword, limit=1, offset=offset))
+                self.assertLessEqual(len(result['summaries']), 1)
+                for row in result['summaries']:
+                    self.assertNotIn(row['conversation_id'], found)
+                    found[row['conversation_id']] = row['has_newer_messages']
+                if result['next_offset'] is None:
+                    break
+                self.assertGreater(result['next_offset'], offset)
+                offset = result['next_offset']
+            self.assertEqual(found, expected)
+        asyncio.run(run())
+
+    def test_summary_search_rechecks_external_publication_and_deletion_within_one_turn(self):
+        from app.history_management.tools import create_history_tools
+        from app.history_management.budgets import ToolBudget
+        from app.langchain.tool_execution import ToolExecutor
+        from app.langchain.activity import ActivityPublisher
+        keyword = 'freshsummary' + uuid4().hex
+        cid, revision = self.conversation(2)
+        claim = self.repo.claim(self.owner, cid)
+        self.repo.publish(self.owner, cid, claim, keyword + ' old decision', 2)
+        scope = dict(conversation_id=str(uuid4()), evidence_ids=set(), history_references=[])
+        budget = ToolBudget()
+        service = HistoryManagement(None, ChatReadFacade(self.chats), None)
+        tool = next(tool for tool in create_history_tools(service, self.owner, scope, budget)
+            if tool.name == 'conversation_summary_search')
+        executor = ToolExecutor(budget, scope, ActivityPublisher())
+        async def run():
+            first = await executor.execute(tool, {'query': keyword})
+            self.assertIn('old decision', first['summaries'][0]['summary'])
+            other = SummaryRepository(ChatRepository(self.db.sessions))
+            claim = other.claim(self.owner, cid)
+            other.publish(self.owner, cid, claim, keyword + ' corrected decision', 4)
+            second = await executor.execute(tool, {'query': keyword})
+            self.assertIn('corrected decision', second['summaries'][0]['summary'])
+            self.chats.edit(self.owner, cid, revision, remove=True)
+            self.assertEqual((await executor.execute(tool, {'query': keyword}))['summaries'], [])
+        asyncio.run(run())
+
+    def test_exact_cross_chat_recovery_and_continuation_preserve_owner_and_turn_boundaries(self):
+        from app.history_management.budgets import ToolBudget
+        from pydantic import ValidationError
+        cid, _ = self.conversation(1, '漢字'*1800)
+        original = self.chats.context_rows(self.owner, cid)[0]
+        reader = ChatReadFacade(self.chats)
+        scope = dict(conversation_id=str(uuid4()), user_sequence=3, visible_ids=[], evidence_ids=set(), history_references=[])
+        service = HistoryManagement(None, reader, None)
+        content, offset = '', 0
+        for _ in range(10):
+            body = HistoryLookup(scope='selected_chats', chat_ids=[cid], message_id=original['id'], content_offset=offset)
+            packet = asyncio.run(service.lookup(self.owner, scope, body, ToolBudget()))
+            message = packet['windows'][0]['messages'][0]
+            content += message['content']
+            if message['next_content_offset'] is None:
+                break
+            offset = message['next_content_offset']
+        self.assertEqual(content, original['content'])
+        self.assertGreater(offset, 0)
+        with self.assertRaises(AppError):
+            reader.lookup(learner_id('bob'), scope['conversation_id'], 3, body)
+        unrelated, _ = self.conversation()
+        self.assertEqual(reader.lookup(self.owner, scope['conversation_id'], 3,
+            HistoryLookup(scope='selected_chats', chat_ids=[unrelated], message_id=original['id'])), [])
+        self.assertEqual(reader.lookup(self.owner, cid, 1,
+            HistoryLookup(scope='selected_chats', chat_ids=[cid], message_id=original['id'])), [])
+        with self.assertRaises(ValidationError):
+            HistoryLookup(scope='all_chats', message_id=original['id'])
+
+    def test_summary_search_respects_disabled_configuration_without_reading(self):
+        from unittest.mock import Mock, patch
+        from app.history_management.schemas import ConversationSummarySearch
+        reader = Mock()
+        with patch('app.core.config.settings.chat_summary_enabled', False):
+            result = asyncio.run(HistoryManagement(None, reader, None).search_summaries(self.owner,
+                {'conversation_id': str(uuid4())}, ConversationSummarySearch(query='earlier')))
+        self.assertEqual(result['state'], 'disabled')
+        reader.search_summaries.assert_not_called()
+
+    def test_deleted_chat_cannot_be_hydrated_after_an_initial_history_hit(self):
+        from sqlalchemy import event
+        cid, revision = self.conversation()
+        original = self.chats.context_rows(self.owner, cid)[0]
+        deleted = []
+        def remove_before_hydration(connection, cursor, statement, parameters, context, many):
+            if not deleted and 'LEFT OUTER JOIN chat_turn' in statement:
+                deleted.append(True)
+                self.chats.edit(self.owner, cid, revision, remove=True)
+        event.listen(self.db.engine, 'before_cursor_execute', remove_before_hydration)
+        try:
+            rows = ChatReadFacade(self.chats).lookup(self.owner, str(uuid4()), 1,
+                HistoryLookup(scope='selected_chats', chat_ids=[cid], message_id=original['id']))
+        finally:
+            event.remove(self.db.engine, 'before_cursor_execute', remove_before_hydration)
+        self.assertTrue(deleted)
+        self.assertEqual(rows, [])
+
+    def test_coordinator_searches_summaries_then_recovers_original_message_without_granting_summary_evidence(self):
+        import json
+        from app.langchain.history_orchestration import tool_reply
+        keyword = 'coordinatedsummary' + uuid4().hex
+        cid, _ = self.conversation(1, 'The original decision was blue.')
+        original = self.chats.context_rows(self.owner, cid)[0]
+        claim = self.repo.claim(self.owner, cid)
+        self.repo.publish(self.owner, cid, claim, keyword + ' decision reference ' + original['id'], 2)
+        current = str(uuid4())
+        scope = dict(conversation_id=str(uuid4()), user_sequence=1, current_user_message_id=current,
+            history_references=[], memory_references=[], visible_ids=[], evidence_ids={current}, workflow_modules={'history'})
+        rounds = []
+        async def respond(source, messages, **kwargs):
+            round_number = len(rounds)
+            rounds.append(round_number)
+            if round_number == 0:
+                return AIMessage(content='', tool_calls=[dict(name='conversation_summary_search',
+                    args={'query': keyword}, id='summary', type='tool_call')])
+            packet = json.loads(next(message.content for message in reversed(messages) if isinstance(message, ToolMessage)))
+            if round_number == 1:
+                self.assertEqual(packet['summaries'][0]['conversation_id'], cid)
+                self.assertNotIn(original['id'], scope['evidence_ids'])
+                return AIMessage(content='', tool_calls=[dict(name='history_lookup',
+                    args=dict(scope='selected_chats', chat_ids=[cid], message_id=original['id']), id='original', type='tool_call')])
+            self.assertIn('The original decision was blue.', packet['windows'][0]['messages'][0]['content'])
+            self.assertIn(original['id'], scope['evidence_ids'])
+            return AIMessage(content='The original decision was blue. [[H1]]')
+        llm = AsyncMock()
+        llm.ainvoke_messages.side_effect = respond
+        response = asyncio.run(tool_reply(llm, [HumanMessage(content='Find our earlier decision.', id=current)],
+            HistoryManagement(None, ChatReadFacade(self.chats), None), self.owner, scope, (), {}))
+        self.assertIn('original decision was blue', response.content)
+        self.assertEqual(len(rounds), 3)
 
     def test_cached_summary_reuses_content_and_detects_other_process_publication(self):
         from sqlalchemy import event
