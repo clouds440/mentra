@@ -49,6 +49,7 @@ export function errorMessage(status: number, code: string): string {
   if (code === 'CHAT_SEARCH_QUERY_INVALID') return 'Use a search phrase of at most 200 characters.';
   if (code === 'ASSESSMENT_PRACTICE_DELETED') return 'This follow-up was deleted. Refresh the results before choosing new practice.';
   if (code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
+  if (code === 'PASSWORD_CHANGE_FAILED') return 'Your current password is incorrect.';
   if (['USERNAME_TAKEN', 'ACCOUNT_EXISTS'].includes(code)) return 'That username is already registered.';
   if (code.startsWith('SPEECH_')) return 'Your recording could not be transcribed.';
   if (code === 'AI_CONFIGURATION_ERROR') return 'Mentra isn’t available right now. Please try again later.';

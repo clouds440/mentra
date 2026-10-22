@@ -5,6 +5,15 @@ account and learner and signs in immediately. All existing workspace routes requ
 session. A protected deep link is restored after login or registration. The sidebar's
 Sign out action revokes the current server session and clears its browser cookie.
 
+Settings → Profile & preferences includes **Change password** for standalone accounts.
+`POST /api/v1/auth/change-password` requires an authenticated session and accepts
+`old_password` and `new_password` (12–256 characters). The current password is the
+only verification step; no email or recovery code is required. Password updates use
+Argon2id and atomically revoke other account sessions while keeping the current
+session active. Cookie requests require a trusted origin and password verification
+uses the shared authentication admission/rate limits. External-provider accounts
+do not expose this form.
+
 Registration now proceeds through mandatory Student Profile information and optional
 calibration before entering the protected workspace. The profile gate is separate from
 authentication. See [Student Profile](student-profile.md) for onboarding, editing, and

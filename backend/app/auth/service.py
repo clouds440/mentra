@@ -7,8 +7,8 @@ import secrets
 from contextlib import nullcontext
 from functools import wraps
 
-from app.auth.errors import AuthenticationError
-from app.auth.schemas import LoginRequest, RegisterRequest, ExternalLoginRequest, TokenResponse
+from app.auth.errors import AuthenticationError, PasswordChangeError
+from app.auth.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest, ExternalLoginRequest, TokenResponse
 from app.auth.passwords import Passwords
 from app.auth.ports import IdentityRepository
 
@@ -20,7 +20,9 @@ def token_digest(token):
 def admitted(action):
     @wraps(action)
     def invoke(self, request, *args, client_key=None, **kwargs):
-        key = getattr(request, 'username', None) or token_digest(request.token.get_secret_value())
+        principal = kwargs.get('principal')
+        key = principal.username if principal is not None else getattr(request, 'username', None)
+        key = key or (principal.learner_id if principal is not None else token_digest(request.token.get_secret_value()))
         settings = self.admission.settings if self.admission else None
         limits = [('account', key, settings.auth_account_minute_limit if settings else 20)]
         if client_key is not None:
@@ -95,6 +97,19 @@ class AuthService:
         if identity is None:
             raise AuthenticationError()
         return identity
+
+    @admitted
+    def change_password(self, request: ChangePasswordRequest, *, principal):
+        request = ChangePasswordRequest.model_validate(request.model_dump())
+        if principal.user_id is None or principal.provider is not None:
+            raise AuthenticationError()
+        account = self.repository.get_account(principal.username)
+        if account is None or account.user_id != principal.user_id:
+            raise AuthenticationError()
+        if not self.passwords.verify(request.old_password.get_secret_value(), account.password_hash):
+            raise PasswordChangeError()
+        self.repository.change_password(account,
+            self.passwords.hash(request.new_password.get_secret_value()), principal.session_id, self.clock())
 
     def logout(self, token):
         self.authenticate(token)

@@ -38,6 +38,12 @@ export function logout(): Promise<void> {
   return authRequest<void>('logout', { method: 'POST' });
 }
 
+export function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  return authRequest<void>('change-password', {
+    method: 'POST', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+  });
+}
+
 export function authErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';

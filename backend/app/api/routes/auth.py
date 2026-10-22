@@ -3,7 +3,7 @@ from app.auth.dependencies import get_auth_service, require_identity, get_sessio
 from app.auth.cookies import COOKIE_NAME, wants_cookie_session, require_cookie_origin, set_session_cookie, clear_session_cookie, session_response
 from app.auth.errors import AuthenticationError
 from app.auth.models import AuthenticatedIdentity
-from app.auth.schemas import RegisterRequest, LoginRequest, ExternalLoginRequest, TokenResponse, IdentityResponse
+from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest, ExternalLoginRequest, TokenResponse, IdentityResponse
 
 router = APIRouter(prefix='/auth', tags=['authentication'])
 
@@ -52,3 +52,11 @@ def logout(token: str | None = Depends(get_session_token), service=Depends(get_a
     response = Response(status_code=204)
     clear_session_cookie(response)
     return response
+
+
+@router.post('/change-password', status_code=204)
+def change_password(body: ChangePasswordRequest, request: Request,
+                    principal: AuthenticatedIdentity = Depends(require_identity), service=Depends(get_auth_service)):
+    service.change_password(body, principal=principal,
+        client_key=request.client.host if request.client else 'unknown')
+    return Response(status_code=204, headers={'Cache-Control': 'no-store'})

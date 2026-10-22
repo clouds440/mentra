@@ -16,11 +16,11 @@ from alembic import command
 from app.db.migrate import migration_config, upgrade
 
 from app.auth.config import ExternalProviderSettings
-from app.auth.errors import AuthenticationError, AccountExistsError
+from app.auth.errors import AuthenticationError, AccountExistsError, PasswordChangeError
 from app.auth.passwords import Passwords
 from app.auth.repositories.postgres import PostgresIdentityRepository
 from app.auth.repositories.tables import learner, mentra_account, external_identity, auth_session
-from app.auth.schemas import RegisterRequest, LoginRequest, ExternalLoginRequest
+from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest, ExternalLoginRequest
 from app.auth.service import AuthService, token_digest
 from app.auth.tokens import ExternalTokenVerifier
 from app.api.routes.auth import router
@@ -86,6 +86,75 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.count(learner), 1)
         self.assertEqual(self.count(mentra_account), 1)
         self.assertEqual(self.count(auth_session), 1)
+
+    def test_change_password_preserves_identity_and_current_session_revokes_other_sessions(self):
+        first = self.register()
+        other = self.service.login(LoginRequest(username='alice', password='a long unique passphrase'))
+        unrelated = self.register('bob')
+        principal = self.service.authenticate(first.access_token)
+        self.service.change_password(ChangePasswordRequest(old_password='a long unique passphrase',
+            new_password='a different unique passphrase'), principal=principal)
+        self.assertEqual(self.service.authenticate(first.access_token), principal)
+        self.service.authenticate(unrelated.access_token)
+        with self.assertRaises(AuthenticationError):
+            self.service.authenticate(other.access_token)
+        with self.assertRaises(AuthenticationError):
+            self.service.login(LoginRequest(username='alice', password='a long unique passphrase'))
+        logged_in = self.service.login(LoginRequest(username='alice', password='a different unique passphrase'))
+        self.assertEqual(logged_in.learner_id, first.learner_id)
+        self.assertEqual(logged_in.user_id, first.user_id)
+        self.assertTrue(self.repository.get_account('alice').password_hash.startswith('$argon2id$'))
+
+    def test_wrong_current_password_does_not_change_password_or_revoke_sessions(self):
+        first = self.register()
+        other = self.service.login(LoginRequest(username='alice', password='a long unique passphrase'))
+        before = self.repository.get_account('alice')
+        with self.assertRaises(PasswordChangeError):
+            self.service.change_password(ChangePasswordRequest(old_password='wrong',
+                new_password='a different unique passphrase'), principal=self.service.authenticate(first.access_token))
+        self.assertEqual(self.repository.get_account('alice'), before)
+        self.service.authenticate(first.access_token)
+        self.service.authenticate(other.access_token)
+
+    def test_stale_password_change_cannot_overwrite_new_password(self):
+        first = self.register()
+        principal = self.service.authenticate(first.access_token)
+        stale = self.repository.get_account('alice')
+        self.service.change_password(ChangePasswordRequest(old_password='a long unique passphrase',
+            new_password='a different unique passphrase'), principal=principal)
+        with self.assertRaises(AuthenticationError):
+            self.repository.change_password(stale, self.passwords.hash('stale password overwrite'), principal.session_id, self.now)
+        self.service.login(LoginRequest(username='alice', password='a different unique passphrase'))
+
+    def test_password_change_requires_active_session_and_local_account(self):
+        first = self.register()
+        principal = self.service.authenticate(first.access_token)
+        self.service.logout(first.access_token)
+        with self.assertRaises(AuthenticationError):
+            self.service.change_password(ChangePasswordRequest(old_password='a long unique passphrase',
+                new_password='a different unique passphrase'), principal=principal)
+        external = self.external()
+        with self.assertRaises(AuthenticationError):
+            self.service.change_password(ChangePasswordRequest(old_password='anything',
+                new_password='a different unique passphrase'), principal=self.service.authenticate(external.access_token))
+
+    def test_password_change_cookie_route_validation_origin_and_authentication(self):
+        payload = {'old_password': 'a long unique passphrase', 'new_password': 'a different unique passphrase'}
+        with self.cookie_client() as client:
+            self.assertEqual(client.post('/api/v1/auth/change-password', json=payload).status_code, 401)
+            client.post('/api/v1/auth/register', json={'username': 'alice', 'password': payload['old_password']})
+            self.assertEqual(client.post('/api/v1/auth/change-password', json=payload,
+                headers={'Origin': 'https://attacker.example'}).status_code, 403)
+            for changes in ({'new_password': 'short'}, {'old_password': ''}, {'user_id': 'injected'}, {'new_password': 'x' * 257}):
+                self.assertEqual(client.post('/api/v1/auth/change-password', json=payload | changes).status_code, 422)
+            bad = client.post('/api/v1/auth/change-password', json=payload | {'old_password': 'wrong'})
+            self.assertEqual(bad.status_code, 400)
+            self.assertEqual(bad.json()['error']['code'], 'PASSWORD_CHANGE_FAILED')
+            response = client.post('/api/v1/auth/change-password', json=payload)
+            self.assertEqual(response.status_code, 204)
+            self.assertEqual(response.content, b'')
+            self.assertEqual(response.headers['cache-control'], 'no-store')
+            self.assertEqual(client.get('/api/v1/auth/me').status_code, 200)
 
     def test_concurrent_registration_is_unique_and_atomic(self):
         def register(_):

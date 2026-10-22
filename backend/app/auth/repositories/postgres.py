@@ -96,6 +96,27 @@ class PostgresIdentityRepository:
             session.execute(update(auth_session).where(auth_session.c.token_digest == token_digest,
                 auth_session.c.revoked_at.is_(None)).values(revoked_at=now))
 
+    def change_password(self, account, password_hash, session_id, now):
+        with self.sessions.begin() as session:
+            row = session.execute(select(mentra_account).where(
+                mentra_account.c.user_id == account.user_id).with_for_update()).mappings().first()
+            # A stale password verification must never overwrite a concurrent change.
+            if not row or row['password_hash'] != account.password_hash:
+                raise AuthenticationError()
+            current = session.execute(select(auth_session.c.session_id).where(
+                auth_session.c.session_id == session_id,
+                auth_session.c.user_id == account.user_id,
+                auth_session.c.revoked_at.is_(None),
+                or_(auth_session.c.expires_at.is_(None), auth_session.c.expires_at > now)
+            ).with_for_update()).first()
+            if current is None:
+                raise AuthenticationError()
+            session.execute(update(mentra_account).where(mentra_account.c.user_id == account.user_id)
+                .values(password_hash=password_hash))
+            session.execute(update(auth_session).where(auth_session.c.user_id == account.user_id,
+                auth_session.c.session_id != session_id, auth_session.c.revoked_at.is_(None))
+                .values(revoked_at=now))
+
     def cleanup_sessions(self, now, limit=100):
         from datetime import timedelta
         cutoff = now - timedelta(days=7)

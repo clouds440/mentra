@@ -21,6 +21,34 @@ async function openAccountMenu(page: Page) {
   if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
 }
 
+test('settings changes password using the current password and new credentials work', async ({ page, context }) => {
+  const name = username();
+  const nextPassword = 'a different unique passphrase';
+  await signUp(page, name);
+  await page.goto('/settings');
+  await page.getByLabel('Current password', { exact: true }).fill('incorrect');
+  await page.getByLabel('New password', { exact: true }).fill(nextPassword);
+  await page.getByRole('button', { name: 'Change password', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText('Your current password is incorrect.');
+  await expect(page.getByLabel('Current password', { exact: true })).toBeFocused();
+  await page.getByLabel('Current password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Change password', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Password changed. Use your new password next time you sign in.');
+  await expect(page.getByLabel('Current password', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('New password', { exact: true })).toHaveValue('');
+  expect((await context.request.get('http://127.0.0.1:18003/api/v1/auth/me')).status()).toBe(200);
+  await openAccountMenu(page);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByLabel('Username', { exact: true }).fill(name);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText('That username or password isn’t correct.');
+  await page.getByLabel('Password', { exact: true }).fill(nextPassword);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+});
+
 test('registration uses real auth, HTTP-only cookies, refresh, and return visits', async ({ page, context, browser }) => {
   const name = username();
   await signUp(page, name);
