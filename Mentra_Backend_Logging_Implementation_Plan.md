@@ -163,7 +163,7 @@ Explicit dispatch instrumentation must also cover unknown tools and argument-val
 
 | Workflow | Required visible steps and outcomes | Main locations |
 | --- | --- | --- |
-| Registration, login, external login, identity, logout | Validation, credential/token verification, identity persistence, session issue/revoke; denial and duplicate outcomes | `auth/dependencies.py`, `auth/service.py`, auth repository/tokens, auth and eduverse routes/integration |
+| Registration, login, identity, logout | Validation, credential/token verification, identity persistence, session issue/revoke; denial and duplicate outcomes | `auth/dependencies.py`, `auth/service.py`, auth repository/tokens, auth routes |
 | Profile and onboarding calibration | Profile load/update, attempt creation, complete-answer validation, scoring, evidence write, AI evaluation/fallback, final transaction | `student_profile/service.py`, `calibration/service.py`, `evidence_service.py`, profile evaluator/repository |
 | Persistent and stateless chat | Begin/deduplicate turn, load history, actual plan selection, profile/learner/RAG/history/memory context, attachment extraction, provider/tool rounds, references, response persistence, evidence enqueue | `chat/service.py`, `chat/generation.py`, `langchain/orchestration_service.py`, `history_orchestration.py`, tools, shared LLM, chat repositories |
 | Conversations and SSE | List/sync/detail/edit/delete, reconnect/reset, stream completion/disconnect; no per-token events | Conversation routes/services/repositories and activity stream route |

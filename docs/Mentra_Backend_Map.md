@@ -69,7 +69,7 @@ flowchart TD
 
 | Module | Responsibility | Backend home | Public entry / primary owner |
 | :--- | :--- | :--- | :--- |
-| [Auth](#module-auth) | Accounts, external identity mapping, session issuance and authentication | `auth/` | `AuthService` |
+| [Auth](#module-auth) | Accounts, session issuance and authentication | `auth/` | `AuthService` |
 | [Student Profile](#module-profile) | Onboarding facts, calibration, broad teaching estimates | `student_profile/` | `StudentProfileService`, `CalibrationService`, `ProfileEvidenceService` |
 | [Chat](#module-chat) | Conversations, immutable displayed messages, turn execution/recovery, files, private summaries | `chat/` | `ConversationService`, `AttachmentService` |
 | AI orchestration | Model invocation, context preparation, tools, budgets, recovery, assessment AI workflows | `langchain/` | `OrchestrationService`, `ChatService`, `MentraLLM` |
@@ -83,7 +83,6 @@ flowchart TD
 | [Events / Proposals](#module-events) | Agenda, temporal validation, reminder schedules, event capture and review | `history_management/events/` | `EventsService`, `EventProposalService` |
 | [Notifications](#module-notifications) | Inbox publication, read/dismiss changes, preferences and synchronization | `notifications/` | `NotificationsService` |
 | [Web Search / Research](#module-web) | External current-knowledge tools, dated sources, quotas and result cache | `web_search/` | `WebSearchService` with separate search/research providers |
-| [Integration contracts](#module-integrations) | External platform provisioning, currently EduVerse | `integrations/` | `provision_eduverse_student` |
 | [Core / DB / API](#module-infrastructure) | Runtime configuration, errors, tracing, capacity, database lifecycle, transport | `core/`, `db/`, `api/` | `create_app`, `api_router`, session factory |
 
 All backend homes above are under `backend/app/`. Events is a distinct capability nested under History Management. The `langchain` directory contains Mentra's workflow code as well as LangChain/LangGraph integration; the name covers more than a provider wrapper.
@@ -120,7 +119,6 @@ Read each row as **consumer feature → provider capability**. These are meaning
 | Ingest Library documents | RAG worker → Documents → Vision when required → embeddings → Qdrant | Native extraction, block-aware chunks, batched vectors, fenced PostgreSQL publication | A ready source with recoverable provenance. |
 | Transcribe voice | Speech route → Speech worker process → Faster Whisper | `speech/service.py`, `speech/engine.py` | Text is returned to the editable chat composer. |
 | Search current information | Chat tool adapter → Web Search → You.com MCP / authenticated research | `web_tools.py`, fixed provider transports, quota repository | Dated source packets, web citations, and explicit unavailable/quota outcomes. |
-| Provision an EduVerse student | Integration → Auth external login + Profile initialization | Subject verification precedes idempotent profile setup | Existing external identity joins the same Mentra account/learner model. |
 | Bound expensive work | Auth/chat/uploads/tools → DB admission and workflow budgets | `db/admission.py`, `workflow_budget.py`, `token_policy.py` | Capacity/rate errors and bounded retries rather than unlimited work. |
 | Diagnose a request across queues | API/domain/model/worker → shared workflow logging | `core/observability/`, persisted job log context | Correlated operational traces without retaining query/response bodies. |
 
@@ -137,7 +135,6 @@ Read each row as **consumer feature → provider capability**. These are meaning
 | Grade vs learner evidence | Grade publication is a result; evidence processing updates learning afterward | `assessment_evidence_job` and independent evidence consumer. |
 | LangGraph checkpoint vs business record | Checkpoint stores workflow progress; proposals, events, assessments, and receipts remain domain records | Checkpointer adapter plus domain repositories and transaction guards. |
 | Qdrant hit vs authorized source | Vector candidate IDs/scores require canonical hydration and current ownership checks | `RAGService.search` and `RAGRepository.eligible/hydrate`. |
-| Session cookie vs external assertion | A Mentra session authenticates subsequent calls; signed external tokens are verified against configured provider trust during login | Auth cookies/dependencies vs `ExternalTokenVerifier`. |
 
 ## End-to-end journeys
 
@@ -164,20 +161,19 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 
 | Aspect | Map |
 | :--- | :--- |
-| Owns | Account registration/login, signed external identity verification, session authentication and revocation. |
-| Used by | Protected API routes, onboarded identity guard, and EduVerse provisioning. |
-| Depends on | PostgreSQL identity repository, Argon2id password handling, trusted provider configuration, DB admission. |
-| Frontend connection | `AuthProvider` and `services/auth.ts` use cookie sessions; the ordinary browser client does not call external provisioning. |
+| Owns | Account registration/login, session authentication and revocation. |
+| Used by | Protected API routes and onboarded identity guard. |
+| Depends on | PostgreSQL identity repository, Argon2id password handling and DB admission. |
+| Frontend connection | `AuthProvider` and `services/auth.ts` use cookie sessions. |
 
 **HTTP surface**
 
-[`backend/app/api/routes/auth.py`](../backend/app/api/routes/auth.py) · Browser uses register/login/me/logout; external login is an integration entry.
+[`backend/app/api/routes/auth.py`](../backend/app/api/routes/auth.py) · Browser uses register/login/me/logout.
 
 | Method | Path after /api/v1 | Handler / operation |
 | :--- | :--- | :--- |
 | `POST` | `/auth/register` | Register an account · `register` |
 | `POST` | `/auth/login` | Authenticate account credentials · `login` |
-| `POST` | `/auth/external` | Exchange a trusted external assertion · `external_login` |
 | `GET` | `/auth/me` | Read the authenticated identity · `identity` |
 | `POST` | `/auth/logout` | Revoke the current session · `logout` |
 
@@ -186,21 +182,19 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | File | One-line responsibility |
 | :--- | :--- |
 | [`backend/app/api/routes/auth.py`](../backend/app/api/routes/auth.py) | Registers HTTP handlers for auth; validates request data and binds server-owned identity before delegation. |
-| [`backend/app/auth/__init__.py`](../backend/app/auth/__init__.py) | Standalone and external identity authentication, separate from the Learner Engine. |
-| [`backend/app/auth/config.py`](../backend/app/auth/config.py) | Validates configured external identity providers and trusted verification keys. |
+| [`backend/app/auth/__init__.py`](../backend/app/auth/__init__.py) | Mentra account authentication, separate from the Learner Engine. |
 | [`backend/app/auth/cookies.py`](../backend/app/auth/cookies.py) | HTTP-only session transport. Cookie requests require a trusted browser origin. |
 | [`backend/app/auth/dependencies.py`](../backend/app/auth/dependencies.py) | Provides identity and sessions helpers: `get_auth_service`, `get_session_token`, `require_identity`. |
 | [`backend/app/auth/errors.py`](../backend/app/auth/errors.py) | Defines domain-specific failures for identity and sessions. |
-| [`backend/app/auth/factory.py`](../backend/app/auth/factory.py) | Builds AuthService with its SQL repository, password hasher, and external-token verifier. |
-| [`backend/app/auth/models.py`](../backend/app/auth/models.py) | Defines accounts, authenticated identities, and verified external identities independently of persistence. |
+| [`backend/app/auth/factory.py`](../backend/app/auth/factory.py) | Builds AuthService with its SQL repository, password hasher, and admission control. |
+| [`backend/app/auth/models.py`](../backend/app/auth/models.py) | Defines accounts and authenticated identities independently of persistence. |
 | [`backend/app/auth/passwords.py`](../backend/app/auth/passwords.py) | Argon2id password handling. Plaintext is never passed to repositories. |
 | [`backend/app/auth/ports.py`](../backend/app/auth/ports.py) | Defines the identity/session repository boundary used by AuthService. |
 | [`backend/app/auth/repositories/__init__.py`](../backend/app/auth/repositories/__init__.py) | Authentication persistence adapters. |
 | [`backend/app/auth/repositories/postgres.py`](../backend/app/auth/repositories/postgres.py) | Transactional identity provisioning and sessions through SQLAlchemy 2.x. |
 | [`backend/app/auth/repositories/tables.py`](../backend/app/auth/repositories/tables.py) | Declares PostgreSQL tables: `learner`, `mentra_account`, `external_identity`, `auth_session`. |
 | [`backend/app/auth/schemas.py`](../backend/app/auth/schemas.py) | Defines validated request/result contracts for identity and sessions. |
-| [`backend/app/auth/service.py`](../backend/app/auth/service.py) | Coordinates registration/login, session authentication/revocation, external identities, and auth admission. |
-| [`backend/app/auth/tokens.py`](../backend/app/auth/tokens.py) | Verify external assertions against server-configured trust only. |
+| [`backend/app/auth/service.py`](../backend/app/auth/service.py) | Coordinates registration/login, session authentication/revocation and auth admission. |
 
 <a id="module-profile"></a>
 
@@ -209,7 +203,7 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | Aspect | Map |
 | :--- | :--- |
 | Owns | Profile facts, onboarding version/state, curated screening calibration, evidence-backed broad teaching estimates. |
-| Used by | Chat personalization, adaptive assessment generation, onboarding guards, external profile initialization. |
+| Used by | Chat personalization, adaptive assessment generation, onboarding guards. |
 | Depends on | Auth identity, profile repository, configured structured evaluator; accepted learning evidence has a separate deterministic projection adapter. |
 | Important distinction | Profile estimates are broad teaching context; they do not replace concept mastery in Learner. |
 | Frontend connection | `StudentProfileProvider`, onboarding, and profile settings use `services/studentProfile.ts`. |
@@ -252,7 +246,7 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | [`backend/app/student_profile/repositories/store.py`](../backend/app/student_profile/repositories/store.py) | Transaction-bound, learner-scoped profile queries. No scoring/AI logic here. |
 | [`backend/app/student_profile/repositories/tables.py`](../backend/app/student_profile/repositories/tables.py) | Declares PostgreSQL tables: `student_profile`, `student_calibration_attempt`, `student_profile_evidence`. |
 | [`backend/app/student_profile/schemas.py`](../backend/app/student_profile/schemas.py) | High-level teaching context. These contracts never describe concept mastery. |
-| [`backend/app/student_profile/service.py`](../backend/app/student_profile/service.py) | Reads and updates owned profile details, initializes external profiles, and builds teaching-context packets. |
+| [`backend/app/student_profile/service.py`](../backend/app/student_profile/service.py) | Reads and updates owned profile details and builds teaching-context packets. |
 
 <a id="module-chat"></a>
 
@@ -859,36 +853,9 @@ API tables show **paths relative to `/api/v1`**. They list registered HTTP metho
 | [`backend/app/web_search/you_mcp.py`](../backend/app/web_search/you_mcp.py) | Official SDK Streamable HTTP client, fixed keyless search-only endpoint. |
 | [`backend/app/web_search/you_research.py`](../backend/app/web_search/you_research.py) | Authenticated research, separate from the keyless search transport. |
 
-<a id="module-integrations"></a>
-
-### 15 · External integration contracts
-
-| Aspect | Map |
-| :--- | :--- |
-| Owns | EduVerse request/response contract and provisioning coordination. |
-| Used by | External EduVerse provisioning callers. |
-| Depends on | Auth external-token verification and Profile external initialization. |
-| Frontend connection | No ordinary workspace API client; this is an external integration endpoint. |
-
-**HTTP surface**
-
-[`backend/app/api/routes/eduverse.py`](../backend/app/api/routes/eduverse.py) · External provisioning caller, rather than a normal workspace screen.
-
-| Method | Path after /api/v1 | Handler / operation |
-| :--- | :--- | :--- |
-| `POST` | `/integrations/eduverse/students` | Provision verified EduVerse identity/profile · `provision_student` |
-
-**File guide**
-
-| File | One-line responsibility |
-| :--- | :--- |
-| [`backend/app/api/routes/eduverse.py`](../backend/app/api/routes/eduverse.py) | Registers HTTP handlers for eduverse; validates request data and binds server-owned identity before delegation. |
-| [`backend/app/integrations/__init__.py`](../backend/app/integrations/__init__.py) | Thin platform provisioning adapters; no platform schemas, SDKs, or passwords. |
-| [`backend/app/integrations/eduverse.py`](../backend/app/integrations/eduverse.py) | Verifies the EduVerse subject, provisions a Mentra session, and idempotently initializes the owned profile. |
-
 <a id="module-infrastructure"></a>
 
-### 16 · Shared runtime, persistence, and transport
+### 15 · Shared runtime, persistence, and transport
 
 | Aspect | Map |
 | :--- | :--- |
@@ -1181,7 +1148,7 @@ The checked-out chain currently ends at **`20261015_0025`**. This is the reposit
 
 | I need to change… | Start here | Then check these consumers / invariants |
 | :--- | :--- | :--- |
-| Login/session behavior | `auth/service.py`, `cookies.py`, `repositories/postgres.py` | Route dependencies, AuthProvider, external integrations, session lifetime and owner-scoped cache reset. |
+| Login/session behavior | `auth/service.py`, `cookies.py`, `repositories/postgres.py` | Route dependencies, AuthProvider, session lifetime and owner-scoped cache reset. |
 | Onboarding/calibration | `student_profile/service.py`, `calibration/` | Onboarding guard, profile context consumed by chat/assessment generation; broad estimates remain separate from mastery. |
 | Chat reliability or Stop | `chat/service.py`, `chat/repositories/postgres.py` | Turn attempt/revision fencing, status/sync API, chatStore and activity stream; explicit Stop versus HTTP disconnect. |
 | AI behavior or tool selection | `langchain/orchestration_service.py`, `history_orchestration.py`, `tool_selection.py` | Prompt registry, tool policy/executor, budgets, required-source failures, activity and domain receipts. |

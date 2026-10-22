@@ -57,7 +57,7 @@ notifications and settings; browser caches accelerate navigation and synchroniza
   `web_research` tool using `YOU_WEB_SEARCH_API_KEY`, with independent quotas,
   caching, source dates and citations. Research can consume provider credits.
 - **Identity and personalization:** standalone username/password accounts,
-  HTTP-only sessions, generic signed external SSO, EduVerse provisioning,
+  HTTP-only sessions,
   mandatory profile onboarding, optional calibration, evidence-backed memories,
   and shared Light/Dark/System themes.
 - **Diagnostics:** correlated request/job/tool/model traces with execution timing,

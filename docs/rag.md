@@ -103,4 +103,4 @@ then offer full-source browsing. PDF page targeting is a browser-viewer hint.
 
 ## Unified files — 20 October 2026
 
-Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.

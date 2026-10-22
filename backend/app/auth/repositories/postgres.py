@@ -4,7 +4,7 @@ from uuid import uuid4
 from sqlalchemy import select, update, text, or_, delete
 from app.auth.errors import AccountExistsError, AuthenticationError
 from app.auth.models import Account, AuthenticatedIdentity
-from .tables import learner, mentra_account, external_identity, auth_session
+from .tables import learner, mentra_account, auth_session
 
 
 from app.core.logging import workflow_logger
@@ -56,18 +56,6 @@ class PostgresIdentityRepository:
                 session.execute(update(mentra_account).where(mentra_account.c.user_id == account.user_id).values(password_hash=new_hash))
             return self._create_session(session, account.learner_id, token_digest, expires_at, now,
                                         user_id=account.user_id, username=account.username)
-
-    def external_session(self, provider, subject, token_digest, expires_at, now):
-        with self.sessions.begin() as session:
-            self._lock(session, 'external:' + provider + ':' + subject)
-            learner_id = session.execute(select(external_identity.c.learner_id).where(
-                external_identity.c.provider == provider, external_identity.c.external_subject_id == subject)).scalar_one_or_none()
-            if learner_id is None:
-                learner_id = str(uuid4())
-                session.execute(learner.insert().values(id=learner_id, created_at=now))
-                session.execute(external_identity.insert().values(provider=provider, external_subject_id=subject,
-                    learner_id=learner_id, created_at=now))
-            return self._create_session(session, learner_id, token_digest, expires_at, now, provider=provider)
 
     def get_session(self, token_digest, now):
         from app.student_profile.repositories.tables import student_profile

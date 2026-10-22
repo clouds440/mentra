@@ -1,1 +1,1 @@
-"""Standalone and external identity authentication, separate from the Learner Engine."""
+"""Mentra account authentication, separate from the Learner Engine."""

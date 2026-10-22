@@ -22,7 +22,6 @@ from app.student_profile.errors import EvaluationUnavailable
 from app.core.exceptions import AppError
 from app.auth.repositories.postgres import PostgresIdentityRepository
 from app.auth.service import AuthService
-from app.auth.tokens import ExternalTokenVerifier
 from app.api.router import api_router
 from app.core.exception_handlers import register_exception_handlers
 from app.db.migrate import upgrade, migration_config
@@ -458,7 +457,7 @@ class StudentProfileTests(unittest.TestCase):
 
     def test_real_api_auth_ownership_csrf_and_chat_onboarding_gate(self):
         application = FastAPI()
-        application.state.auth_service = AuthService(PostgresIdentityRepository(self.db.sessions), ExternalTokenVerifier({}))
+        application.state.auth_service = AuthService(PostgresIdentityRepository(self.db.sessions))
         application.state.student_profile_service = self.service
         class Chat:
             async def reply(self, *_, **kwargs):

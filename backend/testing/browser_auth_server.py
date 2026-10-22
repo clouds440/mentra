@@ -9,7 +9,6 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.auth.repositories.postgres import PostgresIdentityRepository
 from app.auth.service import AuthService
-from app.auth.tokens import ExternalTokenVerifier
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
 from testing.postgres import PostgresSandbox
@@ -48,7 +47,7 @@ async def lifespan(application):
     from app.db.admission import Admission
     application.state.work_admission = Admission(database.sessions, settings=settings)
     application.state.auth_service = AuthService(
-        PostgresIdentityRepository(database.sessions), ExternalTokenVerifier({}), admission=application.state.work_admission)
+        PostgresIdentityRepository(database.sessions), admission=application.state.work_admission)
     application.state.student_profile_service = StudentProfileService(
         PostgresStudentProfileRepository(database.sessions), TestProfileEvaluator())
     files=create_test_files(database.sessions,settings)

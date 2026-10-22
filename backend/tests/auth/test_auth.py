@@ -1,28 +1,22 @@
-"""Real PostgreSQL identity, signed-token, session, and learner integration checks."""
+"""Real PostgreSQL identity, session, and learner integration checks."""
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
 from alembic import command
 from app.db.migrate import migration_config, upgrade
 
-from app.auth.config import ExternalProviderSettings
 from app.auth.errors import AuthenticationError, AccountExistsError, PasswordChangeError
 from app.auth.passwords import Passwords
 from app.auth.repositories.postgres import PostgresIdentityRepository
 from app.auth.repositories.tables import learner, mentra_account, external_identity, auth_session
-from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest, ExternalLoginRequest
+from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest
 from app.auth.service import AuthService, token_digest
-from app.auth.tokens import ExternalTokenVerifier
 from app.api.routes.auth import router
 from app.core.exception_handlers import register_exception_handlers
 from app.learner import LearnerEngine, ResolveLearningContextRequest, EvidenceSubmissionRequest, ConceptStateRequest
@@ -32,30 +26,15 @@ from testing.postgres import PostgresSandbox
 class AuthenticationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        cls.other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        cls.public = cls.key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
         cls.passwords = Passwords()
 
     def setUp(self):
         self.db = PostgresSandbox(seed_learners=False)
         self.addCleanup(self.db.close)
         self.now = datetime.now(timezone.utc)
-        self.config = ExternalProviderSettings(issuer='https://issuer.example', audience='mentra',
-            public_keys={'key-1': self.public})
-        self.providers = {'eduverse': self.config, 'another_platform': self.config.model_copy()}
         self.repository = PostgresIdentityRepository(self.db.sessions)
-        self.service = AuthService(self.repository, ExternalTokenVerifier(self.providers),
+        self.service = AuthService(self.repository,
             clock=lambda: self.now, passwords=self.passwords)
-
-    def assertion(self, *, key=None, headers=None, **changes):
-        claims = dict(iss=self.config.issuer, aud=self.config.audience, sub='student-123',
-            iat=int(self.now.timestamp()), exp=int((self.now + timedelta(seconds=120)).timestamp()))
-        claims.update(changes)
-        return jwt.encode(claims, key or self.key, algorithm='RS256', headers=headers or {'kid': 'key-1'})
-
-    def external(self, *, provider='eduverse', **changes):
-        return self.service.external_login(ExternalLoginRequest(provider=provider, token=self.assertion(**changes)))
 
     def count(self, table):
         with self.db.engine.connect() as connection:
@@ -126,17 +105,13 @@ class AuthenticationTests(unittest.TestCase):
             self.repository.change_password(stale, self.passwords.hash('stale password overwrite'), principal.session_id, self.now)
         self.service.login(LoginRequest(username='alice', password='a different unique passphrase'))
 
-    def test_password_change_requires_active_session_and_local_account(self):
+    def test_password_change_requires_active_session(self):
         first = self.register()
         principal = self.service.authenticate(first.access_token)
         self.service.logout(first.access_token)
         with self.assertRaises(AuthenticationError):
             self.service.change_password(ChangePasswordRequest(old_password='a long unique passphrase',
                 new_password='a different unique passphrase'), principal=principal)
-        external = self.external()
-        with self.assertRaises(AuthenticationError):
-            self.service.change_password(ChangePasswordRequest(old_password='anything',
-                new_password='a different unique passphrase'), principal=self.service.authenticate(external.access_token))
 
     def test_password_change_cookie_route_validation_origin_and_authentication(self):
         payload = {'old_password': 'a long unique passphrase', 'new_password': 'a different unique passphrase'}
@@ -186,86 +161,14 @@ class AuthenticationTests(unittest.TestCase):
         with self.assertRaises(AuthenticationError):
             self.service.authenticate(response.access_token)
 
-    def test_first_external_login_provisions_mapping_without_credentials(self):
-        first, second = self.external(), self.external()
-        self.assertEqual(first.learner_id, second.learner_id)
-        self.assertIsNone(first.user_id)
-        self.assertEqual(first.provider, 'eduverse')
-        self.assertEqual(self.count(learner), 1)
-        self.assertEqual(self.count(external_identity), 1)
-        self.assertEqual(self.count(mentra_account), 0)
-        self.assertLessEqual(first.expires_at, self.now + timedelta(seconds=120))
-        with self.db.engine.connect() as connection:
-            mapping = connection.execute(select(external_identity)).mappings().one()
-        self.assertEqual(mapping['external_subject_id'], 'student-123')
-
-    def test_concurrent_external_login_creates_exactly_one_learner(self):
-        token = self.assertion()
-        request = ExternalLoginRequest(provider='eduverse', token=token)
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            results = list(pool.map(lambda _: self.service.external_login(request), range(12)))
-        self.assertEqual(len({r.learner_id for r in results}), 1)
-        self.assertEqual(self.count(learner), 1)
-        self.assertEqual(self.count(external_identity), 1)
-        self.assertEqual(self.count(auth_session), 12)
-
-    def test_provider_and_subject_namespaces_are_isolated(self):
-        first = self.external()
-        other_provider = self.external(provider='another_platform')
-        other_student = self.external(sub='student-456')
-        standalone = self.register('student-123')
-        self.assertEqual(len({r.learner_id for r in (first, other_provider, other_student, standalone)}), 4)
-        self.assertEqual(self.count(external_identity), 3)
-
-    def test_untrusted_assertions_do_not_provision_anything(self):
-        tokens = [self.assertion(iss='https://attacker.example'), self.assertion(aud='other-api'),
-            self.assertion(key=self.other_key), self.assertion(headers={'kid': 'unknown'}),
-            self.assertion(exp=int((self.now - timedelta(seconds=60)).timestamp())),
-            self.assertion(iat=int((self.now + timedelta(seconds=60)).timestamp())),
-            self.assertion(exp=int((self.now + timedelta(seconds=1000)).timestamp())),
-            self.assertion(sub=''), self.assertion(sub=[]), self.assertion(sub=True),
-            self.assertion(sub=' student-123'), self.assertion(headers={'crit': ['custom']}),
-            jwt.encode({'sub': 'student-123'}, 'attacker-controlled-secret-long-enough', algorithm='HS256'),
-            jwt.encode({'sub': 'student-123'}, key='', algorithm='none')]
-        for missing in ('iss', 'aud', 'iat', 'exp', 'sub'):
-            claims = jwt.decode(self.assertion(), options={'verify_signature': False})
-            del claims[missing]
-            tokens.append(jwt.encode(claims, self.key, algorithm='RS256'))
-        for token in tokens:
-            with self.subTest(token_header=token[:20]):
-                with self.assertRaises(AuthenticationError):
-                    self.service.external_login(ExternalLoginRequest(provider='eduverse', token=token))
-        with self.assertRaises(AuthenticationError):
-            self.external(provider='unconfigured')
-        self.assertEqual(self.count(learner), 0)
-        self.assertEqual(self.count(external_identity), 0)
-        self.assertEqual(self.count(auth_session), 0)
-
-    def test_numeric_existing_student_claim_and_key_rotation(self):
-        self.providers['eduverse'] = self.config.model_copy(update={'subject_claim': 'student_id',
-            'public_keys': {'key-1': self.public, 'key-2': self.public}})
-        response = self.external(student_id=314, headers={'kid': 'key-2'})
-        repeated = self.external(student_id='314')
-        self.assertEqual(response.learner_id, repeated.learner_id)
-        with self.db.engine.connect() as connection:
-            self.assertEqual(connection.execute(select(external_identity.c.external_subject_id)).scalar_one(), '314')
-        with self.assertRaises(AuthenticationError):
-            self.external(student_id=315, headers={'typ': 'JWT'})
-
-    def test_request_and_provider_configuration_validation(self):
+    def test_request_validation(self):
         with self.assertRaises(ValidationError):
             RegisterRequest(username='alice', password='short')
         with self.assertRaises(ValidationError):
-            ExternalLoginRequest(provider='eduverse', token=self.assertion(), password='never accepted')
-        with self.assertRaises(ValidationError):
-            ExternalLoginRequest(provider='eduverse', token=self.assertion(), learner_id='injected')
-        for values in ({'algorithm': 'HS256'}, {'public_keys': {'key-1': 'shared secret'}},
-                       {'subject_claim': 'iss'}, {'max_token_lifetime_seconds': 99999}):
-            with self.assertRaises((ValidationError, ValueError)):
-                ExternalProviderSettings.model_validate(self.config.model_dump() | values)
+            RegisterRequest(username='alice', password='a long unique passphrase', learner_id='injected')
 
     def test_authenticated_identity_drives_isolated_learner_engine(self):
-        first, second = self.external(), self.external(sub='student-456')
+        first, second = self.register('alice'), self.register('bob')
         engine = LearnerEngine(self.db.repository)
         concept = engine.register_concept('Identity boundary')
         context = engine.resolve_learning_context(ResolveLearningContextRequest(
@@ -278,9 +181,6 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIsNone(engine.get_concept_state(ConceptStateRequest(learner_id=second.learner_id, concept_id=concept.id)))
         self.assertIsNone(self.db.repository.get_evidence(result.evidence_id, second.learner_id))
         self.assertIsNone(self.db.repository.get_decision(result.evidence_id, second.learner_id))
-        with self.assertRaises(IntegrityError):
-            with self.db.engine.begin() as connection:
-                connection.execute(external_identity.insert().values(provider='eduverse', external_subject_id='student-123', learner_id=second.learner_id))
 
     def test_auth_routes_and_server_bearer_dependency(self):
         application = FastAPI()
@@ -299,9 +199,6 @@ class AuthenticationTests(unittest.TestCase):
             self.assertEqual(client.post('/api/v1/auth/login', json={'username': 'alice', 'password': 'bad'}).status_code, 401)
             self.assertEqual(client.post('/api/v1/auth/logout', headers=headers).status_code, 204)
             self.assertEqual(client.get('/api/v1/auth/me', headers=headers).status_code, 401)
-            external = client.post('/api/v1/auth/external', json={'provider': 'eduverse', 'token': self.assertion()})
-            self.assertEqual(external.status_code, 200)
-            self.assertIsNone(external.json()['user_id'])
 
     def cookie_client(self):
         application = FastAPI()
@@ -371,13 +268,13 @@ class AuthenticationTests(unittest.TestCase):
             self.assertEqual(self.service.authenticate(token).learner_id, client.get('/api/v1/auth/me').json()['learner_id'])
             self.assertEqual(client.post('/api/v1/auth/logout').status_code, 204)
 
-    def test_cookie_secure_flags_and_external_expiry_are_preserved(self):
+    def test_cookie_secure_flags_and_expiry_are_preserved(self):
         from app.auth import cookies
         from app.core.config import Settings
         configured = Settings(_env_file=None, auth_cookie_secure=True, auth_cookie_same_site='none')
         with patch.object(cookies, 'settings', configured), self.cookie_client() as client:
-            response = client.post('/api/v1/auth/external', json={'provider': 'eduverse', 'token': self.assertion()})
-            self.assertEqual(response.status_code, 200)
+            response = client.post('/api/v1/auth/register', json={'username': 'alice', 'password': 'a long unique passphrase'})
+            self.assertEqual(response.status_code, 201)
             self.assertIn('Secure', response.headers['set-cookie'])
             self.assertIn('SameSite=none', response.headers['set-cookie'])
             with self.db.engine.connect() as connection:
@@ -411,3 +308,20 @@ class AuthenticationTests(unittest.TestCase):
         with patch.object(self.service, 'clock', return_value=self.now + timedelta(days=730)):
             self.assertEqual(self.service.authenticate(response.access_token).learner_id, response.learner_id)
         self.assertEqual(self.repository.cleanup_sessions(self.now + timedelta(days=730)), 0)
+
+    def test_legacy_platform_sessions_are_rejected_without_deleting_records(self):
+        from uuid import uuid4
+        legacy_token = 'x' * 43
+        owner = str(uuid4())
+        with self.db.engine.begin() as connection:
+            connection.execute(learner.insert().values(id=owner, created_at=self.now))
+            connection.execute(external_identity.insert().values(provider='retired-platform',
+                external_subject_id='legacy-student', learner_id=owner, created_at=self.now))
+            connection.execute(auth_session.insert().values(session_id=str(uuid4()), learner_id=owner,
+                provider='retired-platform', token_digest=token_digest(legacy_token),
+                created_at=self.now, expires_at=self.now + timedelta(hours=1)))
+        with self.assertRaises(AuthenticationError):
+            self.service.authenticate(legacy_token)
+        self.assertEqual(self.count(learner), 1)
+        self.assertEqual(self.count(external_identity), 1)
+        self.assertEqual(self.count(auth_session), 1)

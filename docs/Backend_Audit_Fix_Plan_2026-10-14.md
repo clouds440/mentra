@@ -39,7 +39,7 @@ Implementation proceeded through high-priority availability/correctness work, me
 | F26 / P2 | Resource deadlines, reaped document children, killable reusable embedding/reranking workers and bounded waits | Process timeout/restart tests; actual baked embedding numerical-equivalence and shutdown checks passed | High: cold initialization is separately bounded; no guarantee that arbitrary threaded work is forcibly cancelled |
 | F27 / P3 | Separate document CPU/memory/wall budgets and report extraction capabilities | Documents/vision group: 50 passed; actual Linux OCR and CPU enforcement passed | Medium: English OCR capability is explicit; no multilingual accuracy claim or reader-policy revision change |
 | F28 / P2 | Shared no-store policy for private API successes/errors/SSE | Header/stream group: nine passed; browser consumer regressions | Low: health endpoints are intentionally excluded |
-| F30 / P2 | Approved 30-day absolute expiry for new persistent sessions; bounded dead-session cleanup | Auth/EduVerse group: 23 passed; browser expiry assertion updated | Medium: existing unlimited sessions remain untouched; external session policy unchanged |
+| F30 / P2 | Approved 30-day absolute expiry for new persistent sessions; bounded dead-session cleanup | Auth group: 23 passed; browser expiry assertion updated | Medium: existing unlimited sessions remain untouched |
 | F31 / P2 | Read-only database/Qdrant readiness and durable worker heartbeats | Readiness/Qdrant/database/architecture group: 16 passed | Medium: readiness detects stale workers; liveness remains a process check |
 | F32 / P2 | Shared Compose model/runtime configuration across applicable roles | Deployment/model configuration: six passed | Medium: repository parity tested; deployed environment overrides were not changed |
 | F33 / P3 | Lifecycle-owned HTTP transport pooling for research/MCP | Provider/quota/cancellation group: 29 passed | Low: fresh per-call MCP session retained for task ownership safety; remote cold/warm latency not benchmarked |
@@ -116,7 +116,6 @@ The inventory contains 311 Python files under `backend/app`, 64 Python test file
 | --- | --- | --- |
 | `api` | All registered feature route modules, dependencies, validation, upload middleware, SSE, pagination, health | F02, F03, F06, F13, F28, F31; F12/F29 withdrawn |
 | `auth` | Password hashing, assertion trust, provisioning, token digests, cookie origin checks, session lookup/revocation | F03, F30 |
-| `integrations` | EduVerse subject equality, initialize-once profile flow, session handoff | F03, F14, F15; no new subject-verification defect established |
 | `student_profile` | Factual edits, calibration snapshots, atomic completion, evaluation claims, projection adapter | F02, F14, F15 |
 | `learner` | Identity/candidates, contexts, immutable evidence, corrections, state refresh, scoring, recommendations, ontology lifecycle, evaluation | F08, F15, F24, F25, F38 |
 | `chat` | Durable turns, retries, Stop, deletion, summaries, attachment lifecycle, status and activity repositories | F06, F16-F20, F28 |
@@ -153,14 +152,14 @@ The inventory contains 311 Python files under `backend/app`, 64 Python test file
 - **Location:** `backend/app/student_profile/calibration/service.py:70`, `:120`; `backend/app/student_profile/evidence_service.py:42`, `:69`, `:78`; async callers in `backend/app/api/routes/student_profile.py`.
 - **Fix:** extract prepare/claim/apply/failure transactions into synchronous methods and await each through the existing threadpool helper. Keep provider work between transactions. Never open a session on one thread and resume using it on another.
 - **Cross-module impact / change risk:** medium. Calibration, onboarding, profile estimates, and chat's onboarding gate consume these results. Preserve one atomic Finish submission, evidence identity, context-version fencing, apply-once claims, and existing response schemas.
-- **Acceptance:** deliberately hold a profile lock while unrelated health/chat/SSE requests remain responsive. Race completion, context edits, cancellation, retry, and duplicate evaluation with real PostgreSQL. Run profile, EduVerse, onboarding/chat-gate, and evidence-projection tests.
+- **Acceptance:** deliberately hold a profile lock while unrelated health/chat/SSE requests remain responsive. Race completion, context edits, cancellation, retry, and duplicate evaluation with real PostgreSQL. Run profile, onboarding/chat-gate, and evidence-projection tests.
 
 ### F03 - Authentication has no repository-backed abuse admission
 
 **Severity:** P1. **Evidence:** operational gap. **Current risk:** repeated login/register requests can consume Argon2 CPU/memory and support password guessing; correct dummy-hash timing protection does not provide throttling.
 
 - **Location:** `backend/app/api/routes/auth.py:12`, `:21`; `backend/app/auth/service.py:36`, `:44`; `backend/app/auth/passwords.py`.
-- **Fix:** admit requests before expensive hashing/verifying, with bounded global capacity and account/IP-aware rate controls shared across API processes. Keep a bounded anonymous key space, trusted-proxy handling, expiry, and generic authentication failures. Include external/EduVerse provisioning in appropriate request limits.
+- **Fix:** admit requests before expensive hashing/verifying, with bounded global capacity and account/IP-aware rate controls shared across API processes. Keep a bounded anonymous key space, trusted-proxy handling, expiry, and generic authentication failures.
 - **Cross-module impact / change risk:** medium. Authentication is shared by every module. Preserve bearer/cookie transports, origin checks, legitimate retry behavior, and identity uniqueness. Avoid permanent account lockouts or attacker-controlled unbounded limiter records.
 - **Acceptance:** parallel guessing/registration load receives controlled 429s while existing authenticated users remain responsive. Verify multi-process enforcement, valid login after cooldown, forged forwarding headers, and no username/credential leakage. See OWASP authentication guidance below.
 
@@ -254,7 +253,7 @@ The inventory contains 311 Python files under `backend/app`, 64 Python test file
 - **Location:** `backend/app/student_profile/dependencies.py:16`; `backend/app/student_profile/service.py:18`; `backend/app/student_profile/repositories/postgres.py:17`; `backend/app/student_profile/repositories/store.py:19`.
 - **Fix:** add a read-only owned profile/onboarding projection; provision missing profiles through the existing serialized write path. Reuse a request-local read where safe. Do not introduce cross-request personal-data caching without a validated revision.
 - **Cross-module impact / change risk:** medium. All authenticated domain routes depend on onboarding state. Preserve initialize-once semantics, immediate recognition of completed onboarding, and current profile context/name handling.
-- **Acceptance:** repeated profile/onboarding reads issue no insert or exclusive advisory lock for existing rows. Concurrent first access still creates one profile. Test EduVerse initialization, profile edits, onboarding completion and chat gate transitions.
+- **Acceptance:** repeated profile/onboarding reads issue no insert or exclusive advisory lock for existing rows. Concurrent first access still creates one profile. Test profile edits, onboarding completion and chat gate transitions.
 
 ### F15 - Profile edits and grading projections coordinate with different locks
 
@@ -513,7 +512,7 @@ F30-F32 and F34-F37. Agree persistent-session policy before changing it. Add CI 
 
 ### Required Regression Groups
 
-- Authentication and onboarding: `backend/tests/auth`, `backend/tests/student_profile`, chat endpoint/gating and EduVerse tests.
+- Authentication and onboarding: `backend/tests/auth`, `backend/tests/student_profile`, chat endpoint/gating tests.
 - Chat and orchestration: persistent chat, Stop/interactions, streaming, generation recovery, tool recovery/cache, response latency, titles/summaries and activity tests.
 - Learning integrity: `backend/tests/learner`, learning progress, chat evidence, assessment grading/corrections, handwritten confirmation and profile projection.
 - Sources: `backend/tests/rag`, embeddings/Qdrant, RAG refinements/prefetch, Documents, Vision, chat images/attachments and source deletion.

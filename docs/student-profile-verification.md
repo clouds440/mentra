@@ -1,8 +1,7 @@
 # Mentra full-stack verification — 2026-10-07
 
 This report covers the current worktree: PostgreSQL persistence and migrations,
-identity/authentication, the separate Student Profile/calibration system, EduVerse
-profile provisioning, the granular Learner Engine, frontend flows, and Docker builds.
+identity/authentication, the separate Student Profile/calibration system, the granular Learner Engine, frontend flows, and Docker builds.
 It records execution checks, not a claim of measured learner-estimation accuracy.
 
 ## Automated checks
@@ -18,7 +17,7 @@ It records execution checks, not a claim of measured learner-estimation accuracy
 | Docker images | `mentra-backend:latest` and `mentra-frontend:latest` rebuilt successfully |
 | Running Compose stack | PostgreSQL, backend, and frontend all healthy |
 | Live container schema/dependencies | Revision `20261007_0003`; no schema drift or broken Python dependencies |
-| Live local API/UI probe | Liveness `ok`; auth, profile, EduVerse routes present; frontend returned HTTP 200 |
+| Live local API/UI probe | Liveness `ok`; auth and profile routes present; frontend returned HTTP 200 |
 | Fresh Compose database | Zero learners, profiles, or profile-evidence rows |
 
 Built image IDs at verification: backend `sha256:421f2b7fb8e5825b7ff674962face489520ebed2ca7fba0111251013a2ad447c`;
@@ -29,17 +28,11 @@ data to migrate.
 
 The backend suite includes upgrade/downgrade/idempotency, constraints and immutable
 history, learner ownership, transaction rollback, optimistic versions, concurrent
-writes, and external identity provisioning. Student Profile checks include all seven
+writes, and authentication. Student Profile checks include all seven
 education banks and controlled field variants, item-level scoring, strict AI output
 validation, unsupported evidence rejection, failure/retry, context changes during AI
 evaluation, duplicate/expired claims, conservative updates, and user-field ownership.
 Profile calibration leaves granular concept/evidence tables untouched.
-
-EduVerse checks use real signed RSA assertions, PostgreSQL repositories, and production
-routes. They verify issuer/audience/subject validation before provisioning, complete
-profile validation, rejection of passwords/client-selected learner UUIDs, numeric IDs,
-simultaneous first logins, stable mappings, cookie handoff, expiry, and preservation of
-manual profile edits on repeated platform calls.
 
 Browser checks exercise real authentication/profile endpoints and PostgreSQL. They
 cover mandatory information, optional calibration, saved progress across refresh/login,
@@ -96,5 +89,4 @@ Student Profile is separate from concept mastery. Its compact context packet and
 trusted evidence service are ready for future prompt/interaction adapters; automatic
 chat evidence extraction and profile prompt injection are not implemented. Chat is
 still held in memory. Library, granular Progress, curriculum Assessments, and backup
-remain frontend placeholders. EduVerse token issuance and its student interface are
-external integration work; Mentra's signed identity/profile API is implemented.
+remain frontend placeholders.

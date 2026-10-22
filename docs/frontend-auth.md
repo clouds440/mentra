@@ -11,13 +11,11 @@ Settings → Profile & preferences includes **Change password** for standalone a
 only verification step; no email or recovery code is required. Password updates use
 Argon2id and atomically revoke other account sessions while keeping the current
 session active. Cookie requests require a trusted origin and password verification
-uses the shared authentication admission/rate limits. External-provider accounts
-do not expose this form.
+uses the shared authentication admission/rate limits.
 
 Registration now proceeds through mandatory Student Profile information and optional
 calibration before entering the protected workspace. The profile gate is separate from
-authentication. See [Student Profile](student-profile.md) for onboarding, editing, and
-the signed EduVerse provisioning endpoint that can supply an initial profile.
+authentication. See [Student Profile](student-profile.md) for onboarding and editing.
 
 The pages reuse Mentra's shared fields, button, card, spinner, logo, semantic theme
 tokens, and typography. They support field validation, backend errors, loading states,
@@ -31,18 +29,16 @@ opaque session token in the `mentra_session` HTTP-only cookie at `/api/v1`; only
 is persisted in PostgreSQL. JavaScript does not read or persist tokens.
 
 `AuthProvider` restores identity with `/auth/me` on initial load, focus, and tab return.
-Standalone identity responses include the account username for the sidebar account
-drawer; external identities use their configured provider label.
+Identity responses include the account username for the sidebar account drawer.
 Tab messages trigger a fresh server check. Network failures offer retry or preserve an
 already verified identity; a 401 redirects to login. Logout waits for server revocation,
 and a failed request keeps the workspace available for retry. Changing learner identity
 remounts the workspace to discard the previous learner's in-memory client state.
 
-Standalone browser sessions have no server timeout and remain valid until revoked.
-The cookie lasts 400 days and `/me` renews that lifetime on visits. Browsers impose their
+New browser sessions expire after `AUTH_PERSISTENT_SESSION_SECONDS` (default 30 days).
+`/me` refreshes the cookie only for the remaining server session lifetime. Browsers impose their
 own storage limits; removing cookies or site data requires signing in again. Native
-bearer sessions keep their configured timeout, and external sessions remain bounded by
-the trusted platform's signed assertion. The Learner Engine and repository boundaries
+bearer sessions keep their configured timeout. The Learner Engine and repository boundaries
 are unchanged.
 
 Apply migrations through the current head, `20261007_0003`, before running the backend.
@@ -63,8 +59,7 @@ calibration. Compose upgrades to head automatically; native setup uses
   with HTTPS and secure cookies. Browser third-party-cookie policies still apply;
   serving the frontend and API under the same site is preferable.
 
-There is no email, verification, recovery, or OAuth UI. Generic external identity and
-public-key verification remain available to future platform integrations.
+Authentication uses Mentra usernames and passwords.
 
 ## Verification
 
@@ -97,8 +92,7 @@ is dropped explicitly by suite teardown (and on graceful server shutdown), and b
 `frontend/test-results/`. Network failures are deliberately injected only in error-path
 tests.
 
-Backend tests cover cookie flags, origin checks, persistent sessions, expiry for bearer
-and external sessions, revocation, and migration preservation. Browser tests cover
+Backend tests cover cookie flags, origin checks, persistent sessions, expiry for bearer sessions, revocation, and migration preservation. Browser tests cover
 registration, login, session restoration across refresh and return visits, protected
 routes, tab synchronization, validation/errors, logout/retry, mobile navigation, both
 themes, and reduced motion. Profile checks also cover mandatory information, resumed

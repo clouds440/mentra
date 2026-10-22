@@ -3,7 +3,7 @@ from app.auth.dependencies import get_auth_service, require_identity, get_sessio
 from app.auth.cookies import COOKIE_NAME, wants_cookie_session, require_cookie_origin, set_session_cookie, clear_session_cookie, session_response
 from app.auth.errors import AuthenticationError
 from app.auth.models import AuthenticatedIdentity
-from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest, ExternalLoginRequest, TokenResponse, IdentityResponse
+from app.auth.schemas import ChangePasswordRequest, RegisterRequest, LoginRequest, TokenResponse, IdentityResponse
 
 router = APIRouter(prefix='/auth', tags=['authentication'])
 
@@ -22,14 +22,6 @@ def login(body: LoginRequest, request: Request, response: Response, service=Depe
     if cookie:
         require_cookie_origin(request)
     return session_response(service.login(body, persistent=cookie, client_key=request.client.host if request.client else 'unknown'), response, cookie)
-
-
-@router.post('/external', response_model=TokenResponse | IdentityResponse)
-def external_login(body: ExternalLoginRequest, request: Request, response: Response, service=Depends(get_auth_service)):
-    cookie = wants_cookie_session(request)
-    if cookie:
-        require_cookie_origin(request)
-    return session_response(service.external_login(body, client_key=request.client.host if request.client else 'unknown'), response, cookie)
 
 
 @router.get('/me', response_model=IdentityResponse)

@@ -438,7 +438,8 @@ class EventPersistenceTests(unittest.TestCase):
         # tables/columns that do not exist at revision 0006.
         later_tables = {'chat_activity', 'chat_attachment', 'chat_evidence_job', 'chat_assessment_draft',
                         'web_search_guard', 'web_search_call', 'web_search_cache', 'chat_summary',
-                        'work_admission', 'request_rate', 'worker_health'}
+                        'work_admission', 'request_rate', 'worker_health', 'chat_summary_job',
+                        'hm_memory_summary_state', 'hm_memory_summary_change', 'hm_memory_summary_job'}
         later_columns = {('chat_turn', 'attachment_ids'), ('rag_document_version', 'extracted_content'),
                          ('rag_document_version', 'file_id'),
                          ('chat_turn', 'log_context'), ('rag_job', 'log_context')}

@@ -21,7 +21,7 @@ export function ProfileSettings() {
   return <section className="workspace-panel space-y-5" aria-label="Student profile settings">
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div><h2 className="text-lg font-medium tracking-tight text-heading">Your learning profile</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">{profile.details_source === 'eduverse' ? 'Provided by EduVerse. You can view and edit these details here.' : 'Your background, goals, and preferences. These details stay in your control.'}</p></div>
+        <p className="mt-2 text-sm leading-6 text-muted">Your background, goals, and preferences. These details stay in your control.</p></div>
       {!editing && <Button className="shrink-0" size="sm" variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>}
     </div>
     {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}

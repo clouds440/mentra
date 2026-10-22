@@ -45,7 +45,7 @@ evaluation and broader evidence are needed before making stronger accuracy claim
 
 1. An authenticated learner without a profile must provide all profile details.
    Blank/invalid information cannot be bypassed by skipping calibration or by calling
-   chat directly. Existing accounts and future external identities use the same gate.
+   chat directly. Existing accounts use the same gate.
 2. The profile is persisted, and Mentra offers a recommended 1–2 minute calibration.
    The learner may skip this assessment; estimated fields remain unknown.
 3. Selections and Next/Back navigation stay in frontend memory. Finish submits all
@@ -144,52 +144,6 @@ a request body.
 | `POST /student-profile/calibration/skip` | `{expected_version}`; requires complete information |
 | `POST /student-profile/calibration/evaluate` | Retry saved calibration evaluation |
 
-## EduVerse profile provisioning
-
-`POST /api/v1/integrations/eduverse/students` accepts EduVerse's existing student ID,
-its short-lived signed assertion, and a complete high-level profile:
-
-```json
-{
-  "student_id": "existing-student-123",
-  "token": "<EduVerse-signed JWT for this student>",
-  "profile": {
-    "education_level": "undergraduate",
-    "field_of_study": "Computer science",
-    "learning_goal": "Build confidence in problem solving",
-    "learning_preference": "examples_first",
-    "explanation_depth": "standard"
-  }
-}
-```
-
-Configure `AUTH_EXTERNAL_PROVIDERS.eduverse` with issuer, audience, algorithm, and
-trusted **public** keys as described in [identity setup](identity-and-postgresql.md).
-The signed subject (or configured `subject_claim`) must match `student_id` before any
-provisioning. String and integer IDs are supported; booleans and whitespace-padded IDs
-are rejected. No username, email, Mentra password, EduVerse password, or client-selected
-learner UUID is accepted. No provider SDK, shared frontend secret, or EduVerse schema
-change is required.
-
-The first valid call creates/resolves the external mapping and initializes the profile
-from the supplied explicit fields. It returns `201`, `profile_initialized: true`, the
-internal learner UUID, current profile, and authenticated session. These fields satisfy
-the mandatory information step, so the learner proceeds directly to the optional
-calibration offer. Estimates remain unknown until scored evidence is evaluated.
-
-Repeated calls return `200`, the same learner, and `profile_initialized: false`. They
-preserve the student's existing facts, manual preferences, onboarding/calibration state,
-and estimates. This is an initialization endpoint, not an automatic profile-sync API.
-Native callers receive a bearer token; browsers requesting `X-Mentra-Session: cookie`
-with a trusted origin receive only identity/profile and an HTTP-only cookie. External
-sessions retain the signed assertion's expiry. A standalone Mentra account/password is
-not created for an EduVerse student.
-
-Identity mapping and profile initialization are each transactional and idempotent.
-The HTTP adapter hands off a session only after profile initialization commits, so a
-failure can be retried without overwriting or duplicating the learner/profile. This
-establishes Mentra's API contract; EduVerse token issuance and its UI are not implemented.
-
 ## Verification
 
 Use an explicit dedicated `TEST_DATABASE_URL` as in [PostgreSQL setup](identity-and-postgresql.md).
@@ -214,7 +168,6 @@ with controlled HTTP transport. Live-provider checks require usable provider bal
 Tests cover mandatory information, skip/unknown state, every bank/field variant,
 resumption, malformed AI output, outages/retry, no granular mastery writes, conservative
 evolution, ownership/immutable history, concurrency/leases, stale contexts, schema drift,
-EduVerse subject/signature validation, repeated provisioning/manual-edit preservation,
 mobile layouts, and Light/Dark/System themes.
 
 Recovery checks cover failed bulk submission with local choices retained for retry,

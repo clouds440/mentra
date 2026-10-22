@@ -31,11 +31,6 @@ class ChangePasswordRequest(AuthSchema):
     new_password: SecretStr = Field(min_length=12, max_length=256)
 
 
-class ExternalLoginRequest(AuthSchema):
-    provider: str = Field(min_length=1, max_length=64, pattern=r'^[a-z0-9][a-z0-9_-]*$')
-    token: SecretStr = Field(min_length=1, max_length=16000)
-
-
 class IdentityResponse(AuthSchema):
     learner_id: LearnerId
     user_id: str | None = None

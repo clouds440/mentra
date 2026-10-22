@@ -19,10 +19,3 @@ class AuthenticatedIdentity:
     provider: str | None = None
     username: str | None = None
     onboarding_phase: str | None = None
-
-
-@dataclass(frozen=True)
-class VerifiedExternalIdentity:
-    provider: str
-    subject: str
-    expires_at: datetime

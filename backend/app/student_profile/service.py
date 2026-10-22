@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from .schemas import ProfileUpdate, ProfileDetails, Estimates, Estimate
+from .schemas import ProfileUpdate, Estimates, Estimate
 from .errors import conflict
 from .evidence_service import ProfileEvidenceService
 from .calibration.service import CalibrationService
@@ -31,15 +31,6 @@ class StudentProfileService:
                     return profile
                 raise conflict()
             return self._save_details(store, profile, request.details, 'user')
-
-    def initialize_external(self, learner_id, details: ProfileDetails, provider: str):
-        """Trusted identity integration initializes only; never syncs over edits."""
-        details = ProfileDetails.model_validate(details.model_dump())
-        with self.repository.transaction(learner_id) as store:
-            profile = store.profile()
-            if profile.details is not None:
-                return profile, False
-            return self._save_details(store, profile, details, provider), True
 
     def _save_details(self, store, profile, details, source):
         old = profile.details

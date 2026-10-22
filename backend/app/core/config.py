@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import Field, model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from app.auth.config import ExternalProviderSettings
 
 
 class Settings(BaseSettings):
@@ -47,7 +46,6 @@ class Settings(BaseSettings):
     parse_global_capacity: int = Field(default=4, ge=1, le=32)
     parse_owner_capacity: int = Field(default=1, ge=1, le=4)
     auth_cookie_same_site: Literal['lax', 'strict', 'none'] = 'lax'
-    auth_external_providers: dict[str, ExternalProviderSettings] = Field(default_factory=dict)
     ai_provider: str = "openai_compatible"
     ai_model: str = ""
     ai_base_url: str = ""

@@ -39,7 +39,7 @@ on its database tables, scoring formulas, or internal resolution logic.
 - [x] Per-learner transaction locks, sorted batch locks, ontology coordination, optimistic versions, and transaction-scoped lookup caches.
 - [x] Separate standalone accounts with Argon2id passwords and hashed, expiring, revocable bearer sessions.
 - [x] Generic public-key external-token verification with configured issuer/audience/algorithm and provider/subject mappings; concurrent first logins atomically provision one learner.
-- [x] Authentication dependencies expose authenticated learner UUIDs; learner scoring/services remain independent of authentication. No EduVerse schema or password handling was introduced.
+- [x] Authentication dependencies expose authenticated learner UUIDs; learner scoring/services remain independent of authentication. Authentication remains separate from learner scoring.
 - [x] PostgreSQL test fixtures, migrations, Docker/configuration, dependencies, and setup documentation updated. Frontend production build passes; 1,200 synthetic observations retain identical scoring metrics and restart/replay behavior.
 
 See [PostgreSQL and identity setup](docs/identity-and-postgresql.md). The existing chat UI remains anonymous; platform token issuance and embedded authenticated UI are future integration work.

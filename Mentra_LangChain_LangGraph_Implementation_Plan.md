@@ -1305,7 +1305,7 @@ This inventory records source inspection on 2026-10-09, not a new runtime test r
 | `app.history_management.events` | Manual Events service/APIs, temporal preview, lifecycle, preferences, evidence/audit/receipts/sync and single-reminder ledger | AI admission/tools, durable proposals, confirmation graph, reminder producer and complete Events frontend |
 | Notifications | No `app.notifications` implementation | Build independent inbox, receipts, preferences, sync, producer API and shared frontend; Events first producer |
 | Assessments | Learner observation/targeting adapters; `AssessmentsPage` placeholder | Canonical assessment/question/attempt/answer/grade domain, APIs, generation/grading workflows, history and answer-sheet frontend |
-| Auth / `integrations.eduverse` | Internal UUID identity, authentication/onboarding guards, signed external provisioning/profile initialization | Bind identity outside model input; preserve signed-subject validation; no LLM authentication/provisioning tools |
+| Auth | Internal UUID identity and authentication/onboarding guards | Bind identity outside model input; no LLM authentication tools |
 | `app.db`, core, workers | PostgreSQL/Alembic, owner transaction boundary, configuration, logging, errors, RAG worker | Workflow/checkpoint/activity migrations, bounded maintenance/reconciliation and independent reminder worker |
 | React frontend | Persistent Chat/Library/Profile/Memories and citations; Progress/Assessments placeholders | Live activity/token stream, proposals, Events/Learning/Notifications, assessments, OCR correction and adaptive calibration |
 
@@ -1355,7 +1355,7 @@ Trim complete exchanges/tool groups without orphan tool messages; preserve the c
 
 ## Learner and Student Profile remain separate
 
-Use `StudentProfileService.prompt_context` for bounded broad personalization when needed. Explicit educational details and preferences remain user controlled; profile evidence updates estimates under its versioned service policy. Do not send all profile fields for ordinary chat. Preserve EduVerse initialization semantics and never overwrite later manual edits.
+Use `StudentProfileService.prompt_context` for bounded broad personalization when needed. Explicit educational details and preferences remain user controlled; profile evidence updates estimates under its versioned service policy. Do not send all profile fields for ordinary chat. Preserve user-owned profile details and manual edits.
 
 Granular learner context, recommendations and verification come from `LearnerEngine` public schemas. Resolve contexts/concepts before use; ambiguous labels remain candidates. Distinguish mastery, estimate confidence, retention confidence and relevance. Preserve hint dependence, independent success, difficulty, misconceptions, contradiction verification and source/channel quality. A completed Event, read document, self-rating or memory is not demonstrated mastery.
 
@@ -1543,7 +1543,7 @@ All original Phases 0-29 remain present. This mapping prevents new modules from 
 | 15-18 streaming, failures, permissions, checkpoints | Phase 34 full backend/frontend live activity; Phase 33 safe runtime/replay; domain-owned confirmations |
 | 19-24 observability, budgets, caching, privacy, tests, evaluation | Retained phases plus shared budgets, activity privacy/retention, migration/race/browser/provider evaluation |
 | 25-29 graph set, contracts, examples, agent rules, order | Existing examples retained; Events confirmation added; current API contracts and dependency-aware delivery order |
-| Previously omitted modules | History/Memory/Profile (30), Events (31), Notifications (32), Documents/Vision/Assessment domain (35), Auth/integrations/DB/worker boundaries (inventory, 33) |
+| Previously omitted modules | History/Memory/Profile (30), Events (31), Notifications (32), Documents/Vision/Assessment domain (35), Auth/DB/worker boundaries (inventory, 33) |
 | Frontend and user-visible execution | Phase 34 covers typed transport/store/components, every product surface, confirmation/recovery and browser acceptance |
 
 ## Historical TDD reconciliation

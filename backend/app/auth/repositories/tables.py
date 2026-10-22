@@ -18,6 +18,8 @@ mentra_account = Table('mentra_account', metadata,
     UniqueConstraint('learner_id', 'user_id', name='uq_mentra_account_owner'),
     CheckConstraint("length(username) BETWEEN 3 AND 64 AND username = lower(username)", name='username'),
 )
+# Legacy identity metadata is retained for migration compatibility and data preservation.
+# No runtime provisioning or authentication accepts platform identities.
 external_identity = Table('external_identity', metadata,
     Column('provider', Text, primary_key=True), Column('external_subject_id', Text, primary_key=True),
     Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id'), nullable=False), created(),

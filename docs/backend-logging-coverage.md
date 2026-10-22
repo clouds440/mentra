@@ -4,7 +4,7 @@ Automatic connections cover public operations at each listed boundary. Explicit 
 
 | Workflow | Connected boundaries | Regression evidence |
 | --- | --- | --- |
-| Authentication and external provisioning | Token/cookie dependencies, auth service, passwords, verifier, identity repository, EduVerse provisioning | `auth/test_auth.py`, `student_profile/test_eduverse.py` |
+| Authentication | Token/cookie dependencies, auth service, passwords and identity repository | `auth/test_auth.py` |
 | Profile and calibration | Profile/calibration/evidence services, profile transaction/store, evaluator; explicit degraded evaluation status | `student_profile/test_profile.py`, `test_evaluator.py`, `test_observability.py` |
 | Persistent/stateless chat | Conversation service/context/repository, reply/orchestration, plan, LLM, tools, history reader, isolated generation collector | `test_persistent_chat.py`, `test_chat_endpoint.py`, `test_orchestration.py`, `test_streaming.py` |
 | Conversations and SSE | ASGI lifecycle, public repository operations, SSE close/disconnect; no token/heartbeat payload logging | `test_persistent_chat.py`, `test_observability.py` raw ASGI lifecycle scenarios |

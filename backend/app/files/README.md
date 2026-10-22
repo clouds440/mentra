@@ -8,7 +8,7 @@ storage providers or serve original bytes themselves.
 ## Configuration and deployment
 
 - Set **server-only** `CLOUDINARY_URL=cloudinary://KEY:SECRET@CLOUD_NAME`.
-- Default namespace is **`mentra/<APP_ENV>/`**, separate from EduVerse. The
+- Default namespace is **`mentra/<APP_ENV>/`**. The
   adapter explicitly sets the Media Library `asset_folder` and public ID prefix.
   Reads/deletes reject assets outside the configured namespace or cloud account.
 - Originals use authenticated delivery, immutable generated IDs and no upload

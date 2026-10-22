@@ -58,8 +58,8 @@ export function AppSidebar({
   const memoryActive = location.pathname === '/settings' && new URLSearchParams(location.search).get('tab') === 'memories';
   const [accountOpen, setAccountOpen] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
-  const accountName = identity?.username ?? (identity?.provider ? `${identity.provider} student` : 'Learner');
-  const accountMark = (identity?.username ?? identity?.provider)?.slice(0, 1).toUpperCase();
+  const accountName = identity?.username ?? 'Learner';
+  const accountMark = identity?.username?.slice(0, 1).toUpperCase();
   const sidebar = useRef<HTMLElement>(null);
   const desktop = useMobileNavigation(sidebar, mobileOpen, onCloseMobile);
   useEffect(() => { setAccountOpen(false); }, [location.pathname, location.search, collapsed, mobileOpen]);

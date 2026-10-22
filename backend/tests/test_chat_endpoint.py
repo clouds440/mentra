@@ -1,4 +1,5 @@
 import asyncio
+import json
 import unittest
 
 from fastapi import FastAPI
@@ -83,7 +84,12 @@ class ChatEndpointTests(unittest.TestCase):
         )
         assert model.messages is not None
         self.assertIsInstance(model.messages[0], SystemMessage)
-        self.assertEqual(model.messages[0].content, get_system_prompt(PromptSource.CHAT))
+        prompt, context = model.messages[0].content.rsplit('\n\n', 1)
+        self.assertEqual(prompt, get_system_prompt(PromptSource.CHAT))
+        self.assertEqual(json.loads(context), {
+            'memories_summary': {'state': 'unavailable', 'content': '', 'revision': 0},
+            'conversation_summary': {'state': 'empty', 'content': '', 'revision': 0},
+        })
         self.assertEqual(
             [(type(message), message.content) for message in model.messages[1:]],
             [

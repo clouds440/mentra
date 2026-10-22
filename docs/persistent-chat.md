@@ -16,7 +16,7 @@ Alembic migration **20261008_0005** adds:
 | `chat_sync_state` | Owner's committed revision and retained change floor |
 | `chat_change` | Compact conversation references ordered by owner/revision |
 
-Composite foreign keys enforce conversation ownership. The authenticated `learner_id` is the owner for both standalone accounts and mapped external identities. No client-provided owner is accepted. Cookie mutation endpoints retain trusted-origin enforcement and onboarding requirements. Read-only bootstrap is permitted before onboarding so registration does not trigger a failing chat prefetch.
+Composite foreign keys enforce conversation ownership. The authenticated `learner_id` is the owner for Mentra accounts. No client-provided owner is accepted. Cookie mutation endpoints retain trusted-origin enforcement and onboarding requirements. Read-only bootstrap is permitted before onboarding so registration does not trigger a failing chat prefetch.
 
 Owner-scoped locks serialize short writes and synchronization snapshots, never model/RAG network work. Every change and its revision commit in the same transaction. Revisions cannot commit out of order. The last 10,000 changes per owner are retained; an expired cursor requires a fresh bounded bootstrap. Deletion removes message/turn content while retaining a conversation tombstone for reconciliation.
 
@@ -124,4 +124,4 @@ Answers render with Markdown/Prism and a bounded top-to-bottom reveal, with a co
 
 ## Unified files — 20 October 2026
 
-Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.

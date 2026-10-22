@@ -39,7 +39,6 @@ The supported settings in `.env.example` are:
 | `AUTH_SESSION_SECONDS` | `3600` | Native bearer session lifetime; standalone browser cookie sessions persist without this server expiry |
 | `AUTH_COOKIE_SECURE` | `false` | Require HTTPS for the session cookie; automatically enabled outside development/test |
 | `AUTH_COOKIE_SAME_SITE` | `lax` | Cookie SameSite policy: `lax`, `strict`, or `none` (HTTPS required for `none`) |
-| `AUTH_EXTERNAL_PROVIDERS` | `{}` | JSON map of trusted issuers, audiences, public keys, and subject claims |
 | `TEST_DATABASE_URL` | *(explicit test database)* | Used only by tests and synthetic verification |
 | `AI_PROVIDER` | `openai_compatible` | Mentra chat-model adapter |
 | `AI_MODEL` | *(required)* | Model identifier accepted by the configured chat endpoint |
@@ -162,6 +161,6 @@ For code conventions, see [frontend/standards.md](../frontend/standards.md) and 
 
 ## Unified files — 20 October 2026
 
-Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`, separate from EduVerse. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
 
 Chat and persistent memory summaries share one durable `summarizer` worker and the configured LLM, while retaining independent prompts and token/character limits. Apply migrations through `20261021_0030` before starting the updated services. The old `memory-summary-worker` service is replaced; remove its orphan container during the upgrade. See [memory summaries](memory-summaries.md) for settings, recovery and verification.

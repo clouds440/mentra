@@ -436,6 +436,7 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.orchestration_service import OrchestrationService
         service = Mock()
         service.profile.prompt_context.return_value = SimpleNamespace(model_dump=lambda **kwargs: {'details': {'preferred_name': 'Ayesha'}})
+        service.summary_context.return_value = (dict(state='unavailable', content='', revision=0), None)
         chat = SimpleNamespace(reply=AsyncMock(return_value='A general explanation.'))
         orchestration = OrchestrationService(chat, learner=service, rag=service, assessments=service, history=service, attachments=service)
         scope = dict(conversation_id='chat', current_user_message_id='user', context_rows=[], history_references=[], memory_references=[])
@@ -447,8 +448,10 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         service.prompt_context.assert_not_called()
         service.get_relevant_context.assert_not_called()
         service.profile.prompt_context.assert_called_once_with('owner')
+        service.summary_context.assert_called_once_with('owner')
         self.assertEqual(chat.reply.call_args.kwargs['profile_context']['details']['preferred_name'], 'Ayesha')
-        self.assertEqual(scope['_tool_budget'].calls, 1)
+        self.assertEqual(chat.reply.call_args.kwargs['memories_summary']['state'], 'unavailable')
+        self.assertEqual(scope['_tool_budget'].calls, 2)
 
     async def test_required_document_failure_reaches_limited_answer(self):
         from app.langchain.orchestration_service import OrchestrationService

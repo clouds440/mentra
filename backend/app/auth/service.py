@@ -8,7 +8,7 @@ from contextlib import nullcontext
 from functools import wraps
 
 from app.auth.errors import AuthenticationError, PasswordChangeError
-from app.auth.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest, ExternalLoginRequest, TokenResponse
+from app.auth.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.auth.passwords import Passwords
 from app.auth.ports import IdentityRepository
 
@@ -22,7 +22,7 @@ def admitted(action):
     def invoke(self, request, *args, client_key=None, **kwargs):
         principal = kwargs.get('principal')
         key = principal.username if principal is not None else getattr(request, 'username', None)
-        key = key or (principal.learner_id if principal is not None else token_digest(request.token.get_secret_value()))
+        key = key or principal.learner_id
         settings = self.admission.settings if self.admission else None
         limits = [('account', key, settings.auth_account_minute_limit if settings else 20)]
         if client_key is not None:
@@ -38,10 +38,9 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class AuthService:
-    def __init__(self, repository: IdentityRepository, verifier, *, session_seconds=3600,
+    def __init__(self, repository: IdentityRepository, *, session_seconds=3600,
                  clock=lambda: datetime.now(timezone.utc), passwords=None, admission=None, persistent_session_seconds=30 * 86400):
         self.repository = repository
-        self.verifier = verifier
         self.session_seconds = session_seconds
         self.persistent_session_seconds = persistent_session_seconds
         self.clock = clock
@@ -76,25 +75,11 @@ class AuthService:
             now + timedelta(seconds=self.persistent_session_seconds if persistent else self.session_seconds), now, new_hash)
         return self._response(token, identity)
 
-    @admitted
-    def external_login(self, request: ExternalLoginRequest, *, expected_subject: str | None = None):
-        request = ExternalLoginRequest.model_validate(request.model_dump())
-        assertion = self.verifier.verify(request.provider, request.token.get_secret_value())
-        if expected_subject is not None and assertion.subject != expected_subject:
-            raise AuthenticationError()
-        token, now = secrets.token_urlsafe(32), self.clock()
-        expires = min(assertion.expires_at, now + timedelta(seconds=self.session_seconds))
-        if expires <= now:
-            raise AuthenticationError()
-        identity = self.repository.external_session(assertion.provider, assertion.subject,
-            token_digest(token), expires, now)
-        return self._response(token, identity)
-
     def authenticate(self, token):
         if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
             raise AuthenticationError()
         identity = self.repository.get_session(token_digest(token), self.clock())
-        if identity is None:
+        if identity is None or identity.user_id is None or identity.provider is not None:
             raise AuthenticationError()
         return identity
 

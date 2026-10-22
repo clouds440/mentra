@@ -78,35 +78,32 @@ learner evidence. See [Events contracts](events.md).
 
 ## Identity and API contracts
 
-`learner.id` is the internal UUID. It is independent of account IDs and external student
-IDs. Every learner-owned table references it; composite ownership foreign keys prevent
+`learner.id` is the internal UUID. It is independent of account IDs. Every learner-owned table references it; composite ownership foreign keys prevent
 cross-learner context, correction, decision, and account/session references.
 
 | Endpoint | Request | Result |
 | --- | --- | --- |
 | `POST /api/v1/auth/register` | `username`, `password` | Creates account and learner; signs in |
 | `POST /api/v1/auth/login` | `username`, `password` | Returns a session for the existing account |
-| `POST /api/v1/auth/external` | `provider`, `token` | Verifies signed assertion, provisions/resolves identity, returns session |
 | `GET /api/v1/auth/me` | Session cookie or `Authorization: Bearer <session>` | Authenticated internal identity |
 | `POST /api/v1/auth/logout` | Session cookie or bearer header | Revokes that session and clears the browser cookie |
 
 Standalone usernames are normalized to lowercase and are 3–64 ASCII letters/numbers/dots/
 underscores/hyphens. Registration passwords are 12–256 characters, hashed with Argon2id.
-Passwords are never logged or stored as plaintext. External login accepts no password.
+Passwords are never logged or stored as plaintext.
 Sessions are random 256-bit opaque tokens; only their SHA-256 digests are stored.
 Logout revokes them, expiration is enforced on every authentication, and auth responses
 have `Cache-Control: no-store`. Native clients receive bearer tokens by default, with
 standalone sessions lasting `AUTH_SESSION_SECONDS` (default 3600).
 The frontend requests cookie transport with `X-Mentra-Session: cookie`. Register/login
 then return only internal identity, set a persistent HTTP-only cookie, and create a
-standalone session without a server expiry. Cookie writes require an exact trusted
+standalone session with a 30-day default server expiry. Cookie writes require an exact trusted
 browser `Origin`; authenticated unsafe cookie requests enforce the same check.
-`GET /me` renews the cookie's 400-day browser lifetime. Browser policies or clearing
+`GET /me` refreshes the cookie for the remaining server session lifetime. Browser policies or clearing
 site data can still remove cookies. Migration `20261007_0002` adds persistent standalone
 sessions while preserving existing timed sessions. See [frontend auth](frontend-auth.md)
 for HTTPS, SameSite, origin configuration, and browser tests.
-External sessions expire no later than their signed assertion, so the hosting platform
-must issue a new assertion when access expires. Use TLS for deployed endpoints.
+Use TLS for deployed endpoints.
 
 HTTP adapters use `app.auth.dependencies.require_identity`. Pass its `learner_id` to
 `LearnerService`, assessment adapters, RAG scope, and `create_learner_tools`. The Learner
@@ -118,49 +115,15 @@ Global concept registry/curation operations remain trusted administrative operat
 The frontend provides `/login` and `/register`, restores cookie sessions, guards existing
 workspace routes, and revokes sessions on sidebar sign-out. Mandatory high-level profile
 onboarding is enforced separately; calibration is optional. Conversations and turns
-are now persisted per account; see [persistent chat](persistent-chat.md). Events APIs, semantic chat capture, proposals, reminder delivery, Notifications and Learning Progress are implemented. EduVerse's external embedding/login UI remains a separate integration responsibility. See
-[Student Profile](student-profile.md) for signed EduVerse provisioning with an initial
-profile, which can satisfy the required information step directly.
+are now persisted per account; see [persistent chat](persistent-chat.md). Events APIs, semantic chat capture, proposals, reminder delivery, Notifications and Learning Progress are implemented. See [Student Profile](student-profile.md) for required onboarding information.
 
-## Trusted external platforms
+## Retired platform compatibility
 
-Configure `AUTH_EXTERNAL_PROVIDERS` as a JSON map. No external provider is trusted by
-default. Example structure (replace the placeholder with a real PEM **public** key):
-
-```json
-{
-  "eduverse": {
-    "issuer": "https://your-eduverse-issuer.example",
-    "audience": "mentra",
-    "algorithm": "RS256",
-    "public_keys": {"key-2026": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n"},
-    "subject_claim": "sub",
-    "max_token_lifetime_seconds": 300,
-    "clock_skew_seconds": 10
-  }
-}
-```
-
-In `.env`, put the compact JSON on one line inside single quotes. `RS256` requires an
-RSA public key of at least 2048 bits; `ES256` requires a P-256 public key. Multiple keys
-support rotation via `kid`; missing `kid` is accepted only when one key is configured.
-The configured algorithm is authoritative. Embedded keys, key URLs, HMAC/shared secrets,
-and unsigned tokens cannot establish trust. Mentra does not fetch token-specified URLs.
-
-The platform signs a short-lived JWT using its own private key. Required claims are
-`iss`, `aud`, `iat`, `exp`, and the configured subject claim. Set `sub` to the existing
-student ID as a string, or configure `subject_claim: "student_id"` for an existing claim
-(integer IDs are normalized to decimal strings). Issuer/audience/signature, time bounds,
-maximum lifetime, and subject type are verified **before** any database provisioning.
-
-First valid login atomically creates `learner` and
-`external_identity(provider, external_subject_id, learner_id)`. Repeated and concurrent
-logins use the same mapping. The unique provider/subject pair separates tenants from
-different platforms; identical subject strings from different providers remain distinct.
-Standalone accounts and external identities are not silently linked by username/email.
-EduVerse students need no Mentra credentials, Mentra never receives their EduVerse
-passwords, and no EduVerse student schema changes are required. This defines a generic
-integration contract; EduVerse's token issuance and embedding UI are future work.
+Platform sign-in and profile provisioning are removed. Mentra authenticates only local
+accounts, including when a previously issued platform session is presented. Historical
+identity mappings, session columns, and profile provenance remain in PostgreSQL so no
+learner data is deleted and existing Alembic upgrade/downgrade paths stay compatible.
+There is no runtime adapter, provider trust configuration, or endpoint using them.
 
 ## PostgreSQL verification
 
@@ -179,12 +142,10 @@ $env:TEST_DATABASE_URL = 'postgresql://mentra:mentra_local@127.0.0.1:5432/mentra
 
 The suite checks migration upgrade/downgrade/idempotency/schema drift, immutable history,
 ownership constraints, transaction rollback, optimistic versions, concurrent ingestion,
-authentication/session routes, simultaneous provisioning, and invalid external assertions.
+authentication/session routes, concurrent registration, and retired-session rejection.
 Synthetic scenarios validate learner behavior and replay; they are not real accuracy estimates.
 
 Implementation references: [SQLAlchemy session transactions](https://docs.sqlalchemy.org/en/20/orm/session_basics.html),
 [Alembic](https://alembic.sqlalchemy.org/en/latest/tutorial.html),
 [PostgreSQL locking](https://www.postgresql.org/docs/current/explicit-locking.html),
-[PyJWT verification](https://pyjwt.readthedocs.io/en/stable/api.html),
-[Argon2 password handling](https://argon2-cffi.readthedocs.io/en/stable/howto.html),
-and [JWT best practices, RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html).
+[Argon2 password handling](https://argon2-cffi.readthedocs.io/en/stable/howto.html).

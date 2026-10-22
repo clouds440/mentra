@@ -18,7 +18,7 @@ class AdmissionTests(unittest.TestCase):
         gate = Admission(self.db.sessions, settings=Settings(_env_file=None, auth_account_minute_limit=2))
         passwords = Mock()
         passwords.verify.return_value = False
-        service = AuthService(PostgresIdentityRepository(self.db.sessions), Mock(), passwords=passwords, admission=gate)
+        service = AuthService(PostgresIdentityRepository(self.db.sessions), passwords=passwords, admission=gate)
         body = LoginRequest(username='unknown-user', password='wrong')
         for _ in range(2):
             with self.assertRaises(AuthenticationError):
