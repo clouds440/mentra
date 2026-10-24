@@ -53,7 +53,7 @@ lock. It commits nonblocking acquisition probes before waiting, avoiding snapsho
 deadlocks with concurrent index builds, and bounds acquisition to 300 seconds. Startup
 checks the Alembic revision and fails clearly if migrations are missing; it never creates
 tables. For subsequent changes, generate and review an Alembic revision, then upgrade.
-The repository head is `20261013_0018`. Later revisions extend the original identity/profile/Library/chat/memory/Events foundations with proposals, notifications, assessment workflows, web search and private conversation summaries.
+The repository head is `20261021_0030`. Later revisions extend the original identity/profile/Library/chat/memory/Events foundations with proposals, notifications, assessment workflows, web search and private conversation summaries.
 Compare the actual database revision with this head before starting the API;
 repository migration files do not imply a database was already upgraded.
 The initial revision includes native UUIDs, UTC timestamps, JSONB, unique/check/foreign-key

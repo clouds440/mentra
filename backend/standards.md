@@ -32,6 +32,8 @@ Do not add empty folders or modules merely to mirror a template. Create them whe
 
 ## Coding rules
 
+- Private original storage uses `FILES_NAMESPACE/(FILES_ENVIRONMENT or APP_ENV)`. Keep the storage suffix stable when enabling production mode for an existing database; it is independent of security posture and never inferred from client input.
+
 - Use Python type hints and small, focused modules.
 - Keep route handlers thin and put workflows in service code when such workflows exist.
 - Use Pydantic models at API boundaries; keep shared schemas minimal.
@@ -106,7 +108,7 @@ Resolve new graph/checkpoint dependencies against the existing LangChain/provide
 
 ## Authentication
 
-Authentication lives in `auth/`, with separate repository ports and PostgreSQL adapters. Standalone accounts use Argon2id passwords; opaque bearer sessions store only token digests. External assertions are verified using configured issuer, audience, algorithm and public keys before provisioning identities. The Learner Engine receives the authenticated `learner_id` and has no account, password or token logic. Do not pass client-selected ownership to learner operations or trust token-provided keys/algorithms. See [identity setup](../docs/identity-and-postgresql.md).
+Authentication lives in `auth/`, with separate repository ports and PostgreSQL adapters. Standalone accounts use Argon2id passwords; opaque bearer sessions store only token digests. Retired external identity mappings remain only for database compatibility; external identity exchange is unavailable. The Learner Engine receives the authenticated `learner_id` and has no account, password or token logic. Do not pass client-selected ownership to learner operations. Production browser origins must be explicit HTTPS origins; startup rejects wildcard, credential-bearing or path-bearing origins. See [identity setup](../docs/identity-and-postgresql.md).
 
 ## Student Profile
 

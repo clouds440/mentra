@@ -71,12 +71,17 @@ test('genuinely missing persisted chat still reports not found', async ({page}) 
   await expect(page.getByText('Conversation not found.', {exact:true})).toBeVisible();
 });
 
-test('idle foreground chat appends multiple pages from another device without reloading history', async ({ page }) => {
+test('chat change notification appends multiple pages without reloading history', async ({ page }) => {
   const state = await setup(page);
   await page.getByRole('button', { name: 'Load earlier messages' }).click();
   await expect(page.getByRole('article')).toHaveCount(48);
   const initial = state.requests.length;
   state.append(44);
+  // Settled pages synchronize on writes/tab signals, rather than idle timers.
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel('mentra-chat-cache-user');
+    channel.postMessage('changed'); channel.close();
+  });
   await expect(page.getByRole('article')).toHaveCount(92, { timeout: 12_000 });
   const updates = state.requests.slice(initial);
   expect(updates.map(request => request.after)).toEqual([48, 88]);

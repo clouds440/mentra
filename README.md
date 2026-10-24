@@ -83,8 +83,8 @@ from the browser; its local default is `http://localhost:8000`.
 docker compose up --build -d --wait --wait-timeout 180
 ```
 
-Default services are `backend`, `frontend`, `rag-worker`, `assessment-worker` and
-`events-worker`. Local PostgreSQL is optional:
+Default services are `backend`, `frontend`, `rag-worker`, `assessment-worker`,
+`events-worker`, `summarizer` and `files-worker`. Local PostgreSQL is optional:
 
 ```sh
 docker compose --profile local-db up -d postgres
@@ -93,7 +93,10 @@ docker compose --profile local-db up -d postgres
 For that profile, set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra`
 for containers; native clients use the configured localhost port instead. The API
 applies Alembic migrations before starting. The repository migration head is
-`20261017_0027`; verify the actual database revision rather than assuming deployment.
+`20261021_0030`; verify the actual database revision rather than assuming deployment.
+`CLOUDINARY_URL` is also required for private original-file storage. Read the
+[production runbook](docs/production-readiness.md) before migrating an existing installation;
+the storage migration refuses to discard legacy file data.
 
 | Address | Purpose |
 | --- | --- |

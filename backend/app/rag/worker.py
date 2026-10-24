@@ -120,9 +120,12 @@ def main():
     from app.rag.factory import create_rag_service
     configure_logging('rag-worker')
     init_db()
+    from app.files.factory import create_files
+    files = create_files()
+    files.check_configuration()
     embedding = SentenceTransformerEmbeddingService(settings)
     vector_store = QdrantVectorStore(settings, embedding)
-    worker = IngestionWorker(create_rag_service(create_learner_engine(), embedding, vector_store))
+    worker = IngestionWorker(create_rag_service(create_learner_engine(), embedding, vector_store, files))
     stopping = False
 
     def stop(*_args):
@@ -146,6 +149,7 @@ def main():
         worker.service.close()
         vector_store.close()
         embedding.close()
+        files.close()
 
 
 if __name__ == '__main__':

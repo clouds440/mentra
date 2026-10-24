@@ -7,6 +7,10 @@ x-database-budget: &database-budget
   DATABASE_WORKER_STATEMENT_MS: ${DATABASE_WORKER_STATEMENT_MS:-120000}
   DATABASE_LOCK_MS: ${DATABASE_LOCK_MS:-5000}
 
+x-backend-security: &backend-security
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
 x-worker-database-budget: &worker-database-budget
   <<: *database-budget
   DATABASE_POOL_SIZE: ${WORKER_DATABASE_POOL_SIZE:-1}
@@ -14,6 +18,8 @@ x-worker-database-budget: &worker-database-budget
 
 x-runtime-settings: &runtime-settings
   APP_ENV: ${APP_ENV:-development}
+  FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
   LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-14}
   LOG_MAX_FILE_BYTES: ${LOG_MAX_FILE_BYTES:-67108864}
   LOG_QUEUE_BYTES: ${LOG_QUEUE_BYTES:-8388608}
@@ -34,7 +40,8 @@ x-runtime-settings: &runtime-settings
 
 x-files-settings: &file-settings
   CLOUDINARY_URL: ${CLOUDINARY_URL:?Set server-only CLOUDINARY_URL for private file storage}
-  FILES_NAMESPACE: mentra
+  FILES_NAMESPACE: ${FILES_NAMESPACE:-mentra}
+  FILES_ENVIRONMENT: ${FILES_ENVIRONMENT:-}
   FILES_CONCURRENCY: ${FILES_CONCURRENCY:-8}
   FILES_TIMEOUT_SECONDS: ${FILES_TIMEOUT_SECONDS:-60}
 
@@ -102,7 +109,8 @@ services:
       retries: 10
 
   backend:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     build:
       context: ./backend
       args:
@@ -112,7 +120,7 @@ services:
     container_name: mentra-backend
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+      - "${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     environment:
       <<: [*database-budget, *runtime-settings, *model-settings, *file-settings]
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -128,8 +136,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       BACKEND_HOST: ${BACKEND_HOST:-0.0.0.0}
       BACKEND_PORT: ${BACKEND_PORT:-8000}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
       # Pass through the complete caller-provided URL. Local PostgreSQL credentials
       # above configure only the optional postgres service; they are never merged
       # into DATABASE_URL.
@@ -189,7 +196,8 @@ services:
       start_period: 15s
 
   rag-worker:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     restart: unless-stopped
     command: ["python", "-m", "app.rag.worker"]
     stop_grace_period: 150s
@@ -227,7 +235,8 @@ services:
         condition: service_healthy
 
   events-worker:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     restart: unless-stopped
     command: ["python", "-m", "app.history_management.events.worker"]
     environment:
@@ -250,7 +259,8 @@ services:
         condition: service_healthy
 
   assessment-worker:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     restart: unless-stopped
     command: ["python", "-m", "app.assessments.worker"]
     stop_grace_period: 100s
@@ -274,7 +284,8 @@ services:
         condition: service_healthy
 
   summarizer:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     restart: unless-stopped
     command: ["python", "-m", "app.summarization.worker"]
     stop_grace_period: 60s
@@ -289,18 +300,26 @@ services:
         condition: service_healthy
 
   files-worker:
-    image: mentra-backend
+    <<: *backend-security
+    image: ${BACKEND_IMAGE:-mentra-backend}
     restart: unless-stopped
     command: ["python", "-m", "app.files.worker"]
     environment:
       <<: [*worker-database-budget, *runtime-settings, *file-settings]
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to a complete PostgreSQL connection URL}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+      LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+      LOG_DIRECTORY: /var/log/mentra
+    volumes:
+      - ./logs/backend:/var/log/mentra
     depends_on:
       backend:
         condition: service_healthy
 
   frontend:
+    image: ${FRONTEND_IMAGE:-mentra-frontend}
     build:
       context: ./frontend
       args:
@@ -313,7 +332,7 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m
     ports:
-      - "5173:8080"
+      - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:5173:8080"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 10s

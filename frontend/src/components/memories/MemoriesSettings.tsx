@@ -15,6 +15,7 @@ import { MemoryDetails } from './MemoryDetails';
 import { MemoryList } from './MemoryList';
 import { MemoryConfirmation } from './MemoryConfirmation';
 import { ApiError } from '../../services/api';
+import { openBroadcastChannel } from '../../utils/broadcastChannel';
 
 export function MemoriesSettings({ active }: { active: boolean }) {
   const { identity } = useAuth();
@@ -57,7 +58,8 @@ function AccountMemories({ owner, active }: { owner: string; active: boolean }) 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; pageRequest.current?.abort(); detailRequest.current?.abort(); }; }, []);
   useEffect(() => { const timer = setTimeout(() => setSearch(query), 250); return () => clearTimeout(timer); }, [query]);
   useEffect(() => {
-    const bc = new BroadcastChannel(`mentra-memory-${owner}`);
+    const bc = openBroadcastChannel(`mentra-memory-${owner}`);
+    if (!bc) return;
     channel.current = bc;
     bc.onmessage = () => refreshPage(() => setRefresh(value => value + 1));
     return () => { bc.close(); channel.current = undefined; };

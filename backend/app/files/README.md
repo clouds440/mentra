@@ -11,6 +11,11 @@ storage providers or serve original bytes themselves.
 - Default namespace is **`mentra/<APP_ENV>/`**. The
   adapter explicitly sets the Media Library `asset_folder` and public ID prefix.
   Reads/deletes reject assets outside the configured namespace or cloud account.
+- Set `FILES_ENVIRONMENT` to preserve an existing storage suffix independently
+  of `APP_ENV` security policy. Empty retains the default above; actual paths
+  use `FILES_NAMESPACE/(FILES_ENVIRONMENT or APP_ENV)`. Keep identical settings
+  for the API and file/RAG/assessment workers. Do not rename or automatically
+  admit other namespaces during a production promotion.
 - Originals use authenticated delivery, immutable generated IDs and no upload
   transformations. No public asset URLs or provider credentials reach clients.
 - Run `python -m app.files.worker` (included in Compose) for deletion, expiry

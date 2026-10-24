@@ -201,6 +201,7 @@ test('assessment results render question, answer and feedback code through Prism
   await state.quiz.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(page.getByRole('region',{name:'Quiz answers'})).toBeVisible();
   state.grade();
+  await page.getByRole('button',{name:'Review result',exact:true}).first().click();
   const result=page.getByRole('region',{name:'Question 1 feedback',exact:true});
   await expect(result).toBeVisible({timeout:10_000});
   await expect(result.locator('.code-block[data-language="python"]')).toHaveCount(3);

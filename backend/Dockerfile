@@ -12,9 +12,11 @@ WORKDIR /app
 # Local OCR and scanned-PDF rasterization; no document content leaves the worker.
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng poppler-utils && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir pip==26.2.2
+RUN pip install --no-cache-dir --no-deps --index-url https://download.pytorch.org/whl/cpu torch==2.14.1
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.txt -c requirements.lock
+RUN python -m pip check
 
 ARG EMBEDDING_MODEL=intfloat/multilingual-e5-small
 ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}

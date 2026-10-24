@@ -1,5 +1,6 @@
 .env*
 !.env.example
+!.env.production.example
 
 # Credentials and certificates
 secrets/

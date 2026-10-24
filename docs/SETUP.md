@@ -23,7 +23,7 @@ In PowerShell:
 Copy-Item .env.example .env
 ```
 
-Configure an OpenAI-compatible chat endpoint before starting the backend; configure Qdrant Cloud for the readiness check to pass. `.env` is ignored by Git; never put credentials in `.env.example` or commit them.
+Configure server-only `CLOUDINARY_URL` for private files and an OpenAI-compatible chat endpoint before starting the backend; configure Qdrant Cloud for the readiness check to pass. `.env` is ignored by Git; never put credentials in `.env.example` or commit them.
 
 The supported settings in `.env.example` are:
 
@@ -36,7 +36,9 @@ The supported settings in `.env.example` are:
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins |
 | `DATABASE_URL` | *(required)* | Complete hosted PostgreSQL URL, including SSL options; optional local-db profile described below |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | See `.env.example` | Local Compose PostgreSQL settings |
-| `AUTH_SESSION_SECONDS` | `3600` | Native bearer session lifetime; standalone browser cookie sessions persist without this server expiry |
+| `AUTH_SESSION_SECONDS` | `3600` | Native bearer session lifetime |
+| `AUTH_PERSISTENT_SESSION_SECONDS` | `2592000` | Absolute lifetime for new browser sessions (30 days) |
+| `CLOUDINARY_URL` | *(required, server only)* | Authenticated private originals shared by API and file consumers |
 | `AUTH_COOKIE_SECURE` | `false` | Require HTTPS for the session cookie; automatically enabled outside development/test |
 | `AUTH_COOKIE_SAME_SITE` | `lax` | Cookie SameSite policy: `lax`, `strict`, or `none` (HTTPS required for `none`) |
 | `TEST_DATABASE_URL` | *(explicit test database)* | Used only by tests and synthetic verification |
@@ -55,9 +57,9 @@ The supported settings in `.env.example` are:
 | `QDRANT_DISTANCE` | `Cosine` | Collection distance metric |
 | `VITE_API_URL` | `http://localhost:8000` | Frontend build-time API URL; must be reachable by the browser |
 
-The frontend port is currently fixed at host port `5173` (container port `80`). If you change `BACKEND_PORT`, also update `VITE_API_URL` and the CORS origins to match the ports/origin you use.
+The frontend port is currently fixed at host port `5173` (container port `8080`). If you change `BACKEND_PORT`, also update `VITE_API_URL` and the CORS origins to match the ports/origin you use.
 
-To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY` to the compatible provider's values. DeepSeek and Groq use this same adapter; no application-code change is required. AI configuration is validated when a model is requested and reported by readiness, without a paid readiness request. Missing credentials do not prevent lightweight API startup. Qdrant is connected and its collection is initialized or validated by the readiness check, so a Qdrant outage does not prevent the lightweight liveness endpoint from responding.
+To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_URL`, `AI_MODEL`, and `AI_API_KEY` to the compatible provider's values. DeepSeek and Groq use this same adapter; no application-code change is required. AI configuration is validated when a model is requested and reported by readiness, without a paid readiness request. Missing credentials do not prevent lightweight API startup. Qdrant is connected and its existing collection is validated by the readiness check, so a Qdrant outage does not prevent the lightweight liveness endpoint from responding.
 
 Embeddings are independent of the chat provider. `intfloat/multilingual-e5-small` runs locally in the backend container; it is downloaded while building the image, uses CPU by default, and does not call an external embedding API. Changing `EMBEDDING_MODEL` requires rebuilding the backend image and reindexing the Qdrant collection. Mentra checks the collection's dimension, distance metric, model, and resolved model revision; it will not mix incompatible indexes. When replacing BGE with E5, stop API/ingestion/assessment services and run the explicit [vector reset procedure](../backend/app/rag/README.md#e5-reset-and-verification). Matching 384-dimensional shapes do not make the two embedding spaces compatible.
 
@@ -69,7 +71,7 @@ From the repository root:
 docker compose up --build -d --wait --wait-timeout 180
 ```
 
-Compose starts `backend`, `frontend`, `rag-worker`, `assessment-worker` and `events-worker`. Workers use the backend image; the RAG worker shares its private materials volume. Startup applies migrations and checks the schema revision against the configured PostgreSQL database. Local PostgreSQL is opt-in: run `docker compose --profile local-db up -d postgres` and explicitly set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra` for containers. The frontend waits for backend liveness.
+Compose starts `backend`, `frontend`, `rag-worker`, `assessment-worker`, `events-worker`, `summarizer` and `files-worker`. Workers use the backend image; private original bytes live in Cloudinary, with ownership and lifecycle metadata in PostgreSQL. Startup applies migrations and checks the schema revision against the configured PostgreSQL database. Local PostgreSQL is opt-in: run `docker compose --profile local-db up -d postgres` and explicitly set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra` for containers. The frontend waits for backend liveness.
 
 ## 5. Verify the app
 
@@ -122,7 +124,7 @@ docker compose exec backend python -m alembic -c /app/alembic.ini check
 docker compose exec backend python -m pip check
 ```
 
-The repository migration head is `20261013_0018`, including proposals, notifications, assessments, web search and conversation summaries after the original identity/Library/chat/memory/Events foundations. Check `current` against repository head; documentation alone does not establish the deployed revision. Migrations
+The repository migration head is `20261021_0030`, including proposals, notifications, assessments, web search and conversation summaries after the original identity/Library/chat/memory/Events foundations. Check `current` against repository head; documentation alone does not establish the deployed revision. Migrations
 must preserve existing non-feature records; rehearse upgrade/downgrade on a
 dedicated test database before release. API liveness and AI configuration checks
 do not prove the paid provider can generate a response. Insufficient provider balance
@@ -161,6 +163,8 @@ For code conventions, see [frontend/standards.md](../frontend/standards.md) and 
 
 ## Unified files — 20 October 2026
 
-Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+Original uploads now use the shared [Files module](../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; paths use `FILES_NAMESPACE/(FILES_ENVIRONMENT or APP_ENV)`, defaulting to `mentra/<APP_ENV>/`. Preserve the historical storage suffix explicitly when enabling production mode for existing originals. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
 
 Chat and persistent memory summaries share one durable `summarizer` worker and the configured LLM, while retaining independent prompts and token/character limits. Apply migrations through `20261021_0030` before starting the updated services. The old `memory-summary-worker` service is replaced; remove its orphan container during the upgrade. See [memory summaries](memory-summaries.md) for settings, recovery and verification.
+
+For HTTPS, proxy trust, initial index provisioning, backups, legacy-file migration and rollback, follow the [production runbook](production-readiness.md). Backend container builds and CI constrain transitive packages with `backend/requirements.lock`; update and audit the manifest and lock together.

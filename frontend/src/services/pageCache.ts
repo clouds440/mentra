@@ -1,3 +1,5 @@
+import { openBroadcastChannel } from '../utils/broadcastChannel';
+
 // Small, in-memory page cache. Live chat, grading and job polling stay outside it.
 const entries = new Map<string, { value: unknown; saved: number }>();
 const pending = new Map<string, { controller: AbortController; promise: Promise<unknown>; consumers: number }>();
@@ -41,8 +43,9 @@ export function setPageCacheOwner(next: string | null) {
   invalidatePageCache();
   owner = next;
   changes?.close(); changes = undefined;
-  if (next && typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
-    changes = new BroadcastChannel(`mentra-pages-${next}`);
+  if (next && typeof window !== 'undefined') {
+    changes = openBroadcastChannel(`mentra-pages-${next}`) ?? undefined;
+    if (!changes) return;
     changes.onmessage = ({ data }) => {
       if (data === null || Array.isArray(data) && data.every(scope => typeof scope === 'string')) {
         invalidatePageCache(data ?? undefined, true, false);

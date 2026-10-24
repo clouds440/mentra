@@ -3,6 +3,7 @@
 node_modules/
 dist/
 .vite/
+.cache/
 coverage/
 *.log
 test-results/

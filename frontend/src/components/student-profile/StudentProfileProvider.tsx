@@ -3,6 +3,7 @@ import { ApiError } from '../../services/api';
 import { getProfile, profileError } from '../../services/studentProfile';
 import type { StudentProfile } from '../../types/studentProfile';
 import { useAuth } from '../auth/AuthProvider';
+import { openBroadcastChannel } from '../../utils/broadcastChannel';
 
 interface ProfileContextValue {
   profile: StudentProfile | null;
@@ -48,8 +49,8 @@ export function StudentProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const restore = () => { void refresh().catch(() => {}); };
     restore();
-    if (typeof BroadcastChannel !== 'undefined') {
-      channel.current = new BroadcastChannel('mentra-profile');
+    channel.current = openBroadcastChannel('mentra-profile');
+    if (channel.current) {
       channel.current.onmessage = ({ data }) => { if (data === authRef.current.identity?.learner_id) restore(); };
     }
     return () => {

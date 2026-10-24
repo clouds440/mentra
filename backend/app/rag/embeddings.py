@@ -103,7 +103,8 @@ class SentenceTransformerEmbeddingService:
                 device=app_settings.embedding_device,
                 local_files_only=True,
             )
-            dimension = self._model.get_sentence_embedding_dimension()
+            dimension_reader = getattr(self._model, 'get_embedding_dimension', None)
+            dimension = (dimension_reader or self._model.get_sentence_embedding_dimension)()
         except (OSError, ValueError, RuntimeError) as exc:
             raise EmbeddingModelError(
                 f"Could not load local embedding model {baked_model!r} "

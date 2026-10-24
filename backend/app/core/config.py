@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     frontend_origin: str = "http://localhost:5173"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    database_url: str = ""
+    database_url: str = Field(default='', repr=False)
     database_role: Literal['api', 'worker'] = 'api'
     database_pool_size: int = Field(default=5, ge=1, le=100)
     database_pool_overflow: int = Field(default=5, ge=0, le=100)
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     ai_provider: str = "openai_compatible"
     ai_model: str = ""
     ai_base_url: str = ""
-    ai_api_key: str = ""
+    ai_api_key: str = Field(default='', repr=False)
     ai_temperature: float = Field(default=0.2, ge=0, le=2)
     ai_timeout: float = Field(default=30, gt=0)
     ai_max_retries: int = Field(default=2, ge=0)
@@ -91,11 +91,14 @@ class Settings(BaseSettings):
     embedding_worker_timeout: float = Field(default=10, gt=0, le=60)
     embedding_initialization_timeout: float = Field(default=45, gt=0, le=120)
     qdrant_url: str = ""
-    qdrant_api_key: str = ""
+    qdrant_api_key: str = Field(default='', repr=False)
     qdrant_collection: str = ""
     qdrant_distance: str = "Cosine"
     cloudinary_url: str = Field(default='', repr=False)
     files_namespace: str = Field(default='mentra', pattern=r'^[a-zA-Z0-9_-]{1,50}$')
+    # Independent of deployment security mode so existing original paths survive
+    # a development-to-production promotion. Empty retains historical behavior.
+    files_environment: str = Field(default='', pattern=r'^[a-zA-Z0-9_-]{0,80}$')
     files_timeout_seconds: int = Field(default=60, ge=10, le=120)
     files_concurrency: int = Field(default=8, ge=1, le=32)
     rag_max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1024)
@@ -124,6 +127,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        hide_input_in_errors=True,
     )
 
     @model_validator(mode='after')
@@ -131,6 +135,37 @@ class Settings(BaseSettings):
         development = self.app_env.lower() in {'development', 'dev', 'test'}
         if self.auth_cookie_same_site == 'none' and development and not self.auth_cookie_secure:
             raise ValueError('AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true and HTTPS')
+        return self
+
+    @model_validator(mode='after')
+    def browser_origins(self):
+        from urllib.parse import urlsplit
+        development = self.app_env.lower() in {'development', 'dev', 'test'}
+        normalized = []
+        for origin in [self.frontend_origin, *self.allowed_origins]:
+            origin = origin.strip()
+            if origin == '*' and development:
+                normalized.append(origin)
+                continue
+            parsed = urlsplit(origin)
+            port = parsed.port  # Reject malformed/out-of-range ports before startup.
+            if (parsed.scheme not in {'http', 'https'} or not parsed.hostname
+                    or parsed.username or parsed.password or parsed.path not in {'', '/'}
+                    or parsed.query or parsed.fragment or '*' in parsed.hostname
+                    or '%' in parsed.hostname or any(char.isspace() for char in parsed.hostname)):
+                raise ValueError('FRONTEND_ORIGIN and CORS_ORIGINS must contain explicit HTTP(S) origins without paths or credentials')
+            if not development and parsed.scheme != 'https':
+                raise ValueError('Production FRONTEND_ORIGIN and CORS_ORIGINS require explicit HTTPS origins')
+            # Browsers lowercase/IDNA-encode hosts and omit default ports in
+            # Origin headers. Store the same spelling for CORS and cookie CSRF.
+            hostname = parsed.hostname.encode('idna').decode('ascii').lower()
+            if ':' in hostname:
+                from ipaddress import IPv6Address
+                hostname = f'[{IPv6Address(hostname).compressed}]'
+            suffix = '' if port is None or port == (443 if parsed.scheme == 'https' else 80) else f':{port}'
+            normalized.append(f'{parsed.scheme}://{hostname}{suffix}')
+        self.frontend_origin = normalized[0]
+        self.cors_origins = ','.join(dict.fromkeys(normalized[1:]))
         return self
 
     @model_validator(mode='after')

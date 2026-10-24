@@ -34,7 +34,7 @@ class CloudinaryProvider:
         self.settings = settings
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", settings.app_env):
             raise ValueError("APP_ENV must be a simple file namespace name")
-        self.namespace = f"{settings.files_namespace}/{settings.app_env}"
+        self.namespace = f"{settings.files_namespace}/{settings.files_environment or settings.app_env}"
         from urllib.parse import urlsplit, unquote
 
         parsed = urlsplit(settings.cloudinary_url)

@@ -88,16 +88,21 @@ async function workspace(page: Page, running = false, populated = false, stream 
       body = url.searchParams.has('after') ? { ...snapshot(), incremental:true, items:items.filter(item => Number(item.sequence) > Number(url.searchParams.get('after'))) } : snapshot();
     }
     else if (path.includes('/chat-attachments/')) body = {...file, ready:true, warnings:[], error:null, library_result:null};
-    else if (path.endsWith('/documents')) body = {items:populated ? [{id:'material-1', title:'Motion and forces', filename:'Physics notes.pdf', context_ids:[context.context_id], jobs:[], active_generation_id:'generation-1', archived:false}] : [], total:populated ? 1 : 0, limit:30, offset:0};
+    else if (path.endsWith('/documents') || path.endsWith('/documents/page')) body = {items:populated ? [{id:'material-1', title:'Motion and forces', filename:'Physics notes.pdf', context_ids:[context.context_id], jobs:[], active_generation_id:'generation-1', archived:false}] : [], total:populated ? 1 : 0, limit:30, offset:0, contexts:[context]};
     else if (path.endsWith('/learning-contexts')) body = [context];
     else if (path.endsWith('/learning/understanding')) body = {items:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [],total:populated ? 1 : 0,total_concepts:populated ? 1 : 0,limit:10,offset:0,generated_at:conversation.created_at};
     else if (path.endsWith('/learning')) body = {learner:{concepts:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [], generated_at:conversation.created_at, context_ids:[]}, recommendations:populated ? [{concept_id:'forces', name:'Forces', reason:'A little more practice will help you connect the ideas.'}] : [], verification:[]};
     else if (path.endsWith('/assessments/preferences')) body = {auto_add:false, revision:1};
-    else if (path.endsWith('/assessments')) body = {items:populated ? [{id:'assessment-1', title:'Understanding forces', questions:[], purpose:'practice'}] : [], next_offset:null};
+    else if (path.endsWith('/assessments') || path.endsWith('/assessments/page')) body = {items:populated ? [{id:'assessment-1', title:'Understanding forces', questions:[], question_count:0,part_count:0,has_paper:false,purpose:'practice'}] : [], next_offset:null,contexts:[context],detail:null,attempts:[]};
     else if (path.endsWith('/events')) body = {items:populated ? [{id:'event-1', title:'Physics study session', local_date:'2026-10-12', timezone:'UTC', kind:'study', status:'scheduled', bucket:'upcoming'}] : [], next_cursor:null};
     else if (path.endsWith('/notifications/unread-count')) body = {count:0};
     else if (path.endsWith('/notifications/preferences')) body = {enabled:true, disabled_kinds:[], revision:1};
     else if (path.endsWith('/notifications')) body = {items:populated ? [{id:'notification-1', title:'Time for a little physics', body:'Your study session is coming up. Pick up where you left off.', created_at:conversation.created_at, read_at:null, target_kind:'event', target_id:'event-1'}] : [], unread_count:populated ? 1 : 0, next_cursor:null};
+    else if (path.endsWith('/learning/page')) body = {overview:{learner:{concepts:[],generated_at:conversation.created_at,context_ids:[]}, recommendations:populated ? [{concept_id:'forces', name:'Forces', reason:'A little more practice will help you connect the ideas.'}] : [],verification:[]},contexts:[context],candidates:[],understanding:{items:populated ? [{concept_id:'forces',name:'Forces',knowledge_status:'developing',mastery:.6,estimate_confidence:.5,retention_confidence:.4}] : [],total:populated ? 1 : 0,total_concepts:populated ? 1 : 0,limit:10,offset:0,generated_at:conversation.created_at}};
+    else if (path.endsWith('/events/page')) body = {items:populated ? [{id:'event-1', title:'Physics study session', local_date:'2026-10-12', timezone:'UTC', kind:'study', status:'scheduled', bucket:'upcoming'}] : [],next_cursor:null,detail:null,proposals:[],proposals_error:false};
+    else if (path.endsWith('/memories/page')) body = {items:[],next_cursor:null,preferences:{automatic_memory:false,revision:1}};
+    else if (path.endsWith('/notifications/unread')) body = {unread_count:0,sync_revision:0};
+    else if (path.endsWith('/assessments/mistakes')) body = {items:[],total:0,active_count:0,next_offset:null,contexts:[],assessments:[],topics:[]};
     else if (path.endsWith('/rag/capabilities')) body = {uploads_enabled:true, max_upload_bytes:1000000, formats:['pdf']};
     await route.fulfill({json:body});
   });
@@ -169,9 +174,9 @@ for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390
     await expect.poll(async () => (await geometry()).windowScroll).toBe(0);
     if (size.width === 1280) {
       const width = await chat.locator(':scope > div').evaluate(el => el.getBoundingClientRect().width);
-      expect(width).toBe(832);
+      expect(width).toBe(960);
       const composerWidth = await page.getByRole('form', {name:'Message Mentra'}).evaluate(el => el.getBoundingClientRect().width);
-      expect(composerWidth).toBe(width);
+      expect(composerWidth).toBe(832);
     }
     state.complete(markdown);
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -428,12 +433,15 @@ test('Stop replaces Send and the saved stopped response survives reload', async 
 });
 
 test('workspace pages share responsive surfaces and select options can exceed the trigger', async ({page}, info) => {
+  // Eighteen route loads and desktop/mobile screenshots need a traversal budget,
+  // rather than the default budget for a single-page interaction.
+  test.slow();
   await workspace(page, false, true);
   for (const width of [1280, 390]) {
     await page.setViewportSize({width, height:900});
     for (const path of ['/library', '/library/new', '/progress', '/progress?tab=events', '/assessments', '/assessments?tab=create', '/notifications', '/settings', '/settings?tab=notifications']) {
       await page.goto(path);
-      await expect(page.locator('.workspace-header')).toBeVisible();
+      await expect(page.locator('.workspace-header')).toBeVisible({timeout:10_000});
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       if (path === '/library') {
         const trigger = page.getByRole('combobox', {name:'Learning context', exact:true});

@@ -124,6 +124,10 @@ def byte_range(value, size):
     if not match or not any(match.groups()):
         return False
     first, last = match.groups()
+    # Oversized numeric headers must produce 416, not Python's int digit-limit
+    # ValueError (or expensive arbitrary-precision conversion).
+    if len(first) > 20 or len(last) > 20:
+        return False
     if not first:
         suffix = int(last)
         if suffix <= 0:
@@ -191,10 +195,15 @@ async def deliver(
         )
         response = await run_in_threadpool(upstream.__enter__)
     except BaseException:
-        if upstream:
-            await run_in_threadpool(upstream.__exit__, None, None, None)
-        await run_in_threadpool(lease.__exit__, None, None, None)
-        files.slots.release()
+        with anyio.CancelScope(shield=True):
+            try:
+                if upstream:
+                    await run_in_threadpool(upstream.__exit__, None, None, None)
+            finally:
+                try:
+                    await run_in_threadpool(lease.__exit__, None, None, None)
+                finally:
+                    files.slots.release()
         raise
     cleanup_lock = Lock()
     cleaned = False

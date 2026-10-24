@@ -4,6 +4,7 @@ import * as api from '../services/conversations';
 import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
 import { ChatCache } from './chatCache';
+import { openBroadcastChannel } from '../utils/broadcastChannel';
 import type { Conversation, MessagePage, PendingTurn, StoredMessage, Turn } from '../types/conversations';
 import type { ChatSelection } from '../types/rag';
 
@@ -67,7 +68,7 @@ class ChatStore {
     if (this.owner === owner) return;
     this.stop(!!this.owner); this.owner = owner; this.cache = new ChatCache(owner);
     const cache = this.cache, signal = this.controller.signal;
-    this.channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(`mentra-chat-${owner}`);
+    this.channel = openBroadcastChannel(`mentra-chat-${owner}`);
     if (this.channel) this.channel.onmessage = () => { void this.sync(); };
     try {
       const stored = await cache.hydrate(); if (!this.alive(signal)) return;

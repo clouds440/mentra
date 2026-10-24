@@ -13,7 +13,7 @@ from app.core.identifiers import canonical_learner_id
 
 def main():
     parser = argparse.ArgumentParser(description='Inspect RAG index identity or queue resumable owned reindex jobs.')
-    parser.add_argument('operation', choices=['health', 'rebuild', 'reset-embeddings'])
+    parser.add_argument('operation', choices=['initialize', 'health', 'rebuild', 'reset-embeddings'])
     parser.add_argument('--learner-id')
     parser.add_argument('--apply', action='store_true', help='Apply the operation (reset-embeddings deletes the configured vector index); otherwise report counts.')
     parser.add_argument('--run-id', help='Reuse this UUID to make an operator rebuild idempotent; rebuild only.')
@@ -26,6 +26,12 @@ def main():
     vector = QdrantVectorStore(settings, embedding)
     service = create_rag_service(create_learner_engine(), embedding, vector)
     try:
+        if args.operation == 'initialize':
+            # Creates only a missing collection/indexes; incompatible existing
+            # dimensions/model identity fail closed without deleting anything.
+            vector.initialize_chunk_indexes()
+            print(json.dumps(dict(status='initialized', index=vector.collection_name)))
+            return
         if args.operation == 'reset-embeddings':
             # Run with API and all ingestion/assessment workers stopped. No source
             # tables or files are deleted; PostgreSQL remains canonical.
@@ -63,6 +69,7 @@ def main():
         print(json.dumps(service.repository.queue_rebuild(owner, canonical_learner_id(args.run_id), service.config(), dry_run=not args.apply)))
     finally:
         service.close()
+        service.files.close()
         vector.close()
 
 

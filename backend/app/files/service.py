@@ -104,7 +104,7 @@ class FilesService:
                 .mappings()
                 .first()
             )
-        if not row:
+        if not row or (row['expires_at'] and row['expires_at'] <= now()):
             raise missing()
         return self.public(row)
 
@@ -578,7 +578,10 @@ class FilesService:
                 values = dict(
                     state="DELETED", lease_token=None, lease_until=None, error=None
                 )
-            except Exception:
+            except Exception as error:
+                from app.core.logging import workflow_logger
+                from app.core.observability.sanitization import error_metadata
+                workflow_logger.event('files.cleanup_deferred', file_id=row['id'], error=error_metadata(error))
                 values = dict(
                     attempts=row["attempts"] + 1,
                     lease_token=None,

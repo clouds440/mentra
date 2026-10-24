@@ -1,0 +1,51 @@
+# Install on the TLS proxy host after replacing every ${...} placeholder.
+# Run nginx -t before reload. This is a template, not a certificate provisioner.
+# Assumes the proxy runs on the Docker host and ports bind only to loopback.
+server {
+    listen 80;
+    server_name ${FRONTEND_HOST} ${API_HOST};
+    return 308 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${FRONTEND_HOST};
+    ssl_certificate ${FRONTEND_CERTIFICATE};
+    ssl_certificate_key ${FRONTEND_CERTIFICATE_KEY};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location / {
+        proxy_pass http://127.0.0.1:5173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${API_HOST};
+    ssl_certificate ${API_CERTIFICATE};
+    ssl_certificate_key ${API_CERTIFICATE_KEY};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+    # Default originals cap: 25 MiB plus bounded multipart framing.
+    # Keep this aligned if RAG_MAX_UPLOAD_BYTES is raised.
+    client_max_body_size 26m;
+    client_body_timeout 30s;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        # Replace client-supplied forwarding headers at the trust boundary.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 130s;
+        proxy_send_timeout 130s;
+    }
+}

@@ -1,4 +1,4 @@
-"""Bound JSON bytes before framework parsing, including chunked requests."""
+"""Bound request bytes before framework parsing, including chunked requests."""
 from starlette.responses import JSONResponse
 from app.files.upload_limit import UploadTooLarge
 
@@ -11,8 +11,9 @@ class JsonBodyLimit:
         if scope['type'] != 'http':
             return await self.app(scope, receive, send)
         headers = dict(scope.get('headers', []))
-        media = headers.get(b'content-type', b'').split(b';')[0].lower()
-        if media != b'application/json' and not media.endswith(b'+json'):
+        # FastAPI reads a body even when Content-Type is missing or invalid.
+        # Only the dedicated upload route has a separate, larger byte budget.
+        if scope.get('path') == '/api/v1/files/uploads' and scope.get('method') == 'POST':
             return await self.app(scope, receive, send)
         path = scope.get('path', '')
         maximum = 20 * 1024 * 1024 if path == '/api/v1/chat' else 2 * 1024 * 1024

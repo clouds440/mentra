@@ -1,0 +1,39 @@
+# Apply with: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml ...
+# Validate first with backend/scripts/validate_production.py. No public proxy is started here.
+x-production: &production
+  APP_ENV: production
+  FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the actual public HTTPS frontend origin}
+  CORS_ORIGINS: ${CORS_ORIGINS:?Set explicit public HTTPS browser origins}
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment:
+      <<: *production
+      AUTH_COOKIE_SECURE: "true"
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:?Set the actual proxy source IP or CIDR}
+    ports: !override
+      - "${BACKEND_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set a versioned frontend release image}
+    build:
+      args:
+        MENTRA_RELEASE: "true"
+        VITE_API_URL: ${VITE_API_URL:?Set the actual public HTTPS API origin}
+    ports: !override
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:5173:8080"
+  rag-worker:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment: *production
+  assessment-worker:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment: *production
+  events-worker:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment: *production
+  summarizer:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment: *production
+  files-worker:
+    image: ${BACKEND_IMAGE:?Set a versioned backend release image}
+    environment: *production

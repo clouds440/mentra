@@ -1,5 +1,7 @@
 import { setPageCacheOwner } from '../../services/pageCache';
 import { setFileCacheOwner } from '../../services/fileSessionCache';
+import { setUploadOwner } from '../../services/files';
+import { openBroadcastChannel } from '../../utils/broadcastChannel';
 import { assessmentSession } from '../../stores/assessmentSession';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as authApi from '../../services/auth';
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function setSessionOwner(owner: string | null) {
   setPageCacheOwner(owner);
   setFileCacheOwner(owner);
+  setUploadOwner(owner);
   assessmentSession.setOwner(owner);
 }
 
@@ -66,8 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refresh = () => { if (document.visibilityState === 'visible') void restore(); };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
-    if (typeof BroadcastChannel !== 'undefined') {
-      channel.current = new BroadcastChannel('mentra-auth');
+    channel.current = openBroadcastChannel('mentra-auth');
+    if (channel.current) {
       channel.current.onmessage = () => { void restore(); };
     }
     return () => {

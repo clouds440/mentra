@@ -1,4 +1,4 @@
-"""Pinned PostgresSaver 3.1.2 schema, managed by Alembic."""
+"""PostgresSaver 3.1.x schema, managed by Alembic."""
 from sqlalchemy import Table, Column, Text, Integer, LargeBinary, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata

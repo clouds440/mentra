@@ -57,11 +57,14 @@ async def serve():
     from app.rag.qdrant_store import QdrantVectorStore
     from app.rag.factory import create_rag_service
     from app.student_profile.factory import create_student_profile_service
+    from app.files.factory import create_files
+    files = create_files()
+    files.check_configuration()
     embedding = ProcessEmbeddingService(settings)
     vectors = QdrantVectorStore(settings, embedding)
-    rag = create_rag_service(learner, embedding, vectors)
+    rag = create_rag_service(learner, embedding, vectors, files)
     profile = create_student_profile_service(factory, llm)
-    worker = AssessmentWorker(create_assessments(get_session_factory(), llm, learner, rag, profile))
+    worker = AssessmentWorker(create_assessments(get_session_factory(), llm, learner, rag, profile, files=files))
     from app.langchain.evidence_worker import ChatEvidenceWorker
     from app.langchain.repositories.evidence import ChatEvidenceRepository
     evidence_worker = ChatEvidenceWorker(ChatEvidenceRepository(get_session_factory()), worker.service.workflows.llm, worker.service.workflows.learner)
@@ -82,6 +85,6 @@ async def serve():
         await asyncio.gather(consume(worker), consume(evidence_worker), consume(AssessmentGenerationWorker(worker.service)),
             consume(AssessmentEvidenceWorker(worker.service)))
     finally:
-        rag.close(); vectors.close(); embedding.close()
+        rag.close(); vectors.close(); embedding.close(); files.close()
 
 if __name__ == '__main__': asyncio.run(serve())
