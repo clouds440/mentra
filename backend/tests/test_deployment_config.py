@@ -4,6 +4,19 @@ import yaml
 
 
 class DeploymentConfigTests(unittest.TestCase):
+    def test_reranker_cpu_budget_reaches_api_and_assessment_worker(self):
+        from app.core.config import Settings
+        from pydantic import ValidationError
+        root = Path(__file__).resolve().parents[2]
+        config = yaml.safe_load((root / 'docker-compose.yml').read_text())
+        key = 'RAG_RERANKER_MAX_CANDIDATES'
+        for role in ('backend', 'assessment-worker'):
+            self.assertEqual(config['services'][role]['environment'][key], '${RAG_RERANKER_MAX_CANDIDATES:-20}')
+        self.assertEqual(Settings(_env_file=None).rag_reranker_max_candidates, 20)
+        for invalid in (0, 41):
+            with self.assertRaises(ValidationError):
+                Settings(_env_file=None, rag_reranker_max_candidates=invalid)
+
     def test_api_and_grading_worker_share_model_environment(self):
         root = Path(__file__).resolve().parents[2]
         config = yaml.safe_load((root / 'docker-compose.yml').read_text())

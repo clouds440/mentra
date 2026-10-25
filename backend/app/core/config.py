@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     rag_hybrid_enabled: bool = True
     rag_reranker_path: str = ''
     rag_reranker_timeout: float = Field(default=5, gt=0, le=30)
+    rag_reranker_max_candidates: int = Field(default=20, ge=1, le=40)
     rag_inference_wait_seconds: float = Field(default=2, gt=0, le=10)
     speech_model: Literal['tiny', 'base', 'small'] = 'base'
     speech_model_path: str = ''

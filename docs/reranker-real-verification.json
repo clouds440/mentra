@@ -1,0 +1,234 @@
+{
+  "reranker": {
+    "model_name": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+    "model_version": "1427fd652930e4ba29e8149678df786c240d8825"
+  },
+  "embedding": "intfloat/multilingual-e5-small",
+  "device": "cpu",
+  "documents": 9,
+  "cases": 27,
+  "reranker_passed": 27,
+  "pipeline_passed": 27,
+  "fallback": "passed",
+  "worker_reused": true,
+  "cold_rank_seconds": 6.8831,
+  "warm_rank_max_seconds": 0.0477,
+  "results": [
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "en",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ur",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "en",
+      "corpus_language": "ar",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "en",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ur",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ur",
+      "corpus_language": "ar",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 0,
+      "reranker_top1": 0,
+      "pipeline_top1": 0,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 1,
+      "reranker_top1": 1,
+      "pipeline_top1": 1,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "en",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ur",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    },
+    {
+      "query_language": "ar",
+      "corpus_language": "ar",
+      "expected": 2,
+      "reranker_top1": 2,
+      "pipeline_top1": 2,
+      "reranking": "ok"
+    }
+  ]
+}

@@ -37,3 +37,11 @@ Run `python -m scripts.rag_admin health` after the ingestion queue drains to che
 If an original file is already missing and there is no saved full extraction, the reset can rebuild from complete published text chunks for that exact version. It reconstructs the retained text blocks, rechunks with the E5 tokenizer, and attaches a missing-original warning to the new generation. Existing version metadata and old citation chunks remain intact; this does not recover the missing original file.
 
 Prefix policy follows the [official E5 model card](https://huggingface.co/intfloat/multilingual-e5-small).
+
+## Local multilingual reranking
+
+The optional `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` cross-encoder reranks owned, hydrated E5/hybrid candidates. Copy the four `RAG_RERANKER_*` values from `.env.example` and follow the [setup instructions](../../../docs/SETUP.md#optional-local-multilingual-reranker) to rebuild and enable it. Model weights/tokenizer are baked at a resolved revision; inference is CPU-only, local-only, and never enables remote model code. This PyTorch integration keeps the existing worker, batching, timeout and fallback architecture. ONNX is not enabled.
+
+The default 20-candidate cap bounds CPU work. Queries and passages are sent as plain pairs without E5 prefixes; no embedding changes or vector rebuild are needed. All languages remain accepted. English, Urdu and Arabic are priority regression fixtures, not a language restriction.
+
+`tests/rag/test_reranker_real.py` is an opt-in end-to-end test requiring `TEST_DATABASE_URL` for a disposable PostgreSQL database, plus local `TEST_EMBEDDING_PATH` and `TEST_RERANKER_PATH`. It ingests nine synthetic documents through the files/RAG worker, uses real E5 vectors with local Qdrant, and checks 27 monolingual/cross-language reranking/search cases, document scoping, worker reuse and fallback. See [real-model results](../../../docs/reranker-real-verification.json). This small regression corpus is not a broad retrieval-quality benchmark.

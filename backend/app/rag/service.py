@@ -329,7 +329,7 @@ class RAGService:
         diagnostics.rejected_candidates = len(ranked) - len(rows)
         mark('hydration')
         if self.reranker:
-            candidates = [(key, score) for key, score in ranked if key in rows][:40]
+            candidates = [(key, score) for key, score in ranked if key in rows][:self.settings.rag_reranker_max_candidates]
             scores = self.reranker.rank(request.query, [rows[key]['content'] for key, _ in candidates]) if candidates else []
             if scores is not None:
                 ranked = sorted([(key, score) for (key, _), score in zip(candidates, scores, strict=True)], key=lambda item: (-item[1], item[0]))

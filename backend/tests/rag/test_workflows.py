@@ -399,6 +399,22 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(result.warnings)
         self.assertTrue(result.chunks)
 
+    def test_reranker_candidate_limit_is_applied_after_owned_hydration(self):
+        from unittest.mock import Mock
+        self.ready()
+        for index in range(2):
+            self.upload(f'Another decorators source {index}.'.encode(), key=f'rerank-{index}')
+            self.worker.run_once()
+        self.settings.rag_reranker_max_candidates = 2
+        ranker = Mock()
+        ranker.rank.return_value = [.1, .9]
+        self.service.reranker = ranker
+        result = self.search()
+        self.assertEqual(len(ranker.rank.call_args.args[1]), 2)
+        self.assertEqual(result.diagnostics.reranking, 'ok')
+        self.assertEqual(len(result.chunks), 2)
+        self.assertEqual(result.chunks[0].score, .9)
+
     def test_operator_rebuild_is_transactional_and_resumable(self):
         self.ready()
         run_id = str(__import__('uuid').uuid4())

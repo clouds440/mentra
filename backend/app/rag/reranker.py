@@ -41,7 +41,8 @@ class LocalReranker:
             if not metadata.get('model_name') or not metadata.get('model_version'):
                 raise ValueError('Reranker metadata is missing its resolved identity.')
             from sentence_transformers import CrossEncoder
-            self._model = CrossEncoder(str(self.path), local_files_only=True, trust_remote_code=False, max_length=512)
+            self._model = CrossEncoder(str(self.path), device='cpu', local_files_only=True,
+                                       trust_remote_code=False, max_length=512)
         tokenizer = self._model.tokenizer
         if len(tokenizer.encode(query, truncation=False)) > 240:
             raise ValueError('Query exceeds reranker pair budget.')

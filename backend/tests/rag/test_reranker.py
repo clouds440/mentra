@@ -1,10 +1,29 @@
 import unittest
+import json
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from app.rag.reranker import LocalReranker
 
 
 class RerankerTests(unittest.TestCase):
+    def test_model_load_is_cpu_local_only_and_reused_with_plain_pairs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / 'model-metadata.json').write_text(json.dumps(dict(
+                model_name='cross-encoder/mmarco-mMiniLMv2-L12-H384-v1', model_version='resolved-revision')))
+            model = SimpleNamespace(tokenizer=SimpleNamespace(encode=lambda *a, **k: [0]),
+                                    predict=Mock(return_value=[.9]))
+            ranker = LocalReranker(path, 5)
+            self.addCleanup(ranker.close)
+            with patch('sentence_transformers.CrossEncoder', return_value=model) as loader:
+                ranker._rank('plain query', ['plain passage'])
+                ranker._rank('plain query', ['plain passage'])
+            loader.assert_called_once_with(str(path), device='cpu', local_files_only=True,
+                                           trust_remote_code=False, max_length=512)
+            model.predict.assert_called_with([['plain query', 'plain passage']], batch_size=8)
+
     def ranker(self, tokenizer, predict):
         ranker = LocalReranker('unused-test-assets', 1)
         self.addCleanup(ranker.close)
@@ -67,3 +86,29 @@ def fake_worker(connection, path):
         pass
     finally:
         connection.close()
+
+
+class RerankerBakeTests(unittest.TestCase):
+    def test_bake_pins_revision_downloads_tokenizer_and_records_identity(self):
+        from bake_reranker_model import bake_model
+        for weight in ('model.safetensors', 'pytorch_model.bin'):
+            with self.subTest(weight=weight), tempfile.TemporaryDirectory() as directory:
+                info = SimpleNamespace(sha='resolved-revision', siblings=[SimpleNamespace(rfilename=weight)])
+                with patch('bake_reranker_model.model_info', return_value=info), \
+                     patch('bake_reranker_model.snapshot_download') as download:
+                    bake_model('selected-model', Path(directory))
+                args = download.call_args.kwargs
+                self.assertEqual(args['revision'], 'resolved-revision')
+                self.assertEqual(args['repo_id'], 'selected-model')
+                self.assertIn(weight, args['allow_patterns'])
+                self.assertIn('*.model', args['allow_patterns'])
+                self.assertEqual(json.loads((Path(directory) / 'model-metadata.json').read_text()),
+                                 dict(model_name='selected-model', model_version='resolved-revision'))
+
+    def test_bake_rejects_missing_weights(self):
+        from bake_reranker_model import bake_model
+        with patch('bake_reranker_model.model_info', return_value=SimpleNamespace(sha='v1', siblings=[])), \
+             patch('bake_reranker_model.snapshot_download') as download:
+            with self.assertRaises(RuntimeError):
+                bake_model('unsupported')
+            download.assert_not_called()

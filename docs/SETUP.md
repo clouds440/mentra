@@ -63,6 +63,21 @@ To switch chat providers, keep `AI_PROVIDER=openai_compatible` and set `AI_BASE_
 
 Embeddings are independent of the chat provider. `intfloat/multilingual-e5-small` runs locally in the backend container; it is downloaded while building the image, uses CPU by default, and does not call an external embedding API. Changing `EMBEDDING_MODEL` requires rebuilding the backend image and reindexing the Qdrant collection. Mentra checks the collection's dimension, distance metric, model, and resolved model revision; it will not mix incompatible indexes. When replacing BGE with E5, stop API/ingestion/assessment services and run the explicit [vector reset procedure](../backend/app/rag/README.md#e5-reset-and-verification). Matching 384-dimensional shapes do not make the two embedding spaces compatible.
 
+### Optional local multilingual reranker
+
+Copy these values from `.env.example` into your main `.env` to enable the CPU reranker:
+
+```dotenv
+RAG_RERANKER_MODEL=cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+RAG_RERANKER_PATH=/opt/mentra/models/reranker
+RAG_RERANKER_TIMEOUT=5
+RAG_RERANKER_MAX_CANDIDATES=20
+```
+
+`MODEL` selects the build-time download; `PATH` enables the baked model at runtime. After changing them, run `docker compose build backend`, then `docker compose up -d --no-build --force-recreate backend assessment-worker`. A restart alone cannot provision new model weights. Leave `MODEL` and `PATH` empty to disable reranking. Your existing E5 vectors remain valid; no reset/reindex is required.
+
+The reranker runs locally on CPU with a reusable process, batches of eight, and a 512-token query/passage budget. It reads plain text rather than E5 vectors or prefixed embedding inputs. `MAX_CANDIDATES` defaults to 20 and accepts 1–40. The warm inference timeout is five seconds; cold loading gets at least 30 seconds. When unavailable, retrieval reports degraded reranking and retains the original hybrid ranking. No language allowlist is applied.
+
 ## 4. Start Mentra
 
 From the repository root:
