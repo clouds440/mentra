@@ -20,7 +20,8 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
     const outcome: FeedbackOutcome = grade.outcome ?? (grade.score === question.marks ? 'correct' : grade.score === 0 ? 'wrong' : 'partial');
     return [{ question, index, grade, outcome }];
   });
-  const score = results.reduce((sum, item) => sum + item.grade.score, 0);
+  const rawScore = results.reduce((sum, item) => sum + item.grade.score, 0);
+  const score = attempt.scoring?.adjusted_score ?? rawScore;
   const maximum = assessment.questions.reduce((sum, question) => sum + question.marks, 0);
   const style = assessment.preferences?.result_style ?? 'marks';
   const percent = maximum ? score/maximum*100 : 0;
@@ -30,6 +31,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
   return <section aria-label="Assessment feedback" className="assessment-feedback min-w-0 space-y-3">
     <div className="space-y-3 rounded-xl border border-border-strong bg-surface p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-heading">Your results</h2>{style === 'marks' && <p className="text-sm font-semibold tabular-nums text-heading">Final result: {Number(score.toFixed(4))}/{Number(maximum.toFixed(4))}</p>}</div>
+      {attempt.scoring?.multiplier === .9 && <p className="text-xs leading-5 text-muted">{style === 'marks' ? `Raw score: ${attempt.scoring.raw_score}/${attempt.scoring.max_score}. ` : ''}Self-reported AI/hint use: 0.9× final-score adjustment applied. Question marks and correctness show the original rubric result.</p>}
       {style === 'marks' && <div className="h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true"><div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, percent)}%` }} /></div>}
       <div className="flex flex-wrap gap-x-3 gap-y-1.5">{(['correct', 'partial', 'wrong'] as const).map(outcome => {
         const style = feedbackAppearance[outcome];

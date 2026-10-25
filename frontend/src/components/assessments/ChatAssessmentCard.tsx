@@ -9,7 +9,8 @@ import type { AssessmentAttempt, ChatAssessmentCardData } from '../../types/asse
 import { MCQAssessment } from './MCQAssessment';
 import { AnswerSheet } from './AssessmentWorkspace';
 import { useAuth } from '../auth/AuthProvider';
-import { assessmentSession } from '../../stores/assessmentSession';
+import { assessmentSession, useLatestAssessmentAttempt } from '../../stores/assessmentSession';
+import { AnswerSheetUpload } from './AnswerSheetUpload';
 import { AssessmentPaper } from './AssessmentPaper';
 
 export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardData }) {
@@ -18,6 +19,8 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
   const owner = identity?.learner_id;
   const [card, setCard] = useState(initial);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
+  const latest = useLatestAssessmentAttempt(card.assessment.id);
+  useEffect(() => { if (!initial.attempt_id && latest && (!attempt || latest.attempt_number > attempt.attempt_number || latest.id === attempt.id && latest.revision > attempt.revision)) setAttempt(latest); }, [latest, attempt, initial.attempt_id]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [answerAction, setAnswerAction] = useState(false);
@@ -40,7 +43,7 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
         candidates.find(item => item.state !== 'draft' || Object.keys(item.answers).length > 0
           || Object.values(assessmentSession.draft(owner, `${value.assessment_id}:${item.id}`)?.answers ?? {}).some(answer=>answer.trim())) ?? candidates[0] ?? null;
       if (selected && selected.assessment_id!==value.assessment_id) throw new Error('This attempt does not belong to this assessment.');
-      if (!controller.signal.aborted) { setCard(value); setAttempt(selected); setReady(true); }
+      if (!controller.signal.aborted) { setCard(value); setAttempt(selected); if (selected) assessmentSession.observe(owner, selected); setReady(true); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessment.'); });
     return () => { controller.abort(); active.current?.abort(); };
   }, [owner, initial.id, initial.assessment_id, initial.attempt_id, reload]);
@@ -59,14 +62,17 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
     const value = card.assessment_id ? card : await assessments.publish(card.id!, signal);
     if (!signal.aborted) setCard(value);
     const result = await assessments.start(value.assessment_id!, operation.current, signal);
-    if (!signal.aborted) operation.current = crypto.randomUUID();
     return result;
+  }
+  function updateAttempt(result: AssessmentAttempt) {
+    if (result.id !== attempt?.id) operation.current = crypto.randomUUID();
+    setAttempt(result); assessmentSession.observe(owner,result);
   }
   const isMCQ = !card.deleted && !card.assessment.paper && card.assessment.questions.some(q => !!q.options?.length || (!!q.question_type && q.question_type !== 'written'));
   const InlineAnswers = isMCQ ? MCQAssessment : AnswerSheet;
   const actions = <>
     {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy && !answerAction} onClick={() => void save()}>Add to assessments</Button>}
-    {!card.deleted && (!attempt && !isMCQ || attempt?.state === 'graded') && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Start new attempt' : card.assessment_id ? 'Answer or upload work' : 'Add & answer'}</Button>}
+    {!card.deleted && (!attempt && !isMCQ || attempt?.state === 'graded') && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Start new attempt' : card.assessment_id ? 'Answer in UI' : 'Add & answer'}</Button>}
   </>;
   return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
     <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:gap-3" aria-label="Assessment header">
@@ -75,8 +81,9 @@ export function ChatAssessmentCard({ initial }: { initial: ChatAssessmentCardDat
     </div>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => setReload(value => value+1)}>Refresh</button></p>}
-    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={setAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={setAttempt} actions={actions} /> :
+    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={updateAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={updateAttempt} actions={actions} /> :
       <AssessmentPaper assessment={card.assessment} />}
+    {ready && !card.deleted && !isMCQ && !attempt && <AnswerSheetUpload attempt={null} onStart={beginInline} disabled={busy} onChange={updateAttempt} />}
     {(!ready && !error || !isMCQ && !attempt) && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     {!attempt && !isMCQ && <p className="text-xs text-muted">Ask questions or request changes in the chat before you begin. Revisions create a new version. When ready, send numbered answers or attach a document or handwritten image and ask Mentra to evaluate it.</p>}
   </section>;

@@ -47,7 +47,7 @@ class AssessmentRepository:
             questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id','correct_option_ids','concept_names')}) for question in row['questions']])
 
     def attempt_public(self, row):
-        return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3))
+        return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3))
 
     def claim_generation(self, owner, request):
         with self.transactions.write(owner) as tx:
@@ -221,15 +221,17 @@ class AssessmentRepository:
     def save_draft_answers(self, owner, identifier, body):
         with self.transactions.write(owner) as tx:
             row = self._attempt(tx._session, owner, identifier)
-            questions = self._assessment(tx._session, owner, row['assessment_id'])['questions']
+            assessment = self._assessment(tx._session, owner, row['assessment_id'])
+            questions = assessment['questions']
+            reported = body.assistance if body.assistance is not None else row.get('reported_assistance','unknown')
             self.validate_mcq_answers(questions, body.answers, partial=True)
             if row['state'] != 'draft':
                 raise AppError('REVISION_CONFLICT', 'Only draft answers can be saved.', 409)
             # Exact retries after a lost response are safe without incrementing revision.
-            if row['answers'] == body.answers: return self.attempt_public(row)
+            if row['answers'] == body.answers and row.get('reported_assistance','unknown') == reported: return self.attempt_public(row)
             if row['revision'] != body.expected_revision:
                 raise AppError('REVISION_CONFLICT', 'Answers changed. Reload before saving.', 409)
-            values = dict(answers=body.answers, revision=row['revision']+1)
+            values = dict(answers=body.answers, reported_assistance=reported, assistance='assisted' if assessment.get('practice_lineage') else reported, revision=row['revision']+1)
             tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
             return self.attempt_public(dict(row, **values))
 
@@ -276,7 +278,7 @@ class AssessmentRepository:
             self.validate_mcq_answers(questions, answers)
             values = dict(answers=answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
                 profile_context_version=self.profile_version(session, owner),
-                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', assistance='assisted' if assessment.get('practice_lineage') else body.assistance, error=None, log_context=workflow_logger.envelope())
+                submission_id=str(body.client_request_id), submission_hash=digest, evidence_status='pending', assistance='assisted' if assessment.get('practice_lineage') else body.assistance, reported_assistance=body.assistance, scoring=None, error=None, log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id == identifier).values(**values))
             from app.langchain.repositories.checkpoint_tables import delete_thread
             delete_thread(session, f'assessment-transcription-v1:{owner}:{identifier}')
@@ -289,6 +291,18 @@ class AssessmentRepository:
                 return self.attempt_public(row)
             if row['revision'] != expected_revision or row['state'] not in ('draft','pending_transcription'):
                 raise AppError('REVISION_CONFLICT', 'This attempt changed. Reload before uploading.', 409)
+            # Map printed letters / option text to the same immutable option IDs
+            # used by interactive answers. Keep unrecognized text for manual review.
+            from copy import deepcopy
+            from ..choice_answers import normalized_choice
+            extraction = deepcopy(extraction)
+            answers = {**row['answers'], **{key: value for key, value in extraction.get('answers', {}).items() if value.strip()}}
+            extraction['answers'] = answers
+            for question in self._assessment(tx._session, owner, row['assessment_id'])['questions']:
+                answer = answers.get(question['id'])
+                if question.get('options') and answer:
+                    try: answers[question['id']] = normalized_choice(question, answer)
+                    except AppError: pass
             values = dict(extraction=extraction, source_file_id=file_id, filename=filename, state='pending_transcription', revision=row['revision']+1)
             self.files.bind(tx._session,owner,file_id,'assessment',dict(assessment_attempt_id=identifier),reuse=reuse)
             tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
@@ -311,12 +325,12 @@ class AssessmentRepository:
                 raise AppError('TRANSCRIPTION_CONFIRMATION_REQUIRED','Confirm the corrected transcription.',422)
             answers = self.normalize_answers(questions, body.answers)
             self.validate_mcq_answers(questions, answers)
-            history=[*row['grade_history'],dict(grade_revision=row['grade_revision'],grades=row['grades'],answers=row['answers'],assistance=row.get('assistance','unknown'),corrected_at=self.clock().isoformat())]
+            history=[*row['grade_history'],dict(grade_revision=row['grade_revision'],grades=row['grades'],answers=row['answers'],assistance=row.get('assistance','unknown'),reported_assistance=row.get('reported_assistance','unknown'),scoring=row.get('scoring'),corrected_at=self.clock().isoformat())]
             if len(history)>10:raise AppError('CORRECTION_LIMIT','This attempt has reached its correction limit.',409)
             values=dict(grade_history=history,grade_revision=row['grade_revision']+1,answers=answers,grades=None,grading_progress={},
                 profile_context_version=self.profile_version(session, owner),
                 revision=row['revision']+1,state='submitted',submitted_at=self.clock(),worker_attempts=0,retry_at=None,
-                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',assistance='assisted' if assessment.get('practice_lineage') else body.assistance,error=None,log_context=workflow_logger.envelope())
+                submission_id=str(body.client_request_id),submission_hash=digest,evidence_status='pending',assistance='assisted' if assessment.get('practice_lineage') else body.assistance, reported_assistance=body.assistance, scoring=None,error=None,log_context=workflow_logger.envelope())
             session.execute(update(t).where(t.c.id==identifier).values(**values))
             return self.attempt_public(dict(row,**values))
 
@@ -398,7 +412,9 @@ class AssessmentRepository:
                 public_grades.append(dict(grade.model_dump(mode='json'),
                     outcome='correct' if grade.score == question['marks'] else 'wrong' if grade.score == 0 else 'partial',
                     correct_answer=correct))
-            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='graded', grades=public_grades,
+            from ..scoring import summarize_score
+            scoring = summarize_score(grades, job['assessment']['questions'], job['attempt'].get('reported_assistance','unknown'))
+            tx._session.execute(update(t).where(t.c.id == job['id']).values(state='graded', grades=public_grades, scoring=scoring,
                 evidence_status=evidence_status, evidence_receipt=receipt if apply_evidence else row.get('evidence_receipt'),
                 revision=row['revision']+1, claim_id=None, claim_until=None, retry_at=None, error=None, grading_progress={}))
             if not apply_evidence:

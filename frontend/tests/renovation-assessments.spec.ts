@@ -97,7 +97,7 @@ test('mock paper retains nested question references, marks and shared context', 
   expect(printed).toContain('90 minutes'); expect(printed).not.toContain('correct_option'); expect(printed).not.toContain('Practice mechanics.');
   await page.screenshot({path:info.outputPath('mock-paper-mobile.png'),fullPage:true});
   await page.reload(); await expect(page.getByLabel('Exam paper').getByText('90 minutes')).toBeVisible();
-  await page.getByRole('button',{name:'Answer or upload work',exact:true}).click();
+  await page.getByRole('button',{name:'Answer in UI',exact:true}).click();
   const sheet=page.getByRole('region',{name:'Assessment answer sheet'});
   await sheet.getByLabel('Answer 3 (b)',{exact:true}).fill('A saved written explanation.');
   await sheet.getByRole('button',{name:'Save progress',exact:true}).click();

@@ -117,3 +117,36 @@ Verification: 40 distinct backend cases passed across the 39-case regression run
 Settled pages no longer refresh on timers, focus, visibility changes or reconnect. Owner-scoped in-memory caches persist until relevant writes, explicit refresh, bounded capacity eviction or account changes. Successful writes invalidate dependent domains and notify mounted views and same-owner tabs. Generation, grading and ingestion continue to poll only while unfinished, and completion invalidates their dependent views. Authentication checks still verify session access without resetting page content.
 
 Mistake practice lives in Assessments; old Progress links redirect with filters and revision jobs intact. Mistake cards reuse the assessment answer component, resolving choice IDs to labels. Assessment list cards summarize the latest graded attempt with correct/incorrect counts (partial credit is included in incorrect and disclosed separately). Unattempted and ungraded attempts have distinct status badges. Summaries use one bounded, owner-scoped query for each page of assessments.
+
+
+## Answer sheets and question-paper downloads
+
+Interactive quizzes, written chat worksheets and assessment detail pages expose Upload answersheet for PDF, TXT and PNG/JPEG files. The regular chat attachment path also accepts these files for assessment answer preparation. Files remain owned by the shared Files service; extraction retains the assessment/attempt binding. Valid printed option letters or option text normalize to immutable option IDs before review. Existing draft answers survive incomplete extraction.
+
+The student reviews extracted text, confirms it, and submits through the same `/attempts/{id}/submission` route, grading worker and learner-evidence worker as UI answers. Upload alone is pending transcription, never graded evidence. The owner-scoped assessment session synchronizes original chat cards and review cards, polls only unfinished evaluation/evidence work and shows Attempted plus saved question outcomes after grading.
+
+`GET /api/v1/assessments/{id}/paper.pdf` renders an owner-authorized public assessment or unsaved current-chat draft as an A4 PDF with numbered parts, marks, available timing/instructions, and how to write/upload answers. It never publishes a draft, creates an attempt or reads private answer/rubric fields. Responses are private/no-store and include attachment download headers. The existing Print action remains available.
+
+### Verification (2026-10-25)
+
+- 37 distinct PostgreSQL integration cases across assessment, chat-assessment and answer-sheet suites passed. This includes real TXT/native PDF parsing, image upload/transcription plumbing, identical choice normalization/grading to typed answers, source ownership, extraction confirmation, preserved partial drafts, retries and public PDF export access.
+- 56 selected fixture-based UI regressions passed, including dedicated PDF/TXT/PNG uploads, regular chat attachments updating original and new cards, assigned written uploads, file-receipt retry reuse, PDF downloads and canonical graded results.
+- Two additional browser-to-database E2E cases passed for TXT interactive and PDF written assessments: real registration/profile gating, authenticated export, Files intake, native extraction, confirmation/submission, grading/evidence workers and saved results after reload. AI responses and remote file storage use the test server's deterministic substitutes; no handwriting-quality or live-provider accuracy benchmark is claimed.
+- Production TypeScript/Vite build, theme/contrast checks, targeted Python checks and whitespace checks passed. A three-page nested-question PDF was rendered and visually checked; question headings stay with content across page breaks.
+
+The browser tests exposed and fixed a first-upload refresh race and the detail page's failure to restore a graded attempt after reload. This change does not deploy or migrate the production application.
+
+
+## Self-reported assistance and final scoring
+
+Migration `20261025_0031` converts the existing assistance flag to the PostgreSQL `assessment_assistance_kind` enum (`unknown`, `independent`, `assisted`) and adds a separate enum `reported_assistance` plus nullable JSONB `scoring`. The separation preserves the existing server-enforced exposure flag for repeated practice; using a revision assessment alone never asserts that the student used AI or hints.
+
+The shared UI selector explicitly asks about AI/hints and discloses the score policy before submission. Its value is saved with drafts and submissions, including transitions to answer-sheet uploads. The grader evaluates the normal rubric. On completion, `self-reported-assistance-v1` stores raw total, adjusted total, maximum, multiplier and disclosure: reported `assisted` gets 0.9x; `independent` and `unknown` get 1.0x. The multiplier is applied once to the final total, with four-decimal rounding. Per-question marks, correctness and misconceptions retain their raw rubric meaning. The existing learner-evidence independence handling remains in force.
+
+Results display the adjusted final total and a visible raw-score/adjustment explanation. Corrections retain the prior disclosure and scoring metadata in grade history and calculate again from the new raw result, avoiding compounded penalties. Migration preserves existing grades; old rows keep `scoring=NULL` and are displayed without retroactive penalties. The downgrade refuses to discard persisted score-policy provenance.
+
+### Final assistance-policy verification (2026-10-25)
+
+The affected backend verification covered 66 cases; after extending the migration regression to recognize the new provenance downgrade guard, its focused rerun passed. All 58 selected UI checks and both full browser-to-database TXT/PDF grading cases passed, including persisted enum disclosures, adjusted totals, draft/upload transitions and reloads. Three final scoring/chat checks also passed against the rebuilt Docker frontend. The built backend separately confirmed 10 raw marks become 9 adjusted marks for reported assistance.
+
+Both Docker images were rebuilt and all seven local services refreshed. API readiness is ready, frontend login returns HTTP 200, and the configured database reports migration `20261025_0031` with the native `assessment_assistance_kind` type. A network-disabled backend container generated a valid PDF and ran the baked `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` reranker (revision `1427fd652930e4ba29e8149678df786c240d8825`) successfully. Existing backend-map and README edits are outside this assessment change.

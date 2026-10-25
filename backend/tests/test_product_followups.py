@@ -100,7 +100,9 @@ class ProductFollowupTests(unittest.IsolatedAsyncioTestCase):
         child = self.service.repository.practise_mistakes(self.owner, str(attempt.id), MistakePracticeRequest(
             client_request_id=uuid4(), expected_grade_revision=1, question_ids=[original.questions[0].id]))
         with self.db.engine.connect() as connection:
-            with self.assertRaisesRegex(RuntimeError, 'Cannot remove exposure lineage'):
+            # Newer migrations also refuse to discard saved score-policy history
+            # before the older exposure-lineage fence can be reached.
+            with self.assertRaisesRegex(RuntimeError, 'Cannot (remove exposure lineage|discard saved assessment score-adjustment provenance)'):
                 command.downgrade(migration_config(connection), '20261015_0025')
         self.assertEqual(self.service.repository.detail(self.owner, str(child.id)), child)
         with self.db.engine.connect() as connection:
@@ -118,7 +120,7 @@ class ProductFollowupTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(card['assessment_id'])
         self.service.repository.remove(self.owner, str(child.id))
         with self.db.engine.connect() as connection:
-            with self.assertRaisesRegex(RuntimeError, 'Cannot remove exposure lineage'):
+            with self.assertRaisesRegex(RuntimeError, 'Cannot (remove exposure lineage|discard saved assessment score-adjustment provenance)'):
                 command.downgrade(migration_config(connection), '20261015_0025')
 
     async def test_api_practice_and_evidence_projection_use_typed_private_responses(self):

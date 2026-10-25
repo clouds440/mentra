@@ -23,6 +23,9 @@ class AssessmentSession {
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   snapshot = () => this.status;
   attempt = (id: string) => this.attempts.get(id);
+  latest(assessment: string) {
+    return [...this.attempts.values()].filter(value => value.assessment_id === assessment && (value.state !== 'draft' || Object.keys(value.answers).length > 0)).sort((a,b) => b.attempt_number - a.attempt_number)[0];
+  }
   private publish() {
     const next = { evaluating: [...this.attempts.values()].filter(evaluating).length, submitting: this.submitting.size };
     if (next.evaluating !== this.status.evaluating || next.submitting !== this.status.submitting) this.status = next;
@@ -79,3 +82,5 @@ class AssessmentSession {
 export const assessmentSession = new AssessmentSession();
 export const useAssessmentEvaluation = () => useSyncExternalStore(assessmentSession.subscribe, assessmentSession.snapshot);
 export const useEvaluatedAttempt = (id: string) => useSyncExternalStore(assessmentSession.subscribe, () => assessmentSession.attempt(id));
+
+export const useLatestAssessmentAttempt = (id: string) => useSyncExternalStore(assessmentSession.subscribe, () => assessmentSession.latest(id));

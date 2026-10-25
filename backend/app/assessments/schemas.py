@@ -1,10 +1,26 @@
 from datetime import datetime
+from enum import Enum
 from typing import Literal, Annotated
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class Contract(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+class AssessmentAssistance(str, Enum):
+    unknown = 'unknown'
+    independent = 'independent'
+    assisted = 'assisted'
+
+
+class AttemptScoring(Contract):
+    raw_score: float = Field(ge=0)
+    adjusted_score: float = Field(ge=0)
+    max_score: float = Field(gt=0)
+    multiplier: float = Field(gt=0, le=1)
+    reported_assistance: AssessmentAssistance
+    policy: Literal['self-reported-assistance-v1']
+
 
 QuestionFormat = str
 
@@ -272,13 +288,14 @@ class RetryGrading(Contract):
 class SaveDraftAnswers(Contract):
     expected_revision: int = Field(ge=1)
     answers: dict[str, str]
+    assistance: AssessmentAssistance | None = None
 
 class SubmitAnswers(Contract):
     expected_revision: int = Field(ge=1)
     client_request_id: UUID
     answers: dict[str, str]
     transcription_confirmed: bool = False
-    assistance: Literal['unknown', 'independent', 'assisted'] = 'unknown'
+    assistance: AssessmentAssistance = AssessmentAssistance.unknown
 
 class PublicQuestion(Contract):
     question_type: str | None = None
@@ -342,5 +359,7 @@ class Attempt(Contract):
     created_at: datetime
     grade_revision: int = 1
     grade_history: list[dict] = Field(default_factory=list)
-    assistance: Literal['unknown', 'independent', 'assisted'] = 'unknown'
+    assistance: AssessmentAssistance = AssessmentAssistance.unknown
+    reported_assistance: AssessmentAssistance = AssessmentAssistance.unknown
+    scoring: AttemptScoring | None = None
     retry_pending: bool = False

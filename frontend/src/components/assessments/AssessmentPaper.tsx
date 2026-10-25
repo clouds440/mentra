@@ -52,6 +52,7 @@ export function AssessmentPaper({ assessment, printMode = false }: { assessment:
   return <div aria-label={assessment.paper ? 'Exam paper' : 'Assessment questions'} className="space-y-4">
     <PracticeNotice assessment={assessment} />
     <PaperHeader assessment={assessment} printMode={printMode} />
+    {!printMode && !assessment.paper && <PrintPaperButton assessment={assessment} />}
     {assessment.questions.map((question, index) => <section key={question.id} className="space-y-2">
       {question.section && question.section !== assessment.questions[index - 1]?.section && <h3 className="border-b border-border pb-2 pt-2 text-sm font-semibold text-heading">{question.section}</h3>}
       {!!question.context && (question.number !== assessment.questions[index-1]?.number || question.context !== assessment.questions[index-1]?.context) && <div className="rounded-lg border border-border bg-surface p-3"><MarkdownContent content={question.context} /></div>}

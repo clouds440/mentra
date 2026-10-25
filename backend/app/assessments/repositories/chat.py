@@ -48,6 +48,17 @@ class ChatAssessmentRepository:
                 assessments.c.learner_id == owner, assessments.c.id == row['assessment_id'])))
             return dict(self.public(row), deleted=deleted)
 
+    def question_paper(self, owner, assessment_id):
+        """Read an unsaved chat paper without publishing it or starting an attempt."""
+        with self.repository.sessions() as session:
+            identifier = session.scalar(select(chat_drafts.c.id).where(chat_drafts.c.learner_id == owner,
+                chat_drafts.c.payload['id'].astext == assessment_id))
+            if not identifier: raise AppError('ASSESSMENT_NOT_FOUND', 'Assessment unavailable.', 404)
+            row = self._draft(session, owner, identifier)
+            if row['assessment_id']:
+                return self.repository.public(self.repository._assessment(session, owner, row['assessment_id']))
+            return self.repository.public(row['payload'])
+
     def recent(self, owner, conversation):
         with self.repository.sessions() as session:
             self._conversation(session, owner, conversation)

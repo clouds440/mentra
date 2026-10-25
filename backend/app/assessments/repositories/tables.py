@@ -1,6 +1,8 @@
 from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, Boolean
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from app.db.metadata import metadata
+
+assistance_kind = ENUM('unknown', 'independent', 'assisted', name='assessment_assistance_kind', create_type=False)
 
 practice_operations = Table('assessment_practice_operation', metadata,
     Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
@@ -38,7 +40,9 @@ attempts = Table('assessment_attempt', metadata,
     Column('evidence_status', Text, nullable=False), Column('evidence_receipt', JSONB),
     Column('grade_revision', Integer, nullable=False, server_default='1'),
     Column('grade_history', JSONB, nullable=False, server_default='[]'),
-    Column('assistance', Text, nullable=False, server_default='unknown'),
+    Column('assistance', assistance_kind, nullable=False, server_default='unknown'),
+    Column('reported_assistance', assistance_kind, nullable=False, server_default='unknown'),
+    Column('scoring', JSONB),
     Column('profile_context_version', BigInteger),
     Column('start_fingerprint', Text),
     Column('chat_inputs', JSONB, nullable=False, server_default='{}'),

@@ -1,3 +1,5 @@
+export type AssessmentAssistance = 'unknown' | 'independent' | 'assisted';
+export interface AttemptScoring { raw_score: number; adjusted_score: number; max_score: number; multiplier: number; reported_assistance: AssessmentAssistance; policy: string }
 export type QuestionFormat = string;
 export interface PracticeIntent { context_id?: string; concept_ids?: string[]; document_ids?: string[]; topic?: string; purpose?: 'practice' | 'verification' }
 export interface PaperSection { title: string; question_count: number; question_type: string; part_marks: number[]; instructions?: string; questions?: { number: number; context: string; parts: { path: string[]; question_type: string; answer_mode: string; marks: number; brief: string }[] }[] }
@@ -12,7 +14,9 @@ export interface AssessmentAttempt {
   extraction: { answers: Record<string, string>; text: string; warnings: string[]; extraction_confidence: number | null; mapping_confidence: number | null; reader_revision: string; truncated: boolean; handwriting_support?: string } | null;
   error: string | null; evidence_status: 'pending' | 'applied' | 'partial' | 'unavailable' | 'none'; created_at: string;
   retry_pending?: boolean;
-  assistance?: 'unknown' | 'independent' | 'assisted';
+  assistance?: AssessmentAssistance;
+  reported_assistance?: AssessmentAssistance;
+  scoring?: AttemptScoring | null;
   grade_revision: number; grade_history: { grade_revision: number; grades: QuestionGrade[]; answers: Record<string,string>; corrected_at: string }[];
 }
 export interface AssessmentGeneration { question_formats?: string[]; concept_ids?: string[]; level?: string; result_style?: 'marks' | 'grade' | 'feedback'; instructions?: string; question_format?: QuestionFormat; duration_minutes?: number; total_marks?: number; client_request_id: string; context_id: string; topic: string; concept_names: string[]; confirm_new_concepts: boolean; count: number | null; purpose: string; grounded: boolean; document_ids: string[] }

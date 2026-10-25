@@ -132,6 +132,23 @@ async def retry(identifier: UUID, body: RetryGrading, request: Request, identity
 async def correct(identifier: UUID, body: SubmitAnswers, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.repository.correct, identity.learner_id, str(identifier), body)
 
+@router.get('/{identifier}/paper.pdf')
+async def question_paper(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    from app.assessments.question_paper import render_question_paper
+    from app.core.exceptions import AppError
+    def render():
+        service = request.app.state.assessment_service
+        try:
+            assessment = service.repository.detail(identity.learner_id, str(identifier))
+        except AppError as error:
+            if error.code != 'ASSESSMENT_NOT_FOUND': raise
+            assessment = service.chat.question_paper(identity.learner_id, str(identifier))
+        return render_question_paper(assessment)
+    data = await run_in_threadpool(render)
+    return Response(data, media_type='application/pdf', headers={
+        'Content-Disposition': f'attachment; filename="mentra-question-paper-{identifier}.pdf"',
+        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
+
 @router.get('/{identifier}', response_model=Assessment)
 async def detail(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.repository.detail, identity.learner_id, str(identifier))
