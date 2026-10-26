@@ -66,7 +66,7 @@ test('assessment source picker searches later pages and keeps selected material'
 test('review and practice links retain exact concept, context and purpose without creating a job on navigation', async ({ page }) => {
   await workspace(page);
   let jobs = 0;
-  await page.route('**/api/v1/learning', route => route.fulfill({ json: { learner: { concepts: [], context_ids: [contextId], generated_at: created }, recommendations: [{ concept_id: conceptId, context_id: contextId, name: 'Shared topic', reason: 'low_mastery' }], verification: [{ concept_id: conceptId, context_id: contextId, name: 'Shared topic', reason: 'contradictory_evidence' }] } }));
+  await page.route('**/api/v1/learning/page*', route => route.fulfill({ json: { overview: { learner: { concepts: [], context_ids: [contextId], generated_at: created }, recommendations: [{ concept_id: conceptId, context_id: contextId, name: 'Shared topic', reason: 'low_mastery' }], verification: [{ concept_id: conceptId, context_id: contextId, name: 'Shared topic', reason: 'contradictory_evidence' }] },contexts:[{context_id:contextId,name:'Mechanics',status:'ACTIVE'}],candidates:[],understanding:{items:[],total:0,total_concepts:1,offset:0,limit:10} } }));
   await page.route('**/api/v1/learning-contexts**', route => route.fulfill({ json: [{ context_id: contextId, name: 'Mechanics', status: 'ACTIVE' }] }));
   await page.route('**/api/v1/assessments/generation-jobs', route => { jobs++; return route.fulfill({ json: {} }); });
   await page.goto('/progress');
@@ -96,7 +96,7 @@ test('a distant citation loads its exact chunk before the first page and preserv
 test('Library searches the server and preserves the query through filters', async ({ page }) => {
   await workspace(page);
   const requests: URL[] = [];
-  await page.route('**/api/v1/documents?*', route => { const url = new URL(route.request().url()); requests.push(url); return route.fulfill({ json: { items: url.searchParams.get('query') === 'اردو' ? [material(55)] : [], total: 1, offset: 0, limit: 25 } }); });
+  await page.route('**/api/v1/documents/page?*', route => { const url = new URL(route.request().url()); requests.push(url); return route.fulfill({ json: { items: url.searchParams.get('query') === 'اردو' ? [material(55)] : [], total: 1, offset: 0, limit: 25,contexts:[{context_id:contextId,name:'Mechanics',status:'ACTIVE'}] } }); });
   await page.goto('/library');
   await page.getByRole('searchbox', { name: 'Search Library' }).fill('اردو');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -111,6 +111,7 @@ test('event detail downloads an explicit calendar snapshot', async ({ page }) =>
   await workspace(page);
   const event = { id: 'event-1', title: 'Study session', description: '', kind: 'study', status: 'scheduled', timezone: 'Asia/Karachi', local_date: '2026-10-20', starts_at: null, bucket: 'upcoming', revision: 1, reminder_state: 'pending', reminder_due_at: null, evidence: [] };
   await page.route('**/api/v1/events/event-1', route => route.fulfill({ json: event }));
+  await page.route('**/api/v1/events/page?*', route => route.fulfill({json:{items:[event],next_cursor:null,detail:event,proposals:[],proposals_error:false}}));
   await page.route('**/api/v1/events/event-1/calendar', route => route.fulfill({ contentType: 'text/calendar', body: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n' }));
   await page.goto('/progress?tab=events&event=event-1');
   await expect(page.getByText('The calendar file is a snapshot. Later changes in Mentra do not update your calendar.', { exact: true })).toBeVisible();
@@ -126,7 +127,7 @@ for (const [width, scheme] of [[360, 'light'], [390, 'dark'], [1440, 'light']] a
     await page.setViewportSize({width, height:900});
     await page.emulateMedia({colorScheme:scheme, reducedMotion:'reduce'});
     const doc=material(1);
-    await page.route('**/api/v1/documents**', route => route.fulfill({json:route.request().url().endsWith('/material-1') ? doc : {items:[doc],total:1,offset:0,limit:25}}));
+    await page.route('**/api/v1/documents**', route => route.fulfill({json:route.request().url().endsWith('/material-1') ? doc : {items:[doc],total:1,offset:0,limit:25,contexts:[{context_id:contextId,name:'Mechanics',status:'ACTIVE'}]}}));
     const requests: Record<string, unknown>[]=[];
     await page.route('**/api/v1/assessments/generation-jobs', route => {
       requests.push(route.request().postDataJSON());

@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { WebCitation } from '../webSearch/WebCitation';
 import { WebCitations } from '../webSearch/WebCitations';
 import { CopyResponse } from './CopyResponse';
+import { ContextualActions } from './ContextualActions';
 
 const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
@@ -50,9 +51,10 @@ function citationPlugin(tokens: string[], content: string) {
 interface ChatMessageProps {
   message: ChatMessageData;
   reveal?: boolean;
+  showContextualAction?: boolean;
 }
 
-export const ChatMessage = memo(function ChatMessage({ message, reveal = false }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, reveal = false, showContextualAction = false }: ChatMessageProps) {
   const [source, setSource] = useState<SourceReference>();
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
@@ -74,7 +76,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
     <article
       data-message-id={message.id}
       aria-label={isAssistant ? 'Mentra response' : 'Your message'}
-      className={isAssistant ? `flex flex-col gap-2 sm:flex-row sm:gap-3.5${reveal ? ' chat-response-reveal' : ''}` : 'flex justify-end'}
+      className={isAssistant ? `flex flex-col gap-2 sm:flex-row sm:gap-3.5${reveal && !message.assessment_cards?.length && !message.interactions?.length ? ' chat-response-reveal' : ''}` : 'flex justify-end'}
     >
       {isAssistant && (
         <div
@@ -104,6 +106,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false }
             {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
             {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
             {!!message.content.trim() && <CopyResponse content={message.content} />}
+            {showContextualAction && message.conversation_id && <ContextualActions message={message} conversationId={message.conversation_id} />}
           </div>
         ) : (
           <>{message.conversation_id && !!message.attachments?.length && <div className="flex max-w-full flex-wrap justify-end gap-3">{message.attachments.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</div>}

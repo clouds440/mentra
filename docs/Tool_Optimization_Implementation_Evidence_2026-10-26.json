@@ -1,0 +1,491 @@
+{
+  "method": "Offline first-request snapshots; cl100k_base estimates, no real learner data.",
+  "comparisons": [
+    {
+      "query": "Hello",
+      "before": {
+        "query": "Hello",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2505
+      },
+      "after": {
+        "query": "Hello",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2224
+      },
+      "input_delta": -281
+    },
+    {
+      "query": "Explain photosynthesis",
+      "before": {
+        "query": "Explain photosynthesis",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2513
+      },
+      "after": {
+        "query": "Explain photosynthesis",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2233
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "What is my agenda tomorrow?",
+      "before": {
+        "query": "What is my agenda tomorrow?",
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2946
+      },
+      "after": {
+        "query": "What is my agenda tomorrow?",
+        "tools": [
+          "event_lookup",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 317,
+        "estimated_total_input": 2279
+      },
+      "input_delta": -667
+    },
+    {
+      "query": "Give me a quiz",
+      "before": {
+        "query": "Give me a quiz",
+        "tools": [
+          "event_manage",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1801,
+        "estimated_total_input": 4715
+      },
+      "after": {
+        "query": "Give me a quiz",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3353
+      },
+      "input_delta": -1362
+    },
+    {
+      "query": "Give me 1 question quiz",
+      "before": {
+        "query": "Give me 1 question quiz",
+        "tools": [
+          "event_manage",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1801,
+        "estimated_total_input": 4719
+      },
+      "after": {
+        "query": "Give me 1 question quiz",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3358
+      },
+      "input_delta": -1361
+    },
+    {
+      "query": "Give me one MCQ on fractions",
+      "before": {
+        "query": "Give me one MCQ on fractions",
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2412
+      },
+      "after": {
+        "query": "Give me one MCQ on fractions",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3360
+      },
+      "input_delta": 948
+    },
+    {
+      "query": "Mujhe fractions ka aik sawal ka quiz do",
+      "before": {
+        "query": "Mujhe fractions ka aik sawal ka quiz do",
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1266,
+        "estimated_total_input": 4194
+      },
+      "after": {
+        "query": "Mujhe fractions ka aik sawal ka quiz do",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3368
+      },
+      "input_delta": -826
+    },
+    {
+      "query": "مجھے ایک سوال کا کوئز دیں",
+      "before": {
+        "query": "مجھے ایک سوال کا کوئز دیں",
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2427
+      },
+      "after": {
+        "query": "مجھے ایک سوال کا کوئز دیں",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3375
+      },
+      "input_delta": 948
+    },
+    {
+      "query": "Quiz me",
+      "before": {
+        "query": "Quiz me",
+        "tools": [
+          "event_manage",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1801,
+        "estimated_total_input": 4711
+      },
+      "after": {
+        "query": "Quiz me",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3350
+      },
+      "input_delta": -1361
+    },
+    {
+      "query": "Practice fractions with me",
+      "before": {
+        "query": "Practice fractions with me",
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 325,
+        "estimated_total_input": 2567
+      },
+      "after": {
+        "query": "Practice fractions with me",
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3359
+      },
+      "input_delta": 792
+    },
+    {
+      "query": "Hello",
+      "before": {
+        "query": "Hello",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectNewChatReply"
+        ],
+        "schema_tokens": 344,
+        "estimated_total_input": 2756
+      },
+      "after": {
+        "query": "Hello",
+        "tools": [
+          "enable_workflow_tools",
+          "DirectNewChatReply"
+        ],
+        "schema_tokens": 344,
+        "estimated_total_input": 2476
+      },
+      "input_delta": -280
+    }
+  ],
+  "prompt_tokens": {
+    "chat": 786,
+    "tool_recovery": 380,
+    "chat_assessment": 547
+  },
+  "library_picker_queries": {
+    "before": 2,
+    "after": 0,
+    "condition": "Closed picker with no selected sources; browser verified"
+  },
+  "small_quiz_model_stages": {
+    "before": 3,
+    "after": 1,
+    "condition": "Simple explicit-topic generation; regression verified"
+  },
+  "final_narration_calls": {
+    "before": 1,
+    "after": 0,
+    "condition": "Pure completed assessment outcome; regression verified"
+  },
+  "web_enabled_quiz": {
+    "before": {
+      "query": "Give me 1 question quiz",
+      "tools": [
+        "web_search",
+        "web_research",
+        "event_manage",
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "get_study_recommendations",
+        "get_verification_candidates",
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "registered_catalog": {
+        "history": {
+          "description": "Retrieve earlier conversations.",
+          "tools": [
+            "history_lookup",
+            "conversation_summary_search"
+          ]
+        },
+        "memory": {
+          "description": "Recall or propose saved preferences; consent and evidence checks apply.",
+          "tools": [
+            "user_memory"
+          ]
+        },
+        "web": {
+          "description": "Search current or additional external knowledge when needed; optional website restriction and dated citations.",
+          "tools": [
+            "web_search",
+            "web_research"
+          ]
+        },
+        "events": {
+          "description": "Read your agenda or prepare authorized event changes; review may be required.",
+          "tools": [
+            "event_lookup",
+            "event_manage"
+          ]
+        },
+        "learner": {
+          "description": "Read learning contexts and ranked practice targets; new concepts require review.",
+          "tools": [
+            "get_active_learning_contexts",
+            "get_relevant_learner_context",
+            "get_study_recommendations",
+            "get_verification_candidates",
+            "resolve_student_concept"
+          ]
+        },
+        "rag": {
+          "description": "Search approved study material and cite returned passages.",
+          "tools": [
+            "search_study_material"
+          ]
+        },
+        "assessment": {
+          "description": "Create, revise, discuss, or prepare answers for assessments; grading uses validated jobs.",
+          "tools": [
+            "assessment_generate",
+            "assessment_answer",
+            "assessment_lookup",
+            "assessment_revise",
+            "assessment_question",
+            "assessment_status"
+          ]
+        },
+        "chat": {
+          "description": "Explain general concepts and present clarification choices.",
+          "tools": [
+            "present_choices"
+          ]
+        }
+      },
+      "schema_tokens": 2051,
+      "estimated_total_input": 5887
+    },
+    "after": {
+      "query": "Give me 1 question quiz",
+      "tools": [
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 656,
+      "estimated_total_input": 3417
+    }
+  },
+  "live": {
+    "call_limit": 4,
+    "actual_calls": 4,
+    "provider_retries": 0,
+    "results": [
+      {
+        "scenario": "ordinary_one_question",
+        "passed": true,
+        "calls": 1,
+        "duration_ms": 1771.52,
+        "arguments": [
+          {
+            "topic": "Fractions",
+            "count": 1,
+            "question_format": "auto",
+            "delivery": "interactive"
+          }
+        ]
+      },
+      {
+        "scenario": "urdu_one_question",
+        "passed": true,
+        "calls": 1,
+        "duration_ms": 753.91,
+        "arguments": [
+          {
+            "topic": "کسر (Fractions)",
+            "count": 1,
+            "question_format": "auto",
+            "delivery": "interactive"
+          }
+        ]
+      },
+      {
+        "scenario": "copyable_bash",
+        "passed": true,
+        "calls": 1,
+        "duration_ms": 655.66,
+        "arguments": [],
+        "content": "```bash\ngit status --short\n```"
+      },
+      {
+        "scenario": "validated_one_question_generation",
+        "passed": true,
+        "calls": 1,
+        "duration_ms": 1793.04,
+        "synthetic_question": {
+          "question_type": "mcq",
+          "answer_mode": "single_choice",
+          "context": "",
+          "concept_names": [],
+          "section": null,
+          "number": null,
+          "part": null,
+          "prompt": "Which of these shows **half** of 8 shaded?",
+          "concept_ids": [
+            "00000000-0000-0000-0000-00000000000a"
+          ],
+          "difficulty": 0.2,
+          "marks": 1,
+          "options": [
+            {
+              "id": "a",
+              "label": "4 out of 8 equal parts shaded"
+            },
+            {
+              "id": "b",
+              "label": "2 out of 8 equal parts shaded"
+            },
+            {
+              "id": "c",
+              "label": "6 out of 8 equal parts shaded"
+            },
+            {
+              "id": "d",
+              "label": "8 out of 8 equal parts shaded"
+            }
+          ],
+          "correct_option_id": "a",
+          "correct_option_ids": [],
+          "model_answer": "Half of 8 means splitting 8 into 2 equal groups: 8 ÷ 2 = 4. So 4 out of 8 equal parts shaded is half.",
+          "rubric": "Award the full mark only for option a (4 out of 8). Any other option earns 0; no partial credit for choice-only items.",
+          "source_tokens": []
+        }
+      }
+    ],
+    "routing_usage": [
+      {
+        "input_tokens": 2831,
+        "output_tokens": 72,
+        "total_tokens": 2903,
+        "input_token_details": {
+          "cache_read": 384
+        },
+        "output_token_details": {}
+      },
+      {
+        "input_tokens": 2843,
+        "output_tokens": 57,
+        "total_tokens": 2900,
+        "input_token_details": {
+          "cache_read": 1664
+        },
+        "output_token_details": {}
+      },
+      {
+        "input_tokens": 1756,
+        "output_tokens": 9,
+        "total_tokens": 1765,
+        "input_token_details": {
+          "cache_read": 1024
+        },
+        "output_token_details": {}
+      }
+    ],
+    "limitation": "Synthetic calls without application persistence; timings are not end-to-end production latency."
+  }
+}

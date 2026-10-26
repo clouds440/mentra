@@ -23,6 +23,7 @@ class AttemptScoring(Contract):
 
 
 QuestionFormat = str
+AssessmentDelivery = Literal['interactive', 'written', 'printable']
 
 class PlannedPart(Contract):
     path: list[str] = Field(default_factory=list)
@@ -91,6 +92,7 @@ class GenerationRequest(Contract):
     count: int | None = Field(default=5, ge=1)
     purpose: Literal['practice', 'verification', 'calibration'] = 'practice'
     question_format: QuestionFormat = 'written'
+    delivery: AssessmentDelivery | None = None
     question_formats: list[Annotated[str, Field(min_length=1, max_length=50)]] = Field(default_factory=list, max_length=12)
     duration_minutes: int | None = Field(default=None, ge=1)
     total_marks: float | None = Field(default=None, gt=0)
@@ -103,6 +105,7 @@ class GenerationRequest(Contract):
     revision_draft_id: UUID | None = None
     revision_assessment_id: UUID | None = None
     revision_instructions: str = ''
+    revision_question_numbers: list[Annotated[str, Field(min_length=1, max_length=20)]] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode='before')
     @classmethod
@@ -133,6 +136,8 @@ class GenerationRequest(Contract):
             raise ValueError('Revisions retain their original concepts; exact practice targets require a new assessment.')
         if targets > 1 or bool(targets) != bool(self.revision_instructions):
             raise ValueError('Revisions require exactly one source assessment and instructions.')
+        if self.revision_question_numbers and not targets:
+            raise ValueError('Question-scoped changes require an original assessment.')
         if sum(section.question_count for section in self.paper_sections) > 20:
             self.paper_sections = limit_sections(self.paper_sections)
             if self.total_marks is not None:
@@ -147,6 +152,7 @@ class GenerationRequest(Contract):
         # were supported. New optional defaults must not invalidate old retries.
         exclude = {'revision_draft_id','revision_assessment_id','revision_instructions'} if not self.revision_instructions else set()
         if not self.question_formats: exclude.add('question_formats')
+        if not self.revision_question_numbers: exclude.add('revision_question_numbers')
         if not self.concept_ids: exclude.add('concept_ids')
         if self.question_format == 'written': exclude.add('question_format')
         if not self.paper_sections: exclude.add('paper_sections')
@@ -156,6 +162,9 @@ class GenerationRequest(Contract):
         if self.level is None: exclude.add('level')
         # Omitted style remains replay-compatible with pre-automation requests.
         if self.result_style in ('marks', None): exclude.add('result_style')
+        # Legacy retries remain valid; default interactive delivery changes UI,
+        # not the private generated question/answer identity.
+        if self.delivery in (None, 'interactive'): exclude.add('delivery')
         return self.model_dump(mode='json', exclude=exclude)
 
 class AssessmentIntent(GenerationRequest):
@@ -186,6 +195,7 @@ class AssessmentSelection(Contract):
 class AssessmentPreferences(Contract):
     level: str | None = None
     result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
+    delivery: AssessmentDelivery | None = None
 
 class MCQOption(Contract):
     id: str = Field(min_length=1, max_length=100)

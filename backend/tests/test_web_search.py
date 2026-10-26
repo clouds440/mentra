@@ -214,6 +214,9 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.planning import plan_request
         self.scope['execution_plan'] = plan_request('Explain gravity')
         selection = ToolSelection([self.tool], {'web_search': 'web'}, self.scope)
+        self.assertEqual(selection.active, set())
+        self.assertIn('web_search', selection.catalog['web']['tools'])
+        await selection.discovery().ainvoke(dict(tool_names=['web_search']))
         self.assertEqual(selection.active, {'web_search'})
         self.provider.search.assert_not_awaited()
 

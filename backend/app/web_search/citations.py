@@ -8,6 +8,23 @@ def historical_web_markers(content: str) -> str:
     return re.sub(r'\[\[(W\d+)\]\]', r'[historical web reference \1]', content)
 
 
+def edit_web_links(content, metadata):
+    """Reuse validated historical URLs for an edit, without claiming a new search."""
+    from .schemas import WebSource
+    try:
+        sources={source.token:source for source in (WebSource.model_validate(value) for value in metadata.get('web_sources', []))}
+    except (ValueError, TypeError):
+        return None
+    tokens=set(re.findall(r'\[\[(W\d+)\]\]', content))
+    if tokens - sources.keys():
+        return None
+    def link(match):
+        source=sources[match[1]]
+        url=source.url.replace('>', '%3E')
+        return f'[Source {source.token}](<{url}>)'
+    return re.sub(r'\[\[(W\d+)\]\]', link, content)
+
+
 def web_citations(content: str, valid: set[str]) -> list[str]:
     # Protect escaped brackets before parsing; CommonMark otherwise decodes them
     # into plain text indistinguishable from active markers.

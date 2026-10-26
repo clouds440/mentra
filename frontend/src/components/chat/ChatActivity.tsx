@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import type { AssessmentReference } from './AssessmentPreview';
+import { Skeleton } from '../ui/Skeleton';
+const AssessmentPreview = lazy(() => import('./AssessmentPreview').then(module => ({ default: module.AssessmentPreview })));
 import { apiEvents } from '../../services/api';
 import { chatStore } from '../../stores/chatStore';
 import { ThinkingIndicator } from './ChatMessage';
@@ -14,6 +17,7 @@ interface Activity {
   token_delta?: string | null; token_reset?: boolean;
   tool_attempt?: number | null; max_attempts?: number | null; error_code?: string | null;
   websites?: WebsiteIdentity[];
+  assessment_card?: AssessmentReference | null;
 }
 
 function valid(value: unknown): value is Activity {
@@ -28,14 +32,19 @@ function valid(value: unknown): value is Activity {
     && (v.error_code == null || typeof v.error_code === 'string' && v.error_code.length <= 100)
     && (v.websites == null || Array.isArray(v.websites) && v.websites.length <= 5 && v.websites.every(site =>
       site && typeof site.domain === 'string' && typeof site.favicon_url === 'string' && safeWebsite(site)))
-    && (v.token_delta === undefined || v.token_delta === null || typeof v.token_delta === 'string' && v.token_delta.length <= 2000);
+    && (v.token_delta === undefined || v.token_delta === null || typeof v.token_delta === 'string' && v.token_delta.length <= 2000)
+    && (!v.assessment_card || ['draft', 'saved', 'generation'].includes(v.assessment_card.kind)
+      && typeof v.assessment_card.id === 'string' && v.assessment_card.id.length <= 100
+      && typeof v.assessment_card.title === 'string' && v.assessment_card.title.length <= 200);
 }
 
 export function ChatActivity({ conversationId, turnId, attempt, stopping = false }: { conversationId: string; turnId?: string; attempt?: number; stopping?: boolean }) {
   const [current, setCurrent] = useState<Activity>();
+  const [assessment, setAssessment] = useState<AssessmentReference>();
   const label = useActivityFeedback(current, !!turnId);
   useEffect(() => {
     setCurrent(undefined);
+    setAssessment(undefined);
     if (!turnId || !attempt) return;
     const controller = new AbortController();
     let cursor = 0, timer: ReturnType<typeof setTimeout> | undefined, terminal = false;
@@ -53,6 +62,7 @@ export function ChatActivity({ conversationId, turnId, attempt, stopping = false
           if (name !== 'activity' || !valid(data) || data.conversation_id !== conversationId
               || data.turn_id !== turnId || data.attempt !== attempt || data.sequence <= cursor) return;
           cursor = data.sequence;
+          if (data.assessment_card) setAssessment(data.assessment_card);
           // Keep activity live; publish answer content only after the canonical
           // message and its interactive cards are ready to reveal together.
           if (activityLabel(data) === null) return;
@@ -79,5 +89,6 @@ export function ChatActivity({ conversationId, turnId, attempt, stopping = false
   return <div aria-label="Current activity">
     <ThinkingIndicator label={stopping ? 'Stopping this response' : label} />
     {current && <div className="sm:ml-11">{sites(current)}</div>}
+    {assessment && !stopping && <div className="sm:ml-11"><Suspense fallback={<Skeleton variant="card" />}><AssessmentPreview key={`${assessment.kind}:${assessment.id}`} reference={assessment} conversationId={conversationId} /></Suspense></div>}
   </div>;
 }

@@ -147,6 +147,18 @@ Keep temporary sample content isolated from page components and label prototype 
 
 ## Testing
 
+Expose useful supported actions in context without requiring feature names. Use typed
+actions and existing domain components, never executable model-generated UI. Ordinary
+chat practice defaults to interactive delivery; explicit written/printable delivery
+is independent of question format. Durable assessment references may render while
+narration continues and bypass decorative reveal delays. Lazy-load source lists when
+the picker opens. Copyable artifacts, including one-line text and commands, preserve
+their exact fenced payload through the existing Prism/clipboard component.
+
+Apply saved profile responses immediately through the shared provider. Coalesce
+foreground refreshes, reject older/wrong-owner versions, and retain form drafts with
+their original edit version so another tab's changes cannot be silently overwritten.
+
 Test behavior and boundaries that matter. Do not write tests merely to inflate coverage.
 
 Prioritize meaningful primitive behavior, user interactions, and important rendering or state behavior. Run `npm run build` for strict TypeScript checks and a production build, and `npm run check:theme` for theme behavior. `npm run test:e2e` uses Playwright with real auth/profile APIs and an isolated migrated PostgreSQL schema; `test:auth` / `test:profile` select subsets. Only the AI evaluator is a test double, not authentication or persistence. See [auth test setup](../docs/frontend-auth.md) and [profile tests](../docs/student-profile.md).

@@ -24,6 +24,7 @@ LABELS = {
     'search_study_material': 'Reading documents',
     'get_study_source_chunk': 'Reading the source passage',
     'assessment_generate': 'Creating your practice assessment',
+    'assessment_generate_advanced': 'Creating your practice assessment',
     'assessment_revise': 'Revising your practice assessment',
     'assessment_question': 'Reading your assessment question',
     'assessment_status': 'Checking your assessment progress',

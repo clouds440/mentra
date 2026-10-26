@@ -116,6 +116,14 @@ Keep factual edits, calibration scoring, and conservative estimate updates centr
 
 ## LLM prompts
 
+Select small candidate schema sets from the shared capability registry; keep discovery
+available instead of binding every tool or instruction fragment. Avoid speculative
+domain reads for ordinary supplied-content tasks. Measure complete successful tasks,
+schema/input tokens and model rounds with offline fixtures before spending on live
+provider probes. Preserve domain validation and provenance when combining model stages.
+Read canonical profile preferences for every new request; authentication refresh is
+not a settings invalidation mechanism.
+
 Use the application-shared `MentraLLM` for model invocation. Each request must supply a fixed internal `PromptSource` selected by its trusted workflow; never accept prompt selection from HTTP/client input. Keep system prompt text in a source-specific module under `langchain/prompts/`, register it in `prompts/registry.py`, and keep dynamic context separate from reusable instructions. Pass structured-output schemas through the same component. Do not embed system prompt strings in services, routes, tools, or agents. See [LangChain prompt routing](app/langchain/README.md).
 
 - Assessment structure, canonical concept flexibility, private checkpoints and worker deployment follow [Assessment engine](../docs/Assessment_Engine.md). Generated concept ambiguity must not veto a valid assessment; resolve via the learner facade without merging historical identities.

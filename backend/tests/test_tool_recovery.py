@@ -424,12 +424,13 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.orchestration_service import OrchestrationService
         from app.rag.schemas import ChatSelection
         rag = Mock()
-        rag.search.side_effect = AppError('DOCUMENT_NOT_FOUND', 'Material not found.', 404)
+        rag.validate_selection.side_effect = AppError('DOCUMENT_NOT_FOUND', 'Material not found.', 404)
         chat = SimpleNamespace(reply=AsyncMock())
         with self.assertRaises(AppError) as raised:
             await OrchestrationService(chat, rag=rag).chat_reply([('user', 'Explain photosynthesis')], ChatSelection(document_ids=[str(uuid4())]), 'owner')
         self.assertEqual(raised.exception.status_code, 404)
-        rag.search.assert_called_once()
+        rag.validate_selection.assert_called_once()
+        rag.search.assert_not_called()
         chat.reply.assert_not_awaited()
 
     async def test_general_query_skips_all_unrelated_reads(self):

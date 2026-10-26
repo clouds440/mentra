@@ -1,0 +1,1637 @@
+{
+  "method": "Synthetic first-request snapshots and scripted read workflows against archived git HEAD and current source. No paid provider calls or real domain persistence.",
+  "reference_revision": "4be0653acd823df2c861d8939151b8c7597e4ea8",
+  "results": [
+    {
+      "query": "Explain photosynthesis",
+      "web_enabled": false,
+      "before": {
+        "query": "Explain photosynthesis",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2493,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Explain photosynthesis",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2213,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "Explain an event loop",
+      "web_enabled": false,
+      "before": {
+        "query": "Explain an event loop",
+        "web_enabled": false,
+        "tools": [
+          "event_lookup",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 472,
+        "estimated_total_input": 2692,
+        "modules": [
+          "chat",
+          "profile",
+          "events",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "Explain an event loop",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2213,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -479
+    },
+    {
+      "query": "Define assessment",
+      "web_enabled": false,
+      "before": {
+        "query": "Define assessment",
+        "web_enabled": false,
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1266,
+        "estimated_total_input": 4163,
+        "modules": [
+          "chat",
+          "profile",
+          "learner",
+          "assessment"
+        ]
+      },
+      "after": {
+        "query": "Define assessment",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2212,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -1951
+    },
+    {
+      "query": "Rewrite this text: My previous schedule changed today.",
+      "web_enabled": false,
+      "before": {
+        "query": "Rewrite this text: My previous schedule changed today.",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2932,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Rewrite this text: My previous schedule changed today.",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2221,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -711
+    },
+    {
+      "query": "Translate this sentence: Remember my old notes.",
+      "web_enabled": false,
+      "before": {
+        "query": "Translate this sentence: Remember my old notes.",
+        "web_enabled": false,
+        "tools": [
+          "history_lookup",
+          "user_memory",
+          "conversation_summary_search",
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1170,
+        "estimated_total_input": 4413,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Translate this sentence: Remember my old notes.",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2219,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -2194
+    },
+    {
+      "query": "Debug this code:\nprint(\"latest news\")",
+      "web_enabled": false,
+      "before": {
+        "query": "Debug this code:\nprint(\"latest news\")",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2393,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Debug this code:\nprint(\"latest news\")",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2217,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -176
+    },
+    {
+      "query": "Explain my notes",
+      "web_enabled": false,
+      "before": {
+        "query": "Explain my notes",
+        "web_enabled": false,
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 486,
+        "estimated_total_input": 2939,
+        "modules": [
+          "chat",
+          "profile",
+          "learner",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Explain my notes",
+        "web_enabled": false,
+        "tools": [
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 330,
+        "estimated_total_input": 2502,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "input_delta": -437
+    },
+    {
+      "query": "Search my Library for Newton laws",
+      "web_enabled": false,
+      "before": {
+        "query": "Search my Library for Newton laws",
+        "web_enabled": false,
+        "tools": [
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 330,
+        "estimated_total_input": 2788,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Search my Library for Newton laws",
+        "web_enabled": false,
+        "tools": [
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 330,
+        "estimated_total_input": 2507,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "input_delta": -281
+    },
+    {
+      "query": "What are my saved preferences?",
+      "web_enabled": false,
+      "before": {
+        "query": "What are my saved preferences?",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2391,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "What are my saved preferences?",
+        "web_enabled": false,
+        "tools": [
+          "user_memory",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 412,
+        "estimated_total_input": 3136,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": 745
+    },
+    {
+      "query": "Remember that I prefer worked examples.",
+      "web_enabled": false,
+      "before": {
+        "query": "Remember that I prefer worked examples.",
+        "web_enabled": false,
+        "tools": [
+          "history_lookup",
+          "user_memory",
+          "conversation_summary_search",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1009,
+        "estimated_total_input": 4016,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "after": {
+        "query": "Remember that I prefer worked examples.",
+        "web_enabled": false,
+        "tools": [
+          "user_memory",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 412,
+        "estimated_total_input": 3138,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": -878
+    },
+    {
+      "query": "Find my earlier message about fractions",
+      "web_enabled": false,
+      "before": {
+        "query": "Find my earlier message about fractions",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2393,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Find my earlier message about fractions",
+        "web_enabled": false,
+        "tools": [
+          "history_lookup",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 548,
+        "estimated_total_input": 3274,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": 881
+    },
+    {
+      "query": "Where did we discuss fractions?",
+      "web_enabled": false,
+      "before": {
+        "query": "Where did we discuss fractions?",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2391,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Where did we discuss fractions?",
+        "web_enabled": false,
+        "tools": [
+          "history_lookup",
+          "conversation_summary_search",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 767,
+        "estimated_total_input": 3491,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": 1100
+    },
+    {
+      "query": "Show my current learning progress",
+      "web_enabled": false,
+      "before": {
+        "query": "Show my current learning progress",
+        "web_enabled": false,
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 2642,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "Show my current learning progress",
+        "web_enabled": false,
+        "tools": [
+          "get_relevant_learner_context",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 284,
+        "estimated_total_input": 2227,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "input_delta": -415
+    },
+    {
+      "query": "What should I study next?",
+      "web_enabled": false,
+      "before": {
+        "query": "What should I study next?",
+        "web_enabled": false,
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 2640,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "What should I study next?",
+        "web_enabled": false,
+        "tools": [
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 378,
+        "estimated_total_input": 2319,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "input_delta": -321
+    },
+    {
+      "query": "What is my agenda tomorrow?",
+      "web_enabled": false,
+      "before": {
+        "query": "What is my agenda tomorrow?",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2925,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "What is my agenda tomorrow?",
+        "web_enabled": false,
+        "tools": [
+          "event_lookup",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 317,
+        "estimated_total_input": 2258,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -667
+    },
+    {
+      "query": "Show my schedule",
+      "web_enabled": false,
+      "before": {
+        "query": "Show my schedule",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2922,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Show my schedule",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2642,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "Remind me tomorrow",
+      "web_enabled": false,
+      "before": {
+        "query": "Remind me tomorrow",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2923,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Remind me tomorrow",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2643,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "Research current battery chemistry",
+      "web_enabled": false,
+      "before": {
+        "query": "Research current battery chemistry",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2392,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Research current battery chemistry",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2112,
+        "modules": [
+          "chat",
+          "profile",
+          "web"
+        ]
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "Check the latest news",
+      "web_enabled": false,
+      "before": {
+        "query": "Check the latest news",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2389,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Check the latest news",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2109,
+        "modules": [
+          "chat",
+          "profile",
+          "web"
+        ]
+      },
+      "input_delta": -280
+    },
+    {
+      "query": "Give me 1 question quiz",
+      "web_enabled": false,
+      "before": {
+        "query": "Give me 1 question quiz",
+        "web_enabled": false,
+        "tools": [
+          "event_manage",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1801,
+        "estimated_total_input": 4699,
+        "modules": [
+          "chat",
+          "profile",
+          "events",
+          "learner",
+          "assessment"
+        ]
+      },
+      "after": {
+        "query": "Give me 1 question quiz",
+        "web_enabled": false,
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3422,
+        "modules": [
+          "chat",
+          "profile",
+          "assessment"
+        ]
+      },
+      "input_delta": -1277
+    },
+    {
+      "query": "Give me one MCQ on fractions",
+      "web_enabled": false,
+      "before": {
+        "query": "Give me one MCQ on fractions",
+        "web_enabled": false,
+        "tools": [
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 169,
+        "estimated_total_input": 2390,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Give me one MCQ on fractions",
+        "web_enabled": false,
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3423,
+        "modules": [
+          "chat",
+          "profile",
+          "assessment"
+        ]
+      },
+      "input_delta": 1033
+    },
+    {
+      "query": "Explain photosynthesis",
+      "web_enabled": true,
+      "before": {
+        "query": "Explain photosynthesis",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 523,
+        "estimated_total_input": 3660,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Explain photosynthesis",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2272,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -1388
+    },
+    {
+      "query": "Explain an event loop",
+      "web_enabled": true,
+      "before": {
+        "query": "Explain an event loop",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_lookup",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 722,
+        "estimated_total_input": 3859,
+        "modules": [
+          "chat",
+          "profile",
+          "events",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "Explain an event loop",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2272,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -1587
+    },
+    {
+      "query": "Define assessment",
+      "web_enabled": true,
+      "before": {
+        "query": "Define assessment",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1516,
+        "estimated_total_input": 5330,
+        "modules": [
+          "chat",
+          "profile",
+          "learner",
+          "assessment"
+        ]
+      },
+      "after": {
+        "query": "Define assessment",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2271,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -3059
+    },
+    {
+      "query": "Rewrite this text: My previous schedule changed today.",
+      "web_enabled": true,
+      "before": {
+        "query": "Rewrite this text: My previous schedule changed today.",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 953,
+        "estimated_total_input": 4098,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Rewrite this text: My previous schedule changed today.",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2280,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -1818
+    },
+    {
+      "query": "Translate this sentence: Remember my old notes.",
+      "web_enabled": true,
+      "before": {
+        "query": "Translate this sentence: Remember my old notes.",
+        "web_enabled": true,
+        "tools": [
+          "history_lookup",
+          "user_memory",
+          "conversation_summary_search",
+          "web_search",
+          "web_research",
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1420,
+        "estimated_total_input": 5581,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Translate this sentence: Remember my old notes.",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2278,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -3303
+    },
+    {
+      "query": "Debug this code:\nprint(\"latest news\")",
+      "web_enabled": true,
+      "before": {
+        "query": "Debug this code:\nprint(\"latest news\")",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3560,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Debug this code:\nprint(\"latest news\")",
+        "web_enabled": true,
+        "tools": [
+          "enable_workflow_tools",
+          "DirectAnswer"
+        ],
+        "schema_tokens": 273,
+        "estimated_total_input": 2276,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "input_delta": -1284
+    },
+    {
+      "query": "Explain my notes",
+      "web_enabled": true,
+      "before": {
+        "query": "Explain my notes",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 735,
+        "estimated_total_input": 4105,
+        "modules": [
+          "chat",
+          "profile",
+          "learner",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Explain my notes",
+        "web_enabled": true,
+        "tools": [
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 330,
+        "estimated_total_input": 2561,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "input_delta": -1544
+    },
+    {
+      "query": "Search my Library for Newton laws",
+      "web_enabled": true,
+      "before": {
+        "query": "Search my Library for Newton laws",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 580,
+        "estimated_total_input": 3955,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "after": {
+        "query": "Search my Library for Newton laws",
+        "web_enabled": true,
+        "tools": [
+          "search_study_material",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 330,
+        "estimated_total_input": 2566,
+        "modules": [
+          "chat",
+          "profile",
+          "rag"
+        ]
+      },
+      "input_delta": -1389
+    },
+    {
+      "query": "What are my saved preferences?",
+      "web_enabled": true,
+      "before": {
+        "query": "What are my saved preferences?",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3558,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "What are my saved preferences?",
+        "web_enabled": true,
+        "tools": [
+          "user_memory",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 412,
+        "estimated_total_input": 3195,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": -363
+    },
+    {
+      "query": "Remember that I prefer worked examples.",
+      "web_enabled": true,
+      "before": {
+        "query": "Remember that I prefer worked examples.",
+        "web_enabled": true,
+        "tools": [
+          "history_lookup",
+          "user_memory",
+          "conversation_summary_search",
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 1259,
+        "estimated_total_input": 5183,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "after": {
+        "query": "Remember that I prefer worked examples.",
+        "web_enabled": true,
+        "tools": [
+          "user_memory",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 412,
+        "estimated_total_input": 3197,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": -1986
+    },
+    {
+      "query": "Find my earlier message about fractions",
+      "web_enabled": true,
+      "before": {
+        "query": "Find my earlier message about fractions",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3560,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Find my earlier message about fractions",
+        "web_enabled": true,
+        "tools": [
+          "history_lookup",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 548,
+        "estimated_total_input": 3333,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": -227
+    },
+    {
+      "query": "Where did we discuss fractions?",
+      "web_enabled": true,
+      "before": {
+        "query": "Where did we discuss fractions?",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3558,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Where did we discuss fractions?",
+        "web_enabled": true,
+        "tools": [
+          "history_lookup",
+          "conversation_summary_search",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 767,
+        "estimated_total_input": 3550,
+        "modules": [
+          "chat",
+          "profile",
+          "history",
+          "memory"
+        ]
+      },
+      "input_delta": -8
+    },
+    {
+      "query": "Show my current learning progress",
+      "web_enabled": true,
+      "before": {
+        "query": "Show my current learning progress",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 669,
+        "estimated_total_input": 3809,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "Show my current learning progress",
+        "web_enabled": true,
+        "tools": [
+          "get_relevant_learner_context",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 284,
+        "estimated_total_input": 2286,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "input_delta": -1523
+    },
+    {
+      "query": "What should I study next?",
+      "web_enabled": true,
+      "before": {
+        "query": "What should I study next?",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 669,
+        "estimated_total_input": 3807,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "after": {
+        "query": "What should I study next?",
+        "web_enabled": true,
+        "tools": [
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 378,
+        "estimated_total_input": 2378,
+        "modules": [
+          "chat",
+          "profile",
+          "learner"
+        ]
+      },
+      "input_delta": -1429
+    },
+    {
+      "query": "What is my agenda tomorrow?",
+      "web_enabled": true,
+      "before": {
+        "query": "What is my agenda tomorrow?",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 953,
+        "estimated_total_input": 4091,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "What is my agenda tomorrow?",
+        "web_enabled": true,
+        "tools": [
+          "event_lookup",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 317,
+        "estimated_total_input": 2317,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -1774
+    },
+    {
+      "query": "Show my schedule",
+      "web_enabled": true,
+      "before": {
+        "query": "Show my schedule",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 953,
+        "estimated_total_input": 4088,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Show my schedule",
+        "web_enabled": true,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2701,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -1387
+    },
+    {
+      "query": "Remind me tomorrow",
+      "web_enabled": true,
+      "before": {
+        "query": "Remind me tomorrow",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 953,
+        "estimated_total_input": 4089,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "after": {
+        "query": "Remind me tomorrow",
+        "web_enabled": true,
+        "tools": [
+          "event_manage",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 704,
+        "estimated_total_input": 2702,
+        "modules": [
+          "chat",
+          "profile",
+          "events"
+        ]
+      },
+      "input_delta": -1387
+    },
+    {
+      "query": "Research current battery chemistry",
+      "web_enabled": true,
+      "before": {
+        "query": "Research current battery chemistry",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3559,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Research current battery chemistry",
+        "web_enabled": true,
+        "tools": [
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 295,
+        "estimated_total_input": 3142,
+        "modules": [
+          "chat",
+          "profile",
+          "web"
+        ]
+      },
+      "input_delta": -417
+    },
+    {
+      "query": "Check the latest news",
+      "web_enabled": true,
+      "before": {
+        "query": "Check the latest news",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3556,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Check the latest news",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 293,
+        "estimated_total_input": 3137,
+        "modules": [
+          "chat",
+          "profile",
+          "web"
+        ]
+      },
+      "input_delta": -419
+    },
+    {
+      "query": "Give me 1 question quiz",
+      "web_enabled": true,
+      "before": {
+        "query": "Give me 1 question quiz",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "event_manage",
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 2051,
+        "estimated_total_input": 5866,
+        "modules": [
+          "chat",
+          "profile",
+          "events",
+          "learner",
+          "assessment"
+        ]
+      },
+      "after": {
+        "query": "Give me 1 question quiz",
+        "web_enabled": true,
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3481,
+        "modules": [
+          "chat",
+          "profile",
+          "assessment"
+        ]
+      },
+      "input_delta": -2385
+    },
+    {
+      "query": "Give me one MCQ on fractions",
+      "web_enabled": true,
+      "before": {
+        "query": "Give me one MCQ on fractions",
+        "web_enabled": true,
+        "tools": [
+          "web_search",
+          "web_research",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 419,
+        "estimated_total_input": 3557,
+        "modules": [
+          "chat",
+          "profile"
+        ]
+      },
+      "after": {
+        "query": "Give me one MCQ on fractions",
+        "web_enabled": true,
+        "tools": [
+          "assessment_generate",
+          "enable_workflow_tools"
+        ],
+        "schema_tokens": 656,
+        "estimated_total_input": 3482,
+        "modules": [
+          "chat",
+          "profile",
+          "assessment"
+        ]
+      },
+      "input_delta": -75
+    }
+  ],
+  "task_costs": [
+    {
+      "query": "Find my earlier message about fractions",
+      "before": {
+        "query": "Find my earlier message about fractions",
+        "tool": "history_lookup",
+        "model_rounds": 3,
+        "estimated_total_input": 9706,
+        "physical_calls": 2
+      },
+      "after": {
+        "query": "Find my earlier message about fractions",
+        "tool": "history_lookup",
+        "model_rounds": 2,
+        "estimated_total_input": 6591,
+        "physical_calls": 1
+      }
+    },
+    {
+      "query": "What are my saved preferences?",
+      "before": {
+        "query": "What are my saved preferences?",
+        "tool": "user_memory",
+        "model_rounds": 3,
+        "estimated_total_input": 9429,
+        "physical_calls": 2
+      },
+      "after": {
+        "query": "What are my saved preferences?",
+        "tool": "user_memory",
+        "model_rounds": 2,
+        "estimated_total_input": 6320,
+        "physical_calls": 1
+      }
+    },
+    {
+      "query": "What is my agenda tomorrow?",
+      "before": {
+        "query": "What is my agenda tomorrow?",
+        "tool": "event_lookup",
+        "model_rounds": 3,
+        "estimated_total_input": 9276,
+        "physical_calls": 2
+      },
+      "after": {
+        "query": "What is my agenda tomorrow?",
+        "tool": "event_lookup",
+        "model_rounds": 2,
+        "estimated_total_input": 4557,
+        "physical_calls": 1
+      }
+    },
+    {
+      "query": "Explain my notes",
+      "before": {
+        "query": "Explain my notes",
+        "tool": "search_study_material",
+        "model_rounds": 2,
+        "estimated_total_input": 5936,
+        "physical_calls": 1
+      },
+      "after": {
+        "query": "Explain my notes",
+        "tool": "search_study_material",
+        "model_rounds": 2,
+        "estimated_total_input": 5062,
+        "physical_calls": 1
+      }
+    },
+    {
+      "query": "Check the latest news",
+      "before": {
+        "query": "Check the latest news",
+        "tool": "web_search",
+        "model_rounds": 2,
+        "estimated_total_input": 6996,
+        "physical_calls": 1
+      },
+      "after": {
+        "query": "Check the latest news",
+        "tool": "web_search",
+        "model_rounds": 2,
+        "estimated_total_input": 6408,
+        "physical_calls": 1
+      }
+    }
+  ],
+  "checks": {
+    "complete_cohorts": true,
+    "scripted_workflow_non_regression": true
+  }
+}

@@ -73,7 +73,9 @@ async def serve():
     async def consume(consumer):
         while not stopping.is_set():
             try:
-                await consumer.run_once()
+                processed = await consumer.run_once()
+                if processed:
+                    continue  # Drain ready jobs; idle polling must not throttle a busy queue.
             except Exception as error:
                 logging.getLogger('mentra').warning('Worker queue unavailable (%s)', type(error).__name__)
             try: await asyncio.wait_for(stopping.wait(), 2)

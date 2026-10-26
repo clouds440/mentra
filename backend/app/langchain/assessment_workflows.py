@@ -16,6 +16,10 @@ class AssessmentWorkflows:
         from app.assessments.blueprint import blueprint
         from app.core.observability.timing import run_in_threadpool
         await run_in_threadpool(self.learner.get_context_summaries, owner, [request.context_id])
+        from app.assessments.structure import small_practice, small_blueprint
+        compact = not revision and small_practice(request)
+        from app.assessments.revision import reusable_revision
+        reuse = reusable_revision(request, revision)
         concepts = list(dict.fromkeys(identifier for question in revision['questions'] for identifier in question['concept_ids'])) if revision else []
         sources = []
         if request.grounded:
@@ -25,6 +29,9 @@ class AssessmentWorkflows:
             retrieved = await run_in_threadpool(self.rag.search_assessment, owner, AssessmentGroundingRequest(query=request.topic, context_ids=[request.context_id], approved_document_ids=request.document_ids, limit=5))
             sources = [chunk.source.model_dump(mode='json') for chunk in retrieved.chunks]
             if not sources: raise AppError('ASSESSMENT_SOURCES_REQUIRED', 'No ready study sources matched this topic.', 409)
+            if reuse:
+                from app.assessments.revision import revision_sources
+                sources = revision_sources(revision.get('sources', []), sources)
         prompt_sources = [{key:source[key] for key in ('token','title','excerpt')} for source in sources]
         if not revision and request.concept_ids:
             exact = await run_in_threadpool(self.learner.get_practice_concepts, owner, request.context_id,
@@ -33,7 +40,7 @@ class AssessmentWorkflows:
         elif not revision:
             labels = [label.strip() for label in request.concept_names if label.strip()]
             inferred = not labels
-            if inferred:
+            if inferred and not compact:
                 ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
                 known = list(dict.fromkeys(item.concept_id for item in [*ranked['recommendations'], *ranked['verification']]))[:10]
                 known_concepts = await run_in_threadpool(self.learner.get_concepts, known)
@@ -59,26 +66,41 @@ class AssessmentWorkflows:
                     learner_id=owner, context_id=request.context_id, topic=request.topic, labels=labels[offset:offset+5], permissive=True))
                 concepts.extend(concept.id for concept in resolved)
             concepts = list(dict.fromkeys(concepts))
-        ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
+        from .concurrent_reads import gather_reads
+        async def read_profile():
+            return await run_in_threadpool(self.profile.prompt_context, owner) if self.profile else None
+        async def read_ranked():
+            return dict(recommendations=[], verification=[]) if reuse else await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
+        async def read_learner_context():
+            return None if reuse else await run_in_threadpool(self.learner.get_relevant_context,
+                LearnerContextRequest(learner_id=owner, query=request.topic, context_ids=[request.context_id], max_concepts=8))
+        ranked, target_concepts, profile_context, learner_context = await gather_reads([
+            read_ranked,
+            lambda: run_in_threadpool(self.learner.get_concepts, concepts),
+            read_profile,
+            read_learner_context,
+        ])
         recommendations, verification = ranked['recommendations'], ranked['verification']
-        target_concepts = await run_in_threadpool(self.learner.get_concepts, concepts)
         targets = [dict(id=identifier, name=target_concepts[identifier].canonical_name) for identifier in concepts]
         questions = []
         title = None
-        profile_context = await run_in_threadpool(self.profile.prompt_context, owner) if self.profile else None
-        learner_context = await run_in_threadpool(self.learner.get_relevant_context,
-            LearnerContextRequest(
-                learner_id=owner, query=request.topic, context_ids=[request.context_id], max_concepts=8))
         from app.assessments.schemas import GeneratedQuestion, PaperInfo
         from hashlib import sha256
         import json
         source_signature = sha256(json.dumps([{key: source.get(key) for key in ('token','document_id','generation_id','chunk_id','excerpt')} for source in sources], sort_keys=True).encode()).hexdigest()
         resume = resume or {}
+        revision_positions = reuse['positions'] if reuse else None
+        if resume.get('revision_positions') != revision_positions:
+            resume = {}  # Never interpret an older full-generation checkpoint as a partial edit.
         if resume.get('plan') and resume.get('source_signature') == source_signature:
             question_plan = resume['plan']
             paper = PaperInfo.model_validate(resume['paper']) if resume.get('paper') else None
             questions = [GeneratedQuestion.model_validate(value) for value in resume.get('questions', [])]
             title = resume.get('title')
+        elif compact:
+            question_plan, paper = small_blueprint(request)
+        elif reuse:
+            question_plan, paper = reuse['plan'], reuse['paper']
         elif not request.paper_sections and (request.question_formats or request.question_format in ('mixed', 'mock_paper') or request.count is None or request.instructions):
             from .assessment_design import design_assessment
             question_plan, paper = await design_assessment(self.llm, request, prompt_sources,
@@ -90,8 +112,11 @@ class AssessmentWorkflows:
         async def save_progress():
             if checkpoint:
                 await checkpoint(dict(schema_version=1, plan=question_plan, paper=paper.model_dump(mode='json') if paper else None,
-                    questions=[question.model_dump(mode='json') for question in questions], title=title, source_signature=source_signature))
+                    questions=[question.model_dump(mode='json') for question in questions], title=title, source_signature=source_signature,
+                    revision_positions=revision_positions))
         await save_progress()
+        unchanged = [question for index,question in enumerate(reuse['retained']) if index not in reuse['positions']] if reuse else []
+        unchanged_prompts = [question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in unchanged]
         import asyncio
         from .token_policy import output_budget
         from app.core.config import settings
@@ -105,14 +130,14 @@ class AssessmentWorkflows:
         split=expected_output>reserve*.95 or context_size>max(2000,config.chat_context_window_tokens-reserve-6000) or long_revision
         batch_size=(3 if long_revision else 6) if split else len(question_plan)
         workflow_logger.event('assessment.generation_plan', parts=len(question_plan), batch_size=batch_size,
-            concurrent_batches=min(2,(len(question_plan)+batch_size-1)//batch_size))
+            concurrent_batches=min(2,(len(question_plan)+batch_size-1)//batch_size), compact=compact)
         from .assessment_payloads import generation_payload
         shared_payload = dict(topic=request.topic, question_format=request.question_format,
             instructions=request.instructions, purpose=request.purpose, targets=targets,
             recommendations=[item.model_dump(mode='json', exclude_none=True) for item in recommendations if item.concept_id in concepts],
             verification=[item.model_dump(mode='json', exclude_none=True) for item in verification if item.concept_id in concepts],
             sources=prompt_sources, profile=profile_context.model_dump(mode='json', exclude_none=True) if profile_context else None,
-            learner_context=learner_context.model_dump(mode='json', exclude_none=True), level=request.level, result_style=request.result_style,
+            learner_context=learner_context.model_dump(mode='json', exclude_none=True) if learner_context else None, level=request.level, result_style=request.result_style,
             paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
                 sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None,
             **(dict(revision_instructions=revision.get('instructions', request.revision_instructions)) if revision else {}))
@@ -123,14 +148,17 @@ class AssessmentWorkflows:
                 validate_questions(result, count=batch_count,
                     question_format=request.question_format, concepts=set(concepts) if request.concept_ids else None,
                     require_attribution=bool(request.concept_ids), tokens={source['token'] for source in sources}, grounded=request.grounded,
-                    previous=[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior], plan=batch_plan)
+                    previous=[*unchanged_prompts, *[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior]], plan=batch_plan)
                 if revision and revision.get('mistake_revision'):
                     originals = {item['prompt'].strip().casefold() for item in revision['questions']}
                     if any(question.prompt.strip().casefold() in originals for question in result.questions):
                         raise GenerationMismatch('revision_questions_require_fresh_wording')
+            payload = generation_payload(shared=shared_payload, plan=question_plan, offset=offset,
+                batch_size=batch_size, prior=prior, revision=reuse['original'] if reuse else revision)
+            if unchanged:
+                payload['unchanged_question_overview'] = [dict(excerpt=question.prompt[:160], truncated=len(question.prompt)>160) for question in unchanged]
             generated = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GENERATION,
-            generation_payload(shared=shared_payload, plan=question_plan, offset=offset,
-                batch_size=batch_size, prior=prior, revision=revision), output_schema=GeneratedAssessmentBatch,
+            payload, output_schema=GeneratedAssessmentBatch,
                 maximum_attempts=1 if batch_count>6 else 2,
                 validate=validate_batch)
             return generated, batch_plan
@@ -146,7 +174,7 @@ class AssessmentWorkflows:
                     try:
                         validate_questions(generated,count=len(batch_plan),question_format=request.question_format,concepts=None,
                             tokens={source['token'] for source in sources},grounded=request.grounded,
-                            previous=[q.prompt.casefold().strip()+'|'+q.context.casefold().strip() for q in questions],plan=batch_plan)
+                            previous=[*unchanged_prompts, *[q.prompt.casefold().strip()+'|'+q.context.casefold().strip() for q in questions]],plan=batch_plan)
                     except GenerationMismatch:
                         generated,batch_plan=await generate_batch(offset,list(questions))
                     title = title or generated.title
@@ -171,6 +199,11 @@ class AssessmentWorkflows:
                 for _,task in tasks:
                     if not task.done(): task.cancel()
                 await asyncio.gather(*(task for _,task in tasks),return_exceptions=True)
+        if reuse:
+            merged = list(reuse['retained'])
+            for index, question in zip(reuse['positions'], questions):
+                merged[index] = question
+            questions = merged
         generated = GeneratedAssessment(title=title, questions=questions, paper=paper)
         return generated, sources
 

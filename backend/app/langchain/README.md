@@ -31,13 +31,27 @@ failures become `ConceptAssistanceUnavailable`, allowing deterministic identity
 resolution to continue. Neither invalid advice nor a missing exact concept match
 requires another student turn. See [assessment workflow](../../../docs/chat-assessments.md).
 
-RAG may prefetch before model execution to warm its revision-aware candidate cache.
-Prefetched passages, citations, outcomes and failures are private preparation data:
-they are not injected into the model prompt or published as response limitations.
-Only an agent-requested `search_study_material` call delivers evidence, after the
-RAG service revalidates current source eligibility. Tool discovery remains available
-for missing capabilities; general and self-contained queries can answer directly.
+Preparation validates explicit source ownership and eligibility without speculative
+embedding/search calls. Only an agent-requested `search_study_material` call delivers
+evidence, after the RAG service revalidates current source eligibility. Tool discovery
+remains available for missing capabilities; general and self-contained queries can
+answer directly. Current high-level profile preferences are read for every request.
 Chat renders the agent's answer without automatic tool/RAG/web limitation banners.
+
+`capabilities.py` owns the tool/domain/outcome catalog. Cheap request hints in
+`request_intent.py` and `planning.py` select candidate schemas without a routing
+model call; the model still chooses actual execution. Web instructions and schemas
+are conditional. Discovery retains newly enabled pending tools across subsequent
+discoveries and can re-enable a pruned tool. Explicit lookup/action goals require
+a domain attempt; explicit practice requires a durable assessment receipt. Missing
+outcomes get at most one bounded repair, then an honest failure/limitation.
+
+Ordinary practice defaults to native interactive delivery. Explicit written and
+printable delivery remain available independently of question type. Compact schemas
+cover ordinary generation; advanced paper structure is discoverable separately.
+Eligible small requests use deterministic structure and one validated content stage,
+preserving grading/concept checks. Durable public card references can appear before
+final narration; activity never carries answer keys or arbitrary generated UI code.
 
 Optional `web_search(query, website?)` is available independently of history and
 RAG when enabled. The domain facade owns provider I/O and shared operational quota;
@@ -59,6 +73,12 @@ timing, parameter presence/types/counts and sanitized outcomes, not query or
 response bodies. See [logging](../../../docs/backend-logging.md).
 
 ## Prompt size and provider caching
+
+Visible artifact edits load the conditional `response_edit` contract and retain the
+complete target during budgeting. Compatible assessment revisions reuse accepted
+structure/items; explicit `question_numbers` limit generation to changed questions.
+Private keys remain service-owned, originals/attempts remain immutable, and new or
+changed content retains validation. See [follow-up edit optimization](../../../docs/Followup_Edit_Optimization_2026-10-27.md).
 
 The universal chat contract stays in `prompts/chat.py`. Detailed assessment routing
 uses `chat_assessment`, activated with bound/discovered assessment tools or existing

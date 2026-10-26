@@ -2,7 +2,7 @@ import asyncio
 import json
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import StructuredTool
@@ -176,26 +176,26 @@ class ConcurrentDispatchTests(unittest.IsolatedAsyncioTestCase):
     async def test_context_preparation_overlaps_without_changing_model_context(self):
         import threading
         from app.langchain.orchestration_service import OrchestrationService
-        from app.rag.schemas import RetrievalResult
-        gate = threading.Barrier(3, timeout=2)
+        gate = threading.Barrier(2, timeout=2)
         def profile(*args):
             gate.wait()
             return SimpleNamespace(model_dump=lambda **kw: {'name':'Student'})
-        def learner(*args):
+        def memories(*args):
             gate.wait()
-            return SimpleNamespace(model_dump=lambda **kw: {'concepts':[]})
-        def search(*args):
-            gate.wait()
-            return RetrievalResult(status='no_eligible_sources')
+            return dict(state='empty',content='',revision=0), None
+        learner = Mock()
+        search = Mock()
         chat = SimpleNamespace(reply=AsyncMock(return_value='Grounded explanation'))
         state = dict(scope(), context_rows=[])
         service = OrchestrationService(chat, rag=SimpleNamespace(search=search),
             learner=SimpleNamespace(get_relevant_context=learner),
-            history=SimpleNamespace(profile=SimpleNamespace(prompt_context=profile)))
+            history=SimpleNamespace(profile=SimpleNamespace(prompt_context=profile),summary_context=memories))
         from testing.identities import learner_id
         result = await service.chat_reply([('user','Help me study my notes')],None,learner_id('alice'),history_scope=state)
         self.assertEqual(result.content, 'Grounded explanation')
         self.assertEqual(chat.reply.call_args.kwargs['profile_context'], {'name':'Student'})
+        learner.assert_not_called()
+        search.assert_not_called()
 
 
 class ActivityBatchTests(unittest.IsolatedAsyncioTestCase):

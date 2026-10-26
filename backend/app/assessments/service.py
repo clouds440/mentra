@@ -69,6 +69,15 @@ class AssessmentService:
                                        context_id=None, **options):
         # Verify conversation ownership before creating any context or targets.
         await run_in_threadpool(self.chat.recent, owner, conversation)
+        # A short explicit-topic quiz needs no extra model call to choose a type.
+        # Larger, structured and topicless work retains semantic selection.
+        if topic and options.get('question_format') == 'auto':
+            from .schemas import AssessmentIntent
+            from .structure import small_practice
+            candidate = AssessmentIntent(client_request_id=client_request_id, context_id=context_id,
+                topic=topic, **dict(options, question_format='mixed'))
+            if small_practice(candidate):
+                options = dict(options, question_format='short_answer' if candidate.count == 1 else 'mixed')
         if not topic or options.get('question_format') == 'auto':
             from .schemas import AssessmentIntent
             intent = AssessmentIntent(client_request_id=client_request_id, context_id=context_id, topic=topic, **options)
@@ -123,13 +132,12 @@ class AssessmentService:
         if request.revision_draft_id:
             if not conversation:
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Chat drafts can only be revised in their conversation.', 422)
-            card = await run_in_threadpool(self.chat.detail, owner, str(request.revision_draft_id))
+            card = await run_in_threadpool(self.chat.revision_source, owner, str(request.revision_draft_id))
             if card['conversation_id'] != conversation:
                 raise AppError('ASSESSMENT_DRAFT_NOT_FOUND', 'This assessment is not in the current chat.', 404)
             source = card['assessment']
         elif request.revision_assessment_id:
-            value = await run_in_threadpool(self.repository.detail, owner, str(request.revision_assessment_id))
-            source = value.model_dump(mode='json')
+            source = await run_in_threadpool(self.repository.revision_source, owner, str(request.revision_assessment_id))
         if source and source['context_id'] != request.context_id:
             raise AppError('ASSESSMENT_CONTEXT_MISMATCH', 'Revise within the original learning context.', 422)
         return source

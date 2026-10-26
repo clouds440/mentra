@@ -30,6 +30,6 @@ def generation_payload(*, shared: dict, plan: list[dict], offset: int, batch_siz
         payload['previous_prompts'] = [question.prompt[:250] for question in prior]
     if revision:
         payload['original_questions'] = [{key: question.get(key, []) if key == 'options' else question[key]
-            for key in ('prompt', 'marks', 'difficulty', 'concept_ids', 'options')}
+            for key in ('prompt', 'marks', 'difficulty', 'concept_ids', 'options', 'context', 'question_type', 'answer_mode', 'source_tokens') if key in question}
             for question in revision['questions'][offset:offset + len(batch)]]
     return payload

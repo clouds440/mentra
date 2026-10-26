@@ -25,6 +25,10 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
   const [notice, setNotice] = useState('');
   function choose(value: ChatSelection) { setNotice(''); onChange(value); }
   useEffect(() => {
+    if (!pickerOpen && !selection.document_ids?.length && !selection.context_ids?.length) {
+      setLoading(false);
+      return; // Ordinary chat does not need Library/context list queries.
+    }
     const controller = new AbortController();
     controllerRef.current = controller;
     setLoadingMore(false);
@@ -104,7 +108,7 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
           <p className="text-sm font-medium text-heading">Discuss study material</p>
           <span className="text-[10px] text-subtle">↑ ↓ to browse · Enter to select</span>
         </div>
-        <p className="text-xs text-subtle">{query ? `Results for “${query}”` : 'Type after @ in your message to search.'}</p>
+        <p className="text-xs text-subtle">{query ? `Results for “${query}”` : 'Choose material below, or type @ followed by its name in your message.'}</p>
         <div id="study-material-results" role="listbox" aria-label="Study material" className="mt-2 max-h-40 overflow-y-auto">
           {matches.map((document, index) => <button key={document.id} id={`study-material-option-${index}`} type="button"
             role="option" aria-selected={index === active} onClick={() => pick(document)}

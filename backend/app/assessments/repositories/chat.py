@@ -48,6 +48,14 @@ class ChatAssessmentRepository:
                 assessments.c.learner_id == owner, assessments.c.id == row['assessment_id'])))
             return dict(self.public(row), deleted=deleted)
 
+    def revision_source(self, owner, identifier):
+        """Trusted revision service only; private keys never enter the public DTO."""
+        from copy import deepcopy
+        with self.repository.sessions() as session:
+            row = self._draft(session, owner, identifier)
+            payload = self.repository._assessment(session, owner, row['assessment_id']) if row['assessment_id'] else row['payload']
+            return dict(conversation_id=str(row['conversation_id']), assessment=deepcopy(dict(payload)))
+
     def question_paper(self, owner, assessment_id):
         """Read an unsaved chat paper without publishing it or starting an attempt."""
         with self.repository.sessions() as session:
@@ -98,7 +106,7 @@ class ChatAssessmentRepository:
             payload = dict(id=str(uuid4()), learner_id=owner, context_id=request.context_id, title=generated.title,
                 purpose=request.purpose, revision=1, created_at=self.repository.clock().isoformat(),
                 paper=generated.paper.model_dump(mode='json') if generated.paper else None,
-                preferences=dict(level=request.level, result_style=request.result_style),
+                preferences=dict(level=request.level, result_style=request.result_style, delivery=request.delivery),
                 questions=[dict(q.model_dump(mode='json'), id=str(uuid4())) for q in generated.questions],
                 sources=sources, operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage

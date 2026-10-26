@@ -2,7 +2,7 @@ import re
 import json
 from app.core.observability.timing import run_in_threadpool
 from app.core.exceptions import AppError
-from app.rag.schemas import SearchRequest, ChatSelection
+from app.rag.schemas import ChatSelection
 from app.chat.context import HistoryContextPolicy
 from app.langchain.prompts import PromptSource, get_system_prompt
 from app.chat.response import ChatResponse
@@ -49,7 +49,7 @@ class OrchestrationService:
         executor = ToolExecutor(budget, recovery_scope, activity)
         class ReadInput(BaseModel):
             request_key: str
-        async def read(name, action, *arguments, required=False, timeout=10, speculative=False):
+        async def read(name, action, *arguments, required=False, timeout=10):
             rejected_input = None
             async def invoke(request_key):
                 nonlocal rejected_input
@@ -63,11 +63,7 @@ class OrchestrationService:
                     raise
             from .tool_policy import DOMAINS
             tool = StructuredTool.from_function(name=name, description='Prepare requested context', args_schema=ReadInput, coroutine=invoke, metadata={'domain': DOMAINS.get(name, 'documents' if name == 'document_extract' else 'profile')})
-            # Speculative retrieval warms RAG's revision-aware candidate cache.
-            # It must not publish warnings, consume the agent's tool budget, or
-            # become evidence before the agent requests the actual search tool.
-            reader = ToolExecutor(ToolBudget(), {}, ActivityPublisher()) if speculative else executor
-            result = await reader.execute(tool, {'request_key': json.dumps(arguments, default=str)}, required=required, max_attempts=1 if required or timeout > 10 else 2, timeout=timeout)
+            result = await executor.execute(tool, {'request_key': json.dumps(arguments, default=str)}, required=required, max_attempts=1 if required or timeout > 10 else 2, timeout=timeout)
             if rejected_input is not None:
                 raise rejected_input
             if isinstance(result, dict) and result.get('code') and result.get('outcome') == 'unavailable':
@@ -94,10 +90,15 @@ class OrchestrationService:
         def prepare(key, action):
             preparations.append((key, action))
         if self.assessments is not None and history_scope and not history_scope.get('stateless') and 'assessment' in modules:
-            prepare('assessments', lambda: read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']))
-        if self.rag is not None and 'rag' in modules:
-            selection = retrieval.model_dump() if retrieval else {}
-            prepare('rag', lambda: read('search_study_material', self.rag.search, owner, SearchRequest(query=query[:4000], **selection), required=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)), speculative=True))
+            visible_cards = next((row.get('metadata', {}).get('assessment_cards', []) for row in reversed(history_scope.get('context_rows', [])) if row.get('role') == 'assistant'), [])
+            if plan.assessment_edit and visible_cards and all(card.get('assessment') for card in visible_cards):
+                async def existing_cards(): return visible_cards
+                prepare('assessments', existing_cards)  # Target hints only; revision still reads authoritative owned data.
+            else:
+                prepare('assessments', lambda: read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']))
+        if self.rag is not None and not plan.edit_source_id and retrieval and (retrieval.document_ids or retrieval.context_ids or retrieval.mode != 'STANDARD' or retrieval.include_archived):
+            prepare('source_selection', lambda: read('validate_study_selection', self.rag.validate_selection,
+                owner, retrieval, required=True))
         if self.history is not None and self.history.profile is not None and 'profile' in modules:
             prepare('profile', lambda: read('profile_context', self.history.profile.prompt_context, owner))
         if self.history is not None and owner and hasattr(self.history, 'summary_context'):
@@ -122,7 +123,7 @@ class OrchestrationService:
         prepared = dict(zip((key for key, _ in preparations), values))
         await activity.emit('planning', 'completed', 'Your request is ready to process')
         chat_assessments = prepared.get('assessments') or []
-        prepared.pop('rag', None)  # Cached candidates remain in RAG; discard speculative passages.
+        prepared.pop('source_selection', None)  # Scope validation is not retrieved evidence.
         warning = None
         packet = dict(status='not_requested', sources=[])
         kwargs = {}

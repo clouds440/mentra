@@ -25,7 +25,7 @@ export function resolveLanguage(value?: string): { id: string; label: string } {
   const hint = (value ?? '').toLowerCase().replace(/^language-/, '').replace(/^\./, '').split(/\s/)[0].slice(0, 48);
   const id = aliases[hint] ?? hint;
   const definition = id !== 'meta' ? languageDefinitions[id] : undefined;
-  return { id: definition ? id : 'plain', label: definition?.title ?? (hint && !['plain', 'plaintext', 'text', 'none'].includes(hint) ? hint.toUpperCase() : 'Code') };
+  return { id: definition ? id : 'plain', label: definition?.title ?? (hint && !['plain', 'plaintext', 'text', 'none'].includes(hint) ? hint.toUpperCase() : 'Text') };
 }
 
 export function fileLanguage(filename?: string): string | undefined {

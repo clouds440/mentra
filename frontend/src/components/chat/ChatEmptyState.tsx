@@ -8,17 +8,18 @@ import { MentraLogo } from '../brand/MentraLogo';
 import { Button } from '../ui';
 
 const suggestions = [
-  { label: 'Explain a concept', prompt: 'Help me understand a concept: ', icon: Lightbulb },
-  { label: 'Quiz me', prompt: 'Quiz me on ', icon: ClipboardCheck },
-  { label: 'Study my material', prompt: 'Help me study ', icon: BookOpenText },
-  { label: 'Prepare for an exam', prompt: 'Help me prepare for an exam on ', icon: Sparkles },
+  { label: 'Explain a concept', prompt: 'Help me understand a concept. Ask me which topic to explore.', icon: Lightbulb },
+  { label: 'Quiz me', prompt: 'Give me a short quiz to practice what I am learning.', icon: ClipboardCheck },
+  { label: 'Study my material', prompt: 'study-material', icon: BookOpenText },
+  { label: 'Prepare for an exam', prompt: 'Help me prepare for an exam. Use what we know, and ask only for any essential missing details.', icon: Sparkles },
 ];
 
 interface ChatEmptyStateProps {
   onChooseSuggestion: (prompt: string) => void;
+  disabled?: boolean;
 }
 
-export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
+export function ChatEmptyState({ onChooseSuggestion, disabled }: ChatEmptyStateProps) {
   return (
     <section className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-4 pb-6 pt-16 text-center sm:pb-10">
       <div
@@ -32,13 +33,14 @@ export function ChatEmptyState({ onChooseSuggestion }: ChatEmptyStateProps) {
         What are we learning today?
       </h1>
       <p className="mt-3 max-w-md text-sm leading-6 text-subtle">
-        Start with a question, or choose a prompt to find your next step.
+        Ask naturally, or choose where to begin.
       </p>
       <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
         {suggestions.map(({ label, prompt, icon: Icon }) => (
           <Button
             className="h-auto min-h-12 justify-start gap-3 rounded-panel border-border bg-card px-4 py-3 text-sm font-normal text-body hover:border-border-strong hover:text-foreground"
             key={label}
+            disabled={disabled}
             onClick={() => onChooseSuggestion(prompt)}
             size="sm"
             variant="secondary"

@@ -1,10 +1,10 @@
 """Narrow domain adapters. Identity and source consent stay server-bound."""
 from uuid import uuid5, NAMESPACE_URL
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model
 from langchain_core.tools import StructuredTool
 from app.core.observability.timing import run_in_threadpool
-from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, QuestionFormat, PaperSection
+from app.assessments.schemas import GenerationRequest, StartAttempt, SubmitAnswers, QuestionFormat, PaperSection, AssessmentDelivery
 from app.assessments.blueprint import question_reference
 from app.core.exceptions import AppError
 from .concurrent_reads import project_read
@@ -24,6 +24,7 @@ class GeneratePractice(BaseModel):
     count: int | None = Field(default=None, ge=1, description='Explicit MAIN-question count; parts are separate. Omit for request-based length.')
     grounded: bool = False
     question_format: QuestionFormat = Field(default='auto', description='Explicit type, or omit for automatic choice: mixed, mcq, true_false, short_answer, written, mock_paper or custom. Interactive supports varied types.')
+    delivery: AssessmentDelivery = Field(default='interactive', description='Native inputs by default; written/printable only when requested. Independent of question type.')
     level: str | None = Field(default=None, max_length=200, description='Explicit academic level, e.g. Grade 7, GCSE or undergraduate. Do not infer a school grade from ability scores.')
     result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
     duration_minutes: int | None = Field(default=None, ge=1)
@@ -34,6 +35,13 @@ class GeneratePractice(BaseModel):
 class AssessmentStatus(BaseModel):
     model_config = ConfigDict(extra='forbid')
     assessment_id: str = Field(min_length=1, max_length=100)
+
+
+# Ordinary practice does not carry the recursively nested paper-outline schema.
+# Both operations use the same validated request/domain pipeline.
+QuickPractice = create_model('QuickPractice', __config__=ConfigDict(extra='forbid'),
+    **{name: (field.annotation, field) for name, field in GeneratePractice.model_fields.items()
+       if name not in {'duration_minutes', 'total_marks', 'paper_sections'}})
 
 class AnswerPractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -56,6 +64,9 @@ class RevisePractice(BaseModel):
     draft_id: str | None = Field(default=None, min_length=1, max_length=100)
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
     question_format: QuestionFormat | None = None
+    delivery: AssessmentDelivery | None = None
+    question_numbers: list[str] = Field(default_factory=list, max_length=20,
+        description='Only explicitly requested question references, e.g. 2 or 3a. Omit to revise all questions. Unselected items retain their exact content and grading keys.')
     instructions: str = Field(min_length=1,
         description='Verbatim requested changes from the current student message; never add changes they did not request.')
     count: int | None = Field(default=None, ge=1)
@@ -118,11 +129,23 @@ def create_workflow_tools(owner, scope, budget):
             budget.call(True)
             # Same arguments in a retried turn produce the same operation ID.
             body = GeneratePractice(**arguments)
-            request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{body.model_dump_json()}")
+            identity = body.model_dump_json(exclude={'delivery'} if body.delivery == 'interactive' else set())
+            request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{identity}")
             selection = scope.get('retrieval_selection') or ChatSelection()
             result = await service.generate_chat_from_topic(owner, scope['conversation_id'], client_request_id=request_id,
                 **body.model_dump(), instructions=scope.get('current_answer_text', ''), document_ids=selection.document_ids or [])
             scope.setdefault('assessment_cards', []).append(result)
+            scope['_assessment_receipt'] = dict(title=result.get('title') or result.get('assessment', {}).get('title'),
+                state='pending' if result.get('generation_job_id') else 'ready')
+            from .activity import current_publisher
+            publisher = current_publisher.get() or scope.get('activity')
+            if publisher is not None:
+                identifier = result.get('generation_job_id') or result.get('id') or result.get('assessment_id')
+                if identifier:
+                    await publisher.emit('assessment-result', 'completed', 'Your practice is available below.',
+                        tool_name='assessment_generate', assessment_card=dict(id=identifier,
+                            kind='generation' if result.get('generation_job_id') else 'draft' if result.get('id') else 'saved',
+                            title=scope['_assessment_receipt']['title']))
             if result.get('generation_job_id'):
                 return dict(outcome='queued', generation_job_id=result['generation_job_id'], title=result['title'],
                     next_step='The assessment is being built in the chat card, with saved progress. Do not claim it is finished or repeat its contents. The learner can continue chatting while it completes.')
@@ -268,7 +291,7 @@ def create_workflow_tools(owner, scope, budget):
             return dict(title=source['title'], number=number, prompt=value['prompt'], marks=value['marks'], options=value.get('options', []),
                 next_step='Answer the student follow-up. Clarification does not save the draft or start an attempt.')
 
-        async def revise(instructions, draft_id=None, assessment_id=None, count=None, question_format=None, total_marks=None, duration_minutes=None, paper_sections=None, level=None, result_style=None):
+        async def revise(instructions, draft_id=None, assessment_id=None, count=None, question_format=None, total_marks=None, duration_minutes=None, paper_sections=None, level=None, result_style=None, delivery=None, question_numbers=None):
             budget.call(True)
             if bool(draft_id) == bool(assessment_id):
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose exactly one assessment to revise.', 422)
@@ -288,18 +311,20 @@ def create_workflow_tools(owner, scope, budget):
             result = await service.generate_chat(owner, scope['conversation_id'], GenerationRequest(
                 client_request_id=operation, context_id=source['context_id'], topic=source['title'],
                 count=count if count is not None else source['paper']['question_count'] if source.get('paper') else len(source['questions']), purpose=source['purpose'],
-                question_format=selected_format,
+                question_format=selected_format, delivery=delivery or source.get('preferences', {}).get('delivery'),
                 level=level if level is not None else source.get('preferences', {}).get('level'),
                 result_style=result_style or source.get('preferences', {}).get('result_style', 'marks'),
-                duration_minutes=duration_minutes or (source['paper']['duration_minutes'] if source.get('paper') else 60),
+                duration_minutes=duration_minutes if duration_minutes is not None else source['paper']['duration_minutes'] if source.get('paper') else None,
                 total_marks=total_marks if total_marks is not None else source['paper']['total_marks'] if source.get('paper') and selected_format=='mock_paper' else None,
                 paper_sections=paper_sections or [], instructions=instructions,
                 grounded=bool(source['sources']), document_ids=list(dict.fromkeys(str(s['document_id']) for s in source['sources'])),
-                revision_draft_id=draft_id, revision_assessment_id=assessment_id, revision_instructions=instructions))
+                revision_draft_id=draft_id, revision_assessment_id=assessment_id, revision_instructions=instructions,
+                revision_question_numbers=question_numbers or []))
             scope.setdefault('assessment_cards', []).append(result)
             if result.get('generation_job_id'):
                 return dict(outcome='queued', generation_job_id=result['generation_job_id'], title=result['title'],
                     next_step='The revised assessment is being built in its card. Original questions, attempts and grades remain unchanged.')
+            scope['_assessment_receipt'] = dict(title=result['assessment']['title'], state='ready')
             return dict(outcome='saved' if result['assessment_id'] else 'chat_draft', draft_id=result['id'],
                 assessment_id=result['assessment_id'], title=result['assessment']['title'],
                 next_step='This is a new revised version. The original assessment and its attempts are preserved. The student may ask questions, revise again, or answer when ready.')
@@ -329,8 +354,10 @@ def create_workflow_tools(owner, scope, budget):
                             next_step='Review the inline card for all feedback and transcription details.') for item in attempts[:1]])
 
         tools.extend([
-            StructuredTool.from_function(name='assessment_generate', args_schema=GeneratePractice,
-                description='Generate a requested quiz or mock paper in this chat. Default is an unsaved chat draft with an Add to assessments button; auto-add follows the student setting. New or ambiguous concepts receive usable canonical IDs automatically. Never exposes private answers.', coroutine=generate),
+            StructuredTool.from_function(name='assessment_generate', args_schema=QuickPractice,
+                description='Test understanding with native interactive practice, including one question or a bare quiz request. Preserve requested type/count; written/printable delivery only when requested. Drafts stay in chat; auto-add follows the student setting. The engine resolves topics and concepts; no preliminary learner reads required. Private answers stay hidden.', coroutine=generate),
+            StructuredTool.from_function(name='assessment_generate_advanced', args_schema=GeneratePractice,
+                description='Create assessments with explicit total marks, timing, sections or multipart paper structure. Same validated practice workflow and delivery controls; preserve exact requested structure. Ordinary quizzes use assessment_generate.', coroutine=generate),
             StructuredTool.from_function(name='assessment_answer', args_schema=AnswerPractice,
                 description='Prepare student answers for review and grading directly in chat. Choose either a current-chat draft ID or an owned saved assessment ID. Use a current attached document/image or verbatim numbered answers from the current user message. Partial typed answers resume unfinished typed work; attempt_id explicitly continues an unfinished attempt. Only when the student requests answering/evaluation. This adds a draft to assessments and shows an inline review/submit card; never invent answers. Ask which assessment when the target is ambiguous.', coroutine=answer),
             StructuredTool.from_function(name='assessment_lookup', args_schema=FindPractice,

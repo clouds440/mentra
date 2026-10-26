@@ -55,7 +55,14 @@ class ChatService:
             current.content = [dict(type='text', text=current.content), *[image['block'] for image in image_context]]
         for message in conversation:
             if message.type == 'ai':
-                message.content = historical_web_markers(message.content)
+                plan = history_runtime[2].get('execution_plan') if history_runtime else None
+                if message.id and message.id == getattr(plan, 'edit_source_id', None):
+                    from app.web_search.citations import edit_web_links
+                    row = next(row for row in history_runtime[2]['context_rows'] if str(row['id']) == message.id)
+                    projected = edit_web_links(message.content, row.get('metadata') or {})
+                    message.content = projected if projected is not None else historical_web_markers(message.content)
+                else:
+                    message.content = historical_web_markers(message.content)
         try:
             sources = []
             context = dict(memories_summary=memories_summary or dict(state='unavailable', content='', revision=0),

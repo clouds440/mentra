@@ -224,6 +224,12 @@ class RAGService:
         document_ids = request.document_ids if candidate_documents is None else candidate_documents
         return ids, self.repository.eligible(owner, ids, document_ids, request.include_archived)
 
+    def validate_selection(self, owner, selection):
+        """Check an explicit scope without speculative embedding/retrieval work."""
+        request = SearchRequest(query='Validate selected study material', **selection.model_dump())
+        contexts, documents = self._eligible(owner, request)
+        return dict(context_count=len(contexts), document_count=len(documents))
+
     def search(self, owner: str, request: SearchRequest) -> RetrievalResult:
         request = request.model_copy(deep=True)
         request.query = normalized_query(request.query)

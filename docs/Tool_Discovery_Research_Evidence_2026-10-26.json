@@ -1,0 +1,398 @@
+{
+  "method": "Synthetic, offline coordinator snapshots; no provider/domain execution. cl100k_base-based conservative request estimates, not provider token counts.",
+  "baseline": [
+    {
+      "query": "Hello",
+      "tools": [
+        "enable_workflow_tools",
+        "DirectAnswer"
+      ],
+      "schema_tokens": 273,
+      "estimated_total_input": 2505
+    },
+    {
+      "query": "Explain photosynthesis",
+      "tools": [
+        "enable_workflow_tools",
+        "DirectAnswer"
+      ],
+      "schema_tokens": 273,
+      "estimated_total_input": 2513
+    },
+    {
+      "query": "What is my agenda tomorrow?",
+      "tools": [
+        "event_manage",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 704,
+      "estimated_total_input": 2946
+    },
+    {
+      "query": "Give me a quiz",
+      "tools": [
+        "event_manage",
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "get_study_recommendations",
+        "get_verification_candidates",
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 1801,
+      "estimated_total_input": 4715
+    },
+    {
+      "query": "Give me 1 question quiz",
+      "tools": [
+        "event_manage",
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "get_study_recommendations",
+        "get_verification_candidates",
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 1801,
+      "estimated_total_input": 4719
+    },
+    {
+      "query": "Give me one MCQ on fractions",
+      "tools": [
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 169,
+      "estimated_total_input": 2412
+    },
+    {
+      "query": "Mujhe fractions ka aik sawal ka quiz do",
+      "tools": [
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "get_study_recommendations",
+        "get_verification_candidates",
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 1266,
+      "estimated_total_input": 4194
+    },
+    {
+      "query": "مجھے ایک سوال کا کوئز دیں",
+      "tools": [
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 169,
+      "estimated_total_input": 2427
+    },
+    {
+      "query": "Quiz me",
+      "tools": [
+        "event_manage",
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "get_study_recommendations",
+        "get_verification_candidates",
+        "assessment_generate",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 1801,
+      "estimated_total_input": 4711
+    },
+    {
+      "query": "Practice fractions with me",
+      "tools": [
+        "get_active_learning_contexts",
+        "get_relevant_learner_context",
+        "enable_workflow_tools"
+      ],
+      "schema_tokens": 325,
+      "estimated_total_input": 2567
+    },
+    {
+      "query": "Hello",
+      "tools": [
+        "enable_workflow_tools",
+        "DirectNewChatReply"
+      ],
+      "schema_tokens": 344,
+      "estimated_total_input": 2756
+    }
+  ],
+  "web_and_research_enabled": {
+    "query": "Give me 1 question quiz",
+    "tools": [
+      "web_search",
+      "web_research",
+      "event_manage",
+      "get_active_learning_contexts",
+      "get_relevant_learner_context",
+      "get_study_recommendations",
+      "get_verification_candidates",
+      "assessment_generate",
+      "enable_workflow_tools"
+    ],
+    "registered_catalog": {
+      "history": {
+        "description": "Retrieve earlier conversations.",
+        "tools": [
+          "history_lookup",
+          "conversation_summary_search"
+        ]
+      },
+      "memory": {
+        "description": "Recall or propose saved preferences; consent and evidence checks apply.",
+        "tools": [
+          "user_memory"
+        ]
+      },
+      "web": {
+        "description": "Search current or additional external knowledge when needed; optional website restriction and dated citations.",
+        "tools": [
+          "web_search",
+          "web_research"
+        ]
+      },
+      "events": {
+        "description": "Read your agenda or prepare authorized event changes; review may be required.",
+        "tools": [
+          "event_lookup",
+          "event_manage"
+        ]
+      },
+      "learner": {
+        "description": "Read learning contexts and ranked practice targets; new concepts require review.",
+        "tools": [
+          "get_active_learning_contexts",
+          "get_relevant_learner_context",
+          "get_study_recommendations",
+          "get_verification_candidates",
+          "resolve_student_concept"
+        ]
+      },
+      "rag": {
+        "description": "Search approved study material and cite returned passages.",
+        "tools": [
+          "search_study_material"
+        ]
+      },
+      "assessment": {
+        "description": "Create, revise, discuss, or prepare answers for assessments; grading uses validated jobs.",
+        "tools": [
+          "assessment_generate",
+          "assessment_answer",
+          "assessment_lookup",
+          "assessment_revise",
+          "assessment_question",
+          "assessment_status"
+        ]
+      },
+      "chat": {
+        "description": "Explain general concepts and present clarification choices.",
+        "tools": [
+          "present_choices"
+        ]
+      }
+    },
+    "schema_tokens": 2051,
+    "estimated_total_input": 5887
+  },
+  "static_prompt_tokens": {
+    "memory_summary": 274,
+    "chat_summary": 152,
+    "chat": 646,
+    "chat_assessment": 507,
+    "chat_title": 149,
+    "learner_context": 49,
+    "student_profile_evaluation": 274,
+    "rag_context": 166,
+    "history_management": 559,
+    "memory_validation": 374,
+    "chat_attachments": 178,
+    "assessment_generation": 704,
+    "assessment_design": 489,
+    "assessment_selection": 400,
+    "assessment_targets": 203,
+    "concept_identity": 235,
+    "assessment_grading": 337,
+    "assessment_transcription": 175,
+    "chat_evidence": 112,
+    "event_admission": 121,
+    "tool_recovery": 699,
+    "web_search": 639
+  },
+  "proposed_rules": {
+    "copy_rule": "Put every standalone artifact intended for copying in a fenced Markdown block, even one line. Use text for prose and the actual language for code or commands (bash, powershell, etc.). Keep explanations outside; omit shell prompts and decorative quotes. Use longer fences when the content contains backticks. Respect an explicit request for another format.",
+    "copy_rule_tokens": 66,
+    "ui_rule": "Default requested quizzes and practice assessments to native interactive controls. Use printable/written delivery only when requested. Preserve the requested question types, topic and count; do not substitute clarification choices for a graded assessment.",
+    "ui_rule_tokens": 40
+  },
+  "discovery_replacement": {
+    "after_first_discovery": [
+      "assessment_lookup"
+    ],
+    "after_second_discovery": [
+      "assessment_status"
+    ],
+    "pending": []
+  },
+  "historical_log_evidence": {
+    "source": "logs\\backend\\backend-2026-10-25.log",
+    "limitation": "Two historical chat workflows, not identified as the reported quiz. Database aggregates and nested spans overlap and must not be added to wall time.",
+    "traces": [
+      {
+        "workflow_id": "25f3ee441f7f4fdfb3e30601a58a9e02",
+        "events": [
+          {
+            "event": "model.round",
+            "timestamp": "2026-10-25T03:32:44.276Z",
+            "workflow": "chat.generate",
+            "round": 1,
+            "tool_count": 5,
+            "schema_tokens": 836
+          },
+          {
+            "event": "provider.completed",
+            "timestamp": "2026-10-25T03:32:46.815Z",
+            "workflow": "chat.generate",
+            "duration_ms": 2386.873
+          },
+          {
+            "event": "model.usage",
+            "timestamp": "2026-10-25T03:32:46.815Z",
+            "workflow": "chat.generate",
+            "input_tokens": 4626,
+            "output_tokens": 204,
+            "cached_tokens": 2944
+          },
+          {
+            "event": "workflow.completed",
+            "timestamp": "2026-10-25T03:32:49.025Z",
+            "workflow": "chat.generate",
+            "duration_ms": 7020.643
+          }
+        ],
+        "slow_steps": [
+          {
+            "module": "app.history_management.service",
+            "operation": "HistoryManagement.summary_context",
+            "duration_ms": 1165.849
+          },
+          {
+            "module": "app.langchain.tool_execution",
+            "operation": "tool.attempt",
+            "duration_ms": 1174.124
+          },
+          {
+            "module": "app.langchain.orchestration_service",
+            "operation": "context.prepare",
+            "duration_ms": 1179.127
+          },
+          {
+            "module": "app.langchain.provider_invocation",
+            "operation": "model.invoke",
+            "duration_ms": 2387.435
+          },
+          {
+            "module": "app.langchain.llm",
+            "operation": "MentraLLM.ainvoke_messages",
+            "duration_ms": 2539.217
+          },
+          {
+            "module": "app.langchain.chat_service",
+            "operation": "ChatService.reply",
+            "duration_ms": 2637.364
+          },
+          {
+            "module": "app.langchain.orchestration_service",
+            "operation": "OrchestrationService.chat_reply",
+            "duration_ms": 4304.832
+          },
+          {
+            "module": "app.chat.repositories.postgres",
+            "operation": "ChatRepository.finish",
+            "duration_ms": 1269.377
+          }
+        ]
+      },
+      {
+        "workflow_id": "4bb38f11cc3f46268e5d28adf924af51",
+        "events": [
+          {
+            "event": "model.round",
+            "timestamp": "2026-10-25T03:34:00.454Z",
+            "workflow": "chat.generate",
+            "round": 1,
+            "tool_count": 4,
+            "schema_tokens": 661
+          },
+          {
+            "event": "provider.completed",
+            "timestamp": "2026-10-25T03:34:02.927Z",
+            "workflow": "chat.generate",
+            "duration_ms": 2468.307
+          },
+          {
+            "event": "model.usage",
+            "timestamp": "2026-10-25T03:34:02.927Z",
+            "workflow": "chat.generate",
+            "input_tokens": 4916,
+            "output_tokens": 159,
+            "cached_tokens": 512
+          },
+          {
+            "event": "workflow.completed",
+            "timestamp": "2026-10-25T03:34:05.241Z",
+            "workflow": "chat.generate",
+            "duration_ms": 8208.376
+          }
+        ],
+        "slow_steps": [
+          {
+            "module": "app.chat.attachments",
+            "operation": "AttachmentService.image_input",
+            "duration_ms": 2901.443
+          },
+          {
+            "module": "app.langchain.orchestration_service",
+            "operation": "context.prepare",
+            "duration_ms": 2909.228
+          },
+          {
+            "module": "app.langchain.provider_invocation",
+            "operation": "model.invoke",
+            "duration_ms": 2468.908
+          },
+          {
+            "module": "app.langchain.llm",
+            "operation": "MentraLLM.ainvoke_messages",
+            "duration_ms": 2472.483
+          },
+          {
+            "module": "app.langchain.chat_service",
+            "operation": "ChatService.reply",
+            "duration_ms": 2497.351
+          },
+          {
+            "module": "app.langchain.orchestration_service",
+            "operation": "OrchestrationService.chat_reply",
+            "duration_ms": 5410.787
+          },
+          {
+            "module": "app.chat.repositories.postgres",
+            "operation": "ChatRepository.finish",
+            "duration_ms": 1128.531
+          }
+        ]
+      }
+    ]
+  },
+  "revision_2_policy": {
+    "status": "Proposed policy text only; application behavior unchanged.",
+    "tokenizer": "cl100k_base",
+    "universal_outcome_policy": "Fulfill the intended outcome with the best available native experience; users need not name features. Default requested quizzes to interactive controls, preserving question type and count. Use relevant context and reversible defaults; clarify only material ambiguity or missing permission. Surface useful next actions contextually, without interrupting completion. Honor explicit format and scope. Never imply unavailable features or unfinished actions are ready.",
+    "universal_outcome_policy_tokens": 74,
+    "copy_rule_tokens": 66,
+    "combined_rule_tokens": 140
+  }
+}

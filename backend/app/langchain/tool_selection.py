@@ -24,10 +24,6 @@ class ToolSelection:
         else:
             enabled = scope.get('workflow_modules')
             self.active = {tool.name for tool in tools if enabled is None or domains.get(tool.name) in enabled}
-        if 'web_search' in self.by_name:
-            self.active.add('web_search')
-        if 'web_research' in self.by_name:
-            self.active.add('web_research')
         self.pending = set(self.active)
         self.full_requested = False
 
@@ -47,7 +43,7 @@ class ToolSelection:
             for domain in modules or []:
                 wanted.update(tool.name for tool in self.tools if self.domains.get(tool.name) == domain)
             if all_tools:
-                if self.full_requested:
+                if self.full_requested and set(self.by_name) <= self.active:
                     return dict(outcome='already_enabled', tools=sorted(self.active))
                 wanted.update(self.by_name)
             rejected = sorted(wanted - self.by_name.keys())
@@ -59,6 +55,7 @@ class ToolSelection:
             already = sorted(wanted & self.active)
             newly = sorted(wanted - self.active)
             self.active = proposed
+            self.pending.update(wanted)
             if all_tools:
                 self.full_requested = True
             return dict(outcome='enabled' if wanted else 'unavailable', newly_enabled=newly,

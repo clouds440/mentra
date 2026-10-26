@@ -1,6 +1,7 @@
 """Bounded LangGraph coordinator over trusted domain tools."""
 import asyncio
 import json
+import re
 from .concurrent_reads import StagedRead, staging_reads, gather_reads
 from .tool_cache import tool_cache_key, REVALIDATED_READS, copy_result
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage
@@ -27,7 +28,6 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     if web is not None and web.enabled and owner:
         from .web_tools import create_web_tools
         tools.extend(create_web_tools(web, owner, scope, budget))
-        additional_sources = (*additional_sources, PromptSource.WEB_SEARCH)
         now = web.envelope('ok')
         context = dict(context, web_clock=dict(current_date=now.current_date.isoformat(),
             current_datetime=now.current_datetime.isoformat(), reference_timezone=now.reference_timezone))
@@ -74,8 +74,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     for tool in tools:
         tool.metadata = dict(tool.metadata or {}, domain=domains.get(tool.name, 'unknown'))
     selection = ToolSelection(tools, domains, scope)
-    if context.get('memories_summary', {}).get('content') and 'user_memory' in selection.by_name:
-        selection.active.add('user_memory')
+    # A supplied summary is data, not a reason to bind memory/history schemas on
+    # every unrelated request. Relevant missing detail remains discoverable.
     discovery = selection.discovery()
     tools.append(discovery)
     def tool_enabled(name):
@@ -84,14 +84,74 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         return [*[tool for tool in selection.selected() if domains.get(tool.name) not in executor.outages], discovery]
     dispatch = {tool.name: tool for tool in tools}
     additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY)))
+    if getattr(scope.get('execution_plan'), 'edit_source_id', None):
+        additional_sources = (*additional_sources, PromptSource.RESPONSE_EDIT)
     def prompt_sources(available_tools):
         personal = any(domains.get(getattr(tool, 'name', '')) in ('history', 'memory') for tool in available_tools)
         rag = any(domains.get(getattr(tool, 'name', '')) == 'rag' for tool in available_tools) or bool(scope.get('study_sources'))
         assessment = any(domains.get(getattr(tool, 'name', '')) == 'assessment' for tool in available_tools) or any(domains.get(name) == 'assessment' for name in selection.active) or bool(scope.get('chat_assessments'))
-        return tuple(dict.fromkeys((*additional_sources, *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
+        external = any(domains.get(getattr(tool, 'name', '')) == 'web' for tool in available_tools) or bool(scope.get('web_sources') or scope.get('web_searches'))
+        return tuple(dict.fromkeys((*additional_sources, *([PromptSource.WEB_SEARCH] if external else []), *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
     instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
     from .token_policy import schema_tokens
     plan = scope.get('execution_plan')
+    required_outcome = getattr(plan, 'required_outcome', None)
+    initial_cards = len(scope.get('assessment_cards', []))
+    initial_interactions = len(scope.get('interactions', []))
+    def missing_assessment():
+        return required_outcome == 'assessment' and len(scope.get('assessment_cards', [])) <= initial_cards
+    def check_completion(response, iteration, final):
+        attempted = scope.get('_attempted_domains', set())
+        required = set(getattr(plan, 'required_domains', []))
+        if scope.get('_captured_events'):
+            required.discard('events')
+        missing = required - attempted
+        if missing:
+            if len(scope.get('interactions', [])) > initial_interactions:
+                # A durable clarification is a deferred request, not a fake
+                # completed lookup. Keep its controls without forcing a call
+                # with invented arguments or publishing unverified prose.
+                return dict(response=AIMessage(content='Choose an option below so I can continue with your request.'), done=True)
+            candidates = [tool for tool in tools if domains.get(tool.name) in missing
+                          and domains.get(tool.name) not in executor.outages
+                          and tool.name in getattr(plan, 'tool_names', [])]
+            binding_unavailable = any(warning.get('tool_name') == 'tool_binding' for warning in scope.get('tool_warnings', []))
+            if not final and not binding_unavailable and not scope.get('_outcome_repaired') and candidates:
+                if admit_schemas([*selection.selected(), *[tool for tool in candidates if tool.name not in selection.active]]):
+                    scope['_outcome_repaired'] = True
+                    selection.active.update(tool.name for tool in candidates)
+                    selection.pending.update(tool.name for tool in candidates)
+                    conversation.append(SystemMessage(content='The requested lookup or action has no execution receipt. Use the relevant bound capability, or report that it is unavailable; do not substitute an unverified answer or promise.'))
+                    from app.core.logging import workflow_logger
+                    workflow_logger.event('routing.outcome_repair', required_domains=sorted(missing))
+                    return dict(iteration=iteration+1, response=None, done=False)
+            remember_failure(scope, 'request_completion', dict(code='REQUEST_OUTCOME_INCOMPLETE',
+                reason='A requested lookup or action could not be verified.',task_impact='required_for_part',effect_certainty='not_started'))
+            # Preserve every completed domain card/receipt while refusing to
+            # publish fabricated personal/current facts or action claims.
+            return dict(response=AIMessage(content='I couldn’t complete all the requested lookups or actions. Any saved results are shown below; please try the unfinished part again.'), done=True)
+        if not missing_assessment():
+            return None
+        if scope.get('_assessment_attempted'):
+            # A failed/uncertain generation is not permission to substitute a
+            # prose quiz. Keep other saved results and never retry the write.
+            return dict(response=AIMessage(content='I couldn’t create the requested assessment. Please try again; any completed results are preserved below.'), done=True)
+        generator = 'assessment_revise' if getattr(plan, 'assessment_edit', False) else next((name for name in getattr(plan, 'tool_names', [])
+                          if name in ('assessment_generate', 'assessment_generate_advanced') and name in selection.by_name), 'assessment_generate')
+        binding_unavailable = any(warning.get('tool_name') == 'tool_binding' for warning in scope.get('tool_warnings', []))
+        if not final and not binding_unavailable and not scope.get('_outcome_repaired') and generator in selection.by_name:
+            candidates = [*selection.selected(), *([] if generator in selection.active else [selection.by_name[generator]])]
+            if not admit_schemas(candidates):
+                raise AppError('CHAT_CONTEXT_LIMIT', 'This request needs a little more room for the quiz. Please shorten it and try again.', 422)
+            scope['_outcome_repaired'] = True
+            selection.active.add(generator)
+            selection.pending.add(generator)
+            # The next round budgets the real schema before invoking the model.
+            conversation.append(SystemMessage(content=f'The requested assessment has not been created. Use {generator} to provide a native assessment card; a prose quiz does not complete this request.'))
+            from app.core.logging import workflow_logger
+            workflow_logger.event('routing.outcome_repair', required_outcome='assessment')
+            return dict(iteration=iteration+1, response=None, done=False)
+        raise AppError('ASSESSMENT_UNAVAILABLE', 'I couldn’t open the quiz controls. Please try again.', 503)
     direct_candidate = bool(plan and plan.direct_candidate)
     answer_schema = DirectNewChatReply if direct_candidate and output_schema else DirectAnswer if direct_candidate else output_schema
     context = dict(context, capabilities=selection.catalog)
@@ -120,6 +180,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         for message in conversation if isinstance(message.content, list) for block in message.content)
     current_question = next((message for message in reversed(conversation) if message.type == 'human'), None)
     current_cost = count_tokens_approximately([current_question]) if current_question is not None else 0
+    edit_source_id = getattr(plan, 'edit_source_id', None)
+    edit_index = next((index for index, message in enumerate(conversation) if message.type == 'ai' and message.id == edit_source_id), None) if edit_source_id else None
+    if edit_source_id and edit_index is None:
+        raise AppError('CHAT_EDIT_SOURCE_REQUIRED', 'The original response is not available here. Please paste it or specify which response to revise.', 422)
     coverage = summary['through_sequence'] if summary and summary['through_sequence'] < scope['user_sequence'] else 0
     unsummarized_ids = {str(row['id']) for row in scope.get('context_rows', []) if row.get('sequence', 0) > coverage}
     unsummarized = [message for message in conversation if message.id in unsummarized_ids and message is not current_question]
@@ -127,6 +191,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     # This allowance disappears once its coverage catches up; it is not paid compaction.
     history_target = max(scope.get('history_token_budget', settings.chat_history_token_budget),
         min(4096, count_tokens_approximately(unsummarized)))
+    if edit_index is not None:
+        start = max(0, edit_index - 1)
+        history_target = max(history_target, count_tokens_approximately(conversation[start:]))
     recent_reserve = min(history_target,
         max(0, count_tokens_approximately(conversation) - current_cost))
     minimum = system_cost + current_cost + recent_reserve + 1056
@@ -146,6 +213,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             conversation.pop(0)
     if available < count_tokens_approximately(conversation):
         raise AppError('CHAT_CONTEXT_LIMIT', 'Question, study sources and tool schemas exceed the model context budget.', 422)
+    if edit_source_id and not any(message.id == edit_source_id for message in conversation):
+        raise AppError('CHAT_CONTEXT_LIMIT', 'The complete response is too large to revise safely here. Please paste the part you want changed.', 422)
     scope['visible_ids'] = [message.id for message in conversation if message.id]
     scope['evidence_ids'] = {message.id for message in conversation if message.type == 'human' and message.id}
     context['history_scope']['visible_user_messages'] = [x for x in context['history_scope']['visible_user_messages'] if x['id'] in scope['evidence_ids']]
@@ -185,7 +254,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             validated = answer_schema.model_validate(arguments)
             if direct_candidate and not scope.get('_domain_tool_used'):
                 query = scope.get('current_answer_text', '')
-                if not approved_direct(validated) or not general_query(query) or not direct_content_safe(validated.content):
+                if not approved_direct(validated) or not (general_query(query) or edit_source_id) or not direct_content_safe(validated.content):
                     if len(validated.content) <= 300 and validated.content.strip().endswith('?') and direct_content_safe(validated.content):
                         return validated  # A clarification is not approval of a general answer.
                     raise AppError('DIRECT_ANSWER_REJECTED', 'The answer needs tools or clarification. Select the needed capability; do not bypass missing evidence.', 422)
@@ -200,7 +269,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         direct = DirectAnswer.model_validate({key: value for key, value in arguments.items() if key != 'conversation_title'})
                     except ValidationError:
                         direct = None
-                    if direct and approved_direct(direct) and general_query(scope.get('current_answer_text', '')) and direct_content_safe(content):
+                    if direct and approved_direct(direct) and (general_query(scope.get('current_answer_text', '')) or edit_source_id) and direct_content_safe(content):
                         return AIMessage(content=content)
                 else:
                     return AIMessage(content=content)
@@ -209,6 +278,18 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     async def model_round(state):
         nonlocal repairs, answer_schema
         iteration = state['iteration']
+        receipt = scope.get('_assessment_receipt')
+        if (receipt and receipt.get('title') and required_outcome == 'assessment'
+                and getattr(plan, 'intent', None) == 'assessment' and not scope.get('tool_warnings')
+                and not getattr(plan, 'required_domains', [])
+                and not re.search(r'\b(?:explain|also|why|compare|research|then|summari[sz]e|translate|list|show|calculate|search|save|remember|and (?:tell|write|draft|create|generate))\b', scope.get('current_answer_text', ''), re.I)):
+            # The native card is the complete result. Its validated public title
+            # supplies acknowledgment/title without paying for another model pass.
+            from app.chat.titles import NewChatReply, provisional_title
+            response = NewChatReply(content=receipt['title'], conversation_title=provisional_title(receipt['title'])) if output_schema else AIMessage(content=receipt['title'])
+            from app.core.logging import workflow_logger
+            workflow_logger.event('routing.outcome_complete', outcome_kind='assessment', state=receipt['state'], final_model_skipped=True)
+            return dict(response=response, done=True)
         # Tool results are never trimmed into orphan messages.
         from .workflow_budget import current_budget
         envelope = current_budget.get()
@@ -243,7 +324,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
                 additional_sources=sources, system_context=runtime_context, tools=available_tools or None,
                 **({'tool_choice': answer_schema.__name__ if final else 'required'} if answer_schema else {}),
-                on_delta=None if answer_schema or scope.get('tool_warnings') else scope.get('on_delta'))
+                on_delta=None if answer_schema or scope.get('tool_warnings') or required_outcome or getattr(plan, 'required_domains', []) else scope.get('on_delta'))
         except Exception as error:
             from .provider_protocol import ProviderProtocolError
             if isinstance(error, ProviderProtocolError):
@@ -301,7 +382,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     budget.call()
                     conversation.append(SystemMessage(content='No-tool approval fields were missing. Select the required capability or clarify; do not treat the prior candidate as verified.'))
                     return dict(iteration=iteration+1, response=None, done=False, repair=True)
-            return dict(response=response, done=True)
+            completion = check_completion(response, iteration, final)
+            return completion or dict(response=response, done=True)
         if answer_schema:
             outputs = [call for call in response.tool_calls if call['name'] == answer_schema.__name__]
             if outputs:
@@ -314,7 +396,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     await publisher.emit('protocol-repair', 'failed', 'The response mixed pending actions with an answer. Correcting it once.', error_code='TOOL_PROTOCOL_INVALID')
                     return dict(iteration=iteration+1, response=None, done=False)
                 try:
-                    return dict(response=validate_output(outputs[0]['args']), done=True)
+                    validated = validate_output(outputs[0]['args'])
+                    completion = check_completion(validated, iteration, final)
+                    return completion or dict(response=validated, done=True)
                 except AppError as error:
                     if direct_candidate and error.code in ('DIRECT_ANSWER_REJECTED', 'AI_PROVIDER_ERROR') and not final and repairs < 1:
                         repairs += 1
@@ -363,6 +447,16 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 async with workflow_logger.step('app.langchain.history_orchestration', 'tool.dispatch', input=dict(tool_name=tool.name), request=arguments) as execution:
                     required = bool(plan and any(step.required and step.module == domains.get(tool.name) for step in plan.steps))
                     result = await executor.execute(tool, arguments, required=required)
+                    if not isinstance(result, dict) or result.get('category') != 'invalid_arguments' and result.get('code') not in ('TOOL_INVALID_ARGUMENTS', 'TOOL_UNKNOWN', 'TOOL_NOT_ENABLED'):
+                        domain = domains.get(tool.name)
+                        # A read in the same domain does not fulfill a requested
+                        # mutation. Count a relevant attempted operation, including
+                        # its honest failure/review receipt, never a different tool.
+                        from .planning import fulfills_domain_attempt
+                        if domain and fulfills_domain_attempt(plan, domain, tool.name, arguments, scope.get('current_answer_text', '')):
+                            scope.setdefault('_attempted_domains', set()).add(domain)
+                        if tool.name in ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise'):
+                            scope['_assessment_attempted'] = True
                     execution.response(result.payload if isinstance(result, StagedRead) else result)
                     status = result.get('outcome') if isinstance(result, dict) else None
                     from .tool_execution import outcome_status

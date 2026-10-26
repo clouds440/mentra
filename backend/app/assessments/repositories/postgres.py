@@ -101,7 +101,7 @@ class AssessmentRepository:
             row = dict(id=str(uuid4()), learner_id=owner, context_id=request.context_id, title=generated.title,
                 purpose=request.purpose, revision=1, created_at=self.clock(), questions=questions, sources=sources,
                 paper=generated.paper.model_dump(mode='json') if generated.paper else None,
-                preferences=dict(level=request.level, result_style=request.result_style),
+                preferences=dict(level=request.level, result_style=request.result_style, delivery=request.delivery),
                 operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage
             row['practice_lineage'] = inherit_practice_lineage(self, session, owner, request, questions, row['id'])
@@ -113,6 +113,11 @@ class AssessmentRepository:
 
     def detail(self, owner, identifier):
         with self.sessions() as session: return self.public(self._assessment(session, owner, identifier))
+
+    def revision_source(self, owner, identifier):
+        """Private owned source for immutable revisions, never returned by routes."""
+        from copy import deepcopy
+        with self.sessions() as session: return deepcopy(dict(self._assessment(session, owner, identifier)))
 
     def practise_mistakes(self, owner, identifier, body):
         from .mistake_practice import create_practice

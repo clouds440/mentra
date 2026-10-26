@@ -1,0 +1,39 @@
+{
+  "method": "Synthetic same-source controlled workflow comparison. Local tokenizer estimates include prompts, payloads and output schema. No paid calls or database persistence. Excludes chat routing and network/persistence latency.",
+  "before": {
+    "model_calls": 2,
+    "estimated_input_tokens": 5564,
+    "estimated_output_tokens": 2219,
+    "generated_questions": 20,
+    "final_question_count": 20,
+    "calls": [
+      {
+        "stage": "assessment_design",
+        "estimated_input_tokens": 1347,
+        "estimated_output_tokens": 66,
+        "questions": 20
+      },
+      {
+        "stage": "assessment_generation",
+        "estimated_input_tokens": 4217,
+        "estimated_output_tokens": 2153,
+        "questions": 20
+      }
+    ]
+  },
+  "after": {
+    "model_calls": 1,
+    "estimated_input_tokens": 2218,
+    "estimated_output_tokens": 120,
+    "generated_questions": 1,
+    "final_question_count": 20,
+    "calls": [
+      {
+        "stage": "assessment_generation",
+        "estimated_input_tokens": 2218,
+        "estimated_output_tokens": 120,
+        "questions": 1
+      }
+    ]
+  }
+}

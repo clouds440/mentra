@@ -1,5 +1,5 @@
-import { ArrowUp, Paperclip, Mic, Square, LoaderCircle } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { ArrowUp, Paperclip, Mic, Square, LoaderCircle, BookOpenText } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
 import type { ChatSelection } from '../../types/rag';
@@ -9,6 +9,7 @@ import { VoiceInput } from './VoiceInput';
 import { useAssessmentEvaluation } from '../../stores/assessmentSession';
 
 interface ChatComposerProps {
+  materialPickerRequest?: number;
   selection: ChatSelection;
   onSelectionChange: (value: ChatSelection) => void;
   value: string;
@@ -34,10 +35,18 @@ export function ChatComposer({
   onFiles,
   hasAttachments,
   attachments,
+  materialPickerRequest,
 }: ChatComposerProps) {
   const evaluation = useAssessmentEvaluation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const previousPickerRequest = useRef(materialPickerRequest);
+  useEffect(() => {
+    if (previousPickerRequest.current !== materialPickerRequest) {
+      previousPickerRequest.current = materialPickerRequest;
+      setPickerOpen(true);
+    }
+  }, [materialPickerRequest]);
   const [query, setQuery] = useState('');
   const [activeOptionId, setActiveOptionId] = useState<string>();
   const pickerRef = useRef<SourcePickerHandle>(null);
@@ -170,7 +179,7 @@ export function ChatComposer({
       <div className="composer-toolbar flex items-center justify-between px-1 pb-0.5 pt-0">
         <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
           onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; requestAnimationFrame(() => textareaRef.current?.focus()); }} />
-        <button
+        <div className="flex items-center gap-0.5"><button
           type="button"
           disabled={isThinking}
           onClick={() => fileRef.current?.click()}
@@ -181,6 +190,11 @@ export function ChatComposer({
           <Paperclip aria-hidden="true" size={16} />
           <span className="hidden sm:inline">Attach files</span>
         </button>
+        <button type="button" disabled={isThinking} aria-label="Choose study material" title="Choose study material"
+          onClick={() => { setQuery(''); setPickerOpen(value => !value); }}
+          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-subtle transition-colors duration-150 enabled:hover:text-foreground focus-visible:text-foreground">
+          <BookOpenText size={16} aria-hidden="true" /><span className="hidden sm:inline">Study material</span>
+        </button></div>
         <div className="composer-actions flex items-center gap-3">
           <span className="hidden text-[11px] text-subtle sm:inline">
             Enter to send · Shift + Enter for a new line

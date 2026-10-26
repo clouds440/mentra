@@ -37,6 +37,7 @@ export function ChatPage() {
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
   const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>();
   const [draft, setDraft] = useState('');
+  const [materialPickerRequest, setMaterialPickerRequest] = useState(0);
   useEffect(() => { if (practice) setDraft(`Help me practice ${practice.slice(0, 200)}. Ask one question at a time.`); }, [practice]);
   const [validation, setValidation] = useState<string | null>(null);
   const [files, setFiles] = useState<StagedFile[]>([]);
@@ -111,8 +112,8 @@ export function ChatPage() {
     if (answers.length) setRevealing(current => new Set([...current, ...answers.map(message => message.id)]));
   }, [id, view.messages, view.busy, view.loading]);
 
-  async function sendMessage() {
-    const content = draft.trim() || (files.length ? 'Please help me understand the attached files.' : ''); if (!content || newChatPending || view.busy || sending.current || view.loading) return;
+  async function sendMessage(prompt?: string) {
+    const content = prompt ?? (draft.trim() || (files.length ? 'Please help me understand the attached files.' : '')); if (!content || newChatPending || view.busy || sending.current || view.loading) return;
     if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
@@ -151,7 +152,10 @@ export function ChatPage() {
       {conversationId && matchedMessage && <Suspense fallback={null}><SavedChatExchange key={`${identity?.learner_id}:${conversationId}:${matchedMessage}`} conversation={conversationId} message={matchedMessage} onClose={closeExchange} /></Suspense>}
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
-      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState onChooseSuggestion={setDraft} /></div> : (
+      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState disabled={newChatPending || view.busy || uploading || !!draft.trim() || !!files.length} onChooseSuggestion={prompt => {
+        if (prompt === 'study-material') { setMaterialPickerRequest(value => value + 1); return; }
+        void sendMessage(prompt);
+      }} /></div> : (
         <div aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none] px-4 pb-4 pt-16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6 lg:pt-8"
           ref={scroll.container} role="log" aria-live="polite" tabIndex={0}
           onWheel={scroll.noteUserScroll}
@@ -168,7 +172,7 @@ export function ChatPage() {
             {scroll.groups.map((group, index) => <div key={group.key} data-user-sequence={group.userSequence}
               data-latest-turn={scroll.anchor !== null && group.userSequence === scroll.anchor || undefined} ref={scroll.anchor !== null && group.userSequence === scroll.anchor ? scroll.latest : undefined}
               className={`flex flex-col gap-7 sm:gap-9 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
-              {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} />)}
+              {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} showContextualAction={message.id === view.messages[view.messages.length - 1]?.id} />)}
               {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} stopping={stopping} />}
             </div>)}
             {view.olderWindow && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'self-center' })}
@@ -191,7 +195,7 @@ export function ChatPage() {
             {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
             {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-2' })} onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+          <ChatComposer key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
             attachments={<>
               {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="staged-file relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
                 {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />

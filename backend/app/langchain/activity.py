@@ -22,6 +22,14 @@ def publish_activity(publisher):
         current_publisher.reset(token)
 
 
+class ActivityAssessment(BaseModel):
+    """Public owned reference only; never a private generation payload."""
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal['draft', 'saved', 'generation']
+    id: UUID
+    title: str = Field(min_length=1, max_length=200)
+
+
 class ActivityUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
     step_id: str = Field(min_length=1, max_length=80)
@@ -35,6 +43,7 @@ class ActivityUpdate(BaseModel):
     max_attempts: int | None = Field(default=None, ge=1, le=3)
     error_code: str | None = Field(default=None, max_length=100)
     websites: list['ActivityWebsite'] = Field(default_factory=list, max_length=5)
+    assessment_card: ActivityAssessment | None = None
 
 
 class ActivityWebsite(BaseModel):
@@ -69,10 +78,10 @@ class ActivityPublisher:
         self.sink = sink
         self.reporting_unavailable = False
 
-    async def emit(self, step_id, status, message, *, tool_name=None, tool_call_id=None, token_delta=None, token_reset=False, tool_attempt=None, max_attempts=None, error_code=None, websites=None):
+    async def emit(self, step_id, status, message, *, tool_name=None, tool_call_id=None, token_delta=None, token_reset=False, tool_attempt=None, max_attempts=None, error_code=None, websites=None, assessment_card=None):
         update = ActivityUpdate(step_id=step_id, status=status, user_message=message,
                                 tool_name=tool_name, tool_call_id=tool_call_id, token_delta=token_delta, token_reset=token_reset,
-                                tool_attempt=tool_attempt, max_attempts=max_attempts, error_code=error_code, websites=websites or [])
+                                tool_attempt=tool_attempt, max_attempts=max_attempts, error_code=error_code, websites=websites or [], assessment_card=assessment_card)
         if self.sink is not None and not self.reporting_unavailable:
             try:
                 await self.sink.publish(update)

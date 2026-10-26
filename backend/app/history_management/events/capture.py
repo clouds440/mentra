@@ -11,11 +11,20 @@ def event_candidate(text):
     temporal = bool(re.search(r'\b(tomorrow|tonight|today|next (?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|upcoming|due|deadline|scheduled|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at \d|\d\s*(?:am|pm))\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d', text, re.I))
     first_party = bool(re.search(r'\b(I|my|our|we|me)\b', text, re.I))
     activity = bool(re.search(r'\b(assessment|assignment|quiz|test|exam|project|presentation|meeting|appointment|seminar|workshop|deadline|event|remind)\b', text, re.I))
-    return temporal and (first_party or activity) or first_party and activity
+    # Practice and agenda queries must not pay for semantic event extraction.
+    # Combined announcements ("my exam is tomorrow; quiz me") still qualify.
+    announcement = bool(re.search(r'\b(?:I|we)\s+(?:have|am|are|will)|\b(?:my|our)\s+\w+(?:\s+\w+)?\s+(?:is|starts|on|at)\b', text, re.I))
+    if practice_request(text) and not (temporal and announcement):
+        return False
+    if re.match(r'\s*(?:what|when|show|list|do I|have I)\b', text, re.I) and not announcement:
+        return False
+    return temporal and (first_party or activity) or announcement and activity
 
 
 def practice_request(text):
-    return bool(re.search(r'\b(?:quiz|test) me\b|\b(?:give|generate|create|make|build|want|need)\b.*\b(?:practice|interactive|assessment|questions?|quiz|test|mock)\b|\b(?:practice|assess me)\b', text, re.I))
+    # Event admission owns this cheap exclusion hint and remains independent
+    # of the agent/router. Actual admission still requires semantic evidence.
+    return bool(re.search(r'\b(?:quiz|test) me\b|\b(?:give|generate|create|make|build|want|need)\b.*\b(?:practice|interactive|assessment|questions?|quiz|test|mock)\b|\b(?:practice|assess me)\b|\b(?:test|check) my (?:understanding|knowledge)\b|\b(?:see|check|test) (?:if|whether) I (?:understand|know)\b', text, re.I))
 
 
 class CapturedEvent(Contract):

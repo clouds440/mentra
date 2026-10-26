@@ -51,4 +51,7 @@ class StudentProfileService:
         return store.save_profile(profile)
 
     def prompt_context(self, learner_id):
-        return context_packet(self.get(learner_id))
+        profile = self.get(learner_id)
+        workflow_logger.event('profile.context', profile_version=profile.version,
+                              context_version=profile.context_version)
+        return context_packet(profile)

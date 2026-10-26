@@ -8,6 +8,8 @@ import { educationLevels, preferences, depths } from './options';
 
 export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCancel?: () => void }) {
   const { profile, replace, refresh } = useStudentProfile();
+  const [editingVersion, setEditingVersion] = useState(profile?.version ?? 0);
+  const [conflict, setConflict] = useState(false);
   const [details, setDetails] = useState<Omit<ProfileDetails, 'education_level'> & { education_level: EducationLevel | '' }>(profile?.details ?? {
     education_level: '', field_of_study: '', learning_goal: '', learning_preference: 'balanced', explanation_depth: 'standard',
   });
@@ -21,7 +23,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || !profile) return;
+    if (pending || conflict || !profile) return;
     const issues: Record<string, string> = {};
     const preferredName = (details.preferred_name ?? '').trim();
     if (preferredName.length > 80 || /[\p{C}\u2028\u2029]/u.test(preferredName)) issues.preferred_name = 'Use a name of up to 80 characters without control characters.';
@@ -37,7 +39,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     try {
       const next = await updateDetails({ ...details, education_level: details.education_level as EducationLevel,
         preferred_name: preferredName || null,
-        field_of_study: details.field_of_study.trim(), learning_goal: details.learning_goal.trim() }, profile.version);
+        field_of_study: details.field_of_study.trim(), learning_goal: details.learning_goal.trim() }, editingVersion);
       replace(next); onSaved?.();
     } catch (failure) {
       if (failure instanceof ApiError && failure.status === 422) {
@@ -46,12 +48,22 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
         setFields(validation);
       }
       setError(profileError(failure));
-      if (failure instanceof ApiError && failure.status === 409) await refresh().catch(() => {});
+      if (failure instanceof ApiError && failure.status === 409) { setConflict(true); await refresh().catch(() => {}); }
     } finally { setPending(false); }
+  }
+  async function reloadLatest() {
+    setPending(true);
+    try {
+      const next = await refresh();
+      if (next.details) setDetails(next.details);
+      setEditingVersion(next.version); setConflict(false); setError(null); setFields({});
+    } catch (failure) { setError(profileError(failure)); }
+    finally { setPending(false); }
   }
   const fieldError = (name: string) => fields[name] && <p id={`${name}-error`} role="alert" className="mt-2 text-xs leading-5 text-danger">{fields[name]}</p>;
   return <form aria-label="Student profile" aria-busy={pending} noValidate onSubmit={submit} className="space-y-5">
     {error && <p role="alert" className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">{error}</p>}
+    {conflict && <div className="space-y-2 text-sm text-muted"><p>Your profile changed elsewhere. Your draft is kept. Reload the latest profile to review it before saving again.</p><Button type="button" variant="secondary" disabled={pending} onClick={() => void reloadLatest()}>Reload latest profile</Button></div>}
     <fieldset disabled={pending} className="space-y-5">
       <div>
         <label htmlFor="preferred_name" className="mb-2 block text-sm font-medium text-heading">What should Mentra call you?</label>
@@ -100,7 +112,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     <p className="text-xs leading-5 text-subtle">Only you can change these details. Mentra adapts its estimates, not your education level or preferences.</p>
     {onCancel && <p className="text-xs leading-5 text-subtle">Changing your education level resets broad estimates. Changing your field resets domain familiarity.</p>}
     <div className="flex flex-wrap gap-3 pt-1">
-      <Button type="submit" disabled={pending} loading={pending}>
+      <Button type="submit" disabled={pending || conflict} loading={pending}>
         {onCancel ? 'Save profile' : 'Continue'}</Button>
       {onCancel && <Button disabled={pending} variant="ghost" onClick={onCancel}>Cancel</Button>}
     </div>
