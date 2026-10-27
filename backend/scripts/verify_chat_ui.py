@@ -4,6 +4,7 @@ Run from the repository root with PYTHONPATH=backend. Uses the normal model fact
 """
 import asyncio
 import json
+import re
 from pathlib import Path
 from uuid import uuid4
 
@@ -26,6 +27,7 @@ async def main():
         ('form', 'Before you plan my study session, collect my topic and how many minutes I have in one compact form.', 'request_input'),
         ('bars', 'Compare illustrative difficulty ratings of arrays, binary search and dynamic programming on a 1 to 5 scale using visual bars. Label the ratings as illustrative.', 'present_visuals'),
         ('direct', 'What is 2 + 2? Answer directly in one sentence.', None),
+        ('icons', 'Give me one short reading tip and one short practice tip, each with an appropriate inline Lucide icon beside its text. Use no tools.', None),
     ]
     for name, request, expected in scenarios:
         scope = {'current_user_message_id': str(uuid4())}
@@ -34,6 +36,8 @@ async def main():
         calls = response.tool_calls
         if expected is None:
             assert not calls, f'{name}: unnecessary interaction'
+            if name == 'icons':
+                assert isinstance(response.content, str) and len(re.findall(r':icon\[[A-Za-z][A-Za-z0-9-]{0,63}\]', response.content)) >= 2, 'Expected inline icon directives beside tip text'
         else:
             assert any(call['name'] == expected for call in calls), f'{name}: expected {expected}'
             by_name = {tool.name: tool for tool in tools}

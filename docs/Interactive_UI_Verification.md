@@ -85,3 +85,33 @@ Escape dismisses it and restores focus. Desktop viewport dimensions and mobile
 dark-mode text, fullscreen bounds, Close visibility and focus restoration are covered.
 The production build, UI/theme checks and 27 rich-chat/performance browser checks
 passed. The frontend image was rebuilt and the local frontend service refreshed.
+
+## Inline Lucide icons
+
+The existing rich Markdown transform accepts `:icon[BookOpen]` (PascalCase or
+kebab-case). Existing Lucide dependencies are reused; no new package is required.
+Common explanation icons render synchronously. The full installed-name catalog and
+uncommon glyphs are separate lazy assets, requested only when used. Names never
+become arbitrary module paths, URLs, SVG or DOM properties.
+
+Unknown/invalid names, pending loads and catalog/glyph import failures render an
+empty, fixed one-em CSS placeholder. A local error boundary isolates render errors.
+Icons inherit text color/size, are decorative beside essential words, and are hidden
+from screen readers. Plain-text copy omits icon tokens while preserving code examples.
+The transform caps rendered icons at 32 per response; lazy component definitions
+are bounded to 64. Model usage instructions remain in the shared chat UI prompt.
+
+Production build and UI/theme checks passed. **31 rich-chat/performance browser
+checks passed**, covering installed/uncommon names, unknown names, invalid paths,
+catalog and glyph network failures, copy, count limits and ordinary prose/code.
+The configured-provider check passed all **five** scenarios, including icon tips.
+One earlier browser run timed out with a blank startup page during concurrent image
+building; the complete suite passed after the build finished.
+
+The performance fixture includes 200 messages, 200 bars and 100 icons. Completed
+ChatMessage/MarkdownContent/ChoiceCard/InlineIcon rerenders were all zero during
+typing, unchanged refresh and font-size change. Common icons requested no catalog.
+Typing p95 was **13.1 ms**, with zero typing long tasks; the full observation window
+included one 54 ms long task outside typing. These remain local machine measurements.
+Both images and all application services were refreshed; disposable outputs were
+removed after recording this evidence.

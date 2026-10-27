@@ -4,12 +4,13 @@ import type { Node } from 'unist';
 export const colorTones = ['success', 'warning', 'danger', 'info', 'accent'] as const;
 type DirectiveNode = Node & { name?: string; attributes?: Record<string, string | null | undefined>; children?: RootContent[]; data?: { hName?: string; hProperties?: Record<string, unknown> } };
 const only = (attributes: Record<string, unknown>, keys: string[]) => Object.keys(attributes).every(key => keys.includes(key));
-export const usesRichDirectives = (content: string) => /:color\[|:{2,3}(?:bar|progress|details|callout)[{\s[]/.test(content);
+export const usesRichDirectives = (content: string) => /:(?:color|icon)\[|:{2,3}(?:bar|progress|details|callout)[{\s[]/.test(content);
 
 /** Recognize a tiny vocabulary; never spread model attributes into DOM props. */
 export function remarkRichContent() {
   return (tree: Root, file: { value: unknown }) => {
     let diagrams = 0;
+    let icons = 0;
     function visit(parent: { children?: RootContent[] }) {
       parent.children = parent.children?.map(child => {
         const node = child as DirectiveNode;
@@ -18,7 +19,10 @@ export function remarkRichContent() {
         const a = node.attributes ?? {};
         let props: Record<string, unknown> | undefined;
         let name: string | undefined;
-        if (node.type === 'textDirective' && node.name === 'color' && only(a, ['tone', 'hex']) && (!!a.tone !== !!a.hex)) {
+        if (node.type === 'textDirective' && node.name === 'icon' && only(a, [])) {
+          const value = node.children?.map(item => item.type === 'text' ? item.value : '').join('') ?? '';
+          name = 'mentra-icon'; props = { name: ++icons <= 32 && /^[A-Za-z][A-Za-z0-9-]{0,63}$/.test(value) ? value : '' };
+        } else if (node.type === 'textDirective' && node.name === 'color' && only(a, ['tone', 'hex']) && (!!a.tone !== !!a.hex)) {
           const aliases: Record<string, string> = { green: 'success', red: 'danger', amber: 'warning', blue: 'info', purple: 'accent' };
           const tone = aliases[a.tone ?? ''] ?? a.tone;
           if (tone && colorTones.includes(tone as typeof colorTones[number])) props = { tone };

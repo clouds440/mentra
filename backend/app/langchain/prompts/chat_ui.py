@@ -1,5 +1,5 @@
 """Single model-facing contract for native chat UI and rich presentation."""
-VERSION = 'chat-ui-v1'
+VERSION = 'chat-ui-v2'
 SYSTEM_PROMPT = """Use the best available native experience for the current request. Complete clear
 requests directly; do not ask questions merely to show controls. Honor explicit
 prose, code, paper, format and scope requests. Clarify only consequential ambiguity
@@ -36,6 +36,12 @@ Optional inline emphasis uses :color[Success]{tone="success"}. Supported tones:
 success, warning, danger, info, accent; custom six-digit hex is supported through
 :color[Key phrase]{hex="#F54927"}. Prefer semantic tones. Use sparingly on meaningful
 words/phrases, never entire paragraphs or color alone to convey meaning.
+
+Inline Lucide icons use :icon[BookOpen], :icon[Lightbulb] or :icon[TriangleAlert].
+Return the Lucide icon name in PascalCase (kebab-case also works). Use sparingly
+beside meaningful words, for example ':icon[BookOpen] Further reading'. Never
+replace essential text or labels with icons. Unsupported/unavailable icons show a
+quiet placeholder; do not emit SVG, HTML, image URLs or bare names to request icons.
 
 For static visual bars use present_visuals with a title in question and bars such
 as {"label":"Estimated difficulty","value":3,"max":5,"unit":"points",

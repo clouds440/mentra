@@ -21,7 +21,7 @@ export function markdownPlainText(markdown: string): string {
       case 'inlineMath': return `$${node.value?.trim() ?? ''}$`;
       case 'math': return `$$\n${node.value ?? ''}\n$$`;
       case 'break': return '\n';
-      case 'textDirective': return children.map(text).join('');
+      case 'textDirective': return node.name === 'icon' ? '' : children.map(text).join('');
       case 'leafDirective': return `${node.attributes?.label}: ${valueText(Number(node.attributes?.value), Number(node.attributes?.max), node.attributes?.unit)}`;
       case 'containerDirective': return `${node.attributes?.title}\n${children.map(text).join('\n\n')}`;
       case 'html': return '';

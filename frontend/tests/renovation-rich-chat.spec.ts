@@ -188,6 +188,53 @@ test('standalone disclosures and Markdown boundaries keep the optimized path cor
   await expect(page.getByText('Fish & chips', { exact: true })).toBeVisible();
 });
 
+test('inline Lucide names render safely, keep text and copy without presentation tokens', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await richChat(page, ':icon[BookOpen] Reading and :icon[book-open] notes.\n\n:icon[Anvil] Practice. :icon[NotARealLucideIcon] Unknown. :icon[../../bad] Invalid.\n\nOrdinary BookOpen stays text. `:icon[BookOpen]` stays code.');
+  await page.goto('/chat/polish-chat');
+  const reply = page.getByRole('article', { name: 'Mentra response' }).last();
+  await expect(reply.locator('.rich-icon svg')).toHaveCount(3);
+  await expect(reply.locator('.rich-icon-placeholder')).toHaveCount(2);
+  await expect(reply.locator('.rich-icon')).toHaveCount(5);
+  for (const icon of await reply.locator('.rich-icon').all()) {
+    await expect(icon).toHaveAttribute('aria-hidden', 'true');
+    await expect(icon).toBeVisible();
+    await expect(icon).toHaveText('');
+  }
+  await expect(reply).not.toContainText('NotARealLucideIcon');
+  await expect(reply.locator('code')).toHaveText(':icon[BookOpen]');
+  await reply.getByRole('button', { name: 'Copy response', exact: true }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('Reading and');
+  expect(copied).toContain('Ordinary BookOpen stays text.');
+  expect(copied).toContain(':icon[BookOpen] stays code.');
+  expect(copied).not.toContain('NotARealLucideIcon');
+});
+
+for (const chunk of ['lucideIconCatalog', 'anvil']) test(`unavailable ${chunk} leaves a placeholder and usable chat`, async ({ page }) => {
+  await richChat(page, ':icon[Anvil] Practice stays readable.');
+  let blocked = 0;
+  await page.route(`**/${chunk}-*.js`, route => { blocked++; return route.abort(); });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/chat/polish-chat');
+  await expect.poll(() => blocked).toBeGreaterThan(0);
+  await expect(page.locator('.rich-icon-placeholder')).toBeVisible();
+  await expect(page.getByText('Practice stays readable.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Ask Mentra anything' })).toBeEditable();
+  expect(errors).toEqual([]);
+});
+
+test('common icons render without catalog requests and excessive icons stay bounded', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => { if (request.url().includes('lucideIconCatalog')) requests.push(request.url()); });
+  await richChat(page, Array.from({ length: 40 }, () => ':icon[BookOpen]').join(' '));
+  await page.goto('/chat/polish-chat');
+  await expect(page.locator('.rich-icon svg')).toHaveCount(32);
+  await expect(page.locator('.rich-icon-placeholder')).toHaveCount(8);
+  expect(requests).toEqual([]);
+});
+
 const diagrams: Record<string, string> = {
   flowchart: 'flowchart LR\n accTitle: Learning flow\n accDescr: Practice follows learning.\n A[Learn] --> B[Practice]',
   sequence: 'sequenceDiagram\n Student->>Mentra: Explain\n Mentra-->>Student: Example',

@@ -10,6 +10,7 @@ import { CodeBlock } from './CodeBlock';
 import remarkDirective from 'remark-directive';
 import { remarkRichContent, usesRichDirectives } from '../../lib/richMarkdown';
 import { ColorText } from './ColorText';
+import { InlineIcon } from './InlineIcon';
 import { ProgressBar } from '../ui/ProgressBar';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram').then(module => ({ default: module.MermaidDiagram })));
@@ -64,6 +65,7 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins }: Markd
     pre: MarkdownCode,
     a: linkComponent ?? (({ children, href }) => <a href={href} rel="noopener noreferrer">{children}</a>),
     table: ({ children }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
+    'mentra-icon': ({ node }: RichProps) => <InlineIcon name={String(node?.properties.name ?? '')} />,
     'mentra-color': ({ node, children }: RichProps) => <ColorText tone={String(node?.properties.tone ?? '')} hex={node?.properties.hex ? String(node.properties.hex) : undefined}>{children}</ColorText>,
     'mentra-bar': ({ node }: RichProps) => <div className="my-4"><ProgressBar mode="meter" label={String(node?.properties.label ?? '')} value={Number(node?.properties.value)} max={Number(node?.properties.max)} unit={String(node?.properties.unit ?? '')} /></div>,
     'mentra-details': ({ node, children }: RichProps) => <details className="my-4 rounded-panel border border-border px-4 py-3"><summary className="ui-disclosure cursor-pointer font-medium text-heading">{String(node?.properties.title ?? 'Explanation')}</summary><div className="mt-2">{children}</div></details>,
