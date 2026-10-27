@@ -203,12 +203,44 @@ for (const [kind, code] of Object.entries(diagrams)) test(`Mermaid ${kind} rende
   await page.goto('/chat/polish-chat');
   const figure = page.locator('.mermaid-figure');
   await expect(figure.locator('svg')).toBeVisible({ timeout: 20000 });
+  // An SVG shell can render successfully even when sanitization removed every label.
+  const labels = figure.locator('svg text').filter({ hasText: /\S/ });
+  await expect(labels.first()).toBeVisible();
+  await expect.poll(() => labels.allTextContents()).not.toEqual([]);
+  if (kind === 'flowchart') {
+    await expect(labels).toContainText(['Learn', 'Practice']);
+  }
   await figure.getByRole('button', { name: 'Expand', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Expanded diagram' }).locator('svg')).toBeVisible();
+  const viewer = page.getByRole('dialog', { name: 'Expanded diagram' });
+  await expect(viewer.locator('svg')).toBeVisible();
+  const bounds = await viewer.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(bounds?.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  expect(bounds?.height).toBeGreaterThanOrEqual(viewport.height - 1);
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await figure.getByRole('button', { name: 'View source', exact: true }).click();
   await expect(figure.locator('code')).toContainText(code);
   if (kind === 'flowchart') await page.screenshot({ path: info.outputPath('mermaid-source.png') });
+});
+
+test('mobile dark fullscreen keeps multiline labels and restores focus on Escape', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await richChat(page, '```mermaid\nflowchart TD\n A[Application starts] --> B[Create component]\n B --> C[Render template]\n C --> D{Data changed?}\n D -->|Yes| C\n D -->|No| E[View ready]\n```');
+  await page.goto('/chat/polish-chat');
+  const figure = page.locator('.mermaid-figure');
+  await expect(figure.locator('svg text').filter({ hasText: 'Application starts' })).toBeVisible();
+  await expect(figure.locator('foreignObject')).toHaveCount(0);
+  const expand = figure.getByRole('button', { name: 'Expand', exact: true });
+  await expand.click();
+  const viewer = page.getByRole('dialog', { name: 'Expanded diagram' });
+  await expect(viewer.locator('svg text').filter({ hasText: 'Render template' })).toBeVisible();
+  expect(await viewer.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+  await expect(viewer.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
+  await page.screenshot({ path: info.outputPath('diagram-fullscreen-mobile.png'), animations: 'disabled' });
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  await expect(expand).toBeFocused();
 });
 
 test('invalid/unsafe Mermaid stays local, source remains readable', async ({ page }) => {

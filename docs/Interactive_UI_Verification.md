@@ -70,3 +70,18 @@ Both Docker images were rebuilt. Backend, frontend, assessment worker, Events wo
 Disposable test databases, traces, screenshots, temporary baseline/config files and test/build logs are removed after recording results here. Reusable regression tests and the configured-provider verification script remain; runtime data and tokenizer caches are retained.
 
 This verifies the local Compose rollout. `.env.production` is absent; public deployment still requires deployment-specific configuration, origins, TLS/proxy/firewall, secrets, backups and capacity checks in [the production runbook](production-readiness.md). No public deployment or push is performed by this change.
+
+## Diagram label/fullscreen follow-up
+
+The installed Mermaid renderer reads the global `htmlLabels` option. Setting only
+`flowchart.htmlLabels` left labels inside `foreignObject`, which the SVG sanitizer
+correctly removed. The app now sets both flags to false, producing native SVG text
+without relaxing sanitization. A new regression reproduced the empty-label failure
+before the fix; all eight diagram-family checks now require visible nonempty text.
+
+Expand now opens a viewport-sized native dialog instead of the shared small modal
+frame. The diagram fits the available area below a persistent Close control;
+Escape dismisses it and restores focus. Desktop viewport dimensions and mobile
+dark-mode text, fullscreen bounds, Close visibility and focus restoration are covered.
+The production build, UI/theme checks and 27 rich-chat/performance browser checks
+passed. The frontend image was rebuilt and the local frontend service refreshed.

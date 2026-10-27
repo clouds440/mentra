@@ -78,7 +78,9 @@ export function MermaidDiagram({ code }: { code: string }) {
           const styles = getComputedStyle(document.documentElement);
           const color = (name: string) => `rgb(${styles.getPropertyValue(`--${name}`).trim().split(/\s+/).join(',')})`;
           mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: theme === 'dark' ? 'dark' : 'default', suppressErrorRendering: true,
-            maxTextSize: 12000, maxEdges: 120, flowchart: { htmlLabels: false },
+            // Current renderers read the global flag; the flowchart flag alone
+            // leaves labels in foreignObject, which our SVG sanitizer removes.
+            maxTextSize: 12000, maxEdges: 120, htmlLabels: false, flowchart: { htmlLabels: false },
             themeVariables: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', primaryTextColor: color('foreground'), lineColor: color('muted') } });
           raw = (await mermaid.render(`mentraDiagram${++serial}`, code)).svg;
           if (!current()) return;
@@ -105,6 +107,6 @@ export function MermaidDiagram({ code }: { code: string }) {
       <Button size="sm" variant="ghost" disabled={!svg} onClick={download}>Download SVG</Button>
     </span></figcaption>
     {source || errorKey === key ? <CodeBlock code={code} language="mermaid" /> : figure()}
-    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" className="w-[min(95vw,80rem)]"><div className="flex justify-end"><Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></div>{figure(expandedSvg)}</Dialog>}
+    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" className="mermaid-fullscreen"><div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2"><span className="text-sm text-muted">Diagram</span><Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></div>{figure(expandedSvg)}</Dialog>}
   </figure>;
 }
