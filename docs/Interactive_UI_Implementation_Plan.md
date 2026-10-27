@@ -1,10 +1,12 @@
 # Interactive UI and rich responses: implementation plan
 
-Date: 27 October 2026. Status: planning only; no application changes or deployment.
+Date: 27 October 2026. Implementation authorized after this plan was written; see [the implementation and verification record](Interactive_UI_Verification.md) for delivered behavior and evidence.
 
 ## Recommendation
 
-Extend Mentra's existing native controls, durable chat submissions and shared Markdown renderer. Use Pydantic tool contracts for anything collecting answers or authorizing actions. Use small, explicit Markdown extensions for presentation: Mermaid fences, inline color directives and progress directives. React components remain application-owned.
+Extend Mentra's existing native controls, durable chat submissions and shared Markdown renderer. Use Pydantic tool contracts for collecting answers and requesting native visual components. Static value bars use structured `present_visuals` data, including difficulty, ratings, quantities and comparisons; they are not live progress tracking. Mermaid fences and selective inline color use explicit Markdown extensions. React components remain application-owned.
+
+Give the main chat a softer, clearer reading style using explicitly bundled Inter, plus a chat-only Small / Medium / Large font-size setting with Medium selected by default. Keep model-facing UI usage instructions together in one shared, versioned prompt module.
 
 The model should describe an input's behavior explicitly. An option ID identifies the option; it should not secretly mean “open an input” because of a particular name or label. Selecting “I'll write my own topic” should reveal a labeled input inside the existing card, require a nonblank value, and submit both the option and entered topic through the current durable turn endpoint.
 
@@ -21,7 +23,7 @@ These findings were checked against the current source. Existing documentation c
 | `backend/app/chat/repositories/postgres.py` | Owner/conversation checks; atomically saves an answer receipt and canonical user message; durable retry handling | Generalize existing interaction resolution and receipt updates. Keep the same transaction and idempotency path. |
 | `backend/app/chat/schemas.py`, `response.py` | Typed request and response boundaries; interactions currently contain only choice cards | Extend to a typed interaction union while preserving legacy choice payloads. |
 | `backend/app/langchain/history_orchestration.py`, `capabilities.py`, `tool_selection.py` | Constructs tools, discovers/binds capabilities, dispatches calls and collects cards | Register new schemas through the same discovery and dispatch path. Verify schema availability and execution together. |
-| `backend/app/langchain/prompts/chat.py` | Brief instruction to use `present_choices` for clarification | Add actionable selection/input/diagram/formatting policy with concise examples. |
+| `backend/app/langchain/prompts/chat.py` and `prompts/registry.py` | Core conversation guidance and central prompt composition | Register one shared UI usage prompt; move overlapping UI instructions into it instead of appending rules across domain prompts. |
 | `frontend/src/components/interactions/ChoiceOptions.tsx` | Controlled radio/checkbox renderer shared with assessments | Preserve this domain-independent base; extend composition to show attached fields in chat. |
 | `frontend/src/components/chat/ChoiceCard.tsx` | Selected IDs only; submits through ChatStore | Add conditional input, validation, drafts and saved-answer display. Extract a shared interaction frame only when text/form cards also use it. |
 | `frontend/src/stores/chatStore.ts` | Durable sends, pending request recovery, optimistic state and receipt updates | Extend existing payload/receipt handling for text values and additional interaction kinds. |
@@ -31,6 +33,8 @@ These findings were checked against the current source. Existing documentation c
 | `frontend/src/lib/markdownPlainText.ts`, chat `CopyResponse.tsx` | AST-based readable clipboard output | Teach the existing parser about supported directives; keep code payloads exact. |
 | `AssessmentGenerationCard.tsx`, `MCQAssessment.tsx`, `CalibrationAssessment.tsx` | Three local progress bar implementations | Extract one accessible `ProgressBar` primitive and migrate these consumers before adding model-authored progress. |
 | Chat `ContextualActions.tsx` | Typed “Practice this material” action using validated references | Reuse for a small set of useful follow-up actions; avoid creating a second action system. |
+| `frontend/src/pages/SettingsPage.tsx`, shared Select, theme preference persistence pattern | Existing Profile & preferences settings and browser-local appearance preferences | Add Chat appearance here; reuse validated storage, immediate application and cross-tab sync patterns without coupling chat preferences to theme state. |
+| `frontend/src/styles/global.css`, `ChatMessage.tsx`, chat composer | Global Inter-first fallback declaration, shared Markdown sizing and existing mobile composer rules | Actually bundle the chosen font, then scope its use and size tokens to main-chat content. Avoid global typography changes. |
 
 ## 2. Contracts and persistence
 
@@ -105,9 +109,13 @@ Keep `present_choices` backward compatible; introduce one `request_input` tool f
 
 No new generic interaction tables are expected: extend existing message metadata. Verify actual query/recovery needs before proposing a migration.
 
-## 3. Use interactive controls more consistently
+## 3. Central UI usage instructions and model behavior
 
-Improve tool descriptions, capability discovery and prompt instructions together. A prompt alone will not fix tools that are unavailable during binding or rejected by dispatch.
+Keep the model's UI usage guidance in one proposed `backend/app/langchain/prompts/chat_ui.py`, registered and composed through the existing `prompts/registry.py`. Include it once per relevant chat model invocation, including follow-up tool rounds and response-edit paths that author chat content. Keep only a short reference/composition hook in the core chat prompt. Reuse the registry's versioning and caching identities.
+
+Move overlapping UI usage guidance out of `chat.py` and related prompts when the new shared module is introduced. Tool descriptions should explain arguments, prerequisites and outcomes; domain prompts should retain only domain-specific rules such as assessment answer privacy or event authorization. Neither should duplicate the full selection, styling and formatting policy. Schemas remain the executable contract; the shared module owns when and how the model uses those capabilities.
+
+The tables below define that central policy. Later sections specify implementation details rather than separate prompt instructions.
 
 | Situation | Expected behavior |
 |---|---|
@@ -119,7 +127,20 @@ Improve tool descriptions, capability discovery and prompt instructions together
 | Request is already clear | Complete it directly; interactive UI should not introduce an unnecessary decision. |
 | User requests prose, paper, code or a specific format | Honor it. Do not force an interactive card. |
 
-Add examples to the prompt contract showing custom-topic entry, a small form, event review, useful Mermaid, restrained color and measured progress. Explain that the assistant must actually call the appropriate tool before claiming a card is available, wait for user input, and never submit on the user's behalf. Avoid duplicating long instructions in every domain prompt.
+| Presentation/action | Central usage rule |
+|---|---|
+| Custom-topic alternative | Attach a real input definition; never promise typing through a label alone. |
+| User decisions | Call the appropriate tool before claiming a card is available, wait for the user and never submit on their behalf. |
+| Mermaid | Use a small diagram when flow, interaction, hierarchy, state or relationships become clearer. Use a `mermaid` fence, an accessible title/description and a brief prose explanation; omit model-authored configuration. |
+| Color | Prefer semantic tones on short meaningful phrases. Use custom hex sparingly; avoid decorative paragraphs and color as the only meaning. |
+| Progress | Use an explicit progress directive only for supported counts/measurements. Preserve exact values; never invent mastery, certainty, live execution progress or a missing total. Ordinary percentages stay prose. |
+| Hint/callout | Use when it improves learning or highlights a useful point; never expose unreleased private answers. |
+| Follow-up actions | Offer at most one or two contextual actions backed by supported intents/references; omit when competing with required input. |
+| Typography | Application settings own font and size. The model does not emit font families, text sizes or CSS. |
+
+Keep concise syntax examples for custom-topic input, compact form, review, Mermaid, color and measured progress beside these rules in the shared module. Maintain one example fixture corpus used by prompt/contract tests rather than copying large examples between prompts. Document the model-facing contract in `docs/chat-interactions.md`; other engineering documents should link to it for usage policy.
+
+Improve capability discovery and dispatch alongside this shared prompt. A prompt alone will not fix tools that are unavailable during binding or rejected by execution. Scope the included capabilities to those actually enabled so the model cannot promise unavailable UI.
 
 Ordinary topic choices are durable chat answers and do not need graph interrupts. True human-in-the-loop actions require persisted workflow state and a real resume operation.
 
@@ -160,7 +181,7 @@ Add the maintained `mermaid` package, resolved and locked to a compatible suppor
 
 Mermaid's strict mode disables click functionality and encodes label HTML; it is a baseline, supplemented by the application constraints above. [Official usage/security configuration](https://mermaid.js.org/config/usage). Accessible diagram metadata uses `accTitle` and `accDescr`. [Official accessibility guidance](https://mermaid.js.org/config/accessibility). Theme configuration must remain application-owned. [Official theming](https://mermaid.js.org/config/theming.html).
 
-Prompt rule: use a Mermaid fence when a flow, interaction, hierarchy, state transition or relationship becomes materially easier to understand. Keep diagrams small and explain their point in prose. Do not wrap ordinary short answers in diagrams or put unrelated model-authored configuration into them.
+Model usage and syntax examples belong in the shared UI prompt described in section 3.
 
 ## 6. Inline colored text
 
@@ -182,21 +203,23 @@ Prefer this explicit grammar over hash delimiters: it distinguishes text from he
 | Custom colors | Accept only a validated six-digit hex value. No CSS strings, URLs, variables, alpha or arbitrary style properties. |
 | Contrast | Adjust custom colors to a readable foreground on the actual surface, or fall back to the semantic/accent foreground. Reuse the existing UI contrast-check approach; add explicit tests for semantic colors too. |
 | Meaning | Keep visible words such as “Success” or “Needs review”; color never carries the only meaning. |
-| Restraint | Prompt for short meaningful labels/phrases only, not decorative sentences, entire paragraphs or automatic coloring of sentiment. |
+| Restraint | Enforce the central usage guidance in section 3; keep examples and selection policy in that shared prompt. |
 | Parser boundaries | Only supported directive nodes become spans. Do not interpret directive-like text in code, math, URLs or escaped literal examples. Reject conflicting/unknown attributes. |
 | Compatibility | No arbitrary HTML rendering. Malformed/unknown markup remains readable literal text; valid unsupported colors retain their text without unsafe styling. |
 | Clipboard | Existing `markdownPlainText` returns the phrase with formatting removed. Exact code-copy behavior stays unchanged. |
 
 Custom model-specified foreground color is a narrow, documented exception to the frontend's semantic-token styling rule, handled in one component. It must not spread raw palette values throughout the application.
 
-## 7. Dedicated progress bar
+## 7. Dedicated value/progress bar
 
 Extract `ProgressBar` from the existing assessment/calibration implementations into `components/ui/`. Keep feature-specific labels, data loading and status decisions with their current callers. Preserve those callers' current value semantics.
 
-Explicit model syntax, parsed with the same directive infrastructure:
+Prefer structured `present_visuals` tool arguments so the model does not need presentation markup. Supply a bounded list of labeled values/scales and optional explanatory notes. Compare concepts on a common scale and label subjective difficulty/ratings as illustrative or estimated. These are static visuals. Reuse the same primitive for existing domain-owned progress displays without introducing new live tracking.
+
+Optional block syntax, parsed with the same directive infrastructure:
 
 ```text
-::progress{label="Practice completed" value="3" max="5" unit="questions"}
+::bar{label="Estimated difficulty" value="3" max="5" unit="points"}
 ```
 
 | Concern | Decision |
@@ -222,9 +245,30 @@ Include these after the core input, Mermaid, color and progress work. Reuse the 
 | Tip / caution / key idea callout | Makes a short important point easy to find | Existing Card and semantic text styles; bounded `callout` directive using the same plugin. Never auto-generate warning panels from tool failures. |
 | Contextual follow-up actions | Useful “Explain with an example” or “Practice this material” actions | Extend `ContextualActions.tsx` with a few typed intents and existing validated references. No arbitrary URLs, endpoints or hidden auto-execution. |
 
-Keep optional suggestions to one or two and omit them when they compete with a required input card. Defer generic dashboards, arbitrary model-authored layouts, drag-and-drop builders and a large visualization library.
+Follow the central suggestion policy in section 3. Defer generic dashboards, arbitrary model-authored layouts, drag-and-drop builders and a large visualization library.
 
-## 9. File-level implementation sequence
+## 9. Main-chat typography and font-size settings
+
+Use self-hosted **Inter** with a comfortable reading size, regular 400-weight prose, restrained 500–600-weight emphasis and approximately 1.65–1.75 line height. Inter is designed for screen readability, including a tall lowercase x-height. [Official font project](https://github.com/rsms/inter). Validate the final result visually against real long chat responses before finalizing spacing.
+
+The current CSS already lists `Inter` first globally, but the frontend source inspected here does not include a font-face declaration or bundled Inter asset. Listing a family does not ensure that users see it. Bundle licensed WOFF2 assets with the frontend, including required normal/italic weights or variable equivalents, and use a distinct chat font-face name such as `Mentra Chat Inter`. Apply that alias only to the main-chat scope so loading the font does not inadvertently alter the rest of the app. Keep the font license with the assets; use `font-display: swap` and sensible system fallbacks. Verify the actual computed font in browser acceptance.
+
+| Setting/area | Planned behavior |
+|---|---|
+| Location | Add a compact **Chat appearance** section to Settings → Profile & preferences using the existing settings layout and shared Select. Label the control **Chat font size** and state that it applies to main chat only. |
+| Sizes | **Small: 15px**, **Medium: 16px (default)**, **Large: 18px** at the standard browser root size, implemented as relative units. Missing/invalid saved values resolve to Medium. Preserve browser zoom and user accessibility scaling. |
+| Preview | Show one short sample of a user message and assistant response inside Settings; size changes apply immediately, with no page reload or model call. |
+| Scope | Main-chat user and assistant prose, Markdown lists/tables, inline code, inline interactive question labels and entered text, and the main composer text. Heading sizes remain proportional to the selected base. |
+| Stable controls | Retain compact toolbar/button/status text and shared control dimensions. Do not scale the application root, sidebar, chat list, navigation, settings, Library or standalone assessment pages. |
+| Specialized content | Fenced code retains the established monospace font and code sizing. KaTeX retains its math fonts and scales relative to prose. Mermaid uses its app-owned diagram typography. Embedded assessment/editor components retain domain layout and sizing unless a deliberate chat-specific text token is supported. |
+| Mobile composer | Retain the existing minimum 16px composer text on phones even with Small selected, avoiding focus zoom and preserving current composer geometry. |
+| Tokens | Define chat-specific family, base-size and line-height tokens at the conversation/composer scope. Extend existing Markdown styles through a scoped chat override; shared MarkdownContent used elsewhere must keep its current typography. |
+| Persistence | Reuse the browser-local appearance preference pattern from ThemeProvider with a validated `small | medium | large` value, guarded storage access and cross-tab updates. Store only this nonsensitive appearance choice; in-memory fallback remains usable if storage is blocked. Treat it as a device/browser setting in this scope, with no profile API or migration. |
+| Scroll and focus | Reuse existing chat resize/scroll anchoring. Preserve the reading position on size change, follow growth only when already following the bottom, and preserve text drafts, selections and keyboard focus. |
+
+Do not add a font picker in this scope: select one clear typeface and provide the requested size control. Font and size are deterministic frontend presentation settings and must not be passed to the LLM as behavioral instructions.
+
+## 10. File-level implementation sequence
 
 | Phase | Modify/generalize existing resources | Add only when required | Exit condition |
 |---|---|---|---|
@@ -233,13 +277,21 @@ Keep optional suggestions to one or two and omit them when they compete with a r
 | 3. Complete workflow review | Existing EventConfirmationGraph, proposal service/repository, EventProposalCard and recovery | Narrow adapter only if a second workflow is implemented | Pause, review, resume and recovery do not repeat domain effects. |
 | 4. Share progress | Existing generation, MCQ and calibration displays | One ProgressBar primitive | Existing progress remains correct and accessible across all consumers. |
 | 5. Rich Markdown | MarkdownContent, CodeBlock routing, markdownPlainText, styles and theme checks | MermaidDiagram, narrow directive transform/components; Mermaid, remark-directive and SVG sanitizer dependencies | Diagrams, color, progress, copy and graceful failures work in chat and Library. |
-| 6. Useful additions and guidance | Existing disclosures, Card, ContextualActions, prompts and documentation | Minimal callout/disclosure adapters | Additions are useful without clutter; real model calls choose controls appropriately. |
+| 6. Chat appearance | SettingsPage, shared Select, current appearance persistence patterns, chat/composer scoped CSS and Markdown overrides | Bundled licensed Inter assets; small chat-size preference helper/component | Medium is default; sizes persist and affect only main-chat typography. |
+| 7. Useful additions and consolidated guidance | Existing disclosures, Card, ContextualActions, prompt registry and documentation; remove duplicated UI usage instructions | Minimal callout/disclosure adapters; one shared `chat_ui.py` prompt module | Additions are useful without clutter; one composed UI policy guides actual model behavior. |
 
 Update `docs/chat-interactions.md`, frontend/backend standards and relevant LangChain documentation for the final contracts. Keep schema examples, prompt examples, types and test fixtures consistent. Preserve sidebar/composer placement, shared controls and current responsive geometry.
 
-## 10. Verification and acceptance
+## 11. Verification and acceptance
 
 These are required implementation checks, not claims that tests have run for this planning task.
+
+Additional implementation requirement: native controls must render with minimal
+overhead; completed components must not rerender on unrelated UI updates. Plain
+text should bypass rich parsing where safe. Heavy diagrams must be lazy and cannot
+gate surrounding text. Measure input latency and actual component renders with a
+200-message chat, including unchanged refreshes and a real metadata update; report
+first-use diagram costs honestly rather than claiming parity with plain text.
 
 | Area | Required evidence |
 |---|---|
@@ -252,12 +304,14 @@ These are required implementation checks, not claims that tests have run for thi
 | Formatting | Directive escaping, malformed/unknown attributes, nesting, ordinary percentages, hex examples, code/math/link boundaries, citation coexistence, contrast, plain-text copy and historical messages. |
 | Shared progress | Zero, complete, fractional, unknown-total live state, invalid/nonfinite/out-of-range values and accessible announcements. Confirm model snapshots never subscribe to fabricated live progress. |
 | UI | Keyboard/screen-reader names, associated errors, active-field focus only following user selection, Light/Dark/System, forced colors, reduced motion, 320–375px layouts and no composer/sidebar regressions. |
+| Chat typography/settings | Verify the bundled font actually loads; Medium default, all three sizes, immediate preview/application, refresh, cross-tab sync, invalid/blocked storage and browser zoom. Compare before/after outside-chat typography to prove it is unchanged. Cover prose/headings/tables/inputs, code/math exceptions, mobile composer minimum size, long responses and stable scroll/focus. |
+| Central UI policy | Prompt assembly includes the versioned UI module exactly once across initial/tool/response-edit chat paths and advertises only supported capabilities. Review existing prompts for duplicated/conflicting UI instructions; test behavior using the shared examples. |
 | Real model behavior | Use the configured provider with synthetic requests for custom topics, forms, useful diagrams, measured progress and plain requests needing no UI. Validate returned Pydantic tool arguments, actual execution and final rendering; do not judge only schema validity or deterministic fixtures. |
 | Build/checks | Frontend production build, `check:theme`, `check:ui`, focused backend interaction/workflow tests and browser suites. Extend `backend/tests/test_chat_interactions.py` and `frontend/tests/chat-interactions.spec.ts`; use existing event and rendering suites for related paths. |
 
 Track model selection quality with expected behaviors, including false positives. The goal is more appropriate UI, not an interaction quota on every response. Log card kind, validation outcome and recovery errors without logging sensitive entered text unnecessarily.
 
-## 11. Rollout, rollback and completion
+## 12. Rollout, rollback and completion
 
 1. Keep old payloads readable before enabling new generation. Deploy backend readers/contracts and frontend renderers in compatible order; advertise only supported formatting/input capabilities to the model. Refresh prompt versions/cache identities when the contract changes.
 2. Use the existing configuration approach for narrow generation switches if needed. Disabling generation must leave rendering and recovery available for already-saved cards and pending workflows.
@@ -266,4 +320,4 @@ Track model selection quality with expected behaviors, including false positives
 5. Keep model-authored visual syntax readable when unsupported. Renderer failure must not lose the surrounding answer, user input or accepted action receipt.
 6. Remove superseded local progress markup and duplicate rendering helpers only after all known consumers are migrated. Keep legacy card readers; do not delete historical interaction data or assessment provenance.
 
-Complete when the custom-topic example works, native input and actual workflow review are reliable, Mermaid is fully integrated, restrained colors and explicit progress render correctly, and the verification above records what passed and what remains unverified.
+Complete when the custom-topic example works, native input and actual workflow review are reliable, Mermaid is fully integrated, restrained colors and explicit progress render correctly, chat-only typography and size settings work with Medium as the default, UI usage guidance is centrally composed, and the verification above records what passed and what remains unverified.

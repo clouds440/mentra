@@ -36,6 +36,9 @@ export function materialWarningMessage(message: string): string {
 }
 
 export function errorMessage(status: number, code: string): string {
+  if (code === 'INTERACTION_INVALID_ANSWER') return 'Review the fields and try again.';
+  if (code === 'INTERACTION_COMPLETED') return 'This answer was already submitted. Refresh to see it.';
+  if (code === 'INTERACTION_NOT_FOUND') return 'This question is no longer available.';
   if (code === 'FILES_SIZE') return 'This file exceeds the upload size limit.';
   if (code === 'FILES_EMPTY') return 'Choose a non-empty file.';
   if (code === 'FILES_FORMAT') return 'This file format could not be read. Choose a supported file.';

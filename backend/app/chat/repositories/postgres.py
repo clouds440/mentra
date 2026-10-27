@@ -126,7 +126,10 @@ class ChatRepository:
         # Retain fingerprints for existing clients/turns without attachments.
         fingerprint = sha256(json.dumps([conversation_id, content, selection] + ([attachment_ids] if attachment_ids else []), sort_keys=True).encode()).hexdigest()
         if request.interaction_response:
-            fingerprint = sha256((fingerprint + request.interaction_response.model_dump_json()).encode()).hexdigest()
+            reply = request.interaction_response
+            # Empty additive fields must not invalidate pre-upgrade pending sends.
+            excluded = {name for name in ('option_inputs', 'values') if not getattr(reply, name)}
+            fingerprint = sha256((fingerprint + reply.model_dump_json(exclude=excluded)).encode()).hexdigest()
         if request.timezone:
             fingerprint = sha256((fingerprint + request.timezone).encode()).hexdigest()
         return fingerprint
@@ -203,7 +206,11 @@ class ChatRepository:
                 card, content = resolve_choice(cards, reply)
                 if card.get('submitted_turn_id'):
                     raise AppError('INTERACTION_COMPLETED', 'This interaction has already been submitted.', 409)
-                card.update(selected=reply.selected, submitted_turn_id=turn_id)
+                if card['kind'] in ('single_choice', 'multiple_choice'):
+                    card.update(selected=reply.selected, option_inputs=reply.option_inputs)
+                else:
+                    card.update(values=reply.values)
+                card['submitted_turn_id'] = turn_id
                 metadata['interactions'] = cards
                 session.execute(update(m).where(m.c.id == source['id']).values(metadata=metadata))
                 interaction_metadata = dict(interaction_response=reply.model_dump(mode='json'))

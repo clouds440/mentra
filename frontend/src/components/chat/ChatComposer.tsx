@@ -138,7 +138,7 @@ export function ChatComposer({
         }} />
     <form
       aria-label="Message Mentra"
-      className="chat-composer rounded-panel border border-border-strong bg-card p-1.5 shadow-panel focus-within:border-border-hover"
+      className="chat-composer chat-prose rounded-panel border border-border-strong bg-card p-1.5 shadow-panel focus-within:border-border-hover"
       onPaste={handlePaste}
       onSubmit={(event) => {
         event.preventDefault();

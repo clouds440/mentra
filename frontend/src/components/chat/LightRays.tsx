@@ -1,6 +1,6 @@
 // Adapted from the React Bits LightRays component supplied for this integration.
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import './LightRays.css';
 
 const PIXEL_BUDGET = 2.4e6;
@@ -590,4 +590,6 @@ const LightRays = ({
   );
 };
 
-export default LightRays;
+const MemoLightRays = memo(LightRays);
+MemoLightRays.displayName = 'LightRays';
+export default MemoLightRays;

@@ -3,6 +3,7 @@ import { setFileCacheOwner } from '../../services/fileSessionCache';
 import { setUploadOwner } from '../../services/files';
 import { openBroadcastChannel } from '../../utils/broadcastChannel';
 import { assessmentSession } from '../../stores/assessmentSession';
+import { setRichContentOwner } from '../../lib/richContentCache';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as authApi from '../../services/auth';
 import { ApiError } from '../../services/api';
@@ -25,6 +26,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 function setSessionOwner(owner: string | null) {
+  setRichContentOwner(owner);
   setPageCacheOwner(owner);
   setFileCacheOwner(owner);
   setUploadOwner(owner);

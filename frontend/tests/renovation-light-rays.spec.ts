@@ -13,12 +13,12 @@ for (const theme of ['dark', 'light']) test(`empty chat light rays stay behind c
   await expect(rays).toHaveCount(1);
   await expect(rays).toHaveAttribute('aria-hidden','true');
   await expect.poll(() => page.locator('.light-rays canvas').evaluate((canvas: HTMLCanvasElement) => canvas.width > 1 && canvas.height > 1)).toBe(true);
-  await page.getByRole('button',{name:'Explain a concept',exact:true}).click();
-  await expect(page.getByRole('textbox',{name:'Ask Mentra anything'})).toHaveValue('Help me understand a concept: ');
   await page.mouse.move(1000,300);
   await page.waitForTimeout(1900);
   await page.screenshot({path:info.outputPath(`light-rays-${theme}.png`)});
-  await page.getByRole('textbox',{name:'Ask Mentra anything'}).press('Enter');
+  const request = page.waitForRequest(item => item.url().endsWith('/conversations/turns') && item.method() === 'POST');
+  await page.getByRole('button',{name:'Explain a concept',exact:true}).click();
+  expect((await request).postDataJSON().content).toBe('Help me understand a concept. Ask me which topic to explore.');
   await expect(page.getByRole('log')).toBeVisible();
   await expect(rays).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -68,7 +68,46 @@ test('chat remains usable without WebGL', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
   await workspace(page);
   await page.goto('/');
+  const request = page.waitForRequest(item => item.url().endsWith('/conversations/turns') && item.method() === 'POST');
   await page.getByRole('button',{name:'Quiz me',exact:true}).click();
-  await expect(page.getByRole('textbox',{name:'Ask Mentra anything'})).toHaveValue('Quiz me on ');
+  expect((await request).postDataJSON().content).toBe('Give me a short quiz to practice what I am learning.');
+  await expect(page.getByRole('log')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('sidebar toggles and composer typing do not rerender or recreate LightRays', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    let previous = new Set<object>();
+    const state = { renders: 0, programs: 0 };
+    Object.assign(window, { raysHardening: state, __REACT_DEVTOOLS_GLOBAL_HOOK__: {
+      supportsFiber: true, renderers: new Map(), inject: () => 1,
+      onCommitFiberRoot: (_id: number, root: any) => {
+        const next = new Set<object>();
+        function visit(fiber: any) {
+          while (fiber) {
+            next.add(fiber);
+            if (!previous.has(fiber) && (fiber.flags & 1) && (fiber.elementType?.displayName ?? fiber.type?.displayName ?? fiber.type?.name) === 'LightRays') state.renders++;
+            visit(fiber.child); fiber = fiber.sibling;
+          }
+        }
+        visit(root.current); previous = next;
+      }, onCommitFiberUnmount: () => {},
+    } });
+    const create = WebGL2RenderingContext.prototype.createProgram;
+    WebGL2RenderingContext.prototype.createProgram = function() { state.programs++; return create.call(this); };
+  });
+  await workspace(page); await page.goto('/');
+  const canvas = page.locator('.light-rays canvas');
+  await expect.poll(() => page.evaluate(() => (window as any).raysHardening.programs)).toBeGreaterThan(0);
+  const before = await page.evaluate(() => ({ ...(window as any).raysHardening }));
+  expect(before.renders).toBeGreaterThan(0);
+  const original = await canvas.elementHandle();
+  for (let index = 0; index < 3; index++) {
+    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+    await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
+  }
+  await page.getByRole('textbox', { name: 'Ask Mentra anything' }).pressSequentially('Keep the light rays stable', { delay: 20 });
+  expect(await original!.evaluate(element => element.isConnected)).toBe(true);
+  expect(await page.evaluate(() => (window as any).raysHardening)).toEqual(before);
 });

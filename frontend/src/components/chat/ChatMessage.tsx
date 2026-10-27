@@ -59,7 +59,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
   const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.web_citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)], message.content), [message.content, message.citations, message.web_citations, message.history_references, message.memory_references]);
-  const markdownPlugins = useMemo(() => [citations], [citations]);
+  const hasReferences = !!(message.citations?.length || message.web_citations?.length || message.history_references?.length || message.memory_references?.length);
+  const markdownPlugins = useMemo(() => hasReferences ? [citations] : [], [hasReferences, citations]);
   // Keep the renderer identity stable so opening the dialog retains its trigger
   // node and native dialog focus restoration works for keyboard users.
   const markdownComponents = useMemo(() => ({ a: ({ href, children }: { href?: string; children?: ReactNode }) => {
@@ -89,8 +90,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
       <div
         className={
           isAssistant
-            ? 'min-w-0 max-w-full flex-1 text-[14px] leading-7 text-body'
-              : 'flex min-w-0 max-w-[94%] flex-col items-end gap-2 text-[14px] leading-6 text-foreground sm:max-w-[88%]'
+            ? 'chat-prose min-w-0 max-w-full flex-1 text-body'
+              : 'chat-prose flex min-w-0 max-w-[94%] flex-col items-end gap-2 text-foreground sm:max-w-[88%]'
         }
       >
         {isAssistant ? (
@@ -98,8 +99,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
             <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
             <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
-            {message.event_proposals?.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}
-            {!!message.assessment_cards?.length && <Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense>}
+            {!!message.event_proposals?.length && <div className="chat-domain-card">{message.event_proposals.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}</div>}
+            {!!message.assessment_cards?.length && <div className="chat-domain-card"><Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense></div>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
             {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
@@ -116,6 +117,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
     </article>
   );
 });
+ChatMessage.displayName = 'ChatMessage';
 
 interface ThinkingIndicatorProps {
   label?: string;

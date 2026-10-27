@@ -134,7 +134,12 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(await run_assessment_pipeline(self.service))
             graded=self.service.repository.attempt(self.owner,str(attempt.id))
             self.assertEqual(graded.state,'graded'); self.assertEqual(graded.evidence_status,'applied')
-            self.assertEqual(sum(q.score for q in graded.grades),2)
+            # The fixture's correct key is 'a' for both questions: the second
+            # submitted 'b' is deliberately wrong in every input mode.
+            by_id = {str(grade.question_id): grade for grade in graded.grades}
+            self.assertEqual(by_id[ids[0]].score, assessment.questions[0].marks)
+            self.assertEqual(by_id[ids[1]].score, 0)
+            self.assertEqual(sum(q.score for q in graded.grades), assessment.questions[0].marks)
             self.assertEqual(self.service.submit(self.owner,str(attempt.id),body).state,'graded')
 
     async def test_provider_cannot_change_the_selected_assessment_format(self):

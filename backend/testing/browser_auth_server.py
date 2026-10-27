@@ -71,7 +71,9 @@ async def lifespan(application):
     from app.assessments.service import create_assessments
     application.state.assessment_service = create_assessments(database.sessions, llm, application.state.learner_service, application.state.rag_service, application.state.student_profile_service,files=files)
     from app.assessments.worker import AssessmentWorker
+    from app.assessments.evidence_worker import AssessmentEvidenceWorker
     grading_worker = AssessmentWorker(application.state.assessment_service)
+    assessment_evidence_worker = AssessmentEvidenceWorker(application.state.assessment_service)
     from app.chat.attachments import AttachmentService
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
@@ -93,6 +95,7 @@ async def lifespan(application):
             await asyncio.to_thread(worker.run_once)
             await asyncio.to_thread(application.state.history_management.events.repository.deliver_reminders)
             await grading_worker.run_once()
+            await assessment_evidence_worker.run_once()
             await asyncio.sleep(0.2)
 
     task = asyncio.create_task(process_jobs())

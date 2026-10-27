@@ -11,6 +11,7 @@ import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatMessage } from '../components/chat/ChatMessage';
+import { useChatFontSize } from '../components/chat/chatAppearance';
 import { ChatActivity } from '../components/chat/ChatActivity';
 import { chatStore, useConversation } from '../stores/chatStore';
 import { IconButton, Spinner } from '../components/ui';
@@ -21,6 +22,7 @@ interface StagedFile { id: string; file: File; preview?: string; saved?: ChatAtt
 const SavedChatExchange = lazy(() => import('../components/chat/SavedChatExchange').then(module => ({default:module.SavedChatExchange})));
 
 export function ChatPage() {
+  const chatFontSize = useChatFontSize();
   const { identity } = useAuth();
   const { conversationId } = useParams();
   const navigate = useNavigate();
@@ -141,7 +143,7 @@ export function ChatPage() {
   }
 
   return (
-    <section aria-label="Chat workspace" className="relative isolate flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+    <section aria-label="Chat workspace" data-chat-size={chatFontSize} className="chat-scope relative isolate flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {!view.loading && view.messages.length === 0 && <LightRays
         raysOrigin="top-center" raysColor="#7FE3FF" raysSpeed={0.5}
         lightSpread={1} rayLength={3} glow={0.6} haze={0.5}

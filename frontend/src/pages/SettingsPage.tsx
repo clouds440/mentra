@@ -8,6 +8,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
 import { AssessmentSettings } from '../components/assessments/AssessmentSettings';
 import { PasswordSettings } from '../components/auth/PasswordSettings';
+import { ChatAppearanceSettings } from '../components/chat/ChatAppearanceSettings';
 
 const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
 
@@ -42,6 +43,7 @@ export function SettingsPage() {
         <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
         <ProfileSettings />
+        <ChatAppearanceSettings />
         <AssessmentSettings />
         <PasswordSettings />
         <div className="workspace-panel mt-6 divide-y divide-border">

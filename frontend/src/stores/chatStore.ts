@@ -1,5 +1,5 @@
 import { invalidatePageCache } from '../services/pageCache';
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import * as api from '../services/conversations';
 import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
@@ -14,9 +14,28 @@ interface ChatView {
   unsent: string | null;
 }
 const empty: ChatView = { messages: [], loading: false, busy: false, error: null, before: null, olderWindow: false, revision: 0, turn: null, unsent: null };
+// Preserve immutable identities across authoritative JSON refreshes, including all
+// metadata. Receipts, revisions, attachments and references must still invalidate.
+function sameData(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
+  const a = left as Record<string, unknown>; const b = right as Record<string, unknown>;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every(key => Object.prototype.hasOwnProperty.call(b, key) && sameData(a[key], b[key]));
+}
 interface ListView { items: Conversation[]; loading: boolean; error: string | null; more: boolean }
 
 class ChatStore {
+  private interactionDrafts = new Map<string, import('../types/interactions').InteractionDraft>();
+  interactionDraft(key: string) { return this.interactionDrafts.get(key); }
+  saveInteractionDraft(key: string, value: import('../types/interactions').InteractionDraft | null) {
+    this.interactionDrafts.delete(key);
+    if (value && this.owner) this.interactionDrafts.set(key, value);
+    while (this.interactionDrafts.size > 100) this.interactionDrafts.delete(this.interactionDrafts.keys().next().value!);
+  }
+  private clearInteractionDrafts(id: string) {
+    for (const key of this.interactionDrafts.keys()) if (key.startsWith(`${id}:`)) this.interactionDrafts.delete(key);
+  }
   private opened = new Set<string>();
   owner: string | null = null;
   private cache: ChatCache | null = null;
@@ -52,7 +71,9 @@ class ChatStore {
     this.listeners.forEach(fn => fn());
   }
   private setView(id: string, patch: Partial<ChatView>) {
-    const previous = this.view(id); this.views.delete(id);
+    const previous = this.view(id);
+    if ((Object.keys(patch) as (keyof ChatView)[]).every(key => Object.is(previous[key], patch[key]))) return;
+    this.views.delete(id);
     this.views.set(id, { ...previous, ...patch }); this.chatListeners.get(id)?.forEach(fn => fn());
   }
   private mergeChats(rows: Conversation[]) {
@@ -88,6 +109,7 @@ class ChatStore {
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
     this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
     this.drafts.clear();
+    this.interactionDrafts.clear();
     this.list = { items: [], loading: true, error: null, more: false }; this.publish();
     this.chatListeners.forEach(values => values.forEach(fn => fn()));
   }
@@ -108,7 +130,7 @@ class ChatStore {
           for (const id of page.deleted_ids) {
             this.deleted.add(id);
             this.loadedMessages.delete(id); this.sequences.delete(id);
-            this.chats.delete(id); this.pending.delete(id); this.setView(id, { ...empty, error: 'This conversation was deleted.' });
+            this.chats.delete(id); this.pending.delete(id); this.clearInteractionDrafts(id); this.setView(id, { ...empty, error: 'This conversation was deleted.' });
           }
           this.cursor = page.cursor; more = page.has_more;
           await this.persist(() => cache.apply(page.conversations, [], page.deleted_ids, page.cursor, page.reset ? this.listCursor : undefined, page.reset));
@@ -194,6 +216,7 @@ class ChatStore {
     const id = page.conversation.id, view = this.view(id);
     this.drafts.delete(id);
     const pendingAtPublication = this.pending.get(id);
+    const unresolvedSend = !!pendingAtPublication && page.turn?.id !== pendingAtPublication.client_turn_id;
     // A poll started before Send can arrive after the next optimistic exchange.
     // It must not retire the new indicator or replace it with the previous turn.
     if (pendingAtPublication && view.busy && page.turn?.id !== pendingAtPublication.client_turn_id) return;
@@ -201,21 +224,25 @@ class ChatStore {
     if (page.conversation.revision < view.revision) return;
     this.mergeChats([page.conversation]);
     const loaded = this.loadedMessages.get(id) ?? new Map<number, StoredMessage>();
-    page.items.forEach(message => loaded.set(message.sequence, message));
+    const incoming = page.items.map(message => { const old = loaded.get(message.sequence); return old && old.id === message.id && old.content === message.content && sameData(old, message) ? old : message; });
+    incoming.forEach(message => loaded.set(message.sequence, message));
     this.loadedMessages.set(id, loaded);
     if (page.items.length) this.sequences.set(id, Math.max(this.sequences.get(id) ?? 0, ...page.items.map(message => message.sequence)));
     const values = new Map<number, StoredMessage>();
     if (older || page.incremental) view.messages.forEach(message => values.set(message.sequence, message));
     else loaded.forEach(message => values.set(message.sequence, message));
-    page.items.forEach(message => values.set(message.sequence, message));
+    incoming.forEach(message => values.set(message.sequence, message));
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
-    const messages = older || page.incremental && view.olderWindow ? items.slice(0, 200) : items.slice(-200);
+    const nextMessages = older || page.incremental && view.olderWindow ? items.slice(0, 200) : items.slice(-200);
+    const messages = nextMessages.length === view.messages.length && nextMessages.every((message, i) => message === view.messages[i]) ? view.messages : nextMessages;
+    const nextTurn = unresolvedSend ? null : page.turn ?? view.turn;
+    const turn = sameData(nextTurn, view.turn) ? view.turn : nextTurn;
     if (view.busy && page.turn && page.turn.state !== 'RUNNING') {
       // A completed user turn may have written through any of the chat tools.
       invalidatePageCache(['learning', 'assessments', 'memories', 'events', 'event-proposals', 'documents', 'learning-contexts'], true);
     }
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
-      error: page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn: page.turn ?? view.turn,
+      error: unresolvedSend ? view.error ?? 'The previous send could not be confirmed. Retry the original message.' : page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn,
       before: messages[0]?.sequence > 1 ? messages[0].sequence : null,
       olderWindow: older && items.length > 200 || (older || page.incremental) && view.olderWindow,
       revision: page.conversation.revision });
@@ -225,7 +252,7 @@ class ChatStore {
     // The answer is visible before IndexedDB finishes. A new send may already
     // own this chat; an older completion must not clear its retry state/timer.
     if (this.pending.get(id) !== pendingAtPublication || this.view(id).busy) return;
-    if (page.turn && page.turn.state !== 'RUNNING') {
+    if (page.turn && page.turn.state !== 'RUNNING' && !unresolvedSend) {
       const started = this.responseStarts.get(id);
       if (started !== undefined) {
         performance.measure('mentra.chat.response_visible', { start: started });
@@ -279,6 +306,10 @@ class ChatStore {
     }
     const view = this.view(id), signal = this.controller.signal, cache = this.cache!;
     let body = this.pending.get(id);
+    if (body && !retry && (body.content !== content || !sameData(body.interaction_response, interactionResponse) || !sameData(body.retrieval, retrieval) || !sameData(body.attachment_ids, attachments.map(file => file.id)))) {
+      this.setView(id, { error: 'Retry the original message before sending a different answer.' });
+      return;
+    }
     if (retry && !body && view.turn?.state === 'FAILED') {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
@@ -303,9 +334,15 @@ class ChatStore {
       if (!this.alive(signal)) return;
       if (body.interaction_response) {
         const reply = body.interaction_response;
-        this.setView(id, { messages: this.view(id).messages.map(message => message.id === reply.message_id ? {
-          ...message, interactions: message.interactions?.map(card => card.id === reply.interaction_id ? { ...card, selected: reply.selected, submitted_turn_id: body!.client_turn_id } : card)
-        } : message) });
+        const currentMessages = this.view(id).messages;
+        const messages = currentMessages.map(message => {
+          if (message.id !== reply.message_id) return message;
+          const next = { ...message, interactions: message.interactions?.map(card => card.id !== reply.interaction_id || card.kind === 'value_bars' ? card : card.kind === 'single_choice' || card.kind === 'multiple_choice' ? { ...card, selected: reply.selected ?? [], option_inputs: reply.option_inputs ?? {}, submitted_turn_id: body!.client_turn_id } : { ...card, values: reply.values ?? {}, submitted_turn_id: body!.client_turn_id }) };
+          if (sameData(message, next)) return message;
+          this.loadedMessages.get(id)?.set(next.sequence, next);
+          return next;
+        });
+        if (messages.some((message, index) => message !== currentMessages[index])) this.setView(id, { messages });
       }
       this.channel?.postMessage('changed');
       if (page.turn?.state === 'RUNNING') this.poll(id);
@@ -347,16 +384,28 @@ class ChatStore {
     try {
       await api.deleteChat(chat, signal); if (!this.alive(signal)) return false;
       this.deleted.add(id); this.chats.delete(id); this.pending.delete(id); this.setView(id, empty); this.publish();
+      this.clearInteractionDrafts(id);
       this.loadedMessages.delete(id); this.sequences.delete(id);
       await this.persist(() => cache.apply([], [], [id])); this.channel?.postMessage('changed'); void this.sync(); return true;
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, error: this.error(error) }; this.publish(); void this.sync(); } return false; }
   }
   private error(error: unknown) { return error instanceof ApiError ? error.message : 'Your chats could not be loaded.'; }
   hasPending(id: string) { return this.pending.has(id); }
+  pendingInteraction(id: string) { return this.pending.get(id)?.interaction_response ?? null; }
   clearUnsent(id: string) { this.setView(id, { unsent: null, error: null }); }
 }
 export const chatStore = new ChatStore();
 export const useChatList = () => useSyncExternalStore(chatStore.subscribe, chatStore.snapshot);
 export function useConversation(id: string) {
   return useSyncExternalStore(fn => chatStore.subscribeChat(id, fn), () => chatStore.view(id));
+}
+export function useConversationField<K extends keyof ChatView>(id: string, field: K) {
+  const subscribe = useCallback((fn: () => void) => id ? chatStore.subscribeChat(id, fn) : () => {}, [id]);
+  const snapshot = useCallback(() => chatStore.view(id)[field], [id, field]);
+  return useSyncExternalStore(subscribe, snapshot);
+}
+export function usePendingInteraction(id: string) {
+  const subscribe = useCallback((fn: () => void) => id ? chatStore.subscribeChat(id, fn) : () => {}, [id]);
+  const snapshot = useCallback(() => chatStore.pendingInteraction(id), [id]);
+  return useSyncExternalStore(subscribe, snapshot);
 }

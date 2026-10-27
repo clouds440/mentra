@@ -1,4 +1,4 @@
-from .interactions import ChoiceCard
+from .interactions import InteractionCard
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from app.web_search import WebSource, SearchResult
@@ -18,7 +18,7 @@ class ChatResponse(BaseModel):
     memory_references: list[dict] = Field(default_factory=list)
     event_proposals: list[dict] = Field(default_factory=list)
     event_references: list[dict] = Field(default_factory=list)
-    interactions: list[ChoiceCard] = Field(default_factory=list)
+    interactions: list[InteractionCard] = Field(default_factory=list, max_length=3)
     assessment_cards: list[dict] = Field(default_factory=list)
     tool_warnings: list[dict] = Field(default_factory=list, max_length=16)
     web_sources: list[WebSource] = Field(default_factory=list, max_length=10)

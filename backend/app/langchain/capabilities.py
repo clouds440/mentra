@@ -25,8 +25,8 @@ CAPABILITIES = (
                ('assessment_generate', 'assessment_generate_advanced', 'assessment_lookup', 'assessment_revise', 'assessment_question',
                 'assessment_answer', 'assessment_status'),
                ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise', 'assessment_answer')),
-    Capability('chat', 'Present clickable clarification choices; explain or draft directly.',
-               ('present_choices',), ('present_choices',)),
+    Capability('chat', 'Collect needed answers using clickable choices, custom text or compact forms; explain or draft directly.',
+               ('present_choices', 'request_input', 'present_visuals'), ('present_choices', 'request_input', 'present_visuals')),
     Capability('web', 'Verify current external facts or research public sources.', ('web_search', 'web_research')),
 )
 DOMAINS = {tool: capability.domain for capability in CAPABILITIES for tool in capability.tools}

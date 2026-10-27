@@ -18,7 +18,7 @@ def practice_request(text: str) -> bool:
     if re.search(r'\b(?:unit tests?|test suite|test cases?|pytest)\b', text):
         return False
     subject = bool(re.search(r'\b(?:quiz|test|mcqs?|assessment|questions?|practice|mock (?:paper|exam))\b|کوئز|سوال|اختبار|مسابقة|cuestionario|évaluation', text))
-    request = bool(re.search(r'^(?:please\s+)?(?:give|generate|create|make|build|prepare|ask|practice|assess)\b|\b(?:i (?:want|need)|(?:can|could|would) you|please (?:give|make|create)|mujhe|chahiye|poocho)\b|(?:دیں|دو|پوچھ|بنائیں)|^(?:hazme|crée|pose)', text))
+    request = bool(re.search(r'(?:^|[.!?;]\s+)(?:please\s+)?(?:give|generate|create|make|build|prepare|ask|practice|assess)\b|\b(?:i (?:want|need)|(?:can|could|would) you|please (?:give|make|create)|mujhe|chahiye|poocho)\b|(?:دیں|دو|پوچھ|بنائیں)|^(?:hazme|crée|pose)', text))
     return (subject and request or bool(re.search(
         r'\b(?:quiz|test|assess) me\b|\b(?:test|check|see) (?:if|whether|how (?:well|much)) i (?:understand|know|learned)|'
         r'\b(?:check|test) my (?:understanding|knowledge)|\bhelp me (?:practice|practise)\b', text))

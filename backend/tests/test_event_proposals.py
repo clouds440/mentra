@@ -35,6 +35,12 @@ class EventProposalTests(unittest.TestCase):
 
     def test_approve_replay_restart_and_cleanup(self):
         proposal = self.proposal()
+        from app.langchain.repositories.checkpointer import postgres_saver
+        with postgres_saver(self.db.engine) as saver:
+            graph = self.service.graph.builder.compile(checkpointer=saver)
+            state = graph.get_state({'configurable': {'thread_id': f"event-confirmation-v1:{self.owner}:{proposal['id']}"}})
+            self.assertEqual(state.next, ('review',))
+            self.assertTrue(state.tasks[0].interrupts)
         body = ProposalDecision(expected_revision=proposal['revision'], decision='approve')
         result = self.service.decide(self.owner, proposal['id'], body)
         self.assertEqual(result.state, 'approved')
@@ -85,6 +91,28 @@ class EventProposalTests(unittest.TestCase):
         result = restarted.repository.commit(self.owner, proposal['id'], claim['claim_id'])
         self.assertEqual(result.state, 'approved')
         self.assertEqual(restarted.decide(self.owner, proposal['id'], body).event_id, result.event_id)
+
+    def test_late_checkpoint_preparation_cannot_revive_a_completed_review(self):
+        from unittest.mock import patch
+        prepare = self.service.graph.prepare
+        def race(owner, identifier):
+            self.service.decide(owner, identifier, ProposalDecision(expected_revision=1, decision='dismiss'))
+            prepare(owner, identifier)  # A delayed producer recreates its checkpoint.
+        with patch.object(self.service.graph, 'prepare', side_effect=race):
+            result = self.service.create(self.owner, self.body, self.scope)
+        self.assertEqual(result['outcome'], 'already_known')
+        self.assertEqual(result['proposal']['state'], 'dismissed')
+        with self.db.sessions() as session:
+            for table in (checkpoints, writes, blobs):
+                self.assertEqual(session.scalar(select(func.count()).select_from(table)), 0)
+
+    def test_failed_checkpoint_preparation_recovers_the_same_proposal(self):
+        from unittest.mock import patch
+        with patch.object(self.service.graph, 'prepare', side_effect=RuntimeError('Synthetic checkpoint outage')):
+            with self.assertRaises(RuntimeError): self.service.create(self.owner, self.body, self.scope)
+        result = self.service.create(self.owner, self.body, self.scope)
+        self.assertEqual(result['outcome'], 'awaiting_confirmation')
+        self.assertEqual(len(self.service.list(self.owner)), 1)
 
     def test_model_admission_rejects_hypothetical_statement(self):
         import asyncio

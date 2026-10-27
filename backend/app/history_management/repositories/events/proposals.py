@@ -127,6 +127,23 @@ class EventProposalRepository:
     def detail(self, owner, identifier):
         with self.sessions() as session: return self._public(self._get(session, owner, identifier))
 
+    def reconcile_review(self, owner, identifier):
+        """Fence checkpoint preparation against concurrent decision/chat deletion.
+
+        Checkpoint I/O deliberately holds no business transaction/pool connection.
+        Reconcile afterwards under the existing owner lock so terminal proposals
+        cannot retain a newly recreated pending interrupt.
+        """
+        with self.transactions.write(owner) as tx:
+            session = tx._session
+            row = session.execute(select(p).where(p.c.learner_id == owner, p.c.id == identifier)).mappings().first()
+            if row is None:
+                delete_thread(session, thread_id(owner, identifier))
+                return None
+            if row['state'] not in ('pending', 'deciding'):
+                delete_thread(session, thread_id(owner, identifier))
+            return self._public(row)
+
     def claim(self, owner, identifier, body):
         decision = body.model_dump(mode='json', exclude={'expected_revision'})
         with self.transactions.write(owner) as tx:

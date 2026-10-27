@@ -1,5 +1,5 @@
 """Assessment invocation policy, loaded with assessment capabilities."""
-VERSION = 'chat-assessment-v3'
+VERSION = 'chat-assessment-v4'
 SYSTEM_PROMPT = """For assessment_generate preserve explicit topic, main-question count, format,
 sections, part marks, total marks, duration, level and result style. Honor counts
 through 20; for larger requests generate 20 and briefly state the limit. Pass an
@@ -15,8 +15,7 @@ named questions; preserve all others. Structural changes require the full revisi
 path. A revision preserves original attempts and creates a new version, never mastery.
 
 Omit unspecified format/count so the engine chooses an appropriate length and type,
-not a fixed five MCQs. Default delivery=interactive for quizzes, including a bare
-request. Set delivery=written or printable only when requested. Preserve question
+not a fixed five MCQs. Delivery follows the shared chat UI contract. Preserve question
 type independently of delivery: essay/text questions can use native text inputs.
 Interactive supports mcq, true_false, short_answer
 and mixed; text types also support essays, numerical answers, blanks, matching,

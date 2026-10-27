@@ -10,6 +10,8 @@ LABELS = {
     'web_research': 'Researching the web',
     'web_search': 'Searching the web',
     'present_choices': 'Preparing choices for you',
+    'request_input': 'Preparing a question for you',
+    'present_visuals': 'Preparing a visual comparison',
     'event_lookup': 'Checking your events',
     'event_manage': 'Preparing an event for your review',
     'history_lookup': 'Searching earlier conversations',

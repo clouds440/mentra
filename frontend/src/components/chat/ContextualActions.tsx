@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ClipboardCheck, X } from 'lucide-react';
 import { Button, IconButton } from '../ui';
 import type { ChatMessageData } from '../../types/chat';
-import { chatStore, useConversation } from '../../stores/chatStore';
+import { chatStore, useConversationField } from '../../stores/chatStore';
 
 type ContextAction = { kind: 'practice_sources'; documentIds: string[] };
 
@@ -15,13 +15,13 @@ function actionFor(message: ChatMessageData): ContextAction | null {
 
 /** One optional action from current validated references, with no extra reads/model. */
 export function ContextualActions({ message, conversationId }: { message: ChatMessageData; conversationId: string }) {
-  const view = useConversation(conversationId);
+  const busy = useConversationField(conversationId, 'busy');
   const [dismissed, setDismissed] = useState(false);
   const [started, setStarted] = useState(false);
   const action = actionFor(message);
-  if (!action || dismissed || started || view.busy) return null;
+  if (!action || dismissed || started || busy) return null;
   async function invoke() {
-    if (!action || view.busy) return;
+    if (!action || busy) return;
     setStarted(true);
     await chatStore.send(conversationId, 'Give me a short quiz grounded only in the selected study material.',
       { mode: 'SOURCE_SPECIFIC', document_ids: action.documentIds, context_ids: [] });

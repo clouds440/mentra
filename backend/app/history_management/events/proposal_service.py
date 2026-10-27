@@ -12,7 +12,19 @@ class EventProposalService:
         self.llm=llm
 
     def create(self, owner, body, scope):
-        return self.repository.create(owner, body, scope)
+        result = self.repository.create(owner, body, scope)
+        return self._prepare_result(owner, result)
+
+    def _prepare_result(self, owner, result):
+        if result.get('outcome') == 'awaiting_confirmation':
+            identifier = result['proposal']['id']
+            self.graph.prepare(owner, identifier)
+            latest = self.repository.reconcile_review(owner, identifier)
+            if latest is None:
+                return dict(outcome='already_known', reason='This event review is no longer available.')
+            result = dict(result, proposal=latest.model_dump(mode='json'),
+                          outcome='awaiting_confirmation' if latest.state in ('pending', 'deciding') else 'already_known')
+        return result
 
     async def admit(self, owner, body, scope, *, capture_admission=None):
         from starlette.concurrency import run_in_threadpool
@@ -56,8 +68,8 @@ class EventProposalService:
                 # A failed automatic gate leaves a reviewable domain proposal.
                 await run_in_threadpool(self.repository.release,owner,proposal['id'])
                 latest=await run_in_threadpool(self.repository.detail,owner,proposal['id'])
-                return dict(outcome='awaiting_confirmation',proposal=latest.model_dump(mode='json'))
-        return result
+                return await run_in_threadpool(self._prepare_result, owner, dict(outcome='awaiting_confirmation', proposal=latest.model_dump(mode='json')))
+        return await run_in_threadpool(self._prepare_result, owner, result)
 
     async def capture(self, owner, scope):
         from .capture import EventCapture, CAPTURE_CONTEXT, event_candidate
@@ -74,7 +86,7 @@ class EventProposalService:
         # the same statement or generating different duplicate candidates.
         prior = await run_in_threadpool(self.repository.for_message, owner, scope['conversation_id'], source['id'])
         if prior:
-            return prior
+            return [await run_in_threadpool(self._prepare_result, owner, result) for result in prior]
         import asyncio
         async with asyncio.timeout(25):
             captured = await self.llm.ainvoke(PromptSource.EVENT_ADMISSION,

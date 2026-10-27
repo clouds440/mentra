@@ -2,8 +2,88 @@
 
 Mentra extends its existing assistant-message metadata and LangChain domain tools.
 It does not interpret model-generated HTML, JavaScript or free-text UI instructions.
-No new database tables, migrations or dependencies are required: choices live in
-chat_message.metadata, while quizzes use the existing assessments and attempts.
+Choices, input forms and static value bars live in `chat_message.metadata`, while
+quizzes use the existing assessments and attempts. No interaction-table migration
+is required. Rich rendering adds local Mermaid, remark-directive, DOMPurify and
+bundled Inter font dependencies.
+
+## Rich native UI contract
+
+The single model-facing usage contract is
+`backend/app/langchain/prompts/chat_ui.py`, composed exactly once through the
+existing CHAT prompt registry (including direct chat, tool rounds and edits).
+Tool descriptions own argument semantics; assessment/Events prompts retain only
+domain rules. Keep new UI usage examples and policy in this shared module.
+
+| Capability | Contract and existing resource |
+|---|---|
+| Choices + custom text | `present_choices`: each chat option may include `input` with a label, short/long text kind, requiredness and max length. Selecting it opens an input beneath that option in ChoiceCard. IDs/labels have no special behavior. Assessment ChoiceOption remains unchanged. |
+| Text/form | `request_input`: `text_input` has one text field; `form` has 1–4 fields with stable IDs. Fields support short/long text, bounded numbers and selections. Existing Input/Textarea/Select/FormField render the controls. |
+| Static numeric visuals | `present_visuals`: `question` titles 1–8 `bars` with `label`, `value`, `max`, optional `unit` and `note`. For difficulty/ratings/comparisons use meaningful common scales and label subjective estimates. Bars are read-only and cannot be submitted as answers. |
+| Actual action review | Reuse EventProposalCard and the Events proposal service. The real checkpointed interrupt is prepared before a pending proposal is displayed; graph initialization/resume is serialized by workflow thread. Existing claim/commit/replay still owns mutation authority. |
+| Shared bar primitive | `ProgressBar` renders static values as accessible meters and existing quiz/calibration/generation data as progress bars. Displays exact value/scale and percentage; never converts ordinary prose percentages. |
+| Main chat appearance | Settings → Profile & preferences → Chat appearance. Bundled Inter; Small/Medium/Large text sizes (15/16/18px at the standard root), Medium default. Browser-local appearance setting with cross-tab sync and blocked-storage fallback. Main chat text/composer only; phone composer remains at least 16px, code/math retain specialized fonts. |
+
+Submissions extend the existing `interaction_response` with optional
+`option_inputs: {option_id: text}` or `values: {field_id: text}`. The same durable
+turn endpoint validates ownership, active/known fields, requiredness, length,
+selection/numeric bounds and the canonical 4,000-character user message. Server
+labels build canonical content; accepted values and receipt save atomically.
+Empty additive fields are excluded from request fingerprints so pre-upgrade pending
+choice submissions can still replay. Hidden input values are never submitted.
+Unsubmitted drafts remain owner-scoped in bounded ChatStore memory across navigation;
+accepted answers and pending sends retain existing durable recovery.
+
+An uncertain submission keeps its original payload and operation UUID. Freeze that
+form and offer an explicit retry of the original answer until persistence confirms
+the turn. A different answer cannot reuse the old operation, and completion of an
+older operation cannot clear a newer pending send.
+
+### Rich Markdown
+
+The same MarkdownContent renderer serves chat and Library. No raw HTML is enabled.
+
+| Format | Example | Rendering |
+|---|---|---|
+| Mermaid | Fenced `mermaid` source | Lazy local rendering; source view/copy, expanded Dialog and sanitized SVG download. Light/Dark/System, title/description support, per-instance SVG IDs, strict config, bounded source/edges, at most three rendered diagrams per content. Invalid/unsafe source remains accessible. |
+| Semantic color | `:color[Success]{tone="success"}` | success/warning/danger/info/accent; named aliases map to these tones. Contrast adapts to the actual surface. |
+| Custom color | `:color[Needs review]{hex="#F54927"}` | Six-digit hex only; readable foreground adjustment, forced-colors fallback. No arbitrary CSS. |
+| Optional static bar | `::bar{label="Difficulty" value="3" max="5" unit="points"}` | Explicit bounded meter. Prefer `present_visuals` so bars need no response markup. `::progress` is also accepted. |
+| Callout | Container directive `:::callout{title="Key idea" tone="info"}` with body and closing `:::` | Quiet semantic Card styling. |
+| Disclosure | Container directive `:::details{title="Show a hint"}` with body and closing `:::` | Native accessible disclosure. Never include unreleased assessment answers in hidden content. |
+
+The allowlisted AST transform shares parsing with markdownPlainText. Copy removes
+valid presentation syntax, retains text/counts, and preserves malformed directives
+and exact code payloads. Mermaid is rendered locally with no external fetches,
+callbacks, model-authored initialization or raw HTML labels. App-owned SVG
+sanitization also covers exported diagrams. See [verification](Interactive_UI_Verification.md).
+
+### Rendering performance
+
+Native inputs/bars are ordinary application components with no animation gate or
+extra model round needed merely to render accepted data. Static cards subscribe to
+no conversation state. Active forms/actions subscribe only to busy/error state;
+completed messages and Markdown are memoized. Authoritative refreshes preserve
+unchanged object identities using all metadata, so real receipts and value changes
+still publish correctly.
+
+Plain single-line text without Markdown syntax/plugins bypasses AST parsing.
+Directive parsing runs only when an extension marker is present; semantic colors
+use CSS without per-span observers or state updates. One chat-scope CSS variable
+applies font size without rerendering each message. Custom colors and diagrams
+share a single resolved-theme observer.
+
+Mermaid's heavier library/layout is loaded near the viewport, yields before layout,
+uses a bounded owner-scoped cache, and never gates the surrounding text. The
+cache holds at most 30 entries and two million
+characters, with one million characters per SVG. Owner changes fence queued jobs.
+SVG IDs are rewritten in one pass; encoded CSS resource loading is rejected before
+rendering and generated SVG is sanitized. A failed diagram chunk leaves its source,
+the rest of the answer and the composer usable. This does
+not make first-use diagram layout equivalent to plain text. The performance suite
+measures actual input-to-frame latency, completed-component renders and long tasks;
+it also verifies that static native bars do not download Mermaid code and changed
+metadata still updates the correct visual.
 
 ## Model requests
 
@@ -15,10 +95,9 @@ write/result budgets and ordered dispatch. Repeated identical tool calls yield o
 
 For quizzes use `assessment_generate` with `question_format: "mcq"`, the requested
 count (1-10), a learner-owned context and established concepts. Existing generation,
-source grounding and concept-review requirements apply. The generation API and tool keep written as their default so plain quiz requests
-and old callers remain compatible. The model selects MCQ for interactive/clickable
-requests or when it decides an interactive check will help, regardless of planning
-keywords. Generation is always available on tool-enabled chat turns. Revisions
+source grounding and concept-review requirements apply. Ordinary quizzes default
+to interactive delivery while explicit written/printable requests retain their format.
+Delivery and question type are independent. Generation is available on tool-enabled chat turns. Revisions
 preserve MCQ format unless another format is requested.
 
 ## Submissions and persistence

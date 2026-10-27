@@ -12,6 +12,9 @@ for (const [name, block] of [['light', light], ['dark', dark]]) {
   for (const text of ['foreground', 'heading', 'body', 'muted', 'subtle']) for (const surface of ['background', 'card', 'surface', 'input', 'popover']) {
     assert(contrast(tokens[text], tokens[surface]) >= 4.5, `${name}: ${text} on ${surface} needs 4.5:1 contrast`);
   }
+  for (const text of ['rich-success', 'rich-warning', 'rich-danger', 'rich-accent']) for (const surface of ['background', 'card', 'surface', 'input', 'popover', 'message']) {
+    assert(contrast(tokens[text], tokens[surface]) >= 4.5, `${name}: ${text} on ${surface} needs 4.5:1 contrast`);
+  }
   assert(contrast(tokens['border-strong'], tokens.input) >= 3, `${name}: input boundary needs 3:1 contrast`);
   assert(contrast(tokens['accent-foreground'], tokens.primary) >= 4.5, `${name}: primary action text needs 4.5:1 contrast`);
 }

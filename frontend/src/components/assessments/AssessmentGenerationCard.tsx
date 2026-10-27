@@ -1,3 +1,4 @@
+import { ProgressBar } from '../ui/ProgressBar';
 import { invalidatePageCache } from '../../services/pageCache';
 import { useEffect, useRef, useState } from 'react';
 import { FileText, CheckCircle2 } from 'lucide-react';
@@ -49,7 +50,7 @@ export function AssessmentGenerationCard({ id, title, onComplete }: { id: string
   }
   return <section aria-label="Assessment generation" className="my-4 space-y-3 rounded-xl border border-border-strong bg-surface p-4">
     <div className="flex items-start gap-2.5"><FileText size={17} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /><div className="min-w-0 flex-1"><h2 className="break-words text-sm font-semibold text-heading">{job?.title ?? title}</h2><p role="status" className="mt-1 flex items-center gap-2 text-xs text-muted">{unavailable ? 'Unavailable' : job?.state === 'failed' ? 'Generation paused' : job?.state === 'completed' ? <><CheckCircle2 size={13} />Ready</> : <><Spinner className="h-3 w-3" aria-hidden="true" />{job?.state === 'running' ? 'Building your assessment' : 'Waiting to begin'}</>}</p></div></div>
-    {job?.total_parts && <><div role="progressbar" aria-label="Assessment generation progress" aria-valuemin={0} aria-valuemax={job.total_parts} aria-valuenow={job.completed_parts} className="h-1.5 overflow-hidden rounded-full bg-border"><div className="h-full rounded-full bg-accent transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${job.completed_parts/job.total_parts*100}%` }} /></div><p className="text-xs text-muted">{job.completed_parts} of {job.total_parts} questions or parts ready</p></>}
+    {job?.total_parts && <><ProgressBar label="Assessment generation progress" value={job.completed_parts} max={job.total_parts} showValue={false} /><p className="text-xs text-muted">{job.completed_parts} of {job.total_parts} questions or parts ready</p></>}
     <p className="text-xs leading-5 text-subtle">Progress is saved as each batch completes. You can leave this page and return.</p>
     {(job?.error || error) && <p role="alert" className="text-xs text-danger">{job?.error || error}</p>}
     {job?.can_retry && <Button size="sm" variant="secondary" loading={retrying} onClick={() => void retry()}>Resume generation</Button>}

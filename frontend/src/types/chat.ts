@@ -10,7 +10,7 @@ export interface ChatMessageData {
   web_citations?: string[];
   web_searches?: import('./webSearch').WebSearchRecord[];
   tool_warnings?: ToolWarning[];
-  interactions?: import('./interactions').ChoiceCardData[];
+  interactions?: import('./interactions').InteractionCardData[];
   interaction_response?: import('./interactions').InteractionResponse;
   attachments?: import('../services/chatAttachments').ChatAttachment[];
   conversation_id?: string;

@@ -1,3 +1,5 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/inter/wght-italic.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,6 +35,10 @@
   --danger: 190 18 60;
   --success: 21 128 61;
   --warning: 161 98 7;
+  --rich-success: 21 105 51;
+  --rich-warning: 132 77 0;
+  --rich-danger: 180 18 45;
+  --rich-accent: 3 97 150;
   --overlay: 2 6 23;
   --shadow: 15 23 42;
   --code: 241 245 249;
@@ -73,6 +79,10 @@
   --danger: 254 205 211;
   --success: 134 239 172;
   --warning: 253 224 71;
+  --rich-success: 134 239 172;
+  --rich-warning: 253 224 71;
+  --rich-danger: 254 205 211;
+  --rich-accent: 125 211 252;
   --code: 9 13 21;
   --code-surface: 10 17 30;
   --code-header: 16 25 42;
@@ -613,3 +623,26 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   .composer-send:hover::before { background: rgb(var(--primary-hover)); }
   .composer-send svg { width: 15px; height: 15px; }
 }
+
+/* Main-chat reading preferences never scale the application shell or shared pages. */
+.chat-scope { --chat-font-size: 1rem; }
+.chat-prose { font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif; font-size: var(--chat-font-size, 1rem); line-height: 1.7; }
+.chat-prose[data-chat-size='small'], .chat-scope[data-chat-size='small'] { --chat-font-size: .9375rem; }
+.chat-prose[data-chat-size='large'], .chat-scope[data-chat-size='large'] { --chat-font-size: 1.125rem; }
+.chat-prose .markdown-content { font-size: inherit; line-height: inherit; }
+.chat-prose .markdown-content h1 { font-size: 1.45em; }
+.chat-prose .markdown-content h2 { font-size: 1.25em; }
+.chat-prose .markdown-content h3 { font-size: 1.1em; }
+.chat-prose .chat-interaction legend, .chat-prose .chat-interaction label,
+.chat-prose .chat-input-text, .chat-prose .chat-input-text button,
+.chat-composer textarea { font-family: inherit; font-size: var(--chat-font-size); line-height: 1.65; }
+.chat-prose .code-block { font-family: ui-sans-serif, system-ui, sans-serif; line-height: normal; }
+.chat-prose .code-block pre, .chat-prose .code-block code { font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace; font-size: 12.5px; line-height: 1.8; }
+.chat-domain-card { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: .875rem; line-height: 1.75; }
+.mermaid-svg { min-height: 5rem; max-height: 70dvh; }
+.mermaid-placeholder { min-height: 10rem; }
+.mermaid-svg svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+.rich-callout > :last-child { margin-bottom: 0; }
+.rich-color strong, .rich-color em { color: inherit; }
+@media (max-width: 639px) { .chat-composer textarea { font-size: max(1rem, var(--chat-font-size)); } }
+@media (forced-colors: active) { .rich-color { color: CanvasText !important; } .value-bar [role='meter'], .value-bar [role='progressbar'] { border: 1px solid CanvasText; } .value-bar [role] > div { background: Highlight; } }

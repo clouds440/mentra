@@ -1,0 +1,43 @@
+import type { Root, RootContent } from 'mdast';
+import type { Node } from 'unist';
+
+export const colorTones = ['success', 'warning', 'danger', 'info', 'accent'] as const;
+type DirectiveNode = Node & { name?: string; attributes?: Record<string, string | null | undefined>; children?: RootContent[]; data?: { hName?: string; hProperties?: Record<string, unknown> } };
+const only = (attributes: Record<string, unknown>, keys: string[]) => Object.keys(attributes).every(key => keys.includes(key));
+export const usesRichDirectives = (content: string) => /:color\[|:{2,3}(?:bar|progress|details|callout)[{\s[]/.test(content);
+
+/** Recognize a tiny vocabulary; never spread model attributes into DOM props. */
+export function remarkRichContent() {
+  return (tree: Root, file: { value: unknown }) => {
+    let diagrams = 0;
+    function visit(parent: { children?: RootContent[] }) {
+      parent.children = parent.children?.map(child => {
+        const node = child as DirectiveNode;
+        if (child.type === 'code' && child.lang?.toLowerCase() === 'mermaid' && ++diagrams > 3) child.lang = 'text';
+        if (!['textDirective', 'leafDirective', 'containerDirective'].includes(node.type)) { if ('children' in child) visit(child); return child; }
+        const a = node.attributes ?? {};
+        let props: Record<string, unknown> | undefined;
+        let name: string | undefined;
+        if (node.type === 'textDirective' && node.name === 'color' && only(a, ['tone', 'hex']) && (!!a.tone !== !!a.hex)) {
+          const aliases: Record<string, string> = { green: 'success', red: 'danger', amber: 'warning', blue: 'info', purple: 'accent' };
+          const tone = aliases[a.tone ?? ''] ?? a.tone;
+          if (tone && colorTones.includes(tone as typeof colorTones[number])) props = { tone };
+          if (a.hex && /^#[\da-fA-F]{6}$/.test(a.hex)) props = { hex: a.hex };
+          if (props) { name = 'mentra-color'; visit(node); }
+        } else if (node.type === 'leafDirective' && ['bar', 'progress'].includes(node.name ?? '') && only(a, ['label', 'value', 'max', 'unit'])) {
+          const value = Number(a.value); const max = Number(a.max);
+          if (a.label?.trim() && a.label.length <= 120 && a.value?.trim() && a.max?.trim() && Number.isFinite(value) && Number.isFinite(max) && value >= 0 && max > 0 && value <= max && (a.unit?.length ?? 0) <= 40) {
+            name = 'mentra-bar'; props = { label: a.label.trim(), value, max, unit: a.unit ?? '' };
+          }
+        } else if (node.type === 'containerDirective' && ['details', 'callout'].includes(node.name ?? '') && only(a, ['title', 'tone']) && a.title && a.title.length <= 120) {
+          if (node.name === 'details' || !a.tone || colorTones.includes(a.tone as typeof colorTones[number])) { name = `mentra-${node.name}`; props = { title: a.title, tone: a.tone ?? 'info' }; visit(node); }
+        }
+        if (name) { node.data = { hName: name, hProperties: props }; return child; }
+        const start = node.position?.start.offset; const end = node.position?.end.offset;
+        // Preserve malformed/unknown syntax instead of silently deleting it.
+        return { type: 'text', value: typeof start === 'number' && typeof end === 'number' ? String(file.value).slice(start, end) : node.children?.map(item => 'value' in item ? item.value : '').join('') ?? '' } as RootContent;
+      });
+    }
+    visit(tree);
+  };
+}

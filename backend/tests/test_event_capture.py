@@ -1,6 +1,6 @@
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 from datetime import timedelta
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -35,7 +35,9 @@ class EventCaptureTests(unittest.TestCase):
 
     def test_announcement_saved_without_agent_call_and_replayed_without_paid_call(self):
         owner, service, llm, scope = self.setup_capture()
-        result = asyncio.run(service.capture(owner, scope))
+        with patch.object(service.graph, 'prepare', wraps=service.graph.prepare) as prepare:
+            result = asyncio.run(service.capture(owner, scope))
+        prepare.assert_not_called()  # Automatic admission needs no unused UI pause.
         self.assertEqual(result[0]['outcome'], 'saved')
         self.assertEqual(result[0]['event']['kind'], 'quiz')
         self.assertEqual(result[0]['event']['starts_at'].astimezone(ZoneInfo('Asia/Karachi')).hour, 9)
@@ -88,6 +90,8 @@ class EventCaptureTests(unittest.TestCase):
             self.assertNotIn('assessment_generate', plan.tool_names)
         self.assertFalse(event_candidate('Explain next token prediction'))
         self.assertIn('assessment_generate', plan_request('I have a quiz tomorrow. Give me an interactive practice quiz.').tool_names)
+        for text in ('I have a quiz tomorrow. Do not give me practice questions.', 'I have a quiz tomorrow. Explain what a quiz means.'):
+            self.assertNotIn('assessment_generate', plan_request(text).tool_names)
 
     def test_orchestration_captures_before_reply_and_publishes_receipt(self):
         from types import SimpleNamespace

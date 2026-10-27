@@ -1,3 +1,4 @@
+import { ProgressBar } from '../ui/ProgressBar';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Button, Spinner } from '../ui';
@@ -55,10 +56,7 @@ export function CalibrationAssessment({ initialAttempt, onComplete, onSkip, skip
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted">
       <p aria-live="polite">Question {index + 1} of {attempt.questions.length}</p><span>About 1–2 minutes</span>
     </div>
-    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border" role="progressbar" aria-label="Assessment progress"
-      aria-valuemin={0} aria-valuemax={attempt.questions.length} aria-valuenow={index + 1}>
-      <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${(index + 1) / attempt.questions.length * 100}%` }} />
-    </div>
+    <ProgressBar className="mt-3" label="Assessment progress" value={index + 1} max={attempt.questions.length} showValue={false} />
     <div key={question.id} className="auth-enter mt-7">
       <h2 ref={heading} tabIndex={-1} className="text-lg font-medium leading-7 tracking-tight text-heading outline-none">{question.prompt}</h2>
       <p className="mt-2 text-xs leading-5 text-subtle">Choose one answer. Your answers are submitted together when you finish.</p>

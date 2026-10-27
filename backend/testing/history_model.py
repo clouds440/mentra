@@ -57,7 +57,9 @@ class HistoryChatFactory(TestChatFactory):
                         options = dict(options=[dict(id='a', label='A supported explanation.'), dict(id='b', label='An unsupported explanation.')], correct_option_id='a') if kind == 'mcq' else dict(options=[dict(id='true', label='True'), dict(id='false', label='False')], correct_option_id='true') if kind == 'true_false' else {}
                         if plan.get('answer_mode') == 'multiple_choice':
                             options = dict(options=[dict(id='a',label='First correct choice'),dict(id='b',label='Second correct choice'),dict(id='c',label='Incorrect choice')], correct_option_ids=['a','b'])
-                        questions.append(dict(prompt=f'{"Explain simply" if revised else "Explain"} {data["targets"][0]["name"]} ({data.get("question_offset", 0)+index+1}).', concept_ids=[data['targets'][0]['id']], difficulty=.2 if revised else .4, marks=plan.get('marks', 2), model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **options))
+                        target = data['targets'][0] if data['targets'] else dict(name=data['topic'])
+                        concepts = dict(concept_ids=[target['id']]) if target.get('id') else dict(concept_names=[target['name']])
+                        questions.append(dict(prompt=f'{"Explain simply" if revised else "Explain"} {target["name"]} ({data.get("question_offset", 0)+index+1}).', **concepts, difficulty=.2 if revised else .4, marks=plan.get('marks', 2), model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **options))
                     return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=questions)
                 if schema.__name__ == 'GradedAssessment':
                     return schema(questions=[dict(question_id=question['id'], score=1, confidence=.95,
@@ -138,7 +140,16 @@ class HistoryChatFactory(TestChatFactory):
                     dict(topic=question[len(prefix):], count=3, question_format='mcq'), 'topic-assessment')])
             if lowered.startswith(('show single choices', 'show multiple choices')):
                 return AIMessage(content='', tool_calls=[self.tool_call('present_choices', dict(kind='multiple_choice' if 'multiple' in lowered else 'single_choice', question='Choose learning topics', options=[dict(id='algebra',label='Algebra'),dict(id='biology',label='Biology'),dict(id='physics',label='Physics')]), 'choice-create')])
+            if lowered.startswith('show topic choices with custom input'):
+                return AIMessage(content='', tool_calls=[self.tool_call('present_choices', dict(kind='single_choice', question='Choose a topic', options=[dict(id='algebra',label='Algebra'),dict(id='custom',label="I'll write my own topic",input=dict(label='Your topic'))]), 'custom-choice')])
+            if lowered.startswith('show study setup form'):
+                return AIMessage(content='', tool_calls=[self.tool_call('request_input', dict(kind='form', question='Study setup', fields=[dict(id='topic',label='Topic'),dict(id='minutes',kind='number',label='Minutes',minimum=5,maximum=60)]), 'study-form')])
+            if lowered.startswith('show concept difficulty bars'):
+                return AIMessage(content='', tool_calls=[self.tool_call('present_visuals', dict(question='Relative difficulty', bars=[dict(label='Concept A',value=3,max=5,unit='points',note='Illustrative relative rating'),dict(label='Concept B',value=4,max=5,unit='points')]), 'static-bars')])
             if context.get('interaction_response'):
+                entered = context['interaction_response'].get('option_inputs') or context['interaction_response'].get('values')
+                if entered:
+                    return AIMessage(content='Received your input: ' + '; '.join(f'{key}: {value}' for key, value in entered.items()))
                 return AIMessage(content='Selected topic IDs: ' + ', '.join(context['interaction_response']['selected']))
             if lowered.startswith(('generate a two question quiz', 'generate a five question mcq', 'give me a five question interactive quiz', 'quiz me with five clickable options questions', 'i keep mixing up linear equations')):
                 return AIMessage(content='',tool_calls=[self.tool_call('get_active_learning_contexts',{},'assessment-context')])

@@ -11,17 +11,18 @@ export interface ChoiceOptionsProps {
   disabled?: boolean;
   hideLegend?: boolean;
   renderLabel?: (label: string) => ReactNode;
+  renderAfter?: (option: ChoiceOption) => ReactNode;
 }
 
 /** Controlled native selection UI. Callers own persistence and answer submission. */
-export function ChoiceOptions({ kind, question, options, selected, onChange, disabled = false, hideLegend = false, renderLabel }: ChoiceOptionsProps) {
+export function ChoiceOptions({ kind, question, options, selected, onChange, disabled = false, hideLegend = false, renderLabel, renderAfter }: ChoiceOptionsProps) {
   const group = useId();
   return <fieldset disabled={disabled} className="space-y-2">
     <legend className={hideLegend ? 'sr-only' : 'mb-2 font-medium text-heading'}>{question}</legend>
-    {options.map(option => <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-input p-3 text-sm has-[:checked]:border-accent">
+    {options.map(option => { const control = <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-input p-3 text-sm has-[:checked]:border-accent">
       <input className="mt-1 accent-accent" type={kind === 'single_choice' ? 'radio' : 'checkbox'} name={group} value={option.id}
         checked={selected.includes(option.id)} onChange={event => onChange(kind === 'single_choice' ? [option.id] : event.target.checked ? [...selected.filter(id => id !== option.id), option.id] : selected.filter(id => id !== option.id))} />
       {renderLabel ? <div className="min-w-0 flex-1">{renderLabel(option.label)}</div> : <span>{option.label}</span>}
-    </label>)}
+    </label>; return renderAfter ? <div key={option.id}>{control}{renderAfter(option)}</div> : control; })}
   </fieldset>;
 }

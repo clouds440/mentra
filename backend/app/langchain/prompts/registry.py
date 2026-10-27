@@ -42,6 +42,8 @@ def get_system_prompt(source: PromptSource) -> str:
         return SYSTEM_PROMPT
     if source is PromptSource.CHAT:
         from .chat import SYSTEM_PROMPT
+        from .chat_ui import SYSTEM_PROMPT as UI_PROMPT
+        return SYSTEM_PROMPT + '\n\n' + UI_PROMPT
     elif source is PromptSource.CHAT_ASSESSMENT:
         from .chat_assessment import SYSTEM_PROMPT
     elif source is PromptSource.RESPONSE_EDIT:
@@ -98,6 +100,8 @@ def get_prompt_version(source: PromptSource) -> str:
         return 'chat-summary-v2'
     if source is PromptSource.CHAT:
         from .chat import VERSION
+        from .chat_ui import VERSION as UI_VERSION
+        return VERSION + '+' + UI_VERSION
     elif source is PromptSource.CHAT_ASSESSMENT:
         from .chat_assessment import VERSION
     elif source is PromptSource.RESPONSE_EDIT:

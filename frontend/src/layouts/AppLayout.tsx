@@ -1,5 +1,5 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
@@ -14,6 +14,7 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [newChatKey, setNewChatKey] = useState(0);
   const [newChatPending, setNewChatPending] = useState(false);
+  const chatContext = useMemo(() => ({ newChatKey, newChatPending }), [newChatKey, newChatPending]);
   // Router transitions and local state can commit separately. Keep the old
   // composer inert until the destination and its draft reset have committed.
   useLayoutEffect(() => { setNewChatPending(false); }, [location.key]);
@@ -70,7 +71,7 @@ export function AppLayout() {
           <div className="pointer-events-auto shrink-0 rounded-control bg-background"><NotificationBell quiet={isChat} /></div>
         </div>
         <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
-          <Outlet context={{ newChatKey, newChatPending }} />
+          <Outlet context={chatContext} />
         </main>
       </div>
     </div>

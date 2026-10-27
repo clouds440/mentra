@@ -11,6 +11,8 @@ const toolLabels: Record<string, string> = {
   web_search: 'Searching the web',
   web_research: 'Researching your question',
   present_choices: 'Preparing choices for you',
+  request_input: 'Preparing a question for you',
+  present_visuals: 'Preparing a visual comparison',
   event_lookup: 'Checking your events',
   event_manage: 'Preparing your event',
   history_lookup: 'Looking back at our conversations',
@@ -61,6 +63,8 @@ const completedLabels: Record<string, string> = {
   assessment_answer: 'Preparing your feedback', assessment_lookup: 'Reviewing your practice questions',
   event_lookup: 'Reviewing your schedule', event_manage: 'Reviewing the event details',
   present_choices: 'Preparing your options',
+  request_input: 'Preparing your question',
+  present_visuals: 'Preparing your comparison',
 };
 
 /** null means routine/unknown activity: retain the last meaningful feedback. */

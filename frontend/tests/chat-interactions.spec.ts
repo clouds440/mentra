@@ -3,6 +3,41 @@ import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
 const origin = 'http://127.0.0.1:18003';
+test('custom topic and forms persist through real chat; static bars use structured tool data', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/register');
+  await page.getByLabel('Username', { exact: true }).fill(`rich_${randomUUID().slice(0,8)}`);
+  await page.getByLabel('Password', { exact: true }).fill('isolated rich interaction password');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await finishOnboardingWithoutAssessment(page);
+  const composer = page.getByRole('textbox', { name: 'Ask Mentra anything' });
+  async function send(text: string) {
+    await expect(composer).toBeEnabled(); await composer.fill(text);
+    await page.getByRole('button', { name: 'Send message' }).click();
+    await expect(composer).toBeEnabled({ timeout: 20000 });
+  }
+  await send('Show topic choices with custom input');
+  const choice = page.getByRole('region', { name: 'Interactive question' });
+  await choice.getByRole('radio', { name: "I'll write my own topic" }).check();
+  await choice.getByRole('textbox', { name: 'Your topic' }).fill('Database indexes');
+  await choice.getByRole('button', { name: 'Submit selection' }).click();
+  await expect(page.getByText('Received your input: custom: Database indexes', { exact: true })).toBeVisible({ timeout: 20000 });
+  await page.reload();
+  await expect(choice.getByRole('textbox', { name: 'Your topic' })).toHaveValue('Database indexes');
+  await expect(choice.getByRole('textbox', { name: 'Your topic' })).toBeDisabled();
+  await send('Show study setup form');
+  const form = page.getByRole('region', { name: 'Interactive form' });
+  await form.getByLabel('Topic', { exact: true }).fill('Indexes');
+  await form.getByLabel('Minutes', { exact: true }).fill('20');
+  await form.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Received your input: topic: Indexes; minutes: 20', { exact: true })).toBeVisible({ timeout: 20000 });
+  await send('Show concept difficulty bars');
+  await expect(page.getByRole('meter', { name: 'Concept A' })).toHaveAttribute('aria-valuenow', '3');
+  await expect(page.getByText('3 / 5 points · 60%')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('meter', { name: 'Concept B' })).toHaveAttribute('aria-valuenow', '4');
+});
+
 test('native choices continue chat and retain selections after refresh on mobile', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -113,8 +148,12 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   }, {times:1});
   await quiz.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible({ timeout: 20000 });
-  await expect(card.getByText('Feedback saved and learner evidence applied.', { exact: true })).toBeVisible();
+  await expect.poll(async () => {
+    const attempts = await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json();
+    return attempts[0]?.evidence_status;
+  }).toBe('applied');
   const feedback = card.getByRole('region', { name: 'Assessment feedback' });
+  await feedback.getByRole('button', { name: 'List view', exact: true }).click();
   await expect(feedback.getByText('3 correct', { exact:true })).toBeVisible();
   await expect(feedback.getByText('2 incorrect', { exact:true })).toBeVisible();
   await expect(feedback.getByRole('region', { name: 'Question 4 feedback' })).toContainText('An unsupported explanation.');
@@ -124,6 +163,7 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   await page.evaluate(() => localStorage.setItem('mentra-theme', 'light'));
   await page.reload();
   await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible();
+  await feedback.getByRole('button', { name: 'List view', exact: true }).click();
   await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('feedback-desktop-light.png') });
   await page.setViewportSize({ width: 390, height: 844 });
