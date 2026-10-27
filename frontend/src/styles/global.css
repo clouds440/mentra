@@ -643,6 +643,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .mermaid-placeholder { min-height: 10rem; }
 .rich-icon { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.125em; flex-shrink: 0; }
 .rich-icon svg { display: block; width: 100%; height: 100%; }
+.rich-icon-asset, .rich-icon-asset img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .rich-icon-placeholder { display: block; width: 1em; height: 1em; border: 1px solid currentColor; border-radius: 0.2em; opacity: 0.35; }
 .mermaid-svg svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
 .mermaid-fullscreen[open], .visual-fullscreen[open] { display: flex; flex-direction: column; width: 100dvw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; }

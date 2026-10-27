@@ -5,9 +5,12 @@ const chartCache = new Map<string, ChartSpec | null>();
 let characters = 0;
 let generation = 0;
 let owner: string | null = null;
+const ownerCleanups = new Set<() => void>();
+export function onRichContentOwnerChange(cleanup: () => void) { ownerCleanups.add(cleanup); }
 export function setRichContentOwner(next: string | null) {
   if (next === owner) return;
   diagramCache.clear(); chartCache.clear(); characters = 0; generation++; owner = next;
+  ownerCleanups.forEach(cleanup => cleanup());
 }
 export function readChart(code: string) {
   const value = chartCache.get(code);

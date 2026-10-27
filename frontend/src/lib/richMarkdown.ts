@@ -21,9 +21,10 @@ export function remarkRichContent() {
         const a = node.attributes ?? {};
         let props: Record<string, unknown> | undefined;
         let name: string | undefined;
-        if (node.type === 'textDirective' && node.name === 'icon' && only(a, [])) {
-          const value = node.children?.map(item => item.type === 'text' ? item.value : '').join('') ?? '';
-          name = 'mentra-icon'; props = { name: ++icons <= 32 && /^[A-Za-z][A-Za-z0-9-]{0,63}$/.test(value) ? value : '' };
+        if (node.type === 'textDirective' && node.name === 'icon') {
+          const value = node.children?.map(item => item.type === 'text' ? item.value : item.type === 'link' ? item.url : '').join('') ?? '';
+          const valid = /^[A-Za-z][A-Za-z0-9-]{0,63}$/.test(value) || /^https:\/\//.test(value) && value.length <= 500 || /^[Mm][\d\s.,+-]/.test(value) && value.length <= 4096;
+          name = 'mentra-icon'; props = { name: ++icons <= 32 && valid && only(a, ['viewBox', 'variant']) ? value : '', viewBox: a.viewBox ?? '0 0 24 24', variant: ['outline', 'solid'].includes(a.variant ?? '') ? a.variant : undefined };
         } else if (node.type === 'textDirective' && node.name === 'color' && only(a, ['tone', 'hex']) && (!!a.tone !== !!a.hex)) {
           const aliases: Record<string, string> = { green: 'success', red: 'danger', amber: 'warning', blue: 'info', purple: 'accent' };
           const tone = aliases[a.tone ?? ''] ?? a.tone;

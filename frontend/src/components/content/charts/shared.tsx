@@ -1,9 +1,13 @@
 import { CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { ReactElement } from 'react';
 import type { ChartSpec } from '../../../lib/chartSpec';
+import { visualColor } from '../../../lib/visualColors';
 
 export type ChartProps = { spec: ChartSpec; xName?: string };
 export const palette = ['rgb(var(--primary))', 'rgb(var(--success))', 'rgb(var(--warning))', 'rgb(var(--danger))', 'rgb(var(--syntax-keyword))', 'rgb(var(--muted))'];
+export function plotColor(spec: ChartSpec, index: number, series = true) {
+  return visualColor(series ? spec.series[index]?.color : undefined) ?? visualColor(spec.colors?.[index % spec.colors.length]) ?? palette[index % palette.length];
+}
 export const margin = { top: 16, right: 20, bottom: 8, left: 0 };
 const tick = { fill: 'rgb(var(--muted))', fontSize: 12 };
 const tooltipStyle = { backgroundColor: 'rgb(var(--popover))', border: '1px solid rgb(var(--border))', borderRadius: 8, color: 'rgb(var(--foreground))' };
@@ -21,6 +25,6 @@ export function motion(spec: ChartSpec) {
 }
 export function annotations(spec: ChartSpec) {
   return [<Tooltip key="tooltip" isAnimationActive={false} formatter={(value, _name, item) => `${value}${spec.unit && !(spec.type === 'ScatterChart' && item.dataKey === 'x') ? ` ${spec.unit}` : ''}`} contentStyle={tooltipStyle} labelStyle={{ color: 'rgb(var(--foreground))' }} itemStyle={{ color: 'rgb(var(--foreground))' }} />,
-    <Legend key="legend" wrapperStyle={{ fontSize: 12 }} />,
+    <Legend key="legend" wrapperStyle={{ fontSize: 12 }} formatter={value => <span className="text-foreground">{value}</span>} />,
   ];
 }

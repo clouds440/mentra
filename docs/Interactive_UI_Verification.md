@@ -231,3 +231,21 @@ Local images/services were refreshed after verification. Disposable database,
 browser outputs and synthetic-provider logs were cleaned after recording these
 results. Reusable tests and verification scripts remain. Unrelated audit artifacts
 are outside this change.
+
+## Visual repair and export acceptance — 2026-10-27
+
+The saved React/Angular response failed in the browser because a blanket data-URI guard matched the ordinary label `Data: TanStack Query + Zustand`. The API turn succeeded; it was not a model or backend Mermaid failure. The guard now distinguishes actual resource URIs, with the exact saved diagram covered by a browser regression. Render failures show an explanation and retain source.
+
+Comparison bars accept `group`, `series` and optional named `color`, share scale/unit validation, and assign stable series colors. Complete legacy comparisons can be paired for display without rewriting saved data. Chart series accept safe named or six-digit hex colors, with optional category palettes. Mermaid supports a restricted safe style subset and readable label contrast.
+
+Generic icons accept Lucide names, public HTTPS image URLs, or SVG path data with optional viewBox/variant. Assets load on demand with bounded shared caching, size/time limits and placeholders for failures. No framework-specific logos were added. Arbitrary SVG markup is not injected.
+
+Mermaid and all seven chart families offer SVG and PNG downloads. Export code loads only after a click. Chart exports wait for stable geometry, inline computed styles, include title/units/legend and retain the current theme background. Downloads do not require another model request.
+
+The saved response contained no colored-text directives. The renderer was working; central UI guidance now gives concise benefit/caution usage and a native-comparison example. All UI usage instructions remain in `backend/app/langchain/prompts/chat_ui.py`, including the on-demand references.
+
+Verification before export work: 74 targeted browser checks passed, two backend comparison-contract checks passed, and 16 configured-provider scenarios passed. Actual generated chart payloads passed the frontend validator. The 200-message performance scenario recorded p95 13.4ms, no long tasks and no completed-message rerenders. Final export/build and rollout results are recorded below when complete. These checks use synthetic fixtures, not edits to learner records.
+
+Final acceptance: **76 browser checks passed (2.3 minutes)** against the production build, including every chart-family SVG, PNG signatures, Mermaid SVG/PNG, fullscreen, icon fallback, colors, lazy loading, rerender isolation and LightRays resize/sidebar behavior. Production TypeScript/Vite build, theme checks and UI checks passed. One export check caught unresolved theme attributes in SVG; computed styles now replace those attributes, and the full final suite passed.
+
+Local rollout: rebuilt isolated UI contexts into `mentra-backend:latest` (`4ae2a8c42fe3`) and `mentra-frontend:latest` (`c47459e75010`). Backend and frontend healthy; frontend HTTP and API readiness both returned 200. All five workers/summarizer roles use the rebuilt backend image. Database remained at `20261025_0031`. Unrelated in-progress learner/topic changes were excluded from the images and commit. No remote registry push or public deployment was performed.

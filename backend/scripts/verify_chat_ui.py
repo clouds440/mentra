@@ -40,6 +40,9 @@ async def main():
         ('mermaid', 'Explain a simple browser-request/server-response flow with a small Mermaid sequence diagram and one sentence.', None),
         ('clarification', "Help me learn something technical. I haven't picked a topic yet.", 'clarify'),
         ('chart_followup', 'Keep that same chart and change Algebra to 25 minutes. Geometry stays 30. No external lookups.', None),
+        ('comparison', 'Compare React and Angular for animation libraries and forms. Use these illustrative 1-5 ratings: animation React 5 Angular 3; forms React 5 Angular 4. Use one native comparison card and briefly explain a benefit and a trade-off. No other lookups.', 'present_visuals'),
+        ('icon_sources', 'Explain React and Angular in two short phrases, each with its logo using an icon URL or SVG path. They are not Lucide icon names. Use known public HTTPS icon assets or small SVG paths, no external lookups.', None),
+        ('chart_colors', 'Draw one Recharts bar chart with React as the first series and Angular second. Metric A: React 20 Angular 15. Metric B: React 30 Angular 25. Choose distinct explicit colors for the two series. No external lookups.', None),
     ]
     for name, request, expected in scenarios:
         scope = {'current_user_message_id': str(uuid4()), 'execution_plan': SimpleNamespace(tool_names=[])}
@@ -89,17 +92,19 @@ async def main():
             assert len(cards[0]['bars']) == 3 and content
         if name == 'icons':
             assert len(re.findall(r':icon\[[A-Za-z][A-Za-z0-9-]{0,63}\]', content)) >= 2
-        if name in ('chart', 'chart_followup'):
+        if name in ('chart', 'chart_followup', 'chart_colors'):
             match = re.search(r'```recharts\s*\n(.*?)```', content, re.S)
             assert match, 'Expected a Recharts JSON fence'
             chart = json.loads(match[1]); assert chart['type'] == 'BarChart' and len(chart['data']) == 2, f'Chart contract mismatch: {chart}'
             scope['chart_spec'] = chart
-            if name == 'chart':
+            if name in ('chart', 'chart_colors'):
                 chart_example = content
                 assert 'charts' in scope.get('_ui_topics', ()), 'Advanced reference was not discovered'
             else:
                 values = sorted(row[chart['series'][0]['dataKey']] for row in chart['data'])
                 assert values == [25, 30], 'Follow-up changed the wrong values'
+            if name == 'chart_colors':
+                assert len(chart['series']) == 2 and all(item.get('color') for item in chart['series']), 'Missing series colors'
         if name == 'disclosure':
             assert ':::details' in content
             assert 'disclosures' in scope.get('_ui_topics', ())
@@ -108,6 +113,13 @@ async def main():
             assert 'color' in scope.get('_ui_topics', ())
         if name == 'mermaid':
             assert '```mermaid' in content and 'accTitle:' in content and 'accDescr:' in content
+        if name == 'comparison':
+            bars = cards[0]['bars']
+            assert len(bars) == 4 and all(bar.get('group') and bar.get('series') for bar in bars), 'Missing comparison structure'
+            assert len({bar['group'] for bar in bars}) == 2 and len({bar['series'] for bar in bars}) == 2
+            assert ':color[' in content, f'Comparison omitted useful semantic emphasis: {content}'
+        if name == 'icon_sources':
+            assert len(re.findall(r':icon\[(?:https://[^\]]+|[Mm][\d\s.,+\-][^\]]*)\]', content)) >= 2, 'Missing generic icon sources'
         if name in ('direct', 'prose_only', 'icons', 'mermaid'):
             assert not seen and len(rounds) == 1, f'{name}: unnecessary lookup'
         if name == 'prose_only':

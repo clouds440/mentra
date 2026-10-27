@@ -3,7 +3,7 @@ import { isChoice, type InteractionCardData, type InteractionDraft } from '../..
 import { chatStore, useConversationField, usePendingInteraction } from '../../stores/chatStore';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { fieldError, InteractionField } from '../interactions/InteractionField';
-import { ProgressBar } from '../ui/ProgressBar';
+import { ValueBars } from '../interactions/ValueBars';
 import { Button } from '../ui';
 
 /** Existing durable choice adapter also owns text/forms; static bars never submit. */
@@ -11,7 +11,7 @@ export const ChoiceCard = memo(function ChoiceCard({ card: stored, messageId, co
   if (!['single_choice', 'multiple_choice', 'text_input', 'form', 'value_bars'].includes(stored.kind)) return <p className="my-4 text-sm text-muted">This interactive item is not supported by this version. You can reply in the chat instead.</p>;
   if (stored.kind === 'value_bars') return <section className="my-4 space-y-4 rounded-panel border border-border p-4" aria-label={stored.question}>
     <h3 className="font-medium text-heading">{stored.question}</h3>
-    {stored.bars.map((bar, index) => <div key={index}><ProgressBar label={bar.label} value={bar.value} max={bar.max} unit={bar.unit} mode="meter" />{bar.note && <p className="mt-1 text-xs text-muted">{bar.note}</p>}</div>)}
+    <ValueBars bars={stored.bars} />
   </section>;
   return <AnswerCard key={stored.id} stored={stored} messageId={messageId} conversationId={conversationId} />;
 });

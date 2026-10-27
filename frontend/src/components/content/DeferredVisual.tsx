@@ -11,7 +11,7 @@ class VisualBoundary extends Component<Props, { failed: boolean }> {
 }
 const waiting = new Map<Element, () => void>();
 let observer: IntersectionObserver | undefined;
-function observe(element: HTMLElement, ready: () => void) {
+export function observeVisible(element: HTMLElement, ready: () => void) {
   if (!('IntersectionObserver' in window)) { ready(); return () => {}; }
   observer ??= new IntersectionObserver(entries => {
     for (const entry of entries) if (entry.isIntersecting) { const notify = waiting.get(entry.target); waiting.delete(entry.target); observer?.unobserve(entry.target); notify?.(); }
@@ -23,7 +23,7 @@ function observe(element: HTMLElement, ready: () => void) {
 /** Shared viewport gate: surrounding text never waits for a chart/diagram chunk. */
 export function DeferredVisual({ code, kind, children }: Props) {
   const ref = useRef<HTMLDivElement>(null); const [visible, setVisible] = useState(false);
-  useEffect(() => { if (ref.current && !visible) return observe(ref.current, () => setVisible(true)); }, [visible]);
+  useEffect(() => { if (ref.current && !visible) return observeVisible(ref.current, () => setVisible(true)); }, [visible]);
   const placeholder = <div className={`${kind === 'diagram' ? 'mermaid-placeholder' : 'chart-placeholder'} my-4 rounded-panel border border-border p-4 text-sm text-muted`} role="status">{kind === 'diagram' ? 'Diagram' : 'Chart'}</div>;
   return <div ref={ref} data-visual-kind={kind}>{visible ? <VisualBoundary key={`${kind}:${code}`} code={code} kind={kind}><Suspense fallback={placeholder}>{children}</Suspense></VisualBoundary> : placeholder}</div>;
 }

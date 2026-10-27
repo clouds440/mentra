@@ -4,6 +4,7 @@ import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
 import { useResolvedTheme } from '../theme/resolvedTheme';
 import { cacheDiagram, diagramCacheGeneration, readDiagram } from '../../lib/richContentCache';
+import { readableColor } from './ColorText';
 
 let queue: Promise<unknown> = Promise.resolve();
 let serial = 0;
@@ -16,7 +17,15 @@ function safeCss(value: string) {
   return !/@import|@font-face|image-set\s*\(/i.test(normalized) && [...normalized.matchAll(/url\s*\(\s*(['"]?)(.*?)\1\s*\)/gi)].every(match => /^#[\w-]+$/.test(match[2]));
 }
 function safeSource(code: string) {
-  return code.length <= 12000 && !/%%\s*\{|^\s*---|(?:^|[;\n])\s*(?:click|style|classDef|linkStyle)\b|<\s*[a-z!/]|(?:https?:|data:|javascript:|file:|url\s*\(|image-set\s*\()|@\s*\{/im.test(normalizedCss(code));
+  const normalized = normalizedCss(code);
+  // Labels such as "Data: TanStack Query" are prose, not data URIs.
+  if (code.length > 12000 || /%%\s*\{|^\s*---|(?:^|[;\n])\s*click\b|<\s*[a-z!/]|https?:\/\/|data:(?:[\w.+-]+\/[\w.+-]+)?(?:;[\w=.+-]+)*,|javascript:|file:\/\/|url\s*\(|image-set\s*\(|@\s*\{/im.test(normalized)) return false;
+  return [...normalized.matchAll(/(?:^|[;\n])\s*(?:style|classDef|linkStyle)\s+[^\s;]+\s+([^;\n]+)/gim)].every(match => match[1].split(',').every(declaration => {
+    const [property, value, ...extra] = declaration.trim().split(':');
+    if (extra.length || !value) return false;
+    if (['fill', 'stroke', 'color'].includes(property)) return /^(?:#[\da-f]{6}|none|transparent|white|black|red|blue|green|purple|orange|gray)$/i.test(value.trim());
+    return property === 'stroke-width' && /^(?:[0-5](?:\.\d)?|6)(?:px)?$/.test(value.trim());
+  }));
 }
 function namespaceSvg(raw: string, prefix: string) {
   if (raw.length > 1_000_000) throw new Error('Diagram exceeds its rendering budget');
@@ -51,11 +60,26 @@ function namespaceSvg(raw: string, prefix: string) {
   if (!svg.getAttribute('aria-labelledby')) svg.setAttribute('aria-label', 'Explanation diagram');
   return new XMLSerializer().serializeToString(svg);
 }
+function styledSource(code: string, dark: boolean) {
+  const names: Record<string, string> = { white: '#ffffff', black: '#000000', red: '#ff0000', blue: '#0000ff', green: '#008000', purple: '#800080', orange: '#ffa500', gray: '#808080' };
+  return code.replace(/((?:^|[;\n])\s*(?:style|classDef)\s+[^\s;]+\s+)([^;\n]+)/gim, (_match, prefix: string, declarations: string) => {
+    const pairs = declarations.split(',').map(item => item.trim().split(':').map(part => part.trim()));
+    const fill = pairs.find(([key]) => key === 'fill')?.[1];
+    const background = names[fill ?? ''] ?? fill;
+    if (!background || !/^#[\da-f]{6}$/i.test(background)) return prefix + declarations;
+    const requested = pairs.find(([key]) => key === 'color')?.[1];
+    const foreground = names[requested ?? ''] ?? (requested && /^#[\da-f]{6}$/i.test(requested) ? requested : dark ? '#ffffff' : '#000000');
+    const adjusted = readableColor(foreground, [1, 3, 5].map(index => parseInt(background.slice(index, index + 2), 16)));
+    const hex = adjusted.startsWith('#') ? adjusted : '#' + (adjusted.match(/\d+/g) ?? []).map(value => Number(value).toString(16).padStart(2, '0')).join('');
+    return prefix + [...pairs.filter(([key]) => key !== 'color').map(pair => pair.join(':')), `color:${hex}`].join(',');
+  });
+}
 
 export function MermaidDiagram({ code }: { code: string }) {
   const id = useId().replace(/[^a-z0-9]/gi, ''); const theme = useResolvedTheme();
   const [rendered, setRendered] = useState<{ key: string; svg: string }>();
   const [errorKey, setErrorKey] = useState(''); const [source, setSource] = useState(false); const [expanded, setExpanded] = useState(false);
+  const [downloading, setDownloading] = useState<'svg' | 'png'>(); const [downloadError, setDownloadError] = useState(false);
   const key = `${theme}:${code}`;
   useEffect(() => {
     let active = true;
@@ -82,7 +106,7 @@ export function MermaidDiagram({ code }: { code: string }) {
             // leaves labels in foreignObject, which our SVG sanitizer removes.
             maxTextSize: 12000, maxEdges: 120, htmlLabels: false, flowchart: { htmlLabels: false },
             themeVariables: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', primaryTextColor: color('foreground'), lineColor: color('muted') } });
-          raw = (await mermaid.render(`mentraDiagram${++serial}`, code)).svg;
+          raw = (await mermaid.render(`mentraDiagram${++serial}`, styledSource(code, theme === 'dark'))).svg;
           if (!current()) return;
         }
         const svg = namespaceSvg(raw, id);
@@ -94,18 +118,23 @@ export function MermaidDiagram({ code }: { code: string }) {
   }, [code, theme, key, id]);
   const svg = rendered?.key === key ? rendered.svg : undefined;
   const expandedSvg = useMemo(() => expanded && svg ? namespaceSvg(svg, `${id}-expanded`) : undefined, [expanded, svg, id]);
-  function download() {
-    if (!svg) return;
-    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'mentra-diagram.svg'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function download(format: 'svg' | 'png') {
+    if (!svg || downloading) return;
+    const generation = diagramCacheGeneration();
+    setDownloading(format); setDownloadError(false);
+    try { const { downloadVisual } = await import('../../lib/visualExport'); if (generation === diagramCacheGeneration()) await downloadVisual(svg, format, 'mentra-diagram'); }
+    catch { setDownloadError(true); } finally { setDownloading(undefined); }
   }
   const figure = (content = svg) => content ? <div className="mermaid-svg overflow-x-auto p-3" tabIndex={0} role="region" aria-label="Diagram" dangerouslySetInnerHTML={{ __html: content }} /> : <p role="status" className="p-4 text-sm text-muted">{errorKey === key ? 'This diagram could not be displayed. View its source below.' : 'Preparing diagram…'}</p>;
   return <figure className="mermaid-figure my-4 overflow-hidden rounded-panel border border-border bg-card">
     <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted"><span>Diagram</span><span className="flex flex-wrap gap-1">
       <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show diagram' : 'View source'}</Button>
       <Button size="sm" variant="ghost" disabled={!svg} onClick={() => setExpanded(true)}>Expand</Button>
-      <Button size="sm" variant="ghost" disabled={!svg} onClick={download}>Download SVG</Button>
+      <Button size="sm" variant="ghost" disabled={!svg || !!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button>
+      <Button size="sm" variant="ghost" disabled={!svg || !!downloading} loading={downloading === 'png'} onClick={() => void download('png')}>Download PNG</Button>
     </span></figcaption>
+    {errorKey === key && <p role="status" className="px-3 pt-3 text-sm text-muted">This diagram could not be displayed. Its source is available below.</p>}
+    {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this diagram. Please try again.</p>}
     {source || errorKey === key ? <CodeBlock code={code} language="mermaid" /> : figure()}
     {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" className="mermaid-fullscreen"><div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2"><span className="text-sm text-muted">Diagram</span><Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></div>{figure(expandedSvg)}</Dialog>}
   </figure>;

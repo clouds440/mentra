@@ -1,6 +1,7 @@
 import { Component, lazy, memo, Suspense, type ComponentType, type ReactNode } from 'react';
 import type { LucideProps } from 'lucide-react';
 const loaded = new Map<string, ComponentType<LucideProps>>();
+const IconAsset = lazy(() => import('./IconAsset'));
 function Placeholder() { return <span className="rich-icon-placeholder" />; }
 class IconBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -19,8 +20,9 @@ function resolve(name: string): ComponentType<LucideProps> {
   loaded.set(key, icon);
   return icon;
 }
-export const InlineIcon = memo(function InlineIcon({ name }: { name: string }) {
+export const InlineIcon = memo(function InlineIcon({ name, viewBox, variant }: { name: string; viewBox?: string; variant?: string }) {
   const Icon = resolve(name);
-  return <span className="rich-icon" aria-hidden="true"><IconBoundary key={name}><Suspense fallback={<Placeholder />}><Icon size="1em" /></Suspense></IconBoundary></span>;
+  const asset = /^https:\/\/|^[Mm][\d\s.,+-]/.test(name);
+  return <span className="rich-icon" aria-hidden="true"><IconBoundary key={name}><Suspense fallback={<Placeholder />}>{asset ? <IconAsset key={`${name}:${viewBox}:${variant}`} input={name} viewBox={viewBox} variant={variant} /> : <Icon size="1em" />}</Suspense></IconBoundary></span>;
 });
 InlineIcon.displayName = 'InlineIcon';

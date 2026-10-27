@@ -16,7 +16,7 @@ export interface InputCardData {
   id: string; kind: 'text_input' | 'form'; question: string;
   fields: InputFieldDefinition[]; values?: Record<string, string>; submitted_turn_id: string | null;
 }
-export interface ValueBarData { label: string; value: number; max: number; unit?: string; note?: string }
+export interface ValueBarData { label: string; value: number; max: number; unit?: string; note?: string; group?: string; series?: string; color?: import('../lib/visualColors').VisualColor | null }
 export interface ValueBarsCardData { id: string; kind: 'value_bars'; question: string; bars: ValueBarData[] }
 export type InteractionCardData = ChoiceCardData | InputCardData | ValueBarsCardData;
 export interface InteractionResponse {

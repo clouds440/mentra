@@ -3,7 +3,10 @@
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 const source = await readFile(new URL('../src/lib/chartSpec.ts', import.meta.url), 'utf8');
-const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const colorSource = compile(await readFile(new URL('../src/lib/visualColors.ts', import.meta.url), 'utf8'));
+const colorModule = `data:text/javascript;base64,${Buffer.from(colorSource).toString('base64')}`;
+const compiled = compile(source).replace("'./visualColors'", JSON.stringify(colorModule));
 const { parseChartSpec } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const reports = JSON.parse(await readFile(new URL('../../backend/.cache/chat-ui-live.json', import.meta.url), 'utf8'));
 const charts = reports.filter(report => report.chart_spec).map(report => ({ chart: parseChartSpec(JSON.stringify(report.chart_spec)), expected: report.chart_expected_values ?? [20, 30] }));

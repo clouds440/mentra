@@ -97,11 +97,16 @@ class ValueBar(BaseModel):
     max: float = Field(gt=0, allow_inf_nan=False)
     unit: str = Field(default='', max_length=40)
     note: str = Field(default='', max_length=240)
+    group: str = Field(default='', max_length=80)
+    series: str = Field(default='', max_length=80)
+    color: Literal['blue', 'purple', 'green', 'amber', 'red', 'neutral'] | None = None
 
     @model_validator(mode='after')
     def within_scale(self):
         if self.value > self.max:
             raise ValueError('Value exceeds its scale.')
+        if bool(self.group) != bool(self.series):
+            raise ValueError('Comparison bars need both group and series.')
         return self
 
 
@@ -109,7 +114,26 @@ class ValueBarsContent(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
     kind: Literal['value_bars'] = 'value_bars'
     question: str = Field(min_length=1, max_length=200)
-    bars: list[ValueBar] = Field(min_length=1, max_length=8)
+    bars: list[ValueBar] = Field(min_length=1, max_length=16)
+
+    @model_validator(mode='after')
+    def comparable_groups(self):
+        groups = {}
+        colors = {}
+        for bar in self.bars:
+            if not bar.group:
+                continue
+            group = groups.setdefault(bar.group, [])
+            if any(item.series == bar.series for item in group):
+                raise ValueError('Comparison series must be unique within a group.')
+            if group and (bar.max != group[0].max or bar.unit != group[0].unit):
+                raise ValueError('Compared bars must share a scale and unit.')
+            group.append(bar)
+            if bar.color:
+                if bar.series in colors and colors[bar.series] != bar.color:
+                    raise ValueError('Keep comparison-series colors consistent.')
+                colors[bar.series] = bar.color
+        return self
 
 
 class ValueBarsCard(ValueBarsContent):
