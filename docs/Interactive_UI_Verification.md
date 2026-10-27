@@ -175,3 +175,59 @@ were recreated from the refreshed images. Local readiness/frontend responses and
 container health were checked after rollout. Disposable logs, screenshots and model
 verification output were removed after recording results here. No schema migration
 or public deployment is involved; the deployment-specific gates above still apply.
+
+## Common UI plus on-demand references
+
+The UI policy now has two tiers in the same `chat_ui.py` resource. CHAT always
+includes the compact common guide; `present_choices` and `request_input` are bound
+without discovery. Mermaid, icons, semantic colors and simple inline bars are
+immediately usable. Advanced charts, disclosures, custom hex colors and native
+multi-bar references load through `enable_workflow_tools(ui=[...])`. All domain
+capabilities remain in the catalog and retain existing authorization/validation.
+No extra classifier or per-response review call was introduced. Selection is not
+restricted by a keyword/language allowlist.
+
+Reference activation is scoped to the current turn, deduplicated in stable order,
+retained through final/budget-limited model rounds, and checked against the combined
+instruction/schema budget before admission. Failed admission restores previous
+state. Requesting bars also binds the existing `present_visuals` tool. Exact tool
+and module discovery still works. Compatible examples in history can be reused;
+other unfamiliar advanced formats require their reference before first use.
+
+| Verification | Result |
+|---|---|
+| Backend suites | **53 passed** in Python 3.12 with disposable PostgreSQL: UI tiers, prompt efficiency, assessment intent, orchestration and chat persistence. |
+| Real-auth browser journeys | **6 passed**, covering choices, custom input, forms, native bars, cold assessment creation and grading/restoration. The configured dev API proxy was used; an initial preview-mode harness could not reach the isolated backend and was corrected before acceptance. |
+| Configured AI | **13 synthetic scenarios passed**, including proactive topic clarification, Spanish forms, explicit prose-only output, icons, Mermaid, advanced references and chart follow-up edits. No domain records created. |
+| Chart contracts | Both actual generated chart JSON objects passed the exact frontend validator; values remained 20/30 and the requested follow-up 25/30. |
+| Common paths | Plain answers, icons and Mermaid used one model round. Choices/forms/proactive clarification used two (create card, then final response), with no discovery round. |
+| Rare paths | First chart, disclosure and custom-color use loaded their reference in one discovery round, then answered. Native multi-bar cards used discovery, card creation, final explanation. |
+| Follow-up | A fresh turn reused the compatible chart example and changed only the requested value, in **one model round with no lookup**. |
+
+Prompt-size comparison against commit `44ce086`, using the same LangChain
+approximate counter and compact tool-schema JSON:
+
+| Packet | Before | After |
+|---|---:|---:|
+| Always-on UI guide only | 1,430 | 458 |
+| UI guide plus every initially bound tool schema, including discovery | 1,594 | 1,328 |
+
+That is about **68% less guide text** and **16.7% fewer UI-related initial input
+tokens even after binding both common input tools**. These are estimates for the
+changed packet, not percentages of the full request or billed cost. Core/history
+and domain context are excluded. The provider-reported input usage and per-round
+wall times were recorded by the reusable verification script. More importantly,
+common input workflows remove a discovery round, while rare first-use formats
+intentionally pay an extra round instead of sending their full guide every time.
+Provider caching can help but is not assumed or guaranteed.
+
+One intermediate live chart check exposed an incompatible generated format; the
+compact guide was strengthened to require loading an unfamiliar advanced reference
+before first use. The full final 13-scenario run and frontend chart validation then
+passed. This is targeted quality evidence, not a guarantee that every subjective
+presentation choice will be optimal.
+
+Local images/services were refreshed after verification. Disposable database,
+browser outputs and synthetic-provider logs were cleaned after recording these
+results. Reusable tests and verification scripts remain. Unrelated audit artifacts
+are outside this change.

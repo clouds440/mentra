@@ -8,6 +8,10 @@ class PromptSource(StrEnum):
     MEMORY_SUMMARY = 'memory_summary'
     CHAT_SUMMARY = 'chat_summary'
     CHAT = "chat"
+    CHAT_UI_CHARTS = 'chat_ui_charts'
+    CHAT_UI_DISCLOSURES = 'chat_ui_disclosures'
+    CHAT_UI_COLOR = 'chat_ui_color'
+    CHAT_UI_BARS = 'chat_ui_bars'
     CHAT_ASSESSMENT = "chat_assessment"
     RESPONSE_EDIT = 'response_edit'
     CHAT_TITLE = 'chat_title'
@@ -44,6 +48,11 @@ def get_system_prompt(source: PromptSource) -> str:
         from .chat import SYSTEM_PROMPT
         from .chat_ui import SYSTEM_PROMPT as UI_PROMPT
         return SYSTEM_PROMPT + '\n\n' + UI_PROMPT
+    elif source.value.startswith('chat_ui_'):
+        # Individual references are selected by trusted ToolSelection state,
+        # rather than loading every advanced format with the base chat prompt.
+        from .chat_ui import REFERENCES
+        return REFERENCES[source.value.removeprefix('chat_ui_')]
     elif source is PromptSource.CHAT_ASSESSMENT:
         from .chat_assessment import SYSTEM_PROMPT
     elif source is PromptSource.RESPONSE_EDIT:
@@ -102,6 +111,9 @@ def get_prompt_version(source: PromptSource) -> str:
         from .chat import VERSION
         from .chat_ui import VERSION as UI_VERSION
         return VERSION + '+' + UI_VERSION
+    elif source.value.startswith('chat_ui_'):
+        from .chat_ui import VERSION
+        return VERSION + ':' + source.value.removeprefix('chat_ui_')
     elif source is PromptSource.CHAT_ASSESSMENT:
         from .chat_assessment import VERSION
     elif source is PromptSource.RESPONSE_EDIT:

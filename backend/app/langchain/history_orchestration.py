@@ -87,11 +87,16 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     if getattr(scope.get('execution_plan'), 'edit_source_id', None):
         additional_sources = (*additional_sources, PromptSource.RESPONSE_EDIT)
     def prompt_sources(available_tools):
+        from .prompts.chat_ui import UI_TOPICS
+        topics = set(scope.get('_ui_topics', ()))
+        if any(getattr(tool, 'name', '') == 'present_visuals' for tool in available_tools):
+            topics.add('bars')
+        ui_sources = tuple(PromptSource('chat_ui_' + topic) for topic in UI_TOPICS if topic in topics)
         personal = any(domains.get(getattr(tool, 'name', '')) in ('history', 'memory') for tool in available_tools)
         rag = any(domains.get(getattr(tool, 'name', '')) == 'rag' for tool in available_tools) or bool(scope.get('study_sources'))
         assessment = any(domains.get(getattr(tool, 'name', '')) == 'assessment' for tool in available_tools) or any(domains.get(name) == 'assessment' for name in selection.active) or bool(scope.get('chat_assessments'))
         external = any(domains.get(getattr(tool, 'name', '')) == 'web' for tool in available_tools) or bool(scope.get('web_sources') or scope.get('web_searches'))
-        return tuple(dict.fromkeys((*additional_sources, *([PromptSource.WEB_SEARCH] if external else []), *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
+        return tuple(dict.fromkeys((*ui_sources, *additional_sources, *([PromptSource.WEB_SEARCH] if external else []), *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
     instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
     from .token_policy import schema_tokens
     plan = scope.get('execution_plan')

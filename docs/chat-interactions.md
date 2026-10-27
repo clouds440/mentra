@@ -10,10 +10,26 @@ bundled Inter font dependencies.
 ## Rich native UI contract
 
 The single model-facing usage contract is
-`backend/app/langchain/prompts/chat_ui.py`, composed exactly once through the
-existing CHAT prompt registry (including direct chat, tool rounds and edits).
-Tool descriptions own argument semantics; assessment/Events prompts retain only
-domain rules. Keep new UI usage examples and policy in this shared module.
+`backend/app/langchain/prompts/chat_ui.py`. Its compact common guide is composed
+once through the CHAT registry, including direct chat, tool rounds and edits.
+`present_choices` and `request_input` are bound immediately. Mermaid, Lucide,
+semantic colors and simple inline bars need no reference lookup.
+
+Detailed charts, disclosures, custom colors and native multi-bar references remain
+in that same module. The model loads only the needed topics through the existing
+`enable_workflow_tools` tool, e.g. `{"ui":["charts"]}`. `ui:["bars"]` also enables
+`present_visuals`; exact tool-name/module discovery still works for all domains.
+Selected reference sources are included once in subsequent system instructions,
+including budget-final rounds, and are not duplicated in tool receipts. Loading is
+budget-checked together with tool schemas; rejection rolls back reference state.
+References are scoped to the current turn, never shared between users/turns.
+Compatible examples in conversation can be reused without another lookup.
+
+The always-on guide advertises every capability and tells the model to consider
+useful UI even without an explicit request, honor prose/code-only requests, and
+discover unfamiliar advanced formats instead of guessing. There is no extra LLM
+classifier or mandatory per-answer reviewer. Tool descriptions own argument
+semantics; assessment/Events retain domain rules. Keep UI examples/policy here.
 
 | Capability | Contract and existing resource |
 |---|---|

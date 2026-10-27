@@ -6,9 +6,9 @@ const source = await readFile(new URL('../src/lib/chartSpec.ts', import.meta.url
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
 const { parseChartSpec } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const reports = JSON.parse(await readFile(new URL('../../backend/.cache/chat-ui-live.json', import.meta.url), 'utf8'));
-const charts = reports.filter(report => report.chart_spec).map(report => parseChartSpec(JSON.stringify(report.chart_spec)));
-if (!charts.length || charts.some(chart => !chart)) throw new Error('Configured-provider output does not match the frontend chart contract');
-for (const chart of charts) {
-  if (chart.type !== 'BarChart' || chart.data.map(row => row[chart.series[0].dataKey]).sort((a, b) => a - b).join(',') !== '20,30') throw new Error('Configured chart changed supplied values');
+const charts = reports.filter(report => report.chart_spec).map(report => ({ chart: parseChartSpec(JSON.stringify(report.chart_spec)), expected: report.chart_expected_values ?? [20, 30] }));
+if (!charts.length || charts.some(({ chart }) => !chart)) throw new Error('Configured-provider output does not match the frontend chart contract');
+for (const { chart, expected } of charts) {
+  if (chart.type !== 'BarChart' || chart.data.map(row => row[chart.series[0].dataKey]).sort((a, b) => a - b).join(',') !== expected.join(',')) throw new Error('Configured chart changed supplied values');
 }
 console.log(`${charts.length} configured-provider chart validated with the frontend contract and exact supplied values.`);
