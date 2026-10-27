@@ -225,14 +225,20 @@ for (const chunk of ['lucideIconCatalog', 'anvil']) test(`unavailable ${chunk} l
   expect(errors).toEqual([]);
 });
 
-test('common icons render without catalog requests and excessive icons stay bounded', async ({ page }) => {
+test('icons load only when requested and repeated names reuse the same module', async ({ page }) => {
   const requests: string[] = [];
-  page.on('request', request => { if (request.url().includes('lucideIconCatalog')) requests.push(request.url()); });
-  await richChat(page, Array.from({ length: 40 }, () => ':icon[BookOpen]').join(' '));
+  page.on('request', request => requests.push(request.url()));
+  await richChat(page, 'Ordinary response without icons.');
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByText('Ordinary response without icons.', { exact: true })).toBeVisible();
+  expect(requests.filter(url => /lucideIconCatalog|\/anvil-|\/a-arrow-down-/.test(url))).toEqual([]);
+  await richChat(page, Array.from({ length: 40 }, () => ':icon[Anvil]').join(' '));
   await page.goto('/chat/polish-chat');
   await expect(page.locator('.rich-icon svg')).toHaveCount(32);
   await expect(page.locator('.rich-icon-placeholder')).toHaveCount(8);
-  expect(requests).toEqual([]);
+  expect(requests.filter(url => /lucideIconCatalog-/.test(url))).toHaveLength(1);
+  expect(requests.filter(url => /\/anvil-/.test(url))).toHaveLength(1);
+  expect(requests.filter(url => /\/a-arrow-down-/.test(url))).toHaveLength(0);
 });
 
 const diagrams: Record<string, string> = {

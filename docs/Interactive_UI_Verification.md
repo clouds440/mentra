@@ -90,8 +90,8 @@ passed. The frontend image was rebuilt and the local frontend service refreshed.
 
 The existing rich Markdown transform accepts `:icon[BookOpen]` (PascalCase or
 kebab-case). Existing Lucide dependencies are reused; no new package is required.
-Common explanation icons render synchronously. The full installed-name catalog and
-uncommon glyphs are separate lazy assets, requested only when used. Names never
+The installed-name catalog and every response glyph are separate lazy assets,
+requested only when used. The catalog contains import functions, not glyph data. Names never
 become arbitrary module paths, URLs, SVG or DOM properties.
 
 Unknown/invalid names, pending loads and catalog/glyph import failures render an
@@ -110,8 +110,22 @@ building; the complete suite passed after the build finished.
 
 The performance fixture includes 200 messages, 200 bars and 100 icons. Completed
 ChatMessage/MarkdownContent/ChoiceCard/InlineIcon rerenders were all zero during
-typing, unchanged refresh and font-size change. Common icons requested no catalog.
+typing, unchanged refresh and font-size change. That original measurement used the common-icon fast path, subsequently removed below.
 Typing p95 was **13.1 ms**, with zero typing long tasks; the full observation window
 included one 54 ms long task outside typing. These remain local machine measurements.
 Both images and all application services were refreshed; disposable outputs were
 removed after recording this evidence.
+
+### Every response icon loads on demand
+
+Removed the 15-icon eager registry after the follow-up requirement. `InlineIcon`
+now has only a type import from Lucide. Its first actual icon lazily loads the name
+catalog, then invokes only `dynamicIconImports[name]()` for that glyph. Catalog
+entries are import functions, not eagerly loaded icon implementations. React/module
+caching reuses repeated requests; placeholders remain local to each icon.
+
+All **31** rich-chat/performance checks passed again. Network coverage verifies no
+catalog request for an ordinary response, exactly one catalog and one Anvil module
+request for 32 repeated Anvil icons, and no unrelated AArrowDown request. The same
+200-message/100-icon fixture recorded zero completed-component/icon rerenders,
+typing p95 **13.3 ms**, and no measured long tasks. The frontend image was refreshed.

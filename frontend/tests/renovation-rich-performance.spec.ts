@@ -37,7 +37,7 @@ test('completed rich messages do not rerender while typing or receiving unchange
   await page.goto('/chat/polish-chat');
   await expect(page.getByRole('meter')).toHaveCount(200);
   await expect(page.locator('.rich-icon svg')).toHaveCount(100);
-  expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /lucideIconCatalog/.test(entry.name)).length)).toBe(0);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /lucideIconCatalog/.test(entry.name)).length)).toBe(1);
   expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /MermaidDiagram|mermaid\.core|flowDiagram/.test(entry.name)).length)).toBe(0);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const initial = await page.evaluate(() => (window as any).richRenderProfile.counts);
