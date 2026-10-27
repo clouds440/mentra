@@ -28,6 +28,7 @@ async def main():
         ('bars', 'Compare illustrative difficulty ratings of arrays, binary search and dynamic programming on a 1 to 5 scale using visual bars. Label the ratings as illustrative.', 'present_visuals'),
         ('direct', 'What is 2 + 2? Answer directly in one sentence.', None),
         ('icons', 'Give me one short reading tip and one short practice tip, each with an appropriate inline Lucide icon beside its text. Use no tools.', None),
+        ('chart', 'Show a Recharts bar chart comparing these exact study times: Algebra 20 minutes, Geometry 30 minutes. Add a brief explanation. Use no tools.', None),
     ]
     for name, request, expected in scenarios:
         scope = {'current_user_message_id': str(uuid4())}
@@ -38,6 +39,12 @@ async def main():
             assert not calls, f'{name}: unnecessary interaction'
             if name == 'icons':
                 assert isinstance(response.content, str) and len(re.findall(r':icon\[[A-Za-z][A-Za-z0-9-]{0,63}\]', response.content)) >= 2, 'Expected inline icon directives beside tip text'
+            if name == 'chart':
+                match = re.search(r'```recharts\s*\n(.*?)```', str(response.content), re.S)
+                assert match, 'Expected a Recharts JSON fence'
+                chart = json.loads(match[1])
+                assert chart['type'] == 'BarChart' and len(chart['data']) == 2
+                scope['chart_spec'] = chart
         else:
             assert any(call['name'] == expected for call in calls), f'{name}: expected {expected}'
             by_name = {tool.name: tool for tool in tools}
@@ -53,7 +60,7 @@ async def main():
                 continuation = await asyncio.wait_for(llm.ainvoke_messages(PromptSource.CHAT,
                     [HumanMessage(content=request), response, *receipts]), 90)
                 assert continuation.content and not continuation.tool_calls, 'Static visuals must permit a normal explanation'
-        results.append({'scenario': name, 'tools': [call['name'] for call in calls], 'passed': True, 'cards': scope.get('interactions', [])})
+        results.append({'scenario': name, 'tools': [call['name'] for call in calls], 'passed': True, 'cards': scope.get('interactions', []), **({'chart_spec': scope['chart_spec']} if 'chart_spec' in scope else {})})
         print(f'{name}: passed', flush=True)
     path = Path('backend/.cache/chat-ui-live.json')
     path.parent.mkdir(parents=True, exist_ok=True)

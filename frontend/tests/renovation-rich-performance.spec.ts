@@ -1,32 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { workspace } from './renovation-fixtures';
+import { trackRichRenders } from './renovation-rich-fixtures';
 
 test('completed rich messages do not rerender while typing or receiving unchanged history', async ({ page }, info) => {
-  await page.addInitScript(() => {
-    type Fiber = { flags: number; child: Fiber | null; sibling: Fiber | null; elementType?: { displayName?: string }; type?: { displayName?: string; name?: string } };
-    const watched = new Set(['ChatMessage', 'MarkdownContent', 'ChoiceCard', 'InlineIcon']);
-    let previous = new Set<Fiber>();
-    const counts: Record<string, number> = {};
-    const state = { counts, samples: [] as number[], longTasks: [] as number[] };
-    Object.assign(window, { richRenderProfile: state, __REACT_DEVTOOLS_GLOBAL_HOOK__: {
-      supportsFiber: true, renderers: new Map(), inject: () => 1,
-      onCommitFiberRoot: (_renderer: number, root: { current: Fiber }) => {
-        const next = new Set<Fiber>();
-        function visit(fiber: Fiber | null) {
-          while (fiber) {
-            next.add(fiber);
-            const name = fiber.elementType?.displayName ?? fiber.type?.displayName ?? fiber.type?.name ?? '';
-            if (!previous.has(fiber) && (fiber.flags & 1) && watched.has(name)) counts[name] = (counts[name] ?? 0) + 1;
-            visit(fiber.child); fiber = fiber.sibling;
-          }
-        }
-        visit(root.current); previous = next;
-      }, onCommitFiberUnmount: () => {},
-    } });
-    new PerformanceObserver(list => state.longTasks.push(...list.getEntries().map(entry => entry.duration))).observe({ type: 'longtask' });
-    document.addEventListener('input', () => { const start = performance.now(); requestAnimationFrame(() => state.samples.push(performance.now() - start)); });
-  });
+  await trackRichRenders(page, ['ChatMessage', 'MarkdownContent', 'ChoiceCard', 'InlineIcon']);
   await workspace(page);
   const conversation = { id: 'polish-chat', title: 'Performance', revision: 2, message_count: 200, selection: { mode: 'STANDARD', context_ids: [], document_ids: [] }, created_at: '2026-10-27T00:00:00Z', updated_at: '2026-10-27T00:00:00Z' };
   const items = Array.from({ length: 200 }, (_, i) => ({ id: `perf-${i}`, conversation_id: conversation.id, sequence: i + 1, role: i % 2 ? 'assistant' : 'user', content: i % 2 ? ':icon[BookOpen] A clear explanation with :color[meaningful emphasis]{tone="success"}.' : 'Explain the concept clearly.', created_at: conversation.created_at,
@@ -38,7 +16,7 @@ test('completed rich messages do not rerender while typing or receiving unchange
   await expect(page.getByRole('meter')).toHaveCount(200);
   await expect(page.locator('.rich-icon svg')).toHaveCount(100);
   expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /lucideIconCatalog/.test(entry.name)).length)).toBe(1);
-  expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /MermaidDiagram|mermaid\.core|flowDiagram/.test(entry.name)).length)).toBe(0);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /MermaidDiagram|mermaid\.core|flowDiagram|RechartsFigure|LineView|BarView|AreaView|ComposedView|PieView|RadarView|ScatterView/.test(entry.name)).length)).toBe(0);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const initial = await page.evaluate(() => (window as any).richRenderProfile.counts);
   expect(initial.ChatMessage).toBeGreaterThan(0); expect(initial.MarkdownContent).toBeGreaterThan(0); expect(initial.ChoiceCard).toBeGreaterThan(0);

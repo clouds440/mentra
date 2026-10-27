@@ -1,33 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { workspace } from './renovation-fixtures';
 import { chooseOption } from './select-helpers';
+import { richChat } from './renovation-rich-fixtures';
 
 const choice = { id: 'choice-rich', kind: 'single_choice', question: 'Which topic?', selected: [], submitted_turn_id: null, options: [
   { id: 'algebra', label: 'Algebra' }, { id: 'custom', label: "I'll write my own topic", input: { kind: 'short_text', label: 'Your topic', required: true, max_length: 300 } },
 ] };
-async function richChat(page: Page, content = '', interactions: Record<string, unknown>[] = []) {
-  await workspace(page);
-  const conversation = { id: 'polish-chat', title: 'Interactive examples', revision: 2, message_count: 2, selection: { mode: 'STANDARD', context_ids: [], document_ids: [] }, created_at: '2026-10-27T00:00:00Z', updated_at: '2026-10-27T00:00:00Z' };
-  const items: Record<string, unknown>[] = [{ id: 'u', conversation_id: conversation.id, sequence: 1, role: 'user', content: 'Explain this concept', created_at: conversation.created_at }, { id: 'a', conversation_id: conversation.id, sequence: 2, role: 'assistant', content, interactions, created_at: conversation.created_at }];
-  let turn: Record<string, unknown> | null = null;
-  const snapshot = () => ({ conversation, items, has_more: false, next_cursor: null, turn });
-  await page.route('**/api/v1/conversations/polish-chat/status*', route => route.fulfill({ json: snapshot() }));
-  const submissions: Record<string, unknown>[] = [];
-  await page.route('**/api/v1/conversations/turns', route => {
-    const body = route.request().postDataJSON(); submissions.push(body);
-    const reply = body.interaction_response;
-    if (reply) {
-      const card = interactions.find(item => item.id === reply.interaction_id)!;
-      Object.assign(card, { ...reply, submitted_turn_id: body.client_turn_id });
-    }
-    conversation.revision++; conversation.message_count++;
-    items.push({ id: 'answer-' + conversation.message_count, conversation_id: conversation.id, sequence: conversation.message_count, role: 'user', content: body.content, created_at: conversation.created_at });
-    turn = { id: body.client_turn_id, state: 'SUCCEEDED', attempt: 1, user_sequence: conversation.message_count, selection: conversation.selection, error: null };
-    return route.fulfill({ json: snapshot() });
-  });
-  return { submissions };
-}
-
 for (const width of [375, 1280]) test(`custom topic opens inside the card and persists on ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   const { submissions } = await richChat(page, 'Choose a topic.', [structuredClone(choice)]);

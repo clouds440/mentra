@@ -129,3 +129,49 @@ catalog request for an ordinary response, exactly one catalog and one Anvil modu
 request for 32 repeated Anvil icons, and no unrelated AArrowDown request. The same
 200-message/100-icon fixture recorded zero completed-component/icon rerenders,
 typing p95 **13.3 ms**, and no measured long tasks. The frontend image was refreshed.
+
+## Recharts and canvas resize hardening
+
+Added Recharts 3.10.1 with the matching React 18 react-is peer. Recharts JSON fences
+support LineChart, BarChart, AreaChart, ComposedChart, PieChart, RadarChart and
+ScatterChart. This is a validated data contract using Recharts component/dataKey
+names, not executable JSX. The shared UI prompt owns the model usage rules.
+
+| Boundary | Implemented behavior |
+|---|---|
+| Loading | Reused/generalized the diagram viewport gate into DeferredVisual with one shared observer. Text does not load charts; offscreen charts wait. Each chart family imports separately and shared dependencies are reused. |
+| Validation | 24,000 characters, 200 rows, six series, three charts per response; 24 categories for pie/radar and at least three for radar. Unknown props, callbacks, unsafe field keys, missing/nonfinite values, duplicate series and invalid pie/radar data are rejected locally. |
+| Data isolation | Original names/values stay in source/tables. Only canonical app-owned field names enter drawing data, preventing names such as fill/onClick from becoming shape props. Text remains React-escaped; no model resource fetching or code evaluation. |
+| Interaction | Exact data table, source/copy, viewport-sized fullscreen, visible units, native Close/Escape/focus restoration, accessible keyboard tooltips and CSS theme colors. |
+| Motion | Small charts use 250ms reduced-motion-aware animations. Above 120 row-series pairs, animations are disabled. Tooltips remain immediate. Single-point areas retain visible dots; null gaps are not invented as zero. |
+| Stability | Parsed specs have a 30-entry owner-cleared cache. Figures and canvases are memoized and have no conversation/theme subscriptions. Loading, invalid data, rejected chunks and render errors stay local with data/source recovery. |
+| LightRays flash | ResizeObserver previously cleared the canvas by resizing its backing buffer after drawing; repaint waited for another frame. It now marks dimensions dirty and performs resize/redraw in one animation-frame callback. No preserveDrawingBuffer overhead or shader/intro restart was added. |
+
+Verification actually completed:
+
+- **65 production browser checks passed** across chart, LightRays, rich-chat and
+  200-message rendering suites. Coverage includes all seven families, settled bar
+  height against axis values, negative/zero values, null gaps, mixed composed series,
+  single-point areas, keyboard tooltip values/units, mobile dark fullscreen, exact
+  data/source, failed entry/family chunks, malformed data, escaped resource-like
+  labels, field collisions, lazy imports and count bounds.
+- The new canvas frame-order regression **failed against the old build** in normal
+  and reduced motion, then passed after the fix. Resize and redraw never straddle a
+  test-observed frame; existing no-rerender/no-shader-recreation checks still pass.
+- Three visible chart families recorded **zero** ChatMessage, MarkdownContent,
+  RechartsFigure and ChartCanvas rerenders during typing, unchanged refresh and font
+  changes. Typing p95 met the under-50ms budget while short animations were enabled.
+  The separate 200-message/100-icon/native-bar fixture measured **13.4ms** typing p95
+  with zero measured long tasks and no chart/diagram module requests.
+- **Six configured-provider scenarios passed**. The actual generated bar-chart JSON
+  was additionally validated using the exact frontend parser and supplied values
+  20/30. Reusable check: `node frontend/scripts/verify-chat-charts.mjs` after the
+  backend provider script generates its temporary report.
+- Strict TypeScript/Vite build, UI/theme checks and dependency audit passed; npm
+  reported **zero vulnerabilities**. Optional Mermaid/layout chunk warnings remain.
+
+Both Docker images were rebuilt; backend, frontend and all five application workers
+were recreated from the refreshed images. Local readiness/frontend responses and
+container health were checked after rollout. Disposable logs, screenshots and model
+verification output were removed after recording results here. No schema migration
+or public deployment is involved; the deployment-specific gates above still apply.

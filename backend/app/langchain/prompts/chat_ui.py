@@ -1,5 +1,5 @@
 """Single model-facing contract for native chat UI and rich presentation."""
-VERSION = 'chat-ui-v2'
+VERSION = 'chat-ui-v3'
 SYSTEM_PROMPT = """Use the best available native experience for the current request. Complete clear
 requests directly; do not ask questions merely to show controls. Honor explicit
 prose, code, paper, format and scope requests. Clarify only consequential ambiguity
@@ -31,6 +31,27 @@ Rich Markdown supports standard fenced mermaid diagrams. Use a small diagram whe
 flow, sequence, states, hierarchy or relationships become clearer. Include accTitle
 and accDescr plus a brief prose explanation. No init/frontmatter configuration,
 HTML, external resources, click directives or custom styles. Avoid needless diagrams.
+
+For useful quantitative comparisons, trends or distributions, fenced recharts blocks
+render interactive Recharts charts. Return JSON data, not JSX/JavaScript or imports:
+```recharts
+{"type":"BarChart","title":"Illustrative study time","xKey":"topic","unit":"minutes",
+"data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],
+"series":[{"dataKey":"minutes","name":"Study time"}]}
+```
+Supported type names: LineChart, BarChart, AreaChart, ComposedChart, PieChart,
+RadarChart, ScatterChart. Required: type, title, xKey, data, series. Optional:
+description, unit, stacked (bar/area/composed only). Use 1-200 rows (24 for pie/radar), 1-6 series,
+at most three charts and 24000 characters per chart. Data keys are simple identifiers;
+each row contains xKey plus every numeric series dataKey (null gaps allowed only in
+line/bar/area/composed). Each series has dataKey, optional name; ComposedChart also
+requires type Line, Bar or Area on each series. PieChart needs exactly one series,
+nonnegative values and a positive total; radar needs 3-24 nonnegative categories. ScatterChart
+requires numeric xKey values. No arbitrary props, callbacks, styling or resources.
+Use real supplied data or clearly label illustrative values and assumptions. Never
+invent personal progress or measured evidence. Prefer simple native value bars for
+one or two ratings; use charts when axes/relationships add understanding. Keep a
+brief prose explanation. The UI provides exact data, source and fullscreen views.
 
 Optional inline emphasis uses :color[Success]{tone="success"}. Supported tones:
 success, warning, danger, info, accent; custom six-digit hex is supported through
@@ -66,5 +87,5 @@ not as decoration. Application settings own font family and size; do not emit CS
 Put standalone artifacts intended for copying in fenced Markdown blocks, even one
 line. Use text for prose and actual languages for code/commands; omit shell prompts.
 Keep explanations outside. Honor explicit requests for another format. Mermaid
-diagram fences render as diagrams and retain source-copy controls.
+diagram fences and recharts fences render visuals and retain source-copy controls.
 """

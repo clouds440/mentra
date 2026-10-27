@@ -111,3 +111,47 @@ test('sidebar toggles and composer typing do not rerender or recreate LightRays'
   expect(await original!.evaluate(element => element.isConnected)).toBe(true);
   expect(await page.evaluate(() => (window as any).raysHardening)).toEqual(before);
 });
+
+for (const reduced of [false, true]) test(`canvas resize and redraw stay in one frame with reduced motion ${reduced}`, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  await page.addInitScript(() => {
+    const state = { writes: 0, outsideFrame: 0, blankFrames: 0, draws: 0 };
+    Object.assign(window, { raysResizeProfile: state });
+    let inFrame = false; let pending = false;
+    const request = window.requestAnimationFrame;
+    window.requestAnimationFrame = callback => request.call(window, now => {
+      inFrame = true;
+      try { callback(now); } finally { if (pending) state.blankFrames++; inFrame = false; }
+    });
+    for (const key of ['width', 'height']) {
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, key)!;
+      Object.defineProperty(HTMLCanvasElement.prototype, key, { ...descriptor, set(value) {
+        if (this.classList.contains('light-rays__canvas') && descriptor.get!.call(this) !== value) {
+          state.writes++; pending = true; if (!inFrame) state.outsideFrame++;
+        }
+        descriptor.set!.call(this, value);
+      } });
+    }
+    const draw = WebGL2RenderingContext.prototype.drawArrays;
+    WebGL2RenderingContext.prototype.drawArrays = function(...args) {
+      const result = draw.apply(this, args);
+      if ((this.canvas as HTMLCanvasElement).classList.contains('light-rays__canvas')) { pending = false; state.draws++; }
+      return result;
+    };
+  });
+  await workspace(page); await page.goto('/');
+  await expect.poll(() => page.evaluate(() => (window as any).raysResizeProfile.draws)).toBeGreaterThan(0);
+  const initial = await page.evaluate(() => ({ ...(window as any).raysResizeProfile }));
+  for (const width of [1300, 1500, 1360]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+    await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
+  }
+  await expect.poll(() => page.evaluate(() => (window as any).raysResizeProfile.writes)).toBeGreaterThan(initial.writes);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const result = await page.evaluate(() => (window as any).raysResizeProfile);
+  expect(result.outsideFrame).toBe(0);
+  expect(result.blankFrames).toBe(0);
+  expect(result.draws).toBeGreaterThan(initial.draws);
+});

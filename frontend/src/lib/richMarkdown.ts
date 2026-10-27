@@ -10,11 +10,13 @@ export const usesRichDirectives = (content: string) => /:(?:color|icon)\[|:{2,3}
 export function remarkRichContent() {
   return (tree: Root, file: { value: unknown }) => {
     let diagrams = 0;
+    let charts = 0;
     let icons = 0;
     function visit(parent: { children?: RootContent[] }) {
       parent.children = parent.children?.map(child => {
         const node = child as DirectiveNode;
         if (child.type === 'code' && child.lang?.toLowerCase() === 'mermaid' && ++diagrams > 3) child.lang = 'text';
+        if (child.type === 'code' && child.lang?.toLowerCase() === 'recharts' && ++charts > 3) child.lang = 'text';
         if (!['textDirective', 'leafDirective', 'containerDirective'].includes(node.type)) { if ('children' in child) visit(child); return child; }
         const a = node.attributes ?? {};
         let props: Record<string, unknown> | undefined;

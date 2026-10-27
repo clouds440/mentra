@@ -645,9 +645,13 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .rich-icon svg { display: block; width: 100%; height: 100%; }
 .rich-icon-placeholder { display: block; width: 1em; height: 1em; border: 1px solid currentColor; border-radius: 0.2em; opacity: 0.35; }
 .mermaid-svg svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
-.mermaid-fullscreen[open] { display: flex; flex-direction: column; width: 100dvw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; }
+.mermaid-fullscreen[open], .visual-fullscreen[open] { display: flex; flex-direction: column; width: 100dvw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; }
 .mermaid-fullscreen .mermaid-svg { flex: 1; min-height: 0; max-height: none; }
 .mermaid-fullscreen .mermaid-svg svg { width: 100%; height: 100%; max-width: none !important; }
+.chart-plot { height: 20rem; min-width: 0; padding: 0.75rem; }
+.chart-placeholder { min-height: 24rem; }
+.visual-fullscreen .chart-plot { flex: 1; height: auto; min-height: 0; }
+.recharts-figure .recharts-wrapper:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: -2px; }
 .rich-callout > :last-child { margin-bottom: 0; }
 .rich-color strong, .rich-color em { color: inherit; }
 @media (max-width: 639px) { .chat-composer textarea { font-size: max(1rem, var(--chat-font-size)); } }

@@ -349,6 +349,7 @@ const LightRays = ({
     let visible = true;
     let pageVisible = document.visibilityState !== 'hidden';
     let lost = false;
+    let resizePending = true;
 
     const resize = () => {
       const s = settingsRef.current;
@@ -377,6 +378,9 @@ const LightRays = ({
     const frame = (now: number) => {
       raf = 0;
       if (lost) return;
+      // Changing the backing dimensions clears WebGL immediately. Do it only
+      // inside the draw frame, never in ResizeObserver after that frame's paint.
+      if (resizePending) { resizePending = false; resize(); }
       const s = settingsRef.current;
       const dt = clamp((now - last) / 1000 || 0, 0, 0.05);
       last = Math.max(last, now);
@@ -475,7 +479,7 @@ const LightRays = ({
       raf = requestAnimationFrame(frame);
     };
     wakeRef.current = () => {
-      resize();
+      resizePending = true;
       wake();
     };
 
@@ -537,7 +541,7 @@ const LightRays = ({
     canvas.addEventListener('webglcontextrestored', onRestored);
 
     const resizeObserver = new ResizeObserver(() => {
-      resize();
+      resizePending = true;
       wake();
     });
     resizeObserver.observe(container);
@@ -558,7 +562,6 @@ const LightRays = ({
 
     const themeObserver = new MutationObserver(wake);
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    resize();
     wake();
 
     return () => {

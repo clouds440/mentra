@@ -46,6 +46,7 @@ The same MarkdownContent renderer serves chat and Library. No raw HTML is enable
 | Format | Example | Rendering |
 |---|---|---|
 | Mermaid | Fenced `mermaid` source | Lazy local rendering; source view/copy, expanded Dialog and sanitized SVG download. Light/Dark/System, title/description support, per-instance SVG IDs, strict config, bounded source/edges, at most three rendered diagrams per content. Invalid/unsafe source remains accessible. |
+| Recharts | Fenced `recharts` JSON | Data-only chart configuration using familiar Recharts type/dataKey names. Line, bar, area, composed, pie, radar and scatter families load individually near the viewport. Exact data table, source/copy and fullscreen views; accessible keyboard tooltips and theme-aware colors. Invalid data/import/render failures stay local. No JSX execution or model-authored callbacks/props. |
 | Semantic color | `:color[Success]{tone="success"}` | success/warning/danger/info/accent; named aliases map to these tones. Contrast adapts to the actual surface. |
 | Custom color | `:color[Needs review]{hex="#F54927"}` | Six-digit hex only; readable foreground adjustment, forced-colors fallback. No arbitrary CSS. |
 | Inline icon | `:icon[BookOpen] Further reading` | Installed Lucide names in PascalCase or kebab-case. Every response icon loads on demand; the catalog contains import functions, not eagerly imported glyphs. Unknown names, loading/import failures and render errors show a fixed-size CSS placeholder, never raw names or broken images. Decorative and hidden from screen readers; keep adjacent meaningful text. Copy omits icon tokens and preserves literal code. At most 32 rendered icons per response. |
@@ -60,6 +61,31 @@ callbacks, model-authored initialization or raw HTML labels. App-owned SVG
 sanitization also covers exported diagrams. See [verification](Interactive_UI_Verification.md).
 
 ### Rendering performance
+
+Recharts JSON requires `type`, `title`, `xKey`, `data` and `series`. For example:
+
+```recharts
+{"type":"BarChart","title":"Study time","xKey":"topic","unit":"minutes","data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],"series":[{"dataKey":"minutes","name":"Study time"}]}
+```
+
+Optional top-level fields are `description`, `unit` and `stacked` (bar/area/composed).
+Series accept `dataKey` and optional `name`; composed series require `type` Line,
+Bar or Area. The [frontend contract](../frontend/src/lib/chartSpec.ts) bounds each
+chart to 24,000 characters, 200 rows, six series and three charts per response.
+Pie/radar allow at most 24 categories; radar requires at least three. Pie uses one
+nonnegative numeric series with a positive total. Scatter x values are numeric.
+Cartesian gaps use null; all other series values are finite numbers within ±1e12.
+Arbitrary props/resources, duplicate series keys, missing values, all-null series
+and unsupported shapes are rejected. Original data names stay in source/tables;
+only app-owned canonical field names enter Recharts shape data.
+
+Parsed charts use a 30-entry owner-scoped cache. Chart families and their shared
+Recharts dependencies load only when a valid chart approaches the viewport.
+Chart canvases have no conversation/theme subscriptions. Existing memoized message
+identity rules prevent typing/unchanged refresh/font changes from rerendering them.
+ResizeObserver handles actual plot sizing locally. Small charts animate for 250ms
+with Recharts' reduced-motion-aware `auto`; above 120 row-series pairs animation is
+disabled. Tooltip changes do not animate or delay exact values.
 
 Native inputs/bars are ordinary application components with no animation gate or
 extra model round needed merely to render accepted data. Static cards subscribe to
