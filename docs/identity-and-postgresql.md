@@ -15,28 +15,16 @@ first. PostgreSQL 17 persists in the `mentra_postgres` named volume. Set `DATABA
 `postgresql://mentra:mentra_local@postgres:5432/mentra` for Docker services, then start the
 remaining services. Local credentials are never merged into a hosted connection URL.
 
-## Deploying schema updates from GitHub
+## Applying schema updates
 
-The repository uses Alembic revisions in `backend/alembic/` as its only schema-change
-source. `.github/workflows/supabase-migrations.yml` applies pending revisions to Supabase
-after a `main` push that changes migrations or SQLAlchemy table metadata. It serializes
-deployments and checks for schema drift after applying them. It does not mirror revisions
-into Supabase CLI SQL migrations, which would create a second migration history.
+Alembic revisions in `backend/alembic/` are the only schema-change source. The backend
+Dockerfile runs `python -m app.db.migrate` before starting the API. Migration failure
+prevents API startup; the existing PostgreSQL advisory lock serializes concurrent starts.
+Migrations run at container startup, so image builds need no live database credentials.
 
-To enable it, add a repository Actions secret named `SUPABASE_DATABASE_URL` containing the
-PostgreSQL connection URL from the Supabase Dashboard's **Connect** dialog. Use the Direct
-connection when the GitHub runner can reach its IP version; otherwise use the Session
-Pooler URL on port `5432`. This migration runner acquires a session advisory lock, so do
-not use the Transaction Pooler URL on port `6543`. Keep the URL in GitHub Secrets and do
-not commit it to `.env.example` or the repository. The workflow can also be run manually
-from GitHub Actions after setting the secret.
-
-This deploys database schema only; the GitHub workflow runs Alembic against the Supabase
-PostgreSQL endpoint. It does not require Supabase-specific APIs or SDKs. The separate
-Supabase Dashboard GitHub integration expects SQL files under `supabase/migrations/` and
-does not apply Mentra's Python Alembic revisions. Do not enable both migration deployers
-for the same database. See Supabase's [connection guidance](https://supabase.com/docs/guides/database/connecting-to-postgres)
-and [GitHub deployment guidance](https://supabase.com/docs/guides/deployment/managing-environments).
+For an explicit manual run use `docker compose run --rm backend python -m app.db.migrate`.
+Use a direct PostgreSQL or session-pooler connection for migrations; the transaction
+pooler cannot retain the advisory lock. Keep database credentials in server configuration.
 
 For native Python, use `127.0.0.1` and the published PostgreSQL port in `DATABASE_URL`.
 From the repository root, after installing `backend/requirements.txt`:

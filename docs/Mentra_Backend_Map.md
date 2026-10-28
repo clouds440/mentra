@@ -1358,7 +1358,6 @@ Legacy `external_identity` and `worker_health` mappings remain for schema/data c
 | [`backend/testing/web_search.Dockerfile`](../backend/testing/web_search.Dockerfile) | Disposable web-provider verification image, separate from production startup. |
 | [`docker-compose.yml`](../docker-compose.yml) | API, five worker processes, optional local database and shared role/configuration definitions. |
 | [`.github/workflows/backend-tests.yml`](../.github/workflows/backend-tests.yml) | Backend verification CI with dedicated test infrastructure. |
-| [`.github/workflows/supabase-migrations.yml`](../.github/workflows/supabase-migrations.yml) | Verification-gated hosted PostgreSQL migration and metadata drift checks. |
 
 ### Operator and verification scripts
 
