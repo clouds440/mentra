@@ -24,11 +24,18 @@ async def resolve_assessment_intent(workflows, owner, intent):
             contexts = [row.model_dump(mode='json') for row in rows if row.status != 'ARCHIVED']
         identifiers = [intent.context_id] if intent.context_id else [row['context_id'] for row in contexts[:20]]
         scope = dict(context_ids=identifiers) if identifiers else {}
-        calls = [('priorities', 'get_study_recommendations', scope),
-                 ('verification', 'get_verification_candidates', scope),
-                 ('learner', 'get_relevant_learner_context', dict(query=intent.topic or intent.instructions or 'Choose useful assessment practice', **scope))]
-        values = await asyncio.gather(*(tools[name].ainvoke(arguments) for _, name, arguments in calls))
-        data = dict(zip((key for key, _, _ in calls), values))
+        async def read_profile():
+            return await run_in_threadpool(workflows.profile.prompt_context, owner) if workflows.profile else None
+        # Recommendations and verification use the same ranking inputs. Read
+        # them once through the existing owner-bound domain contract; do not
+        # retain this snapshot across later concept mutations or responses.
+        ranked, learner_context, profile = await asyncio.gather(
+            run_in_threadpool(learner.get_study_targets, owner, identifiers or None),
+            tools['get_relevant_learner_context'].ainvoke(dict(
+                query=intent.topic or intent.instructions or 'Choose useful assessment practice', **scope)),
+            read_profile())
+        data = dict(priorities=[item.model_dump(mode='json') for item in ranked['recommendations']],
+            verification=[item.model_dump(mode='json') for item in ranked['verification']],learner=learner_context)
         contexts = [row for row in contexts if row['status'] != 'ARCHIVED']
         allowed = {row['context_id'] for row in contexts}
         if intent.context_id: allowed.add(intent.context_id)
@@ -41,7 +48,6 @@ async def resolve_assessment_intent(workflows, owner, intent):
             eligible = [row.model_dump(mode='json') if hasattr(row,'model_dump') else row for row in summaries]
             allowed.update(row['context_id'] for row in eligible if row['status'] != 'ARCHIVED')
             data['material_contexts'] = eligible
-        profile = await run_in_threadpool(workflows.profile.prompt_context, owner) if workflows.profile else None
         def validate(result):
             if result.context_id is not None and result.context_id not in allowed:
                 raise GenerationMismatch('choose_a_supplied_context_or_null')

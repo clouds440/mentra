@@ -7,7 +7,7 @@ from uuid import uuid4
 from langchain_core.messages import AIMessage, HumanMessage
 from app.assessments.schemas import GenerationRequest, GeneratedQuestion, GeneratedAssessmentBatch
 from app.assessments.revision import reusable_revision
-from app.langchain.planning import plan_request
+from testing.legacy_keyword_policy import plan_request
 from app.langchain.history_orchestration import tool_reply
 from app.langchain.assessment_workflows import AssessmentWorkflows
 
@@ -75,7 +75,7 @@ class VisibleEditTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(model.ainvoke_messages.await_count,1)
         messages=model.ainvoke_messages.call_args.args[1]
         self.assertTrue(any(message.id=='a1' and message.content==original for message in messages))
-        self.assertEqual([getattr(tool,'name',getattr(tool,'__name__','')) for tool in model.ainvoke_messages.call_args.kwargs['tools']],['enable_workflow_tools','DirectAnswer'])
+        self.assertEqual([getattr(tool,'name',getattr(tool,'__name__','')) for tool in model.ainvoke_messages.call_args.kwargs['tools']],['present_questionnaire','enable_workflow_tools','FinishResponse'])
 
     async def test_private_revision_source_remains_owned_and_conversation_scoped(self):
         from app.assessments.service import AssessmentService
@@ -99,7 +99,7 @@ def question(index):
 class AcceptedRevisionTests(unittest.IsolatedAsyncioTestCase):
     async def test_visible_card_edit_needs_one_routing_call_and_no_lookup_tool(self):
         owner=str(uuid4());conversation=str(uuid4());draft=str(uuid4())
-        source=dict(title='Practice',context_id='context',purpose='practice',preferences={},paper=None,sources=[],questions=[question(1),question(2)])
+        source=dict(id=str(uuid4()),title='Practice',context_id='context',purpose='practice',preferences={},paper=None,sources=[],questions=[question(1),question(2)])
         card=dict(id=draft,conversation_id=conversation,assessment_id=None,assessment=source)
         query='Make question 2 clearer'
         rows=history();rows[-1]['metadata']={'assessment_cards':[card]}
@@ -107,10 +107,9 @@ class AcceptedRevisionTests(unittest.IsolatedAsyncioTestCase):
             card,id=str(uuid4()),assessment=dict(source,title='Practice revised'))))
         state=dict(execution_plan=plan_request(query,context_rows=rows),assessment_service=service,current_answer_text=query,
             current_user_message_id=str(uuid4()),conversation_id=conversation,user_sequence=3,context_rows=rows,history_references=[],memory_references=[])
-        model=SimpleNamespace(ainvoke_messages=AsyncMock(return_value=AIMessage(content='',tool_calls=[dict(name='assessment_revise',
-            id='revise',args=dict(draft_id=draft,instructions=query,question_numbers=['2']))])))
+        model=SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',id='enable',args=dict(tool_names=['assessment_revise']))]), AIMessage(content='',tool_calls=[dict(name='assessment_revise',id='revise',args=dict(draft_id=draft,instructions=query,question_numbers=['2'])),dict(name='FinishResponse',id='finish',args=dict(content=''))])]))
         reply=await tool_reply(model,[HumanMessage(content=query)],None,owner,state,(),{})
-        self.assertEqual(model.ainvoke_messages.await_count,1)
+        self.assertEqual(model.ainvoke_messages.await_count,2)
         self.assertEqual(reply.content,'Practice revised')
         self.assertEqual(service.generate_chat.call_args.args[2].revision_question_numbers,['2'])
         self.assertNotIn('assessment_lookup',[getattr(tool,'name','') for tool in model.ainvoke_messages.call_args.kwargs['tools']])

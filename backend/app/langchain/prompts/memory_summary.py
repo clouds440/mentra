@@ -1,4 +1,4 @@
-VERSION = 'memory-summary-v1'
+VERSION = 'memory-summary-v2'
 SYSTEM_PROMPT = '''Update a private, compact persistent overview of this learner's saved memories.
 Return supported summary blocks using the required schema. Obey the supplied independent
 max_characters and max_context_tokens limits for the rendered summary envelope; leave margin.
@@ -10,6 +10,9 @@ Use at most 16 blocks and 24 supporting references total. The pinned_supports li
 identifies high-priority facts in previous blocks; changed facts also carry pinned flags.
 Keep unrelated facts in separate blocks so deleting one does not erase the others.
 Prioritize pinned current facts, stable preferences, durable projects/identity and current goals.
+Use concise standalone phrases. Preserve the subject/activity of scoped preferences;
+never generalize them to every task. Additional goals and contextual preferences
+must not be dropped simply because the profile also has goal/preference fields.
 Merge repetition, preserve qualifications, corrections and proper names in any language.
 Do not duplicate profile fields unnecessarily. Omit greetings, evidence quotes and bookkeeping.
 During incremental updates preserve useful unchanged facts. The overview is lossy: lower

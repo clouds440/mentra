@@ -158,21 +158,16 @@ class ChatImageTests(unittest.TestCase):
         asyncio.run(scenario(400, BadRequestError))
         asyncio.run(scenario(401, AuthenticationError))
 
-    def test_orchestration_reuses_saved_images_only_on_explicit_followup_without_ocr(self):
-        async def scenario():
-            attachments = Mock()
-            attachments.image_input.return_value = dict(id='saved', filename='photo.png', block=prepare_chat_image(raster()))
-            chat = SimpleNamespace(reply=AsyncMock(return_value='Direct answer'))
-            scope = dict(conversation_id='chat', attachment_ids=[], context_rows=[dict(role='user', content='Old query', metadata=dict(attachments=[dict(id='saved')]))],
-                         history_references=[], memory_references=[])
-            response = await OrchestrationService(chat, attachments=attachments).chat_reply(
-                [('user', 'Explain the earlier image')], ChatSelection(), 'owner', history_scope=scope)
-            self.assertEqual(response.content, 'Direct answer')
-            attachments.image_input.assert_called_once_with('owner', 'saved', 'chat')
-            attachments.extract.assert_not_called()
-            self.assertEqual(chat.reply.call_args.kwargs['image_context'][0]['id'], 'saved')
-            self.assertFalse(scope['execution_plan'].direct_candidate)
-        asyncio.run(scenario())
+    def test_earlier_upload_is_model_selected_and_owner_scoped(self):
+        from app.langchain.attachment_tools import create_attachment_tools
+        from app.history_management.budgets import ToolBudget
+        attachments = Mock()
+        attachments.extract.return_value = dict(filename='photo.png', blocks=[], warnings=[])
+        attachments.context.return_value = dict(text='Extracted image text')
+        tool = create_attachment_tools(attachments, 'owner', dict(conversation_id='chat'), ToolBudget())[0]
+        result = asyncio.run(tool.ainvoke(dict(attachment_id='saved')))
+        attachments.extract.assert_called_once_with('owner', 'saved', 'chat')
+        self.assertEqual(result['source_kind'], 'untrusted_upload')
 
     def test_unrelated_followup_does_not_resend_old_screenshot(self):
         async def scenario():
@@ -193,9 +188,9 @@ class ChatImageTests(unittest.TestCase):
             dict(id='old',metadata=dict(attachments=[dict(id='first',filename='diagram.png')])),
             dict(id='newer',metadata=dict(attachments=[dict(id='second',filename='photo.png')])),
             dict(id='now',metadata={})])
-        self.assertEqual(attachment_ids('Look at diagram.png again',scope), ['first'])
-        self.assertEqual(attachment_ids('Compare diagram.png and photo.png',scope), ['second','first'])
-        self.assertEqual(attachment_ids('Explain the image I uploaded',scope), ['second'])
+        self.assertEqual(attachment_ids('Look at diagram.png again',scope), [])
+        self.assertEqual(attachment_ids('Compare diagram.png and photo.png',scope), [])
+        self.assertEqual(attachment_ids('Explain the image I uploaded',scope), [])
         self.assertEqual(attachment_ids('Implement an image loading component',scope), [])
         scope['attachment_ids']=['current']
         self.assertEqual(attachment_ids('Compare these',scope), ['current'])

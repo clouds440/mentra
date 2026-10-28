@@ -5,7 +5,9 @@ from functools import lru_cache
 
 
 class PromptSource(StrEnum):
+    SEMANTIC_ORCHESTRATION = 'semantic_orchestration'
     MEMORY_SUMMARY = 'memory_summary'
+    MEMORY_CAPTURE = 'memory_capture'
     CHAT_SUMMARY = 'chat_summary'
     CHAT = "chat"
     CHAT_UI_CHARTS = 'chat_ui_charts'
@@ -40,8 +42,14 @@ class PromptSource(StrEnum):
 def get_system_prompt(source: PromptSource) -> str:
     """Load a source-owned prompt. Untrusted requests never choose this value."""
     source = PromptSource(source)
+    if source is PromptSource.SEMANTIC_ORCHESTRATION:
+        from .semantic_orchestration import SYSTEM_PROMPT
+        return SYSTEM_PROMPT
     if source is PromptSource.MEMORY_SUMMARY:
         from .memory_summary import SYSTEM_PROMPT
+        return SYSTEM_PROMPT
+    if source is PromptSource.MEMORY_CAPTURE:
+        from .memory_capture import SYSTEM_PROMPT
         return SYSTEM_PROMPT
     if source is PromptSource.CHAT_SUMMARY:
         from .chat_summary import SYSTEM_PROMPT
@@ -108,11 +116,17 @@ def get_system_prompt(source: PromptSource) -> str:
 def get_prompt_version(source: PromptSource) -> str:
     """Return the version alongside the source-owned system instructions."""
     source = PromptSource(source)
+    if source is PromptSource.SEMANTIC_ORCHESTRATION:
+        from .semantic_orchestration import VERSION
+        return VERSION
     if source is PromptSource.MEMORY_SUMMARY:
         from .memory_summary import VERSION
         return VERSION
+    if source is PromptSource.MEMORY_CAPTURE:
+        from .memory_capture import VERSION
+        return VERSION
     if source is PromptSource.CHAT_SUMMARY:
-        return 'chat-summary-v2'
+        return 'chat-summary-v3'
     if source is PromptSource.CHAT:
         from .chat import VERSION
         from .chat_ui import VERSION as UI_VERSION

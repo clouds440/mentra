@@ -1,4 +1,4 @@
-"""Validated execution allocation. Tool selection remains model-driven."""
+"""Frozen pre-migration policy for baseline/regression fixtures only. Never import in app."""
 import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,7 +30,7 @@ class ExecutionPlan(BaseModel):
 def general_query(query):
     """Conservative eligibility only; the answer model must approve separately."""
     text = query.strip().casefold()
-    from .request_intent import supplied_content_task
+    from .legacy_request_intent import supplied_content_task
     if supplied_content_task(query):
         return True
     if re.fullmatch(r'(hi|hello|hey|thanks|thank you)[.! ]*', text):
@@ -71,14 +71,14 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     memory = bool(re.search(r'\b(?:my preferences?|saved preferences?|my profile|saved memor(?:y|ies))\b|\bwhat do you (?:know|remember) about me\b|\b(?:please )?remember (?:that|my|this preference|i|we)\b|\b(?:save|store)\b.*\b(?:preference|fact|goal|memory)\b', text)) and not history
     personal = history or memory
     event = bool(re.search(r'\b(agenda|deadline|remind|upcoming|schedule|event)\b|\bwhen\b.*\bexam\b', text))
-    from .request_intent import practice_request, assessment_mentioned, web_request, supplied_content_task
+    from .legacy_request_intent import practice_request, assessment_mentioned, web_request, supplied_content_task
     requested_practice = practice_request(query)
     assessment = requested_practice or bool(re.search(r'\b(grade|evaluate|mark)\b.*\b(answers?|paper)\b', text))
     if assessment_mentioned(text) and re.search(
             r'\b(?:show|open|review|submit|resume|status|results?)\b.*\b(?:my|the|this|that|previous|last)\b|'
             r'\b(?:my|this|that|previous|last) (?:assessment|quiz|test|answer sheet)\b', text):
         assessment = True
-    from app.history_management.events.capture import event_candidate
+    from testing.legacy_event_capture import event_candidate
     scheduled = event_candidate(query)
     if scheduled:
         event = True
@@ -94,7 +94,7 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     if re.search(r'\b(it|that|move|reschedule)\b', text) and recent.get('event_references'):
         event = True
     capability = bool(re.fullmatch(r'(what can you do|how can you help(?: me)?|what are your capabilities|what can mentra do)[?!. ]*', text))
-    from .request_intent import response_edit_source
+    from .legacy_request_intent import response_edit_source
     edit_source = response_edit_source(query, context_rows) if not attachments else None
     direct = bool(edit_source) or (general_query(query) and not selected_sources and not attachments
                                   and (supplied_content_task(query) or not requested_practice))

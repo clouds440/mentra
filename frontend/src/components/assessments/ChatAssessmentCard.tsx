@@ -22,8 +22,12 @@ export function ChatAssessmentCard({ initial, hydrated = false }: { initial: Cha
   const chat = useConversation(initial.conversation_id);
   const [card, setCard] = useState(initial);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
+  useEffect(() => {
+    if (attempt && card.conversation_id) window.dispatchEvent(new CustomEvent('mentra:assessment-generation',
+      {detail:{conversationId:card.conversation_id}}));
+  }, [attempt?.id, attempt?.state, attempt?.revision, card.conversation_id]);
   const latest = useLatestAssessmentAttempt(card.assessment.id);
-  useEffect(() => { if (!initial.attempt_id && latest && (!attempt || latest.attempt_number > attempt.attempt_number || latest.id === attempt.id && latest.revision > attempt.revision)) setAttempt(latest); }, [latest, attempt, initial.attempt_id]);
+  useEffect(() => { if (latest && ((!initial.attempt_id && (!attempt || latest.attempt_number > attempt.attempt_number)) || latest.id === attempt?.id && latest.revision > attempt.revision)) setAttempt(latest); }, [latest, attempt, initial.attempt_id]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [answerAction, setAnswerAction] = useState(false);

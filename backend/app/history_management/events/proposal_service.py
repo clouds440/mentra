@@ -71,41 +71,6 @@ class EventProposalService:
                 return await run_in_threadpool(self._prepare_result, owner, dict(outcome='awaiting_confirmation', proposal=latest.model_dump(mode='json')))
         return await run_in_threadpool(self._prepare_result, owner, result)
 
-    async def capture(self, owner, scope):
-        from .capture import EventCapture, CAPTURE_CONTEXT, event_candidate
-        from .proposals import EventManage
-        from app.langchain.prompts import PromptSource
-        from app.core.observability.timing import run_in_threadpool
-        source = next((row for row in scope.get('context_rows', []) if row['id'] == scope.get('current_user_message_id') and row['role'] == 'user'), None)
-        if not self.llm or not source or not event_candidate(source['content']):
-            return []
-        preferences = await run_in_threadpool(self.events.preferences, owner)
-        if not preferences['automatic_events']:
-            return []
-        # Reuse canonical proposals on turn retry rather than paying to extract
-        # the same statement or generating different duplicate candidates.
-        prior = await run_in_threadpool(self.repository.for_message, owner, scope['conversation_id'], source['id'])
-        if prior:
-            return [await run_in_threadpool(self._prepare_result, owner, result) for result in prior]
-        import asyncio
-        async with asyncio.timeout(25):
-            captured = await self.llm.ainvoke(PromptSource.EVENT_ADMISSION,
-                dict(user_statement=source['content'], occurred_at=source['created_at'].isoformat(), account_timezone=preferences['timezone'] or source.get('metadata',{}).get('timezone')),
-                system_context=CAPTURE_CONTEXT, output_schema=EventCapture)
-        scope['_event_practice_requested'] = captured.practice_requested
-        results = []
-        for item in captured.events:
-            try:
-                body = EventManage(message_id=source['id'], quote=item.quote, candidate=item.candidate)
-                result = await self.admit(owner, body, scope, capture_admission=item.admission)
-            except Exception as error:
-                from app.langchain.tool_execution import failure, LIFECYCLE_CODES
-                if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
-                    raise
-                result = failure(error, write=True, execution_started=True).model_dump(mode='json')
-            results.append(result)
-        return results
-
     def list(self, owner, conversation_id=None): return self.repository.list(owner, conversation_id)
     def detail(self, owner, identifier): return self.repository.detail(owner, identifier)
 

@@ -21,6 +21,7 @@ class Admission(BaseModel):
     contradicts_existing: bool
     profile_field: bool = False
     credential: bool = False
+    consent_quote: str = Field(default='', max_length=500)
     valid_until: datetime | None = None
     conflicting_memory_ids: list[UUID] = Field(default_factory=list, max_length=5)
 
@@ -39,17 +40,27 @@ class MemoryValidator:
             return dict(outcome='rejected', reason='Evidence must be an exact span of the user message.')
         try:
             import asyncio
+            context = message[:4000]
+            if quote not in context:
+                start = message.index(quote)
+                context = message[:500] + '\n[Source excerpt]\n' + message[max(0, start-500):start+2500]
             result = await asyncio.wait_for(self.llm.ainvoke(PromptSource.MEMORY_VALIDATION,
-                dict(claim=content, evidence_quote=quote, user_message=message[:4000], existing=list(existing),
+                dict(claim=content, evidence_quote=quote, user_message=context, existing=list(existing),
                     source_date=(source_date or datetime.now(timezone.utc)).isoformat()),
                 output_schema=Admission), timeout=12)
         except Exception:
             # Do not persist a possibly sensitive candidate when validation fails.
             return dict(outcome='unavailable', reason='Memory validation was unavailable; nothing was saved.')
+        return self.admit(content, quote, message, existing, result)
+
+    @staticmethod
+    def admit(content, quote, message, existing, result):
+        if SECRET.search(content) or SECRET.search(quote) or quote not in message:
+            return dict(outcome='rejected', reason='Memory requires safe exact user evidence.')
         sensitive = result.sensitive or bool(SENSITIVE.search(content + ' ' + quote))
         if result.credential:
             return dict(outcome='rejected', reason='Credentials and secrets cannot be saved.')
-        consent = result.explicit_remember_request and bool(CONSENT.search(message))
+        consent = result.explicit_remember_request and (bool(CONSENT.search(message)) or bool(result.consent_quote and result.consent_quote in message and result.explicit_user_statement))
         if sensitive and not consent:
             return dict(outcome='rejected', reason='Sensitive information requires an explicit request to remember it.')
         if not result.supported or not result.durable or result.profile_field:

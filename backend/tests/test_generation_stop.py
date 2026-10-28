@@ -74,8 +74,27 @@ class GenerationStopTests(unittest.IsolatedAsyncioTestCase):
         page = chat.status(self.owner, turn['conversation_id'])
         self.assertTrue(page['turn']['can_resume'])
         self.assertEqual(len(page['items']), 2)
-        chat.resume_turn(self.owner, turn['conversation_id'], turn['turn_id'], 1, page['conversation']['revision'])
+        resumed = chat.resume_turn(self.owner, turn['conversation_id'], turn['turn_id'], 1, page['conversation']['revision'])
         self.assertEqual(self.service.generation_jobs.get(self.owner, job['id'])['state'], 'queued')
+        self.assertEqual(resumed['background_response']['content'],'Building your assessment')
+        from app.chat.service import ConversationService
+        async def forbidden(*args): raise AssertionError('Background-only resume must not invoke the model')
+        conversation = ConversationService(chat)
+        await conversation._generate(self.owner,resumed,forbidden)
+        page = chat.status(self.owner,turn['conversation_id'])
+        self.assertEqual(page['turn']['state'],'SUCCEEDED',page)
+        with self.db.sessions.begin() as session:
+            session.execute(update(generation_jobs).where(generation_jobs.c.id==job['id']).values(state='failed',revision=2))
+        page = chat.status(self.owner,turn['conversation_id'],after=2)
+        self.assertEqual(page['items'],[])
+        self.assertEqual(page['turn']['response_outcome']['state'],'failed')
+        self.assertTrue(page['turn']['can_retry'])
+        self.assertEqual(page['turn']['control_action']['id'],job['id'])
+        self.assertEqual(chat.history(self.owner,turn['conversation_id'])['items'][-1]['response_outcome']['state'],'failed')
+        with self.db.sessions.begin() as session:
+            session.execute(update(generation_jobs).where(generation_jobs.c.id==job['id']).values(state='completed',revision=3))
+        self.assertEqual(chat.status(self.owner,turn['conversation_id'])['turn']['response_outcome']['state'],'completed')
+        await conversation.close()
 
     async def test_repaused_job_and_older_source_preserve_newer_messages(self):
         chat = ChatRepository(self.db.sessions)

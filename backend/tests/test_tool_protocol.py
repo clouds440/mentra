@@ -18,7 +18,7 @@ class ToolProtocolTests(unittest.IsolatedAsyncioTestCase):
         scope, rounds = self.scope(), []
         class Model:
             async def ainvoke_messages(model, source, messages, **kwargs):
-                rounds.append(dict(limit=scope['_chat_input_limit'], tools=[tool.name for tool in kwargs.get('tools') or []]))
+                rounds.append(dict(limit=scope['_chat_input_limit'], tools=[getattr(tool, 'name', getattr(tool,'__name__','')) for tool in kwargs.get('tools') or []]))
                 if len(rounds) == 1:
                     return AIMessage(content='', tool_calls=[dict(name='enable_workflow_tools',
                         args=dict(tool_names=['conversation_summary_search']), id='discovery')])
@@ -29,8 +29,8 @@ class ToolProtocolTests(unittest.IsolatedAsyncioTestCase):
         service = SimpleNamespace(events=None, search_summaries=AsyncMock(return_value={'summaries': []}))
         await tool_reply(Model(), [HumanMessage(id='current', content='Find past project discussions.')],
             service, 'owner', scope, (), {'padding': 'x'*12000})
-        self.assertEqual(rounds[0]['limit'], 8192)
-        self.assertLessEqual(rounds[1]['limit'], 12288)
+        self.assertLessEqual(rounds[0]['limit'], 13824)
+        self.assertLessEqual(rounds[1]['limit'], 13824)
         # Smaller policies may fit without expanding to the recovery ceiling.
         # The invariant is that discovery leaves space to execute the lookup.
         self.assertIn('conversation_summary_search', rounds[1]['tools'])
@@ -51,6 +51,8 @@ class ToolProtocolTests(unittest.IsolatedAsyncioTestCase):
         responses = [AIMessage(content='<｜｜DSML｜｜ calls><｜｜DSML｜｜ invoke name="conversation_summary_search">'),
             AIMessage(content='', tool_calls=[dict(name='conversation_summary_search', args={'query': 'project'}, id='native')]),
             AIMessage(content='No matching summaries.')]
+        responses.insert(1, AIMessage(content='', tool_calls=[dict(name='enable_workflow_tools',
+            args={'tool_names':['conversation_summary_search']}, id='discover')]))
         result = await self.protocol_reply(responses, service)
         self.assertEqual(result.content, 'No matching summaries.')
         service.search_summaries.assert_awaited_once()

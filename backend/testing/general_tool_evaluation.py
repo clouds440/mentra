@@ -35,7 +35,7 @@ async def task_costs():
     from uuid import UUID
     from langchain_core.messages import AIMessage,HumanMessage,SystemMessage
     from app.langchain.history_orchestration import tool_reply
-    from app.langchain.planning import plan_request
+    from testing.legacy_keyword_policy import plan_request
     from app.langchain.prompts import get_system_prompt
     from app.langchain.token_policy import count_messages,schema_tokens
     from app.rag.schemas import RetrievalResult
@@ -86,7 +86,7 @@ async def measure():
     from uuid import UUID
     from langchain_core.messages import HumanMessage, SystemMessage
     from app.langchain.history_orchestration import tool_reply
-    from app.langchain.planning import plan_request
+    from testing.legacy_keyword_policy import plan_request
     from app.langchain.prompts import PromptSource,get_system_prompt
     from app.langchain.token_policy import count_messages,schema_tokens
     now=datetime(2026,10,26,tzinfo=timezone.utc)

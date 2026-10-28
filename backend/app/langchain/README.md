@@ -38,13 +38,26 @@ remains available for missing capabilities; general and self-contained queries c
 answer directly. Current high-level profile preferences are read for every request.
 Chat renders the agent's answer without automatic tool/RAG/web limitation banners.
 
-`capabilities.py` owns the tool/domain/outcome catalog. Cheap request hints in
-`request_intent.py` and `planning.py` select candidate schemas without a routing
-model call; the model still chooses actual execution. Web instructions and schemas
-are conditional. Discovery retains newly enabled pending tools across subsequent
-discoveries and can re-enable a pruned tool. Explicit lookup/action goals require
-a domain attempt; explicit practice requires a durable assessment receipt. Missing
-outcomes get at most one bounded repair, then an honest failure/limitation.
+`capabilities.py` owns the configured tool catalog. The main response model selects
+operations semantically from recent conversation and concrete owned references; no
+keyword router or direct-answer approval runs. A lean core is available without
+executing it. Larger tools/UI references use bounded discovery, which drops unused
+default schemas and reserves the requested domain instructions before admission.
+Old keyword-policy comparisons live under `backend/testing/legacy_*` only.
+
+`FinishResponse`, `task_outcomes.py` and receipt validation separate graph termination
+from fulfillment. Ordinary replies need no receipt. Requested operations need actual
+matching receipts; queued work is in progress, native questions await input, and
+unfinished work remains partial/failed with useful content preserved. History/status
+batch-project owner-scoped generation/grading states and expose the correct control.
+Private write receipts survive read-context replacement; unknown writes cannot be
+retried with altered arguments. Recovery data expires with the response's 30-minute
+window. Graph checkpoints and canonical domain operation IDs remain authoritative.
+
+Completed visible assessment handoffs are resolved in one bounded query returning
+only IDs, title and question count. Follow-ups use those identities without searching
+for the assessment again or prefetching its full questions. See the
+[semantic migration and latency plan](../../../docs/Mentra_Semantic_Tool_Orchestration_Migration_Plan_2026-10-28.md).
 
 Ordinary practice defaults to native interactive delivery. Explicit written and
 printable delivery remain available independently of question type. Compact schemas
@@ -53,7 +66,7 @@ Eligible small requests use deterministic structure and one validated content st
 preserving grading/concept checks. Durable public card references can appear before
 final narration; activity never carries answer keys or arbitrary generated UI code.
 
-Optional `web_search(query, website?)` is available independently of history and
+Optional `web_search(query, website?, refresh=false)` is available independently of history and
 RAG when enabled. The domain facade owns provider I/O and shared operational quota;
 the LangChain adapter stages W references until the coordinator admits the exact
 bounded result packet. Web calls never retry automatically. Cached results retain

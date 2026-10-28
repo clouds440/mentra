@@ -3,6 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
 const origin = 'http://127.0.0.1:18003';
+test.afterEach(async ({page},info)=>{
+  if (info.status===info.expectedStatus) return;
+  const chat=new URL(page.url()).pathname.match(/^\/chat\/([^/]+)/)?.[1];
+  if (!chat) return;
+  const response=await page.request.get(`${origin}/api/v1/conversations/${chat}/status`);
+  if (response.ok()) { const value=await response.json(); console.log('Synthetic chat diagnostics',JSON.stringify({turn:value.turn?.state,error:value.turn?.error,outcome:value.turn?.response_outcome})); }
+});
 test('assessment discussion and revisions precede solving, with partial answers continuing in chat', async ({page}, testInfo) => {
   test.setTimeout(90_000);
   await page.goto('/register');

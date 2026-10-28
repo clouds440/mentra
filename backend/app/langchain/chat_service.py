@@ -55,8 +55,7 @@ class ChatService:
             current.content = [dict(type='text', text=current.content), *[image['block'] for image in image_context]]
         for message in conversation:
             if message.type == 'ai':
-                plan = history_runtime[2].get('execution_plan') if history_runtime else None
-                if message.id and message.id == getattr(plan, 'edit_source_id', None):
+                if message.id and history_runtime:
                     from app.web_search.citations import edit_web_links
                     row = next(row for row in history_runtime[2]['context_rows'] if str(row['id']) == message.id)
                     projected = edit_web_links(message.content, row.get('metadata') or {})
@@ -119,7 +118,8 @@ class ChatService:
                 status_code=502,
             ) from exc
 
-        if not isinstance(response.content, str) or not response.content.strip():
+        has_native = bool(history_runtime and any(history_runtime[2].get(key) for key in ('interactions','assessment_cards','event_references','event_proposals')))
+        if not isinstance(response.content, str) or not response.content.strip() and not has_native:
             raise AppError(
                 "AI_PROVIDER_ERROR",
                 "Mentra couldn’t finish this response. Please try again.",

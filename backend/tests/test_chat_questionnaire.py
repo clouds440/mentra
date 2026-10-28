@@ -60,6 +60,7 @@ class QuestionnaireSchemaTests(unittest.IsolatedAsyncioTestCase):
         runtime = ResponseRuntime([], scope, budget, selection, SimpleNamespace())
         snapshot = runtime.capture()
         snapshot['active'] = snapshot['pending'] = ['present_choices']
+        snapshot['policy_version']='response-v2'
         runtime.restore(snapshot)
         self.assertIn('present_questionnaire', selection.active)
 

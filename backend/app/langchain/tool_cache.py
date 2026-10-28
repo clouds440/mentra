@@ -6,7 +6,7 @@ from .concurrent_reads import StagedRead
 from .tool_policy import is_write
 
 
-REVALIDATED_READS = {'assessment_status', 'search_study_material', 'get_study_source_chunk', 'conversation_summary_search'}
+REVALIDATED_READS = {'assessment_status', 'search_study_material', 'get_study_source_chunk', 'conversation_summary_search', 'read_chat_attachment'}
 
 
 def copy_result(value):

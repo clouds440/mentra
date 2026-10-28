@@ -82,6 +82,8 @@ class MemoryRepository:
             if row['revision'] != expected and not (current == 0 and expected == 0 and row['revision'] == 1):
                 raise conflict()
             revision = row['revision'] + 1
+            from .tables import capture_jobs
+            session.execute(delete(capture_jobs).where(capture_jobs.c.learner_id == owner))
             session.execute(update(p).where(p.c.learner_id == owner).values(automatic_memory=body.automatic_memory, revision=revision))
             return dict(automatic_memory=body.automatic_memory, revision=revision, active_limit=self.active_limit, pending_limit=self.pending_limit, manual_limit=1000)
 
@@ -194,6 +196,14 @@ class MemoryRepository:
 
     def _fence(self, session, owner, scope):
         if scope:
+            if scope.get('_capture_claim'):
+                from .memory_capture import current
+                current(session, owner, scope['_capture_claim'])
+                from .memory_summaries import MemorySummaryRepository
+                if not MemorySummaryRepository.current(session, owner, scope.get('_memory_summary_fence')):
+                    from app.summarization.execution import SummaryDeferred
+                    raise SummaryDeferred()
+                return
             from .memory_summaries import MemorySummaryRepository
             if not MemorySummaryRepository.current(session, owner, scope.get('_memory_summary_fence')):
                 raise AppError('MEMORY_CONTEXT_CHANGED', 'Saved memories changed while answering. Retry using current context.', 409)

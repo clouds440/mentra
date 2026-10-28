@@ -7,7 +7,7 @@ from testing.rag import TestChatFactory
 class HistoryChatFactory(TestChatFactory):
     def bind_tools(self, tools, **kwargs):
         self.available_tools = {tool.name for tool in tools if not isinstance(tool,type)}
-        self.final_schema = next((tool for tool in tools if isinstance(tool,type) and tool.__name__ in ('NewChatReply', 'DirectNewChatReply', 'DirectAnswer')),None)
+        self.final_schema = next((tool for tool in tools if isinstance(tool,type) and tool.__name__ in ('FinishResponse', 'NewChatReply', 'DirectNewChatReply', 'DirectAnswer')),None)
         self.announced_tools = {tool.name for tool in tools if not isinstance(tool,type) and 'user_message' in tool.args_schema.model_fields}
         return self
 
@@ -95,7 +95,7 @@ class HistoryChatFactory(TestChatFactory):
             if 'conversation_title' in self.final_schema.model_fields:
                 arguments['conversation_title'] = ' '.join(question.split()[:8])[:80] or 'New chat'
             if 'general_query' in self.final_schema.model_fields:
-                from app.langchain.planning import general_query
+                from testing.legacy_keyword_policy import general_query
                 general = general_query(question)
                 arguments.update(general_query=general, needs_tools=not general, uncertain=False)
             return AIMessage(content='',tool_calls=[dict(name=self.final_schema.__name__, args=arguments,id='final-answer',type='tool_call')])
@@ -125,6 +125,8 @@ class HistoryChatFactory(TestChatFactory):
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',
                     dict(context_id=context['context_id'],topic='Linear equations',count=5,question_format='mcq') if any(any(phrase in str(m.content).lower() for phrase in ('five question mcq', 'interactive quiz', 'clickable options', 'keep mixing up linear equations')) for m in messages if m.type=='human') else dict(context_id=context['context_id'],topic='Linear equations',count=2,question_format='written'), 'assessment-generate')])
             if (results[-1].name or '').startswith('assessment_'):
+                if result.get('outcome')=='queued':
+                    return AIMessage(content='Your assessment is being prepared. Its card will update when ready.')
                 if results[-1].name == 'assessment_generate' and not result.get('reason'):
                     return AIMessage(content='Your interactive quiz is ready. Choose an answer for each question, then submit to see your feedback.' if result.get('assessment_id') else 'Your practice questions are ready. You can answer here or upload an answer sheet.')
                 if results[-1].name == 'assessment_answer' and not result.get('reason'):
@@ -184,7 +186,9 @@ class HistoryChatFactory(TestChatFactory):
                     return AIMessage(content='Received your input: ' + '; '.join(f'{key}: {value}' for key, value in entered.items()))
                 return AIMessage(content='Selected topic IDs: ' + ', '.join(context['interaction_response']['selected']))
             if lowered.startswith(('generate a two question quiz', 'generate a five question mcq', 'give me a five question interactive quiz', 'quiz me with five clickable options questions', 'i keep mixing up linear equations')):
-                return AIMessage(content='',tool_calls=[self.tool_call('get_active_learning_contexts',{},'assessment-context')])
+                mcq=not lowered.startswith('generate a two question quiz')
+                return AIMessage(content='',tool_calls=[self.tool_call('assessment_generate',dict(topic='Linear equations',
+                    concept_names=['Linear equations'],count=5 if mcq else 2,question_format='mcq' if mcq else 'written'),'assessment-generate')])
             if lowered.startswith('explain question 1') and context.get('chat_assessments'):
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_question',
                     dict(draft_id=context['chat_assessments'][0]['draft_id'],number=1),'assessment-question')])
@@ -195,7 +199,7 @@ class HistoryChatFactory(TestChatFactory):
                 import re
                 answers = dict(re.findall(r'(?m)^(\d+)\. (.+)$',question))
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_answer',
-                    dict(draft_id=context['chat_assessments'][0]['draft_id'],answers=answers), 'assessment-answer')])
+                    dict(mode='submit',draft_id=context['chat_assessments'][0]['draft_id'],answers=answers), 'assessment-answer')])
             if lowered.startswith('evaluate this answer sheet') and context.get('chat_assessments'):
                 return AIMessage(content='',tool_calls=[self.tool_call('assessment_answer',
                     dict(draft_id=context['chat_assessments'][0]['draft_id'],attachment_id=context['assessment_answer_attachments'][0]), 'assessment-upload')])

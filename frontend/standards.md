@@ -1,5 +1,7 @@
 # Frontend Engineering Standards
 
+- Response completion follows the server's response outcome, including partial work and live background-job status. Keep useful content visible on failure. The composer retries the owned unfinished job when provided; graph completion alone must not imply task completion.
+
 - The composer has one primary response control: Send (draft), Pause (active work), Resume (paused work), Retry (failed work). Use distinct Lucide icons and semantic theme colors, plus accessible text labels. Typing switches Resume/Retry to Send; clearing restores the prior action without altering server state. Background assessment cards also expose their owned generation controls. A loading or refresh error must not silently remove the ability to pause a known running job.
 - Learning progress displays broader topics with paginated subskills, matching-skill search hints, and evidence details on demand. Preserve the context selector and familiar workspace layout. Show checked-child coverage rather than aggregate topic mastery. Practice defaults to a sample; exact child selection remains optional, survives paging and an owner-scoped tab reload, and is revalidated by the server. Invalidate learning views after renames, moves, grouping and undo; preserve evidence identities and focus restoration.
 

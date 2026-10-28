@@ -92,3 +92,21 @@ summary_jobs = Table('hm_memory_summary_job', metadata,
 TABLES = (*TABLES, summary_state, summary_changes, summary_jobs)
 memories.append_constraint(Index('idx_hm_memory_fts', func.to_tsvector(literal_column("'simple'"), memories.c.content), postgresql_using='gin'))
 Index('idx_hm_memory_trgm', memories.c.content, postgresql_using='gin', postgresql_ops={'content': 'public.gin_trgm_ops'})
+
+# Quiet capture jobs contain source pointers only, never unvalidated candidate text.
+capture_jobs = Table('hm_memory_capture_job', metadata,
+    Column('message_id', Uuid(as_uuid=False), ForeignKey('chat_message.id', ondelete='CASCADE'), primary_key=True), owner(),
+    Column('conversation_id', Uuid(as_uuid=False), nullable=False),
+    Column('turn_id', Uuid(as_uuid=False), ForeignKey('chat_turn.id', ondelete='CASCADE'), nullable=False),
+    Column('source_attempt', BigInteger, nullable=False), Column('preference_revision', BigInteger, nullable=False),
+    Column('content_offset', BigInteger, nullable=False, server_default='0'),
+    Column('queued_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('available_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('lease_token', Uuid(as_uuid=False)), Column('lease_until', DateTime(timezone=True)),
+    Column('attempts', BigInteger, nullable=False, server_default='0'),
+    Column('failed', Boolean, nullable=False, server_default='false'), Column('error_code', Text),
+    Column('completed_at', DateTime(timezone=True)),
+    ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
+    CheckConstraint('content_offset >= 0 AND attempts >= 0 AND source_attempt >= 1 AND preference_revision >= 1', name='memory_capture_bounds'),
+    CheckConstraint('(lease_token IS NULL) = (lease_until IS NULL)', name='memory_capture_lease'),
+    Index('idx_memory_capture_claim', 'completed_at', 'failed', 'available_at', 'lease_until'))

@@ -5,15 +5,15 @@ import signal
 
 
 class Summarizer:
-    def __init__(self, memory, chat):
-        self.consumers = (memory, chat)
+    def __init__(self, memory, chat, capture=None):
+        self.consumers = (memory, chat, capture) if capture is not None else (memory, chat)
         self.next_kind = 0
 
     async def run_once(self):
         # Alternate the first queue checked, even with one execution slot.
         first = self.next_kind
-        self.next_kind = 1-first
-        for index in (first, 1-first):
+        self.next_kind = (first+1) % len(self.consumers)
+        for index in ((first+offset) % len(self.consumers) for offset in range(len(self.consumers))):
             if await self.consumers[index].run_once():
                 return True
         return False
@@ -38,13 +38,19 @@ async def run():
     memories = MemorySummaryRepository(sessions)
     llm = MentraLLM(ModelFactory(settings))
     chats = ChatSummaryConsumer(ChatRepository(sessions), llm)
+    from app.history_management.memory.capture import AutomaticMemories
+    capture = AutomaticMemories(sessions, llm)
     parser = argparse.ArgumentParser()
     parser.add_argument('--retry-owner', type=UUID, help='Owner of the memories or chat to retry.')
     parser.add_argument('--chat', type=UUID, help='With --retry-owner, retry this chat instead of memories.')
     parser.add_argument('--diagnostics', action='store_true')
+    parser.add_argument('--backfill-memories', type=UUID, help='Queue recent original messages for one opted-in owner; never seed example facts.')
     args = parser.parse_args()
     if args.diagnostics:
-        print(dict(memories=memories.diagnostics(), chats=chats.jobs.diagnostics()))
+        print(dict(memories=memories.diagnostics(), chats=chats.jobs.diagnostics(), capture=capture.jobs.diagnostics()))
+        return
+    if args.backfill_memories:
+        print(dict(queued=capture.jobs.backfill(str(args.backfill_memories))))
         return
     if args.chat and not args.retry_owner:
         parser.error('--chat requires --retry-owner')
@@ -54,7 +60,7 @@ async def run():
         else:
             memories.retry(str(args.retry_owner))
         return
-    service = Summarizer(MemorySummaries(memories, llm), chats)
+    service = Summarizer(MemorySummaries(memories, llm), chats, capture)
     stopping = asyncio.Event()
     for name in (signal.SIGTERM, signal.SIGINT):
         signal.signal(name, lambda *_: stopping.set())

@@ -101,6 +101,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
         {isAssistant ? (
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
+            {['partial','failed'].includes(message.response_outcome?.state ?? '') && <p role="status" className="mt-3 text-sm text-warning">{message.response_outcome?.state === 'partial' ? 'Part of this request is unfinished.' : 'This request could not be completed.'} {message.response_outcome?.retryable ? 'You can retry the unfinished step.' : 'See the response or card for what to do next.'}</p>}
             <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && grouped && <ConversationalQuestionnaire cards={inputCards} messageId={message.id} conversationId={message.conversation_id} />}
             {message.conversation_id && message.interactions?.filter(card => !grouped || !inputCards.some(input => input.id === card.id)).map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}

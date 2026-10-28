@@ -28,6 +28,8 @@ messages = Table('chat_message', metadata,
     Index('idx_chat_messages_owner', 'learner_id', 'conversation_id', 'sequence'))
 
 turns = Table('chat_turn', metadata,
+    Column('response_outcome', JSONB(none_as_null=True)), Column('orchestration_policy', Text),
+    Column('recovery_state', JSONB(none_as_null=True)),
     Column('log_context', JSONB, nullable=True),
     Column('id', Uuid(as_uuid=False), primary_key=True), owner(),
     Column('conversation_id', Uuid(as_uuid=False), nullable=False), Column('request_hash', Text, nullable=False),

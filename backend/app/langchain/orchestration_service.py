@@ -7,7 +7,6 @@ from app.chat.context import HistoryContextPolicy
 from app.langchain.prompts import PromptSource, get_system_prompt
 from app.chat.response import ChatResponse
 from .activity import ActivityPublisher
-from app.learner.schemas import LearnerContextRequest
 
 
 from app.core.logging import workflow_logger
@@ -34,7 +33,7 @@ class OrchestrationService:
             return await self._chat_reply(messages, retrieval, owner, history_policy, history_scope)
 
     async def _chat_reply(self, messages, retrieval, owner, history_policy=None, history_scope=None):
-        if history_scope is None and owner and (self.rag is not None or self.web_search is not None and self.web_search.enabled):
+        if history_scope is None and owner:
             from uuid import uuid4
             rows = [dict(id=str(uuid4()), role=role, content=content) for role, content in messages]
             history_scope = dict(context_rows=rows, current_user_message_id=next((row['id'] for row in reversed(rows) if row['role'] == 'user'), str(uuid4())),
@@ -45,7 +44,12 @@ class OrchestrationService:
         from .tool_execution import ToolExecutor
         from langchain_core.tools import StructuredTool
         from pydantic import BaseModel
-        budget = recovery_scope.setdefault('_tool_budget', ToolBudget())
+        # Bounded server preparation is not a model-selected operation. Sharing
+        # its allowance with the coordinator exhausted all six action slots on
+        # an ordinary upload (profile, memories, card identity, preferences,
+        # extraction, discovery), before the requested action could execute.
+        # At most eight preparations, twelve physical attempts, and no writes.
+        budget = ToolBudget(max_calls=12)
         executor = ToolExecutor(budget, recovery_scope, activity)
         class ReadInput(BaseModel):
             request_key: str
@@ -72,43 +76,30 @@ class OrchestrationService:
         query = next((content for role, content in reversed(messages) if role == 'user'), '')
         from .attachment_selection import attachment_ids
         ids = attachment_ids(query, history_scope) if history_scope else []
-        from .planning import plan_request
-        plan = plan_request(query, attachments=bool(ids),
-                            selected_sources=bool(retrieval and (retrieval.document_ids or retrieval.context_ids)),
-                            context_rows=history_scope.get('context_rows', ()) if history_scope else ())
-        modules = {step.module for step in plan.steps}
-        required = {step.module for step in plan.steps if step.required}
-        recovery_scope['execution_plan'] = plan
-        if self.rag is not None and 'rag' in modules:
-            # Modest extra room for targeted refinements, not larger individual
-            # retrieval packets. The coordinator also caps this to prompt space.
-            budget.max_calls = 8
-            budget.max_result_tokens = 4800
-            budget.max_result_bytes = 19200
+        modules = {'chat', 'profile'}
+        required = {'documents'} if ids else set()
+        recovery_scope['orchestration_policy'] = 'semantic-v3'
         from .concurrent_reads import gather_reads
         preparations = []
         def prepare(key, action):
             preparations.append((key, action))
-        if self.assessments is not None and history_scope and not history_scope.get('stateless') and 'assessment' in modules:
-            visible_cards = next((row.get('metadata', {}).get('assessment_cards', []) for row in reversed(history_scope.get('context_rows', [])) if row.get('role') == 'assistant'), [])
-            if plan.assessment_edit and visible_cards and all(card.get('assessment') for card in visible_cards):
-                async def existing_cards(): return visible_cards
-                prepare('assessments', existing_cards)  # Target hints only; revision still reads authoritative owned data.
-            else:
-                prepare('assessments', lambda: read('assessment_lookup', self.assessments.chat.recent, owner, history_scope['conversation_id']))
-        if self.rag is not None and not plan.edit_source_id and retrieval and (retrieval.document_ids or retrieval.context_ids or retrieval.mode != 'STANDARD' or retrieval.include_archived):
+        if self.rag is not None and retrieval and (retrieval.document_ids or retrieval.context_ids or retrieval.mode != 'STANDARD' or retrieval.include_archived):
             prepare('source_selection', lambda: read('validate_study_selection', self.rag.validate_selection,
                 owner, retrieval, required=True))
         if self.history is not None and self.history.profile is not None and 'profile' in modules:
             prepare('profile', lambda: read('profile_context', self.history.profile.prompt_context, owner))
         if self.history is not None and owner and hasattr(self.history, 'summary_context'):
             prepare('memories_summary', lambda: read('memory_summary_context', self.history.summary_context, owner))
-        if self.learner is not None and owner and 'learner' in modules:
-            prepare('learner', lambda: read('get_relevant_learner_context', self.learner.get_relevant_context,
-                LearnerContextRequest(learner_id=owner, query=query[:4000], context_ids=retrieval.context_ids if retrieval else None)))
+        visible_cards=[card for row in recovery_scope.get('context_rows',[])[-8:] if row.get('role')=='assistant'
+            for card in (row.get('metadata') or {}).get('assessment_cards',[])]
+        generation_ids=[card['generation_job_id'] for card in visible_cards if card.get('generation_job_id')]
+        if generation_ids and self.assessments is not None and not recovery_scope.get('stateless'):
+            prepare('visible_assessments', lambda: read('assessment_visible_context',self.assessments.generation_jobs.visible_context,
+                owner,recovery_scope['conversation_id'],generation_ids))
+        if self.event_proposals is not None and not recovery_scope.get('stateless') and getattr(self.history, 'events', None) is not None:
+            prepare('event_preferences', lambda: read('event_preferences', self.history.events.preferences, owner))
         if self.attachments is not None and history_scope and not history_scope.get('stateless'):
             history_scope['assessment_attachment_ids'] = ids
-            answer_upload = 'assessment' in modules and bool(re.search(r'\b(grade|evaluate|mark|answers?|solutions?|answer sheet)\b', query, re.I))
             async def attachment(identifier):
                 image = await run_in_threadpool(self.attachments.image_input, owner, identifier, history_scope['conversation_id'])
                 if image is not None:
@@ -116,34 +107,19 @@ class OrchestrationService:
                 extracted = await read('document_extract', self.attachments.extract, owner, identifier,
                     history_scope['conversation_id'], required='documents' in required, timeout=120)
                 return ('document', self.attachments.context(extracted, query, maximum=8000 // max(1, len(ids))) if extracted is not None else None)
-            for identifier in ([] if answer_upload or plan.direct_candidate else ids):
+            for identifier in ids:
                 prepare('attachment:' + identifier, lambda identifier=identifier: attachment(identifier))
         async with workflow_logger.step('app.langchain.orchestration_service', 'context.prepare', input=dict(operation_count=len(preparations))):
             values = await gather_reads([action for _, action in preparations])
         prepared = dict(zip((key for key, _ in preparations), values))
+        if 'event_preferences' in prepared:
+            recovery_scope['event_preferences'] = prepared.pop('event_preferences')
         await activity.emit('planning', 'completed', 'Your request is ready to process')
-        chat_assessments = prepared.get('assessments') or []
+        chat_assessments = [card for row in (history_scope or {}).get('context_rows', [])[-8:] if row.get('role') == 'assistant' for card in (row.get('metadata') or {}).get('assessment_cards', []) if card.get('assessment')]
         prepared.pop('source_selection', None)  # Scope validation is not retrieved evidence.
         warning = None
         packet = dict(status='not_requested', sources=[])
         kwargs = {}
-        if self.event_proposals is not None and history_scope and not history_scope.get('stateless'):
-            try:
-                captured_events = await self.event_proposals.capture(owner, history_scope)
-                history_scope['_captured_events'] = captured_events
-                for result in captured_events:
-                    if result.get('outcome') == 'unavailable':
-                        from .tool_execution import remember_failure
-                        remember_failure(history_scope, 'event_manage', result)
-                    if result.get('event'):
-                        history_scope.setdefault('event_references', []).append({key:result['event'][key] for key in ('id','title','kind','status','revision','local_date','starts_at','ends_at','timezone','bucket')})
-                    if result.get('proposal'):
-                        history_scope.setdefault('event_proposals', []).append(result['proposal'])
-            except Exception as error:
-                from .tool_execution import failure, remember_failure, LIFECYCLE_CODES
-                if isinstance(error, AppError) and error.code in LIFECYCLE_CODES:
-                    raise
-                remember_failure(history_scope, 'event_manage', failure(error, write=True))
         images, documents = [], []
         for key, value in prepared.items():
             if key.startswith('attachment:') and value[1] is not None:
@@ -164,7 +140,7 @@ class OrchestrationService:
             if prepared['learner'] is not None:
                 recovery_scope['_initial_learner_context'] = prepared['learner'].model_dump(mode='json')
         policy = history_policy or HistoryContextPolicy()
-        if history_scope is not None and (self.history is not None or self.rag is not None or self.web_search is not None and self.web_search.enabled):
+        if history_scope is not None:
             history_scope['activity'] = activity
             history_scope['learner_service'] = self.learner
             history_scope['web_search_service'] = self.web_search
@@ -176,6 +152,7 @@ class OrchestrationService:
             history_scope['current_answer_text'] = query
             history_scope['chat_assessments'] = [dict(draft_id=card['id'], assessment_id=card['assessment_id'],
                 title=card['assessment']['title'], question_count=len(card['assessment']['questions'])) for card in chat_assessments]
+            history_scope['chat_assessments'].extend(prepared.get('visible_assessments') or [])
             history_scope['retrieval_selection'] = retrieval or ChatSelection()
             history_scope['study_sources'] = []
             async def delta(value):
@@ -217,6 +194,8 @@ class OrchestrationService:
         title = history_scope.get('conversation_title') if history_scope else None
         title_fields = dict(conversation_title=title) if title is not None else {}
         warning_fields = dict(tool_warnings=recovery_scope['tool_warnings']) if recovery_scope.get('tool_warnings') else {}
+        if recovery_scope.get('response_outcome'):
+            warning_fields['response_outcome'] = recovery_scope['response_outcome']
         from app.web_search.citations import web_citations
         web_sources = history_scope.get('web_sources', []) if history_scope else []
         if history_scope and history_scope.get('web_searches'):

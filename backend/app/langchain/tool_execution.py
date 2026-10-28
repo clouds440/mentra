@@ -32,6 +32,7 @@ class ToolFailure(BaseModel):
     attempts: int = 0
     task_impact: str = 'optional'
     effect_certainty: str = 'read_only'
+    argument_errors: list[dict] | None = None
 
 
 def failure(error, *, write=False, attempts=0, required=False, execution_started=False):
@@ -72,7 +73,8 @@ def failure(error, *, write=False, attempts=0, required=False, execution_started
     certainty = 'unknown' if write else 'read_only'
     if write and category in ('invalid_arguments', 'authorization', 'not_found', 'confirmation_required', 'budget_exhausted'):
         certainty = 'not_committed'
-    return ToolFailure(code=code, reason=reason, category=category, retryable=retryable and not write,
+    errors = [{'field':'.'.join(map(str,item['loc']))[:200],'type':item['type'][:80]} for item in error.errors(include_input=False,include_url=False,include_context=False)[:4]] if isinstance(error,ValidationError) and not execution_started else None
+    return ToolFailure(code=code, reason=reason, category=category, retryable=retryable and not write, argument_errors=errors,
                        attempts=attempts, task_impact='required_for_part' if required else 'optional', effect_certainty=certainty)
 
 
@@ -161,6 +163,12 @@ class ToolExecutor:
             return value
         write = is_write(name, arguments)
         key = tool_cache_key(tool, name, arguments)
+        uncertain = next((receipt for fingerprint,receipt in self.failed.items()
+            if write and fingerprint.startswith(name+':') and receipt.get('effect_certainty')=='unknown'), None)
+        if uncertain:
+            receipt = dict(uncertain,repeated_failure=True,retryable=False)
+            remember_failure(self.scope,name,receipt)
+            return receipt
         if not write and name not in REVALIDATED_READS and key in self.results:
             workflow_logger.event('tool.cache_hit', tool_name=name, cache_layer='turn',
                 duration_ms=round((monotonic()-started)*1000, 3), tool_call_id=current_tool_call.get())

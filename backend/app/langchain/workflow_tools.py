@@ -45,6 +45,7 @@ QuickPractice = create_model('QuickPractice', __config__=ConfigDict(extra='forbi
 
 class AnswerPractice(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    mode: Literal['prepare', 'submit'] = Field(default='prepare', description='Prepare leaves answers for review. Submit only when the user authorizes grading these answers.')
     draft_id: str | None = Field(default=None, min_length=1, max_length=100)
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
     attempt_id: str | None = Field(default=None, min_length=1, max_length=100,
@@ -123,9 +124,6 @@ def create_workflow_tools(owner, scope, budget):
     service = scope.get('assessment_service')
     if service is not None:
         async def generate(**arguments):
-            if (scope.get('_event_practice_requested') is False and
-                    any(result.get('event') or result.get('proposal') for result in scope.get('_captured_events', []))):
-                return dict(outcome='not_requested', reason='The student announced an event without asking for practice. Acknowledge the captured event, offer preparation advice, and ask whether they want a practice assessment.')
             budget.call(True)
             # Same arguments in a retried turn produce the same operation ID.
             body = GeneratePractice(**arguments)
@@ -156,7 +154,7 @@ def create_workflow_tools(owner, scope, budget):
                 questions=[dict(number=question_reference(q,i), prompt=q['prompt'][:500], marks=q['marks']) for i,q in enumerate(public['questions'],1)],
                 next_step='Use the chat card to add, answer or upload work. Unsaved drafts stay in this conversation.')
 
-        async def answer(draft_id=None, assessment_id=None, attachment_id=None, answers=None, attempt_id=None, new_attempt=False):
+        async def answer(draft_id=None, assessment_id=None, attachment_id=None, answers=None, attempt_id=None, new_attempt=False, mode='prepare'):
             budget.call(True)
             if attempt_id and new_attempt:
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose either an existing attempt or a new attempt.', 422)
@@ -234,7 +232,6 @@ def create_workflow_tools(owner, scope, budget):
                                 reason=error.message if isinstance(error, AppError) else 'Answer extraction could not complete.',
                                 next_step='The assessment is saved. Use the inline card to retry uploading or enter answers. Nothing has been submitted for grading.')
                 else:
-                    import re
                     text = scope['current_answer_text']
                     from app.assessments.blueprint import parse_numbered_answers
                     numbered = parse_numbered_answers(text)
@@ -245,8 +242,7 @@ def create_workflow_tools(owner, scope, budget):
                         key = references[reference]['id']
                         if key in numbered_answers: valid=False; break
                         numbered_answers[key] = answer_text
-                    explicit = bool(re.search(r'\b(evaluate|grade|mark|submit|check)\b',text,re.I)) or text.lstrip().startswith(('1.', '1)'))
-                    if attempt.state == 'draft' and valid and explicit and numbered_answers == mapped and len(mapped)==len(questions):
+                    if attempt.state == 'draft' and valid and mode == 'submit' and numbered_answers == mapped and len(mapped)==len(questions):
                         attempt = await run_in_threadpool(service.submit, owner, str(attempt.id), SubmitAnswers(
                             expected_revision=attempt.revision,client_request_id=operation,answers=mapped))
                     else:
@@ -356,7 +352,7 @@ def create_workflow_tools(owner, scope, budget):
 
         tools.extend([
             StructuredTool.from_function(name='assessment_generate', args_schema=QuickPractice,
-                description='Create a persistent assessment draft for a requested quiz/test/assessment or scored/tracked evaluation, including a one-question quiz. Ordinary onboarding/preferences, conversational questions and one-off ungraded practice use present_choices/request_input or prose instead. Preserve requested type/count; written/printable only when requested. Auto-add follows the student setting; private answers stay hidden. No preliminary learner reads required.', coroutine=generate),
+                description='Create a persistent assessment draft for a requested quiz/test or scored evaluation. For explicit marks, timing, sections or multipart structure, enable assessment_generate_advanced instead. Onboarding/preferences and ungraded conversational questions use present_questionnaire or prose. Preserve type/count; written/printable only when requested. Auto-add follows the student setting; private answers stay hidden. No preliminary learner reads required.', coroutine=generate),
             StructuredTool.from_function(name='assessment_generate_advanced', args_schema=GeneratePractice,
                 description='Create assessments with explicit total marks, timing, sections or multipart paper structure. Same validated practice workflow and delivery controls; preserve exact requested structure. Ordinary quizzes use assessment_generate.', coroutine=generate),
             StructuredTool.from_function(name='assessment_answer', args_schema=AnswerPractice,

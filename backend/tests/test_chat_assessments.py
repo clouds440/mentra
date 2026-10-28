@@ -127,7 +127,7 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
     async def test_complete_numbered_answers_queue_grading_without_extra_review(self):
         conversation,card = await self.draft()
         tool,_ = self.answer_tool(conversation,'Evaluate these answers:\n1. First answer\n2. Second answer')
-        result = await tool.ainvoke(dict(draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
+        result = await tool.ainvoke(dict(mode='submit',draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
         self.assertEqual(result['outcome'],'submitted')
         self.assertTrue(await AssessmentWorker(self.service).run_once())
         self.assertEqual(self.service.repository.attempt(self.owner,result['attempt_id']).state,'graded')
@@ -157,11 +157,11 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
     async def test_direct_submission_retry_rejects_changed_answers(self):
         conversation,card = await self.draft()
         tool,scope = self.answer_tool(conversation,'Evaluate:\n1. First answer\n2. Second answer')
-        result = await tool.ainvoke(dict(draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
+        result = await tool.ainvoke(dict(mode='submit',draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
         scope['current_answer_text']='Evaluate:\n1. Changed answer\n2. Second answer'
         retry = next(t for t in create_workflow_tools(self.owner,scope,ToolBudget()) if t.name=='assessment_answer')
         with self.assertRaises(AppError) as error:
-            await retry.ainvoke(dict(draft_id=card['id'],answers={'1':'Changed answer','2':'Second answer'}))
+            await retry.ainvoke(dict(mode='submit',draft_id=card['id'],answers={'1':'Changed answer','2':'Second answer'}))
         self.assertEqual(error.exception.code,'OPERATION_CONFLICT')
         self.assertEqual(self.service.repository.attempt(self.owner,result['attempt_id']).state,'submitted')
 
@@ -181,7 +181,7 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
     async def test_status_returns_grade_feedback_and_recoverable_card(self):
         conversation,card = await self.draft()
         tool,_ = self.answer_tool(conversation,'Evaluate:\n1. First answer\n2. Second answer')
-        result = await tool.ainvoke(dict(draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
+        result = await tool.ainvoke(dict(mode='submit',draft_id=card['id'],answers={'1':'First answer','2':'Second answer'}))
         await AssessmentWorker(self.service).run_once()
         scope = dict(assessment_service=self.service,conversation_id=conversation)
         status = next(t for t in create_workflow_tools(self.owner,scope,ToolBudget()) if t.name=='assessment_status')

@@ -12,7 +12,7 @@ class Capability:
 
 CAPABILITIES = (
     Capability('history', 'Find earlier conversations and recover original wording.',
-               ('history_lookup', 'conversation_summary_search')),
+               ('history_lookup', 'conversation_summary_search', 'read_chat_attachment')),
     Capability('memory', 'Recall relevant preferences or propose evidence-backed saved facts.', ('user_memory',)),
     Capability('learner', 'Read learning progress and practice priorities; resolve topic identity.',
                ('get_active_learning_contexts', 'get_relevant_learner_context', 'get_study_recommendations',
@@ -44,5 +44,7 @@ def catalog(tools, domains):
         domain = domains.get(tool.name)
         if domain:
             available.setdefault(domain, []).append(tool.name)
-    return {domain: dict(description=OUTCOMES.get(domain, domain), tools=names)
+    return {domain: dict(description=OUTCOMES.get(domain, domain), tools=names,
+        effects={name:('read_or_write' if name=='user_memory' else 'write' if name in WRITES else
+            'input' if name in PRESENTATIONS-{'present_visuals'} else 'display' if name=='present_visuals' else 'read') for name in names})
             for domain, names in available.items()}

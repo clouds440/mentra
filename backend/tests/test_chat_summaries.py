@@ -55,7 +55,7 @@ class SummaryTests(unittest.TestCase):
         from app.history_management.budgets import ToolBudget
         from app.langchain.tool_policy import DOMAINS
         from app.langchain.tool_selection import ToolSelection
-        from app.langchain.planning import plan_request
+        from testing.legacy_keyword_policy import plan_request
         from unittest.mock import Mock
         from pydantic import ValidationError
         from app.history_management.schemas import ConversationSummarySearch
@@ -208,8 +208,9 @@ class SummaryTests(unittest.TestCase):
             history_references=[], memory_references=[], visible_ids=[], evidence_ids={current}, workflow_modules={'history'})
         rounds = []
         async def respond(source, messages, **kwargs):
-            round_number = len(rounds)
+            round_number = len(rounds)-1
             rounds.append(round_number)
+            if round_number == -1: return AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',args=dict(tool_names=['conversation_summary_search','history_lookup']),id='enable')])
             if round_number == 0:
                 return AIMessage(content='', tool_calls=[dict(name='conversation_summary_search',
                     args={'query': keyword}, id='summary', type='tool_call')])
@@ -227,7 +228,7 @@ class SummaryTests(unittest.TestCase):
         response = asyncio.run(tool_reply(llm, [HumanMessage(content='Find our earlier decision.', id=current)],
             HistoryManagement(None, ChatReadFacade(self.chats), None), self.owner, scope, (), {}))
         self.assertIn('original decision was blue', response.content)
-        self.assertEqual(len(rounds), 3)
+        self.assertEqual(len(rounds), 4)
 
     def test_cached_summary_reuses_content_and_detects_other_process_publication(self):
         from sqlalchemy import event
@@ -360,15 +361,15 @@ class SummaryTests(unittest.TestCase):
         async def answer(*args, **kwargs):
             budget = scope['_tool_budget']
             before = budget.max_result_tokens
-            self.assertEqual(scope['_chat_input_limit'], 8192)
-            self.assertTrue(scope['_admit_schemas']([SimpleNamespace(name='expanded')]))
             self.assertEqual(scope['_chat_input_limit'], 12288)
+            self.assertTrue(scope['_admit_schemas']([SimpleNamespace(name='expanded')]))
+            self.assertEqual(scope['_chat_input_limit'], 13824)
             self.assertGreater(budget.max_result_tokens, before)
             self.assertGreater(budget.max_result_bytes, before*4)
             return AIMessage(content='A normal response')
         llm.ainvoke_messages.side_effect = answer
         def schemas(tools):
-            return 9000 if any(getattr(tool, 'name', '') == 'expanded' for tool in tools) else 6000 if tools else 0
+            return 11200 if any(getattr(tool, 'name', '') == 'expanded' for tool in tools) else 5000 if tools else 0
         with patch('app.langchain.history_orchestration.count_tokens_approximately', return_value=100), patch('app.langchain.token_policy.schema_tokens', side_effect=schemas):
             asyncio.run(tool_reply(llm, [HumanMessage(id=identifier, content='A question')], None, self.owner, scope, (), {}))
 
@@ -513,7 +514,7 @@ class SummaryTests(unittest.TestCase):
 
     def test_chat_and_assessment_budgets_are_separate(self):
         config = Settings()
-        self.assertEqual(config.chat_input_tokens, 8192)
+        self.assertEqual(config.chat_input_tokens, 12288)
         self.assertEqual(config.chat_context_window_tokens, 16384)
         self.assertEqual(output_budget(PromptSource.ASSESSMENT_GENERATION, config), 8192)
         with self.assertRaises(AppError):

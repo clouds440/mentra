@@ -26,12 +26,12 @@ class UiSelectionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_common_inputs_are_bound_without_binding_every_visual(self):
         selection, scope = self.selection()
-        self.assertEqual(selection.active, {'present_choices', 'request_input'})
+        self.assertEqual(selection.active, {'present_questionnaire'})
         self.assertIn('present_visuals', selection.catalog['chat']['tools'])
         self.assertNotIn('_ui_topics', scope)
         for name in tuple(selection.active): selection.complete(name)
         await selection.discovery().ainvoke({'ui': ['charts']})
-        self.assertEqual(selection.active, {'present_choices', 'request_input'})
+        self.assertEqual(selection.active, {'present_questionnaire'})
         self.assertEqual(scope['_ui_topics'], ('charts',))
         self.assertNotIn('Required: type,title', get_system_prompt(PromptSource.CHAT))
         self.assertIn('Recharts', get_system_prompt(PromptSource.CHAT))
@@ -62,7 +62,7 @@ class UiSelectionTests(unittest.IsolatedAsyncioTestCase):
     async def test_all_tools_does_not_skip_new_reference_request(self):
         selection, scope = self.selection()
         await selection.discovery().ainvoke({'all_tools': True})
-        await selection.discovery().ainvoke({'all_tools': True, 'ui': ['charts']})
+        await selection.discovery().ainvoke({'ui': ['charts']})
         self.assertIn('charts', scope['_ui_topics'])
 
     async def test_reference_admission_exception_preserves_previous_topics(self):
@@ -89,14 +89,14 @@ class UiCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         return result, rounds, scope
 
     async def test_common_choice_needs_no_discovery_round(self):
-        card = dict(kind='single_choice', question='Which topic?', options=[dict(id='a', label='Algebra'), dict(id='custom', label='My topic', input=dict(label='Topic', kind='short_text'))])
+        card = dict(question='Choose a topic',questions=[dict(id='topic',kind='single_choice', question='Which topic?', options=[dict(id='a', label='Algebra'), dict(id='custom', label='My topic', input=dict(label='Topic', kind='short_text'))])])
         _, rounds, scope = await self.run_rounds([
-            AIMessage(content='', tool_calls=[dict(id='pick', name='present_choices', args=card)]),
+            AIMessage(content='', tool_calls=[dict(id='pick', name='present_questionnaire', args=card)]),
             AIMessage(content='Choose a topic below.'),
         ])
         self.assertEqual(len(rounds), 2)
         self.assertEqual(len(scope['interactions']), 1)
-        self.assertIn('present_choices', {tool.name for tool in rounds[0]['tools']})
+        self.assertIn('present_questionnaire', {getattr(tool,'name','') for tool in rounds[0]['tools']})
         self.assertNotIn(PromptSource.CHAT_UI_CHARTS, rounds[0]['additional_sources'])
 
     async def test_chart_reference_is_added_once_and_retained_in_final_round(self):
@@ -107,7 +107,7 @@ class UiCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         ], scope)
         self.assertNotIn(PromptSource.CHAT_UI_CHARTS, rounds[0]['additional_sources'])
         self.assertEqual(rounds[1]['additional_sources'].count(PromptSource.CHAT_UI_CHARTS), 1)
-        self.assertIsNone(rounds[1]['tools'])
+        self.assertEqual([item.__name__ for item in rounds[1]['tools']], ['FinishResponse'])
         self.assertNotIn(PromptSource.CHAT_UI_DISCLOSURES, rounds[1]['additional_sources'])
 
     async def test_plain_answer_does_not_discover_or_load_advanced_guides(self):

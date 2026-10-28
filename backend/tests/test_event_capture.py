@@ -1,4 +1,6 @@
 import asyncio
+from types import MethodType
+from testing.legacy_event_capture import capture as legacy_capture
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 from datetime import timedelta
@@ -10,8 +12,8 @@ from app.chat.schemas import SendTurn
 from app.chat.repositories.postgres import ChatRepository
 from app.history_management.events.factory import create_events_service
 from app.history_management.events.proposal_service import create_event_proposals
-from app.history_management.events.capture import EventCapture, event_candidate
-from app.langchain.planning import plan_request
+from testing.legacy_event_capture import EventCapture, event_candidate
+from testing.legacy_keyword_policy import plan_request
 
 
 class EventCaptureTests(unittest.TestCase):
@@ -31,6 +33,7 @@ class EventCaptureTests(unittest.TestCase):
         date = (source['created_at'].astimezone(ZoneInfo('Asia/Karachi'))+timedelta(days=1)).date()
         llm.ainvoke.return_value = EventCapture(practice_requested=False, events=[dict(quote=text, candidate=dict(title='LLM Architecture and Training quiz', kind='quiz', timezone='Asia/Karachi', starts_at=f'{date}T09:00:00+05:00'), admission=dict(supported=True, first_party=True, actual_event=True, complete_unambiguous=True, timezone_supported=True, confidence=.99))])
         service = create_event_proposals(self.db.sessions, create_events_service(self.db.sessions), llm)
+        service.capture = MethodType(legacy_capture,service)
         return owner, service, llm, scope
 
     def test_announcement_saved_without_agent_call_and_replayed_without_paid_call(self):
@@ -93,33 +96,17 @@ class EventCaptureTests(unittest.TestCase):
         for text in ('I have a quiz tomorrow. Do not give me practice questions.', 'I have a quiz tomorrow. Explain what a quiz means.'):
             self.assertNotIn('assessment_generate', plan_request(text).tool_names)
 
-    def test_orchestration_captures_before_reply_and_publishes_receipt(self):
+    def test_orchestration_does_not_launch_a_keyword_capture_prepass(self):
         from types import SimpleNamespace
         from app.langchain.orchestration_service import OrchestrationService
         owner, service, _, scope = self.setup_capture()
-        scope.update(history_references=[], memory_references=[], visible_ids=[])
-        chat = Mock()
-        async def reply(messages, **kwargs):
-            self.assertEqual(scope['_captured_events'][0]['outcome'], 'saved')
-            self.assertTrue(scope['event_references'])
-            return 'Your quiz has been added. Would you like to practice?'
-        chat.reply = reply
-        history = SimpleNamespace(events=service.events, profile=None)
-        orchestration = OrchestrationService(chat, history=history, event_proposals=service)
-        response = asyncio.run(orchestration.chat_reply([('user', scope['context_rows'][0]['content'])], None, owner, history_scope=scope))
-        self.assertEqual(len(response.event_references), 1)
-
-    def test_unsolicited_assessment_generation_is_not_executed(self):
-        from app.langchain.workflow_tools import create_workflow_tools
-        from app.history_management.budgets import ToolBudget
-        owner, service, _, scope = self.setup_capture()
-        results = asyncio.run(service.capture(owner, scope))
-        assessments = Mock()
-        scope.update(assessment_service=assessments, _captured_events=results)
-        tool = next(tool for tool in create_workflow_tools(owner, scope, ToolBudget()) if tool.name=='assessment_generate')
-        result = asyncio.run(tool.ainvoke(dict(topic='LLM Architecture and Training', count=5, question_format='mcq')))
-        self.assertEqual(result['outcome'], 'not_requested')
-        assessments.chat.generate.assert_not_called()
+        scope.update(history_references=[],memory_references=[],visible_ids=[])
+        service.capture = AsyncMock(side_effect=AssertionError('No pre-model event extraction'))
+        chat = SimpleNamespace(reply=AsyncMock(return_value='A normal conversation response.'))
+        response=asyncio.run(OrchestrationService(chat,history=SimpleNamespace(events=service.events,profile=None),event_proposals=service)
+            .chat_reply([('user',scope['context_rows'][0]['content'])],None,owner,history_scope=scope))
+        service.capture.assert_not_awaited()
+        self.assertEqual(response.event_references,[])
 
     def test_disabled_auto_capture_has_no_model_cost(self):
         owner, service, llm, scope = self.setup_capture()

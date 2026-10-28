@@ -21,6 +21,11 @@ async def run_response(generate, engine, owner, job):
     # Cancellation leaves the pending node in LangGraph. Invoking None resumes
     # that node; completed nodes and their domain receipts are retained.
     if snapshot.values and not snapshot.next and not job.get('new_instruction'):
-        return snapshot.values['response']
+        prior = snapshot.values['response']
+        from app.langchain.task_outcomes import incomplete_response
+        if incomplete_response(prior) and job['attempt'] > 1:
+            await graph.aupdate_state(config, {}, as_node=START)
+        else:
+            return prior
     result = await graph.ainvoke(None if snapshot.created_at and not job.get('new_instruction') else {}, config, durability='sync')
     return result['response']

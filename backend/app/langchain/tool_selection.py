@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_core.tools import StructuredTool
 from .tool_policy import catalog
-from .prompts.chat_ui import COMMON_TOOLS, UI_TOPICS
+from .prompts.chat_ui import UI_TOPICS
 
 
 class EnableModules(BaseModel):
@@ -20,17 +20,22 @@ class ToolSelection:
         self.tools, self.domains, self.scope = tools, domains, scope
         self.by_name = {tool.name: tool for tool in tools}
         self.catalog = catalog(tools, domains)
-        plan = scope.get('execution_plan')
-        if plan:
-            self.active = set(plan.tool_names) & self.by_name.keys()
-        else:
-            enabled = scope.get('workflow_modules')
-            self.active = {tool.name for tool in tools if enabled is None or domains.get(tool.name) in enabled}
-        self.common = COMMON_TOOLS & self.by_name.keys()
+        self.explicit = set()
+        # Stable lean operations, selected by configuration/availability alone.
+        core = {'web_search', 'search_study_material', 'assessment_generate', 'get_relevant_learner_context',
+                'get_study_recommendations', 'event_lookup'}
+        self.active = core & self.by_name.keys()
+        has_assessment = bool(scope.get('chat_assessments')) or any(row.get('role')=='assistant' and any(card.get('assessment') for card in
+            (row.get('metadata') or {}).get('assessment_cards',[])) for row in scope.get('context_rows',[])[-8:])
+        if has_assessment:
+            self.active.update({'assessment_question','assessment_revise'} & self.by_name.keys())
+        self.common = {'present_questionnaire'} & self.by_name.keys()
         self.active.update(self.common)
         if 'present_visuals' in self.active:
             self.scope['_ui_topics'] = tuple(topic for topic in UI_TOPICS if topic in {*self.scope.get('_ui_topics', ()), 'bars'})
-        self.pending = set(self.active)
+        # Only explicitly requested schemas are sticky through later discovery.
+        # Unused lean defaults must not crowd out the requested specialist tool.
+        self.pending = set()
         self.full_requested = False
 
     def selected(self):
@@ -41,7 +46,6 @@ class ToolSelection:
 
     def discovery(self):
         async def enable(modules=None, tool_names=None, catalog_only=False, all_tools=False, ui=None):
-            self.scope['direct_rejected'] = True  # Discovery means no-tool certainty was not established.
             if catalog_only:
                 return dict(outcome='catalog', capabilities=self.catalog, ui_references=list(UI_TOPICS))
             wanted = set(tool_names or [])
@@ -52,9 +56,8 @@ class ToolSelection:
             for domain in modules or []:
                 wanted.update(tool.name for tool in self.tools if self.domains.get(tool.name) == domain)
             if all_tools:
-                if self.full_requested and set(self.by_name) <= self.active and not requested_topics:
-                    return dict(outcome='already_enabled', tools=sorted(self.active))
-                wanted.update(self.by_name)
+                return dict(outcome='catalog', capabilities=self.catalog,
+                    next_step='Enable exact tool names or a bounded module; loading every schema is unnecessary.')
             rejected = sorted(wanted - self.by_name.keys())
             wanted &= self.by_name.keys()
             proposed = wanted | self.pending | self.common
@@ -66,13 +69,20 @@ class ToolSelection:
             # together. Roll back both if adding them would exceed the budget.
             self.scope['_ui_topics'] = tuple(topic for topic in UI_TOPICS if topic in topics)
             checker = self.scope.get('_admit_schemas')
+            previous_explicit=set(self.explicit)
+            self.explicit.update(wanted)
             def restore_topics():
+                self.explicit=previous_explicit
                 if previous_topics:
                     self.scope['_ui_topics'] = previous_topics
                 else:
                     self.scope.pop('_ui_topics', None)
             try:
                 admitted = not checker or checker([self.by_name[name] for name in proposed])
+                if not admitted and not (wanted & self.common):
+                    smaller=wanted | self.pending
+                    if checker and checker([self.by_name[name] for name in smaller]):
+                        proposed,admitted=smaller,True
             except Exception:
                 restore_topics()
                 raise

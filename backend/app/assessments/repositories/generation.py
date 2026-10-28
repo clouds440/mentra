@@ -1,7 +1,7 @@
 """Owner-scoped, lease-fenced generation with private per-batch checkpoints."""
 from uuid import uuid4
 from datetime import timedelta
-from sqlalchemy import select, update, delete, or_, func
+from sqlalchemy import select, update, delete, or_, func, case
 from app.core.exceptions import AppError
 from app.history_management.repositories.events.postgres import request_hash
 from .tables import generation_jobs as jobs
@@ -67,6 +67,26 @@ class GenerationJobs:
                 if not session.scalar(select(conversations.c.id).where(conversations.c.id==row['conversation_id'], conversations.c.learner_id==owner, conversations.c.deleted_at.is_(None))):
                     raise AppError('ASSESSMENT_JOB_NOT_FOUND', 'Assessment generation unavailable.', 404)
             return self.public(row)
+
+    def visible_context(self, owner, conversation, identifiers):
+        """Resolve visible completed handoffs into lightweight owned card identities."""
+        identifiers=list(dict.fromkeys(identifiers))[:12]
+        if not identifiers: return []
+        with self.repository.sessions() as session:
+            payload=jobs.c.result
+            questions=func.coalesce(payload['assessment']['questions'],payload['questions'])
+            count=case((func.jsonb_typeof(questions)=='array',func.jsonb_array_length(questions)),else_=0)
+            rows=session.execute(select(jobs.c.id,payload['id'].astext.label('result_id'),
+                payload['assessment']['id'].astext.label('draft_assessment_id'),payload['assessment_id'].astext.label('assessment_id'),
+                func.coalesce(payload['assessment']['title'].astext,payload['title'].astext).label('title'),count.label('question_count')).where(jobs.c.learner_id==owner,
+                jobs.c.conversation_id==conversation,jobs.c.id.in_(identifiers),jobs.c.state=='completed')).mappings()
+            result=[]
+            for row in rows:
+                if not row['result_id']: continue
+                result.append(dict(generation_job_id=row['id'],draft_id=row['result_id'] if row['draft_assessment_id'] else None,
+                    assessment_id=row['assessment_id'] if row['draft_assessment_id'] else row['result_id'],
+                    title=row['title'] or 'Practice',question_count=row['question_count']))
+            return result
 
     def retry(self, owner, identifier):
         self.expire_stopped(owner)

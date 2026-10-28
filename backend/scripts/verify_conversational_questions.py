@@ -16,7 +16,7 @@ from app.chat.titles import NewChatReply
 from app.langchain.history_orchestration import tool_reply
 from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import ModelFactory
-from app.langchain.planning import plan_request
+from testing.legacy_keyword_policy import plan_request
 
 
 CASES = (

@@ -3,6 +3,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import * as api from '../services/conversations';
 import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
+import { reconcileOutcome } from '../services/responseOutcome';
 import { ChatCache } from './chatCache';
 import { openBroadcastChannel } from '../utils/broadcastChannel';
 import type { Conversation, MessagePage, PendingTurn, StoredMessage, Turn } from '../types/conversations';
@@ -26,6 +27,7 @@ function sameData(left: unknown, right: unknown): boolean {
 interface ListView { items: Conversation[]; loading: boolean; error: string | null; more: boolean }
 
 class ChatStore {
+  private outcomeRefresh = new Set<string>();
   private interactionDrafts = new Map<string, import('../types/interactions').InteractionDraft>();
   interactionDraft(key: string) { return this.interactionDrafts.get(key); }
   saveInteractionDraft(key: string, value: import('../types/interactions').InteractionDraft | null) {
@@ -104,7 +106,7 @@ class ChatStore {
   stop(clear = false) {
     this.controller.abort(); this.controller = new AbortController(); this.channel?.close(); this.channel = null;
     this.pollers.forEach(timer => clearTimeout(timer)); this.pollers.clear();
-    this.responseStarts.clear();
+    this.responseStarts.clear(); this.outcomeRefresh.clear();
     if (this.cache) void this.cache.close(clear).catch(() => {});
     this.owner = null; this.cache = null; this.cursor = null; this.listCursor = null; this.syncing = null;
     this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
@@ -162,9 +164,9 @@ class ChatStore {
       if (this.alive(signal)) { this.list = { ...this.list, loading: false }; this.publish(); }
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, loading: false, error: this.error(error) }; this.publish(); } }
   }
-  open(id: string, refresh = false, updates = false): Promise<void> {
+  open(id: string, refresh = false, updates = false, outcomes = false): Promise<void> {
     if (!this.owner) return Promise.resolve();
-    const existing = this.loads.get(id); if (existing) return existing;
+    const existing = this.loads.get(id); if (existing) { if (outcomes) this.outcomeRefresh.add(id); return existing; }
     const view = this.view(id), chat = this.chats.get(id);
     if (!chat && this.drafts.has(id) && (!this.pending.has(id) || view.busy)) return Promise.resolve();
     if (view.busy && this.pending.has(id) && !refresh && !updates) return Promise.resolve();
@@ -180,7 +182,7 @@ class ChatStore {
         }
         const loaded = this.loadedMessages.get(id);
         const oldest = loaded?.size ? [...loaded.keys()].reduce((a, b) => Math.min(a, b)) : undefined;
-        let page = await api.getTurn(id, signal, false, updates ? this.sequences.get(id) : undefined);
+        let page = await api.getTurn(id, signal, false, updates && !outcomes ? this.sequences.get(id) : undefined);
         if (!this.alive(signal)) return;
         await this.applyPage(page);
         while (page.incremental && page.has_more && page.next_cursor !== null && this.alive(signal) && !this.deleted.has(id)) {
@@ -207,6 +209,7 @@ class ChatStore {
     void operation.finally(() => {
       if (this.loads.get(id) !== operation) return;
       this.loads.delete(id);
+      if (this.outcomeRefresh.delete(id) && this.alive(signal) && !this.deleted.has(id)) { void this.open(id, false, true, true); return; }
       if (reconciled && this.alive(signal) && !this.deleted.has(id) && this.chatListeners.get(id)?.size && this.view(id).revision < (this.chats.get(id)?.revision ?? 0)) void this.open(id, false, true);
     });
     return operation;
@@ -224,7 +227,10 @@ class ChatStore {
     if (page.conversation.revision < view.revision) return;
     this.mergeChats([page.conversation]);
     const loaded = this.loadedMessages.get(id) ?? new Map<number, StoredMessage>();
-    const incoming = page.items.map(message => { const old = loaded.get(message.sequence); return old && old.id === message.id && old.content === message.content && sameData(old, message) ? old : message; });
+    const incoming = page.items.map(message => { const old = loaded.get(message.sequence);
+      const outcome = reconcileOutcome(old?.id === message.id ? old.response_outcome : undefined, message.response_outcome);
+      const next = outcome === message.response_outcome ? message : {...message, response_outcome:outcome};
+      return old && old.id === next.id && sameData(old, next) ? old : next; });
     incoming.forEach(message => loaded.set(message.sequence, message));
     this.loadedMessages.set(id, loaded);
     if (page.items.length) this.sequences.set(id, Math.max(this.sequences.get(id) ?? 0, ...page.items.map(message => message.sequence)));
@@ -235,7 +241,12 @@ class ChatStore {
     const items = [...values.values()].sort((a,b) => a.sequence - b.sequence);
     const nextMessages = older || page.incremental && view.olderWindow ? items.slice(0, 200) : items.slice(-200);
     const messages = nextMessages.length === view.messages.length && nextMessages.every((message, i) => message === view.messages[i]) ? view.messages : nextMessages;
-    const nextTurn = unresolvedSend ? null : page.turn ?? view.turn;
+    let nextTurn = unresolvedSend ? null : page.turn ?? view.turn;
+    if (nextTurn && view.turn?.id === nextTurn.id && view.turn.attempt === nextTurn.attempt) {
+      const outcome = reconcileOutcome(view.turn.response_outcome, nextTurn.response_outcome);
+      if (outcome !== nextTurn.response_outcome) nextTurn = {...nextTurn,response_outcome:outcome,
+        can_retry:view.turn.can_retry,control_action:view.turn.control_action};
+    }
     const turn = sameData(nextTurn, view.turn) ? view.turn : nextTurn;
     if (view.busy && page.turn && page.turn.state !== 'RUNNING') {
       // A completed user turn may have written through any of the chat tools.
@@ -247,7 +258,7 @@ class ChatStore {
       olderWindow: older && items.length > 200 || (older || page.incremental) && view.olderWindow,
       revision: page.conversation.revision });
     this.publish();
-    await this.persist(() => cache.apply([page.conversation], page.items, []));
+    await this.persist(() => cache.apply([page.conversation], incoming, []));
     if (!this.alive(signal)) return;
     // The answer is visible before IndexedDB finishes. A new send may already
     // own this chat; an older completion must not clear its retry state/timer.
@@ -317,12 +328,38 @@ class ChatStore {
       if (!this.alive(signal) || this.view(id).busy) return;
     }
     const view = this.view(id), signal = this.controller.signal, cache = this.cache!;
+    if (retry && ['generation_retry','grading_retry'].includes(view.turn?.control_action?.kind ?? '')) {
+      this.setView(id, { busy: true, error: null });
+      try {
+        const { assessments } = await import('../services/assessments');
+        const action = view.turn!.control_action!;
+        if (action.kind === 'grading_retry') {
+          const attempt = await assessments.attempt(action.id, signal);
+          if (!this.alive(signal)) return;
+          if (attempt.revision === action.revision && attempt.state === 'failed') {
+            const updated = await assessments.retryEvaluation(attempt, crypto.randomUUID(), signal);
+            if (!this.alive(signal)) return;
+            const { assessmentSession } = await import('./assessmentSession');
+            assessmentSession.observe(this.owner, updated);
+          }
+        } else {
+          const job = await assessments.job(action.id, signal);
+          if (!this.alive(signal)) return;
+          if (job.revision === action.revision && job.can_retry) await assessments.retryJob(action.id, signal);
+        }
+        if (!this.alive(signal)) return;
+        await this.open(id, false, true, true);
+        window.dispatchEvent(new CustomEvent('mentra:assessment-generation', {detail:{conversationId:id, jobId:action.id}}));
+      } catch { if (this.alive(signal)) this.setView(id, {error:'Could not retry the unfinished assessment. Please try again.'}); }
+      finally { if (this.alive(signal)) this.setView(id, {busy:false}); }
+      return;
+    }
     let body = this.pending.get(id);
     if (body && !retry && (body.content !== content || !sameData(body.interaction_response, interactionResponse) || !sameData(body.retrieval, retrieval) || !sameData(body.attachment_ids, attachments.map(file => file.id)))) {
       this.setView(id, { error: 'Retry the original message before sending a different answer.' });
       return;
     }
-    if (retry && !body && view.turn?.state === 'FAILED') {
+    if (retry && !body && (view.turn?.can_retry ?? view.turn?.state === 'FAILED')) {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
       body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };

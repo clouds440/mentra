@@ -10,8 +10,6 @@ class ContinuationDecision(BaseModel):
 
 
 async def is_continuation(llm, original, message) -> Literal['continue', 'change', 'new']:
-    if message.strip().casefold().rstrip('.!') in ('continue', 'resume', 'keep going', 'go on'):
-        return 'continue'
     try:
         result = await asyncio.wait_for(llm.ainvoke(PromptSource.RESPONSE_CONTINUATION,
             {'paused_request': original[:4000], 'new_message': message}, output_schema=ContinuationDecision), 12)

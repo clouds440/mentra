@@ -71,9 +71,14 @@ class ConcurrentDispatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state['evidence_ids'], {'source-user'})
 
     async def run_tools(self, tools, calls, state):
+        from app.langchain.tool_selection import ToolSelection
+        class DiscoveredSelection(ToolSelection):
+            def __init__(self, available, domains, scope):
+                super().__init__(available,domains,scope)
+                self.active.update(tool.name for tool in tools)
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[
             AIMessage(content='', tool_calls=calls), AIMessage(content='Verified answer')]))
-        with patch('app.langchain.workflow_tools.create_workflow_tools', return_value=tools):
+        with patch('app.langchain.workflow_tools.create_workflow_tools', return_value=tools), patch('app.langchain.tool_selection.ToolSelection',DiscoveredSelection):
             result = await tool_reply(model, [HumanMessage(content='Research these topics', id='question')],
                 None, 'owner', state, (), {})
         return result, model
@@ -196,6 +201,8 @@ class ConcurrentDispatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(chat.reply.call_args.kwargs['profile_context'], {'name':'Student'})
         learner.assert_not_called()
         search.assert_not_called()
+        self.assertNotIn('_tool_budget', state)
+        self.assertEqual(state['_tool_execution_state']['failed'], {})
 
 
 class ActivityBatchTests(unittest.IsolatedAsyncioTestCase):

@@ -1,5 +1,5 @@
 """Assessment invocation policy, loaded with assessment capabilities."""
-VERSION = 'chat-assessment-v5'
+VERSION = 'chat-assessment-v6'
 SYSTEM_PROMPT = """Assessment capabilities create saved learning records. Use them only for a
 requested quiz/test/assessment, scored/tracked evaluation or an accepted assessment
 offer. Getting-started questions, preferences, choosing a path and one-off ungraded
@@ -53,3 +53,10 @@ For discussions use assessment_question to read complete wording without startin
 an attempt. Revise only on requested changes; preserve originals and attempts.
 Identify the version before accepting answers if several are present. Do not use
 assessment_answer for a clarification or revision request."""
+
+SYSTEM_PROMPT += """
+assessment_answer mode=prepare keeps typed answers for review; mode=submit requests
+grading only when the student authorizes it. Omitted mode safely prepares. Complete
+verbatim numbered answers, owned targets and domain validation remain required.
+Neither numbered text alone nor an onboarding answer authorizes grading.
+"""

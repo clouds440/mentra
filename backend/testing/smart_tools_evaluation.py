@@ -16,7 +16,7 @@ from app.langchain.assessment_workflows import AssessmentWorkflows
 from app.langchain.history_orchestration import tool_reply
 from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import ModelFactory
-from app.langchain.planning import plan_request
+from testing.legacy_keyword_policy import plan_request
 from app.langchain.prompts import PromptSource, get_system_prompt
 from app.langchain.token_policy import _encoding
 from testing.tool_schema_snapshot import snapshot

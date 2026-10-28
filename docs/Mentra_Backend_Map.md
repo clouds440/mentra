@@ -537,7 +537,9 @@ All production Python files are indexed once below, including package markers. A
 | [`backend/app/langchain/llm.py`](../backend/app/langchain/llm.py) | Shared LangChain invocation component with mandatory prompt-source selection. |
 | [`backend/app/langchain/model_factory.py`](../backend/app/langchain/model_factory.py) | Reuses configured OpenAI-compatible models; applies DeepSeek thinking/tool settings and cache-usage normalization for that endpoint. |
 | [`backend/app/langchain/orchestration_service.py`](../backend/app/langchain/orchestration_service.py) | Prepares trusted context including memory summaries, coordinates tools/events/files and assembles the final validated chat response. |
-| [`backend/app/langchain/planning.py`](../backend/app/langchain/planning.py) | Validated execution allocation. Tool selection remains model-driven. |
+| [`backend/app/langchain/decision_schemas.py`](../backend/app/langchain/decision_schemas.py) | Typed semantic final decisions and response outcomes. |
+| [`backend/app/langchain/task_outcomes.py`](../backend/app/langchain/task_outcomes.py) | Receipt-backed fulfillment and legacy outcome projection. |
+| [`backend/app/langchain/recovery_receipts.py`](../backend/app/langchain/recovery_receipts.py) | Private completed-write continuity across read-context refresh. |
 | [`backend/app/langchain/profile_bridge.py`](../backend/app/langchain/profile_bridge.py) | Re-exports deterministic learning-to-profile projection for use inside an existing owner transaction. |
 | [`backend/app/langchain/profile_evaluator.py`](../backend/app/langchain/profile_evaluator.py) | Specialized structured evaluator, using Mentra's configured model factory. |
 | [`backend/app/langchain/prompts/__init__.py`](../backend/app/langchain/prompts/__init__.py) | Exports PromptSource and the versioned prompt lookup functions. |

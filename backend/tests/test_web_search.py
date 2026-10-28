@@ -211,10 +211,10 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_web_tool_visible_without_eager_search(self):
         self.setup_service()
-        from app.langchain.planning import plan_request
+        from testing.legacy_keyword_policy import plan_request
         self.scope['execution_plan'] = plan_request('Explain gravity')
         selection = ToolSelection([self.tool], {'web_search': 'web'}, self.scope)
-        self.assertEqual(selection.active, set())
+        self.assertEqual(selection.active, {'web_search'})
         self.assertIn('web_search', selection.catalog['web']['tools'])
         await selection.discovery().ainvoke(dict(tool_names=['web_search']))
         self.assertEqual(selection.active, {'web_search'})

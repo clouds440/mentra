@@ -1,6 +1,6 @@
 """Thin adapter: bounded evidence, staged citations, dated reuse and public website progress."""
 import json
-import re
+from pydantic import Field
 from time import monotonic
 from uuid import uuid4
 from langchain_core.messages import HumanMessage
@@ -11,6 +11,10 @@ from .token_policy import count_messages
 from .workflow_budget import current_budget
 from .activity import current_publisher, current_tool_call
 from .concurrent_reads import project_read
+
+
+class ChatSearchInput(SearchInput):
+    refresh: bool = Field(default=False, description='True when the user requests a new search or fresh verification instead of cached evidence.')
 
 
 def compact_receipt(result):
@@ -83,9 +87,9 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
     if not attempt_id.strip(':'):
         attempt_id = scope.setdefault('_web_ephemeral_attempt', uuid4().hex)
 
-    async def fetch(query, website=None):
+    async def fetch(query, website=None, refresh=False):
         request = SearchInput(query=query, website=website)
-        key = request.model_dump_json()
+        key = request.model_dump_json() + (':refresh' if refresh else '')
         if budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0) < 600 or budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0) < 600:
             return service.envelope('budget_exhausted', website=request.website).model_dump(mode='json')
         if key in cache:
@@ -105,8 +109,7 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
                 await publisher.emit(step[:76] + '-web', 'running',
                     'Researching the web with You.com' if research else f'Searching {request.website}' if request.website else 'Searching the web with You.com',
                     tool_name=name, websites=sites)
-            bypass = bool(re.search(r"\b(search again|fresh search|recheck|bypass (?:the )?cache|(?:do not|don't) use (?:the )?cache)\b", scope.get('current_answer_text', ''), re.I))
-            result = await service.search(request, owner=owner, attempt_id=attempt_id, deadline=deadline, bypass_cache=bypass)
+            result = await service.search(request, owner=owner, attempt_id=attempt_id, deadline=deadline, bypass_cache=refresh)
             cache[key] = result.model_dump(mode='json')
             if publisher:
                 sites = list({source.domain: dict(domain=source.domain, favicon_url=source.favicon_url) for source in result.sources}.values())
@@ -134,10 +137,10 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))[:10]
         return value
 
-    async def search(query, website=None):
-        return project_read(project, await fetch(query, website))
+    async def search(query, website=None, refresh=False):
+        return project_read(project, await fetch(query, website, refresh))
 
-    tools = [StructuredTool.from_function(name=name, args_schema=SearchInput,
+    tools = [StructuredTool.from_function(name=name, args_schema=ChatSearchInput,
         description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.'), coroutine=search, metadata={'parallel_read': True})]
     extra = getattr(service, 'research', None)
     if not research and extra is not None and extra.enabled:

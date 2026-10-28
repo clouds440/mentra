@@ -17,6 +17,13 @@ export function AssessmentGenerationCard({ id, title, onComplete }: { id: string
   const completed = useRef(false), callback = useRef(onComplete); callback.current = onComplete;
   const retryController = useRef<AbortController>();
   const observedState = useRef<string>();
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if ((event as CustomEvent).detail?.jobId === id) setReload(value => value+1);
+    };
+    window.addEventListener('mentra:assessment-generation', changed);
+    return () => window.removeEventListener('mentra:assessment-generation', changed);
+  }, [id]);
   function publish(value: GenerationJob) {
     setJob(value);
     if (observedState.current !== value.state) {

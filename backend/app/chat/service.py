@@ -8,11 +8,19 @@ from .context import HistoryContextPolicy
 logger = logging.getLogger('mentra')
 
 
+def request_outcome(value):
+    turn=value.get('turn') or {}
+    state=(turn.get('response_outcome') or {}).get('state')
+    return {'completed':'success','failed':'failed','partial':'degraded','in_progress':'deferred',
+        'awaiting_input':'deferred','paused':'deferred'}.get(state) or {
+        'FAILED':'failed','RUNNING':'deferred','SUCCEEDED':'success'}.get(turn.get('state'),'unknown')
+
+
 from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success', policies={
     'send': {'request_outcome': True, 'result': lambda value: dict(domain_status=value.get('turn', {}).get('state', 'unknown')),
-             'outcome': lambda value: {'FAILED':'failed','RUNNING':'deferred','SUCCEEDED':'success'}.get(value.get('turn', {}).get('state'), 'unknown')},
+             'outcome': request_outcome},
 })
 class ConversationService:
     def __init__(self, repository, policy=None, summary_llm=None, admission=None):
@@ -189,6 +197,8 @@ class ConversationService:
             else:
                 invocation = lambda: generate(history, job['selection'])
             from app.langchain.graphs.response import run_response
+            if job.get('background_response'):
+                async def invocation(): return job['background_response']
             generation = asyncio.ensure_future(run_response(invocation,
                 self.repository.sessions.kw['bind'], owner, job))
             watcher = asyncio.create_task(self._watch_active(owner, job, generation, scope if with_scope else None))
@@ -202,16 +212,32 @@ class ConversationService:
                 await activity_sink.flush()
             if with_scope and scope.get('_memory_summary_fence'):
                 response['_memory_summary_fence'] = scope['_memory_summary_fence']
+            if scope:
+                from app.langchain.recovery_receipts import capture_recovery
+                job['_recovery_state'] = capture_recovery(scope)
             await run_in_threadpool(self.repository.finish, owner, job, response, None)
             from app.core.observability.context import current
-            if current.get().outcome == 'unknown':
-                current.get().outcome = 'degraded' if response.get('retrieval_warning') or response.get('tool_warnings') else 'success'
+            if current.get() and current.get().outcome == 'unknown':
+                outcome = (response.get('response_outcome') or {}).get('state')
+                current.get().outcome = 'failed' if outcome == 'failed' else 'degraded' if outcome == 'partial' or response.get('retrieval_warning') or response.get('tool_warnings') else 'deferred' if outcome in ('in_progress','awaiting_input') else 'success'
         except asyncio.CancelledError:
+            if scope:
+                from app.langchain.recovery_receipts import capture_recovery
+                job['_recovery_state'] = capture_recovery(scope)
             if scope and scope.get('_memory_context_changed'): job['_discard_checkpoint'] = True
             message = 'Saved memories changed while answering. Retry this message to use current context.' if scope and scope.get('_memory_context_changed') else 'Generation interrupted. Retry this message.'
             await run_in_threadpool(self.repository.finish, owner, job, None, message)
             raise
         except Exception as error:
+            job['_failure_code']=error.code if isinstance(error,AppError) else 'CHAT_INTERNAL_ERROR'
+            partial = None
+            if scope:
+                from app.langchain.recovery_receipts import capture_recovery, partial_response
+                job['_recovery_state'] = capture_recovery(scope)
+                # Lifecycle failures must not publish after stop/deletion or
+                # reuse invalidated context. The repository still fences writes.
+                if job['_failure_code'] not in ('CHAT_RESUME_CONTEXT_CHANGED','CHAT_ATTEMPT_EXPIRED','CHAT_STALE_ATTEMPT','CHAT_DELETED','CHAT_NOT_FOUND'):
+                    partial = partial_response(scope,job['_failure_code'])
             if isinstance(error, AppError) and error.code == 'CHAT_RESUME_CONTEXT_CHANGED': job['_discard_checkpoint'] = True
             from app.core.observability.context import current
             if current.get():
@@ -219,7 +245,7 @@ class ConversationService:
             message = error.message if isinstance(error, AppError) else 'Mentra could not complete this response. Retry this message.'
             if not isinstance(error, AppError):
                 logger.error('Persistent chat generation failed (%s)', type(error).__name__)
-            await run_in_threadpool(self.repository.finish, owner, job, None, message)
+            await run_in_threadpool(self.repository.finish, owner, job, partial, None if partial else message)
         finally:
             if activity_sink is not None:
                 await activity_sink.close()

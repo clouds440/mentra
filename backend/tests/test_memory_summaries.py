@@ -242,7 +242,7 @@ class MemorySummaryTests(unittest.TestCase):
         self.assertFalse(fits([dict(text='x'*300, supports=[])], small))
 
     def test_prompt_relevance_and_registry(self):
-        self.assertEqual(get_prompt_version(PromptSource.MEMORY_SUMMARY), 'memory-summary-v1')
+        self.assertEqual(get_prompt_version(PromptSource.MEMORY_SUMMARY), 'memory-summary-v2')
         for source in (PromptSource.CHAT, PromptSource.HISTORY_MANAGEMENT):
             prompt = get_system_prompt(source)
             self.assertIn('unrelated', prompt)

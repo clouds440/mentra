@@ -6,6 +6,14 @@ from app.rag.schemas import SourceReference, ChatSelection
 
 
 class ChatResponse(BaseModel):
+    response_outcome: dict | None = None
+    @field_validator('response_outcome')
+    @classmethod
+    def validated_outcome(cls, value):
+        if value is None:
+            return None
+        from app.langchain.decision_schemas import ResponseOutcome
+        return ResponseOutcome.model_validate(value).model_dump(mode='json')
     role: Literal["assistant"] = "assistant"
     content: str
     conversation_title: str | None = Field(default=None, max_length=80)

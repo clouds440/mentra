@@ -22,8 +22,8 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
   context, exact/keyword history recovery, and an owner-scoped tool for searching
   past conversation summaries before retrieving original exchanges. Summary search
   supports pagination and marks incomplete coverage; referenced messages can be
-  recovered by ID from selected owned chats. Normal chat input is 8,192 tokens,
-  with a bounded 12,288-token recovery allowance and a separate 2,048-token output
+  recovered by ID from selected owned chats. Normal chat input is bounded at 12,288 tokens,
+  with a 13,824-token recovery allowance and a separate 2,048-token output
   reserve. Original displayed messages remain intact.
 - **Rich answers:** Markdown, shared Prism code blocks, equations, citations,
   Mermaid diagrams, Recharts graphs, colored emphasis, on-demand icons, comparison

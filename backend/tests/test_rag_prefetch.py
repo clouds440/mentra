@@ -23,7 +23,7 @@ class PrefetchTests(unittest.IsolatedAsyncioTestCase):
             calls.append(request)
             if failure:
                 raise AppError('RAG_UNAVAILABLE','private retrieval failure',503)
-            return RetrievalResult(status='no_eligible_sources') if drop_source and len(calls)>1 else passage()
+            return RetrievalResult(status='no_eligible_sources') if drop_source else passage()
         rag.search.side_effect=search
         scope=dict(conversation_id='chat',current_user_message_id='user',user_sequence=3,attachment_ids=[],context_rows=[dict(id='user',role='user',content='Refactor this source file')],history_references=[],memory_references=[],visible_ids=[],evidence_ids=set())
         rounds=[]
@@ -56,7 +56,7 @@ class PrefetchTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unused_successful_prefetch_is_not_context_or_citations(self):
         result,calls,scope,rounds=await self.run_chat()
-        self.assertEqual(len(calls),1)
+        self.assertEqual(len(calls),0)
         self.assertEqual(len(rounds),1)
         self.assertEqual(result.sources,[])
         self.assertEqual(result.retrieval_status,'not_requested')
@@ -74,7 +74,7 @@ class PrefetchTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_requested_tool_delivers_passages_and_citations(self):
         result,calls,scope,rounds=await self.run_chat(wants_rag=True)
-        self.assertEqual(len(calls),2)
+        self.assertEqual(len(calls),1)
         self.assertEqual(len(rounds),2)
         self.assertEqual(result.citations,['S1'])
         self.assertEqual(result.retrieval_scope.context_ids,['context'])
@@ -87,6 +87,6 @@ class PrefetchTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_tool_revalidates_instead_of_delivering_stale_prefetch(self):
         result,calls,_,_=await self.run_chat(wants_rag=True,drop_source=True)
-        self.assertEqual(len(calls),2)
+        self.assertEqual(len(calls),1)
         self.assertEqual(result.sources,[])
         self.assertEqual(result.retrieval_status,'no_eligible_sources')

@@ -1,5 +1,5 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v8'
+VERSION = 'chat-ui-v9'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example, '
                    'then wait for student input. The card appears below your final reply, not above it. '
@@ -20,13 +20,14 @@ defaults. Participation alone is not a saved assessment, grade or mastery eviden
 Only the final reply is displayed as answer text; prose alongside earlier tool
 calls is not shown. For a new concept, the final reply MUST include the short
 teaching example/explanation alongside the activity, not only a direction to select.
-For consequential missing input use present_choices/request_input (already bound).
+For consequential missing input use present_questionnaire (already bound).
 For related questions use present_questionnaire ONCE with all questions and options
 in its questions array (up to 20); mix single_choice/multiple_choice/short_text/long_text.
 The learner navigates and submits the whole set together. Never split a getting-started
 interview across separate present_choices calls, drop questions/options, replace failed
 cards with prose, or ask the same pending questions again. Wait for the complete answer.
-Use present_choices for a standalone decision; request_input for a standalone form.
+present_questionnaire also supports a single decision or text question. Legacy
+present_choices/request_input remain discoverable for specialized existing flows.
 A custom-text option MUST set
 input={"label":"Your topic","kind":"short_text"}. Forms support up to four fields.
 Never claim success without a receipt, fill answers, invent learner evidence or treat

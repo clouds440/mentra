@@ -17,6 +17,8 @@ export interface PendingTurn {
   resume_from?: string;
 }
 export interface Turn {
+  response_outcome?: import('./chat').ResponseOutcome;
+  control_action?: import('./chat').ResponseOutcome['control_action'];
   can_resume?: boolean; can_retry?: boolean; can_stop?: boolean; resume_until?: string | null;
   attempt: number;
   id: string; state: 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error: string | null;

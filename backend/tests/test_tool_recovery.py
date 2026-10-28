@@ -10,7 +10,7 @@ from langchain_core.tools import StructuredTool
 from app.core.exceptions import AppError
 from app.history_management.budgets import ToolBudget
 from app.langchain.activity import ActivityPublisher, publish_activity
-from app.langchain.planning import plan_request, general_query
+from testing.legacy_keyword_policy import plan_request, general_query
 from app.langchain.tool_execution import ToolExecutor
 from app.langchain.tool_selection import ToolSelection
 from app.langchain.history_orchestration import tool_reply
@@ -237,12 +237,13 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
 class DiscoveryTests(unittest.IsolatedAsyncioTestCase):
     async def test_full_toolbox_is_available_once_under_admission_budget(self):
         async def invoke(): return {}
-        selection = ToolSelection([tool('history_lookup', invoke), tool('event_lookup', invoke)], {'history_lookup':'history', 'event_lookup':'events'}, {'workflow_modules':{'chat'}})
+        selection = ToolSelection([tool('history_lookup', invoke), tool('event_manage', invoke)], {'history_lookup':'history', 'event_manage':'events'}, {'workflow_modules':{'chat'}})
         selection.scope['_admit_schemas'] = lambda tools: True
         result = await selection.discovery().ainvoke({'all_tools':True})
-        self.assertEqual(result['newly_enabled'], ['event_lookup', 'history_lookup'])
+        self.assertEqual(result['outcome'], 'catalog')
+        self.assertEqual(selection.selected(), [])
         result = await selection.discovery().ainvoke({'all_tools':True})
-        self.assertEqual(result['outcome'], 'already_enabled')
+        self.assertEqual(result['outcome'], 'catalog')
     async def test_missing_service_never_claims_enabled(self):
         async def invoke(): return {}
         selection = ToolSelection([tool('history_lookup', invoke, 'history')], {'history_lookup': 'history'}, {'workflow_modules': {'chat'}})
@@ -254,20 +255,31 @@ class DiscoveryTests(unittest.IsolatedAsyncioTestCase):
     async def test_exact_discovery_prunes_used_schema_and_catalog_is_bounded(self):
         async def invoke(): return {}
         scope = {'workflow_modules': {'history'}}
-        selection = ToolSelection([tool('history_lookup', invoke), tool('event_lookup', invoke)], {'history_lookup': 'history', 'event_lookup': 'events'}, scope)
+        selection = ToolSelection([tool('history_lookup', invoke), tool('event_manage', invoke)], {'history_lookup': 'history', 'event_manage': 'events'}, scope)
         selection.complete('history_lookup')
-        result = await selection.discovery().ainvoke({'tool_names': ['event_lookup']})
-        self.assertEqual(result['newly_enabled'], ['event_lookup'])
-        self.assertEqual([t.name for t in selection.selected()], ['event_lookup'])
+        result = await selection.discovery().ainvoke({'tool_names': ['event_manage']})
+        self.assertEqual(result['newly_enabled'], ['event_manage'])
+        self.assertEqual([t.name for t in selection.selected()], ['event_manage'])
         catalog = await selection.discovery().ainvoke({'catalog_only': True})
         self.assertIn('events', catalog['capabilities'])
         scope['_admit_schemas'] = lambda tools: False
         result = await selection.discovery().ainvoke({'modules': ['history']})
         self.assertEqual(result['code'], 'TOOL_SCHEMA_LIMIT')
-        self.assertEqual([t.name for t in selection.selected()], ['event_lookup'])
+        self.assertEqual([t.name for t in selection.selected()], ['event_manage'])
 
 
 class DirectAnswerTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        # Execution-focused tests start from an already discovered catalog.
+        # Semantic discovery itself is covered separately without this fixture.
+        class DiscoveredSelection(ToolSelection):
+            def __init__(self, tools, domains, scope):
+                super().__init__(tools, domains, scope)
+                self.active.update({'history_lookup', 'get_active_learning_contexts'} & self.by_name.keys())
+        patcher = patch('app.langchain.tool_selection.ToolSelection', DiscoveredSelection)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     async def reply(self, responses, *, first=False, query='Explain photosynthesis'):
         scope = dict(current_user_message_id='question', current_answer_text=query, history_references=[], memory_references=[],
                      execution_plan=plan_request(query), workflow_modules={'chat'}, history_token_budget=4096)
@@ -284,23 +296,23 @@ class DirectAnswerTests(unittest.IsolatedAsyncioTestCase):
     async def test_general_answer_and_title_take_one_model_call(self):
         response = AIMessage(content='', tool_calls=[dict(name='DirectNewChatReply', id='final', args=dict(content='Plants convert light into chemical energy.', conversation_title='Photosynthesis', general_query=True, needs_tools=False, uncertain=False))])
         result, calls, scope = await self.reply([response], first=True)
-        self.assertIsInstance(result, DirectNewChatReply)
+        self.assertEqual(scope['conversation_title'], 'Photosynthesis')
         self.assertEqual(len(calls), 1)
         self.assertEqual(scope['_tool_budget'].calls, 0)
-        self.assertEqual([getattr(t, 'name', getattr(t, '__name__', '')) for t in calls[0]['tools']], ['present_questionnaire', 'present_choices', 'request_input', 'enable_workflow_tools', 'DirectNewChatReply'])
+        self.assertEqual([getattr(t, 'name', getattr(t, '__name__', '')) for t in calls[0]['tools']], ['present_questionnaire', 'enable_workflow_tools', 'FinishResponse'])
         self.assertIsNone(calls[0]['on_delta'])
 
-    async def test_uncertain_candidate_is_rejected_and_clarification_allowed(self):
-        rejected = AIMessage(content='', tool_calls=[dict(name='DirectAnswer', id='bad', args=dict(content='A speculative answer.', general_query=True, needs_tools=False, uncertain=True))])
-        clarification = AIMessage(content='', tool_calls=[dict(name='DirectAnswer', id='clarify', args=dict(content='Which topic would you like explained?', general_query=False, needs_tools=True, uncertain=True))])
-        result, calls, scope = await self.reply([rejected, clarification])
-        self.assertTrue(scope['direct_rejected'])
-        self.assertEqual(len(calls), 2)
-        self.assertEqual(result.content, 'Which topic would you like explained?')
+    async def test_model_can_ask_a_direct_clarification_without_approval_fields(self):
+        response = AIMessage(content='', tool_calls=[dict(name='FinishResponse', id='clarify', args=dict(content='Which topic?', outcome='awaiting_input'))])
+        result, calls, scope = await self.reply([response])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(result.content, 'Which topic?')
+        self.assertEqual(scope['response_outcome']['state'], 'awaiting_input')
 
-    async def test_missing_approval_cannot_be_bypassed_on_second_plain_answer(self):
-        with self.assertRaises(AppError):
-            await self.reply([AIMessage(content='First unapproved answer'), AIMessage(content='Second unapproved answer')])
+    async def test_plain_provider_answer_does_not_need_keyword_approval(self):
+        result, calls, scope = await self.reply([AIMessage(content='A direct answer')])
+        self.assertEqual(result.content, 'A direct answer')
+        self.assertEqual(len(calls), 1)
 
     async def test_bad_title_preserves_only_an_approved_general_answer(self):
         response = AIMessage(content='', tool_calls=[dict(name='DirectNewChatReply', id='final', args=dict(content='Plants use light energy.', conversation_title='x' * 100, general_query=True, needs_tools=False, uncertain=False))])
@@ -368,7 +380,7 @@ class DirectAnswerTests(unittest.IsolatedAsyncioTestCase):
             await tool_reply(Model(), [HumanMessage(content='Recall', id='question')], SimpleNamespace(events=None), 'owner', scope, (), {})
         action.assert_not_awaited()
         self.assertEqual(len(rounds), 3)
-        self.assertIsNone(rounds[-1]['tools'])
+        self.assertEqual([item.__name__ for item in rounds[-1]['tools']], ['FinishResponse'])
         self.assertEqual(scope['_tool_budget'].calls, 2)
 
     async def test_parallel_reads_preserve_success_and_distinct_call_ids(self):

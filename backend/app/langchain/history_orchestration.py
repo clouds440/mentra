@@ -1,7 +1,7 @@
 """Bounded LangGraph coordinator over trusted domain tools."""
 import asyncio
 import json
-import re
+from hashlib import sha256
 from .concurrent_reads import StagedRead, staging_reads, gather_reads
 from .tool_cache import tool_cache_key, REVALIDATED_READS, copy_result
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage
@@ -15,15 +15,19 @@ from pydantic import ValidationError
 
 
 async def tool_reply(llm, conversation, service, owner, scope, additional_sources, context, *, output_schema=None):
+    from .recovery_receipts import restore_recovery
+    restore_recovery(scope)
     budget = scope.setdefault('_tool_budget', ToolBudget())
     from .activity import ActivityPublisher
     from .tool_execution import ToolExecutor, failure, remember_failure, LIFECYCLE_CODES
-    from .tool_policy import DOMAINS, is_write, DirectAnswer, DirectNewChatReply, approved_direct
+    from .tool_policy import DOMAINS, is_write
     from .tool_selection import ToolSelection
-    from .planning import general_query, direct_content_safe
     publisher = scope.get('activity', ActivityPublisher())
     executor = ToolExecutor(budget, scope, publisher)
     tools = create_history_tools(service, owner, scope, budget) if service is not None else []
+    if scope.get('attachment_service') is not None:
+        from .attachment_tools import create_attachment_tools
+        tools.extend(create_attachment_tools(scope['attachment_service'], owner, scope, budget))
     web = scope.get('web_search_service')
     if web is not None and web.enabled and owner:
         from .web_tools import create_web_tools
@@ -70,6 +74,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     tools.extend(create_workflow_tools(owner, scope, budget))
     from app.chat.interactions import create_interaction_tools
     tools.extend(create_interaction_tools(owner, scope, budget))
+    if scope.get('stateless'):
+        tools = [tool for tool in tools if not is_write(tool.name,{})]
     domains.update({tool.name: DOMAINS[tool.name] for tool in tools if tool.name in DOMAINS})
     for tool in tools:
         tool.metadata = dict(tool.metadata or {}, domain=domains.get(tool.name, 'unknown'))
@@ -83,98 +89,33 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     def selected():
         return [*[tool for tool in selection.selected() if domains.get(tool.name) not in executor.outages], discovery]
     dispatch = {tool.name: tool for tool in tools}
-    additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY)))
-    if getattr(scope.get('execution_plan'), 'edit_source_id', None):
-        additional_sources = (*additional_sources, PromptSource.RESPONSE_EDIT)
+    additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY, PromptSource.SEMANTIC_ORCHESTRATION)))
     def prompt_sources(available_tools):
         from .prompts.chat_ui import UI_TOPICS
         topics = set(scope.get('_ui_topics', ()))
         if any(getattr(tool, 'name', '') == 'present_visuals' for tool in available_tools):
             topics.add('bars')
         ui_sources = tuple(PromptSource('chat_ui_' + topic) for topic in UI_TOPICS if topic in topics)
-        personal = any(domains.get(getattr(tool, 'name', '')) in ('history', 'memory') for tool in available_tools)
-        rag = any(domains.get(getattr(tool, 'name', '')) == 'rag' for tool in available_tools) or bool(scope.get('study_sources'))
-        assessment = any(domains.get(getattr(tool, 'name', '')) == 'assessment' for tool in available_tools) or any(domains.get(name) == 'assessment' for name in selection.active) or bool(scope.get('chat_assessments'))
-        external = any(domains.get(getattr(tool, 'name', '')) == 'web' for tool in available_tools) or bool(scope.get('web_sources') or scope.get('web_searches'))
+        used = set(scope.get('_selected_operations', [])) | selection.explicit
+        personal = any(domains.get(name) in ('history','memory') for name in used)
+        rag = any(domains.get(name) == 'rag' for name in used) or bool(scope.get('study_sources'))
+        assessment = any(domains.get(name) == 'assessment' for name in used)
+        external = any(domains.get(name) == 'web' for name in used) or bool(scope.get('web_sources') or scope.get('web_searches'))
         return tuple(dict.fromkeys((*ui_sources, *additional_sources, *([PromptSource.WEB_SEARCH] if external else []), *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
     instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
     from .token_policy import schema_tokens
-    plan = scope.get('execution_plan')
-    required_outcome = getattr(plan, 'required_outcome', None)
-    initial_cards = len(scope.get('assessment_cards', []))
-    initial_interactions = len(scope.get('interactions', []))
-    def missing_assessment():
-        return required_outcome == 'assessment' and len(scope.get('assessment_cards', [])) <= initial_cards
-    def check_completion(response, iteration, final):
-        attempted = scope.get('_attempted_domains', set())
-        required = set(getattr(plan, 'required_domains', []))
-        if scope.get('_captured_events'):
-            required.discard('events')
-        missing = required - attempted
-        pending_input = [card for card in scope.get('interactions', [])[initial_interactions:]
-                         if card.get('kind') in ('single_choice', 'multiple_choice', 'text_input', 'form', 'questionnaire')]
-        if (missing or missing_assessment()) and pending_input and not (
-                missing_assessment() and scope.get('_assessment_attempted')):
-            # A native clarification defers assessment creation just as it
-            # defers a lookup. Static visuals and old cards are not a request
-            # for input, and a failed generation still needs its honest receipt.
-            content = ('Choose an option below so I can continue with your request.'
-                       if all(card['kind'] in ('single_choice', 'multiple_choice') for card in pending_input)
-                       else 'Answer below so I can continue with your request.')
-            return dict(response=AIMessage(content=content), done=True)
-        if missing:
-            candidates = [tool for tool in tools if domains.get(tool.name) in missing
-                          and domains.get(tool.name) not in executor.outages
-                          and tool.name in getattr(plan, 'tool_names', [])]
-            binding_unavailable = any(warning.get('tool_name') == 'tool_binding' for warning in scope.get('tool_warnings', []))
-            if not final and not binding_unavailable and not scope.get('_outcome_repaired') and candidates:
-                if admit_schemas([*selection.selected(), *[tool for tool in candidates if tool.name not in selection.active]]):
-                    scope['_outcome_repaired'] = True
-                    selection.active.update(tool.name for tool in candidates)
-                    selection.pending.update(tool.name for tool in candidates)
-                    conversation.append(SystemMessage(content='The requested lookup or action has no execution receipt. Use the relevant bound capability, or report that it is unavailable; do not substitute an unverified answer or promise.'))
-                    from app.core.logging import workflow_logger
-                    workflow_logger.event('routing.outcome_repair', required_domains=sorted(missing))
-                    return dict(iteration=iteration+1, response=None, done=False)
-            remember_failure(scope, 'request_completion', dict(code='REQUEST_OUTCOME_INCOMPLETE',
-                reason='A requested lookup or action could not be verified.',task_impact='required_for_part',effect_certainty='not_started'))
-            # Preserve every completed domain card/receipt while refusing to
-            # publish fabricated personal/current facts or action claims.
-            return dict(response=AIMessage(content='I couldn’t complete all the requested lookups or actions. Any saved results are shown below; please try the unfinished part again.'), done=True)
-        if not missing_assessment():
-            return None
-        if scope.get('_assessment_attempted'):
-            # A failed/uncertain generation is not permission to substitute a
-            # prose quiz. Keep other saved results and never retry the write.
-            return dict(response=AIMessage(content='I couldn’t create the requested assessment. Please try again; any completed results are preserved below.'), done=True)
-        generator = 'assessment_revise' if getattr(plan, 'assessment_edit', False) else next((name for name in getattr(plan, 'tool_names', [])
-                          if name in ('assessment_generate', 'assessment_generate_advanced') and name in selection.by_name), 'assessment_generate')
-        binding_unavailable = any(warning.get('tool_name') == 'tool_binding' for warning in scope.get('tool_warnings', []))
-        if not final and not binding_unavailable and not scope.get('_outcome_repaired') and generator in selection.by_name:
-            candidates = [*selection.selected(), *([] if generator in selection.active else [selection.by_name[generator]])]
-            if not admit_schemas(candidates):
-                raise AppError('CHAT_CONTEXT_LIMIT', 'This request needs a little more room for the quiz. Please shorten it and try again.', 422)
-            scope['_outcome_repaired'] = True
-            selection.active.add(generator)
-            selection.pending.add(generator)
-            # The next round budgets the real schema before invoking the model.
-            conversation.append(SystemMessage(content=f'The requested assessment has not been created. Use {generator} to provide a native assessment card; a prose quiz does not complete this request.'))
-            from app.core.logging import workflow_logger
-            workflow_logger.event('routing.outcome_repair', required_outcome='assessment')
-            return dict(iteration=iteration+1, response=None, done=False)
-        raise AppError('ASSESSMENT_UNAVAILABLE', 'I couldn’t open the quiz controls. Please try again.', 503)
-    direct_candidate = bool(plan and plan.direct_candidate)
-    answer_schema = DirectNewChatReply if direct_candidate and output_schema else DirectAnswer if direct_candidate else output_schema
+    from .decision_schemas import FinishResponse
+    from .task_outcomes import finalize, record_receipt, receipt_id
+    answer_schema = FinishResponse
     context = dict(context, capabilities=selection.catalog)
-    if scope.get('_captured_events'):
-        context['event_capture'] = dict(results=scope['_captured_events'],
-            guidance='Acknowledge saved events using these canonical receipts. Review pending details when needed. Offer preparation advice and ask whether practice is wanted; an event announcement alone is not a request to create an assessment. Do not recreate captured events.')
     summary = scope.get('conversation_summary')
     if summary and summary['through_sequence'] < scope['user_sequence']:
         context['conversation_summary'] = dict(summary, state='ready')
     if scope.get('retrieval_selection'):
         selection_scope = scope['retrieval_selection']
         context['study_source_selection'] = dict(mode=selection_scope.mode, document_count=len(selection_scope.document_ids or []), context_count=len(selection_scope.context_ids or []))
+    from .context_envelope import visible_context
+    context.update(visible_context(scope))
     context = dict(context, history_scope=dict(current_user_message_id=scope['current_user_message_id'],
         visible_user_messages=[dict(id=x.id, excerpt=str(x.content)[:100]) for x in conversation if x.type == 'human' and x.id][-8:]))
     if scope.get('interaction_response'):
@@ -191,7 +132,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         for message in conversation if isinstance(message.content, list) for block in message.content)
     current_question = next((message for message in reversed(conversation) if message.type == 'human'), None)
     current_cost = count_tokens_approximately([current_question]) if current_question is not None else 0
-    edit_source_id = getattr(plan, 'edit_source_id', None)
+    # Protect the latest complete artifact when it fits, independent of wording.
+    # Earlier artifacts remain recoverable through owner-scoped history lookup.
+    latest_artifact = next((message for message in reversed(conversation) if message.type == 'ai' and message.id), None)
+    edit_source_id = latest_artifact.id if latest_artifact and count_tokens_approximately([latest_artifact]) <= 4096 else None
     edit_index = next((index for index, message in enumerate(conversation) if message.type == 'ai' and message.id == edit_source_id), None) if edit_source_id else None
     if edit_source_id and edit_index is None:
         raise AppError('CHAT_EDIT_SOURCE_REQUIRED', 'The original response is not available here. Please paste it or specify which response to revise.', 422)
@@ -208,7 +152,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     recent_reserve = min(history_target,
         max(0, count_tokens_approximately(conversation) - current_cost))
     minimum = system_cost + current_cost + recent_reserve + 1056
-    input_limit = settings.chat_input_tokens if minimum + 600 <= settings.chat_input_tokens else max(settings.chat_input_tokens, settings.chat_recovery_input_tokens)
+    context_ceiling = settings.chat_context_window_tokens - settings.chat_output_token_reserve - 256
+    ordinary_limit = min(settings.chat_input_tokens, context_ceiling)
+    recovery_limit = min(settings.chat_recovery_input_tokens, context_ceiling)
+    input_limit = ordinary_limit if minimum + 600 <= ordinary_limit else max(ordinary_limit, recovery_limit)
     scope['_chat_input_limit'] = input_limit
     result_space = max(0, input_limit - system_cost - current_cost - recent_reserve - 1056)
     result_token_ceiling, result_byte_ceiling = budget.max_result_tokens, budget.max_result_bytes
@@ -224,9 +171,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             conversation.pop(0)
     if available < count_tokens_approximately(conversation):
         raise AppError('CHAT_CONTEXT_LIMIT', 'Question, study sources and tool schemas exceed the model context budget.', 422)
-    if edit_source_id and not any(message.id == edit_source_id for message in conversation):
-        raise AppError('CHAT_CONTEXT_LIMIT', 'The complete response is too large to revise safely here. Please paste the part you want changed.', 422)
     scope['visible_ids'] = [message.id for message in conversation if message.id]
+    for artifact in context.get('visible_artifacts', []):
+        artifact['available'] = artifact['message_id'] in scope['visible_ids']
     scope['evidence_ids'] = {message.id for message in conversation if message.type == 'human' and message.id}
     context['history_scope']['visible_user_messages'] = [x for x in context['history_scope']['visible_user_messages'] if x['id'] in scope['evidence_ids']]
     system_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
@@ -241,8 +188,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         # Fitting schemas alone is insufficient: discovery must leave room for
         # its receipt and a real lookup, rather than forcing the next round final.
         required = total + 1024 + min(1024, result_token_ceiling)
-        if required > input_limit and required <= settings.chat_recovery_input_tokens:
-            input_limit = settings.chat_recovery_input_tokens
+        if required > input_limit and required <= recovery_limit:
+            input_limit = recovery_limit
             scope['_chat_input_limit'] = input_limit
         admitted = required <= input_limit
         if admitted:
@@ -262,45 +209,23 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
 
     def validate_output(arguments):
         try:
-            validated = answer_schema.model_validate(arguments)
-            if direct_candidate and not scope.get('_domain_tool_used'):
-                query = scope.get('current_answer_text', '')
-                if not approved_direct(validated) or not (general_query(query) or edit_source_id) or not direct_content_safe(validated.content):
-                    if len(validated.content) <= 300 and validated.content.strip().endswith('?') and direct_content_safe(validated.content):
-                        return validated  # A clarification is not approval of a general answer.
-                    raise AppError('DIRECT_ANSWER_REJECTED', 'The answer needs tools or clarification. Select the needed capability; do not bypass missing evidence.', 422)
-            return validated
+            return FinishResponse.model_validate(arguments)
         except ValidationError:
-            # A bad title must not discard an otherwise valid answer.
-            content = arguments.get('content') if isinstance(arguments, dict) else None
-            if isinstance(content, str) and content.strip():
-                if direct_candidate and not scope.get('_domain_tool_used'):
-                    # Ignore only a title error, never missing eligibility fields.
-                    try:
-                        direct = DirectAnswer.model_validate({key: value for key, value in arguments.items() if key != 'conversation_title'})
-                    except ValidationError:
-                        direct = None
-                    if direct and approved_direct(direct) and (general_query(scope.get('current_answer_text', '')) or edit_source_id) and direct_content_safe(content):
-                        return AIMessage(content=content)
-                else:
-                    return AIMessage(content=content)
-            raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
+            # Only a title error can be repaired without changing semantics.
+            if isinstance(arguments, dict) and arguments.get('conversation_title') is not None:
+                return FinishResponse.model_validate(dict(arguments, conversation_title=None))
+            raise
 
     async def model_round(state):
-        nonlocal repairs, answer_schema
+        nonlocal repairs
         iteration = state['iteration']
-        receipt = scope.get('_assessment_receipt')
-        if (receipt and receipt.get('title') and required_outcome == 'assessment'
-                and getattr(plan, 'intent', None) == 'assessment' and not scope.get('tool_warnings')
-                and not getattr(plan, 'required_domains', [])
-                and not re.search(r'\b(?:explain|also|why|compare|research|then|summari[sz]e|translate|list|show|calculate|search|save|remember|and (?:tell|write|draft|create|generate))\b', scope.get('current_answer_text', ''), re.I)):
-            # The native card is the complete result. Its validated public title
-            # supplies acknowledgment/title without paying for another model pass.
-            from app.chat.titles import NewChatReply, provisional_title
-            response = NewChatReply(content=receipt['title'], conversation_title=provisional_title(receipt['title'])) if output_schema else AIMessage(content=receipt['title'])
-            from app.core.logging import workflow_logger
-            workflow_logger.event('routing.outcome_complete', outcome_kind='assessment', state=receipt['state'], final_model_skipped=True)
-            return dict(response=response, done=True)
+        if state.get('finish_decision'):
+            decision = validate_output(state['finish_decision'])
+            receipt = scope.get('_assessment_receipt')
+            if not decision.content and receipt and receipt.get('title'):
+                decision.content = ('Preparing ' if receipt['state'] == 'pending' else '') + receipt['title']
+            finalize(scope, decision)
+            return dict(response=decision.model_dump(mode='json'), done=True)
         # Tool results are never trimmed into orphan messages.
         from .workflow_budget import current_budget
         envelope = current_budget.get()
@@ -312,13 +237,16 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             ('deadline', bool(envelope and envelope.remaining <= envelope.answer_reserve)),
             ('result_budget', results_full)) if condition]
         final = bool(final_reasons)
-        if direct_candidate and scope.get('_domain_tool_used'):
-            answer_schema = output_schema
         available_tools = [] if final else selected()
         if answer_schema is not None:
             available_tools = [*available_tools, answer_schema]
         if scope.get('tool_warnings'):
             context['missing_context'] = scope['tool_warnings']
+        context['action_receipts'] = [{key:task[key] for key in ('id','operation','state','job_id','job_kind') if key in task}
+            for task in scope.get('_task_receipts',{}).values() if not task.get('superseded_by')]
+        if scope.get('attempt',1)>1:
+            context['recovery'] = dict(attempt=scope['attempt'],kind='resume' if scope.get('resume') else 'retry',
+                prior_outcome=scope.get('response_outcome'))
         runtime_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
         sources = prompt_sources(available_tools)
         round_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *sources))
@@ -335,7 +263,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
                 additional_sources=sources, system_context=runtime_context, tools=available_tools or None,
                 **({'tool_choice': answer_schema.__name__ if final else 'required'} if answer_schema else {}),
-                on_delta=None if answer_schema or scope.get('tool_warnings') or required_outcome or getattr(plan, 'required_domains', []) else scope.get('on_delta'))
+                on_delta=None)
         except Exception as error:
             from .provider_protocol import ProviderProtocolError
             if isinstance(error, ProviderProtocolError):
@@ -347,13 +275,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 await publisher.emit('protocol-repair', 'failed', 'The tool request was invalid. Correcting it once.', error_code='TOOL_PROTOCOL_INVALID')
                 return dict(iteration=iteration+1, response=None, done=False, repair=True)
             from openai import BadRequestError
-            unsupported = isinstance(error, (NotImplementedError, AttributeError)) or (isinstance(error, BadRequestError)
+            unsupported = isinstance(error, NotImplementedError) or (isinstance(error, BadRequestError)
                 and any(word in str(error).lower() for word in ('tools', 'function', 'tool_choice'))
                 and any(word in str(error).lower() for word in ('not supported', 'unsupported', 'unknown parameter')))
             if not unsupported:
                 raise
-            if not direct_candidate or scope.get('_domain_tool_used'):
-                remember_failure(scope, 'tool_binding', dict(code='TOOL_BINDING_UNAVAILABLE', reason='This model provider cannot run the requested tools. Lookups and actions remain unverified.', task_impact='required_for_part'))
+            remember_failure(scope, 'tool_binding', dict(code='TOOL_BINDING_UNAVAILABLE', reason='This model provider cannot run the requested tools. Lookups and actions remain unverified.', task_impact='optional'))
             # Providers without tool binding still support ordinary grounded chat.
             fallback_context = runtime_context + '\nAll listed domain tools are unavailable through this provider. Do not claim a lookup or action was performed.'
             if answer_schema:
@@ -369,57 +296,39 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             await publisher.emit('protocol-repair', 'failed', 'The tool request was invalid. Correcting it once.', error_code='TOOL_INVALID_ARGUMENTS')
             return dict(iteration=iteration+1, response=None, done=False, repair=True)
         if not isinstance(response, AIMessage) or not response.tool_calls:
-            if answer_schema and isinstance(response.content, str):
-                try:
-                    payload = json.loads(response.content)
-                except (ValueError, TypeError):
-                    payload = None
-                if isinstance(payload, dict):
-                    try:
-                        response = validate_output(payload)
-                    except AppError as error:
-                        if direct_candidate and error.code in ('DIRECT_ANSWER_REJECTED', 'AI_PROVIDER_ERROR') and not final and repairs < 1:
-                            repairs += 1
-                            budget.call()
-                            scope['direct_rejected'] = True
-                            conversation.append(SystemMessage(content='Direct-answer eligibility was not established. Use the capability catalog and tools or ask for clarification.'))
-                            return dict(iteration=iteration+1, response=None, done=False, repair=True)
-                        raise
-                elif direct_candidate and not scope.get('_domain_tool_used'):
-                    if final or scope.get('direct_rejected'):
-                        raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
-                    scope['direct_rejected'] = True
-                    repairs += 1
-                    budget.call()
-                    conversation.append(SystemMessage(content='No-tool approval fields were missing. Select the required capability or clarify; do not treat the prior candidate as verified.'))
-                    return dict(iteration=iteration+1, response=None, done=False, repair=True)
-            completion = check_completion(response, iteration, final)
-            return completion or dict(response=response, done=True)
-        if answer_schema:
-            outputs = [call for call in response.tool_calls if call['name'] == answer_schema.__name__]
-            if outputs:
-                if len(response.tool_calls) != 1:
-                    if repairs >= 1 or final:
-                        raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
-                    repairs += 1
-                    budget.call()
-                    conversation.append(SystemMessage(content='The final answer was mixed with pending actions and nothing executed. Return only the needed tool calls or only the final answer schema.'))
-                    await publisher.emit('protocol-repair', 'failed', 'The response mixed pending actions with an answer. Correcting it once.', error_code='TOOL_PROTOCOL_INVALID')
-                    return dict(iteration=iteration+1, response=None, done=False)
-                try:
-                    validated = validate_output(outputs[0]['args'])
-                    completion = check_completion(validated, iteration, final)
-                    return completion or dict(response=validated, done=True)
-                except AppError as error:
-                    if direct_candidate and error.code in ('DIRECT_ANSWER_REJECTED', 'AI_PROVIDER_ERROR') and not final and repairs < 1:
-                        repairs += 1
-                        budget.call()
-                        scope['direct_rejected'] = True
-                        conversation.append(SystemMessage(content='Direct-answer approval failed. Use relevant tools or clarify the missing information.'))
-                        return dict(iteration=iteration+1, response=None, done=False, repair=True)
-                    raise
+            content = getattr(response, 'content', '')
+            try:
+                payload = json.loads(content) if isinstance(content, str) else None
+            except (ValueError, TypeError):
+                payload = None
+            decision = validate_output(payload) if isinstance(payload, dict) else FinishResponse(content=content if isinstance(content,str) else '')
+            finalize(scope, decision)
+            return dict(response=decision.model_dump(mode='json'), done=True)
+        outputs = [call for call in response.tool_calls if call['name'] in ('FinishResponse', 'NewChatReply', 'DirectAnswer', 'DirectNewChatReply')]
+        if outputs:
+            if len(response.tool_calls) != 1:
+                if len(outputs) == 1 and not outputs[0]['args'].get('content'):
+                    decision = validate_output(outputs[0]['args'])
+                    actions = [call for call in response.tool_calls if call not in outputs]
+                    return dict(response=response.model_copy(update={'tool_calls':actions}),
+                        finish_decision=decision.model_dump(mode='json'), done=False)
+                if repairs >= 1 or final:
+                    raise AppError('AI_PROVIDER_ERROR', 'The response mixed an answer with unfinished actions. Please retry.', 502)
+                repairs += 1
+                conversation.append(SystemMessage(content='No actions executed. Return only needed native tool calls OR FinishResponse; never mix finalization with pending actions.'))
+                return dict(iteration=iteration+1, response=None, done=False)
+            arguments = {key:value for key,value in outputs[0]['args'].items() if key not in ('general_query','needs_tools','uncertain')}
+            try:
+                decision = validate_output(arguments)
+                finalize(scope, decision)
+            except (AppError, ValidationError):
+                if repairs >= 1 or final: raise
+                repairs += 1
+                conversation.append(SystemMessage(content='Final response validation failed. Use only actual receipt IDs and honest task outcomes. Correct the final envelope without repeating completed actions.'))
+                return dict(iteration=iteration+1, response=None, done=False)
+            return dict(response=decision.model_dump(mode='json'), done=True)
         if final:
-            raise AppError('AI_PROVIDER_ERROR', 'Mentra couldn’t finish this response. Please try again.', 502)
+            raise AppError('AI_PROVIDER_ERROR', 'The response did not finish within its tool budget. Please retry the unfinished part.', 502)
         if len(response.tool_calls) > 6:
             raise AppError('TOOL_BUDGET', 'The provider requested too many tools in one response.', 422)
         return dict(response=response, done=False)
@@ -462,18 +371,16 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                             return dict(outcome='rejected', code='TOOL_INVALID_ARGUMENTS', reason='The announcement did not match the selected capability.', category='invalid_arguments', effect_certainty='not_started')
                 from app.core.logging import workflow_logger
                 async with workflow_logger.step('app.langchain.history_orchestration', 'tool.dispatch', input=dict(tool_name=tool.name), request=arguments) as execution:
-                    required = bool(plan and any(step.required and step.module == domains.get(tool.name) for step in plan.steps))
-                    result = await executor.execute(tool, arguments, required=required)
-                    if not isinstance(result, dict) or result.get('category') != 'invalid_arguments' and result.get('code') not in ('TOOL_INVALID_ARGUMENTS', 'TOOL_UNKNOWN', 'TOOL_NOT_ENABLED'):
-                        domain = domains.get(tool.name)
-                        # A read in the same domain does not fulfill a requested
-                        # mutation. Count a relevant attempted operation, including
-                        # its honest failure/review receipt, never a different tool.
-                        from .planning import fulfills_domain_attempt
-                        if domain and fulfills_domain_attempt(plan, domain, tool.name, arguments, scope.get('current_answer_text', '')):
-                            scope.setdefault('_attempted_domains', set()).add(domain)
-                        if tool.name in ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise'):
-                            scope['_assessment_attempted'] = True
+                    write_key = sha256((tool_cache_key(tool, tool.name, arguments) + json.dumps(scope.get('resume_instruction') or '')).encode()).hexdigest()
+                    committed = scope.setdefault('_committed_tool_results', {})
+                    if is_write(tool.name, arguments) and write_key in committed:
+                        return copy_result(committed[write_key])
+                    result = await executor.execute(tool, arguments)
+                    if is_write(tool.name, arguments) and isinstance(result, dict):
+                        from .tool_execution import outcome_status
+                        if outcome_status(result)[0] not in ('failed','degraded'):
+                            committed[write_key] = copy_result(result)
+                    scope.setdefault('_selected_operations', []).append(tool.name)
                     execution.response(result.payload if isinstance(result, StagedRead) else result)
                     status = result.get('outcome') if isinstance(result, dict) else None
                     from .tool_execution import outcome_status
@@ -521,6 +428,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             retrieval_before = scope.get('retrieval_status')
             retrieval_context_before = scope.get('retrieval_context_ids')
             accounted = False
+            result = None
             staged_identity = None
             try:
                 if position not in pending and independent(call):
@@ -562,10 +470,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         scope['_repair_exhausted'] = True
                     else:
                         repairs += 1
-                content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))
-                full_content = content
-                if content in budget.delivered and call['name'] not in ('web_search', 'web_research'):
-                    content = json.dumps(dict(same_result_as=budget.delivered[content]), separators=(',', ':'))
+                full_content = json.dumps(result, ensure_ascii=False, default=str, separators=(',', ':'))
+                content = json.dumps(dict(result,receipt_id=receipt_id(scope,call['id'])),ensure_ascii=False,default=str,separators=(',', ':')) if isinstance(result,dict) else full_content
+                if full_content in budget.delivered and call['name'] not in ('web_search', 'web_research'):
+                    content = json.dumps(dict(same_result_as=budget.delivered[full_content],receipt_id=receipt_id(scope,call['id'])), separators=(',', ':'))
                 try:
                     budget.consume(content, reserve_tokens=reserved_tokens, reserve_bytes=reserved_bytes)
                     accounted = True
@@ -630,6 +538,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     from .web_tools import dated_failure
                     receipt = dated_failure(scope, receipt)
                 remember_failure(scope, call['name'], receipt)
+                result = receipt
                 content = json.dumps(receipt)
             # Error receipts are bounded too. Keep the minimum truthful result if
             # the optional details exhausted the ordinary result packet.
@@ -641,6 +550,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     if call['name'] in ('web_search', 'web_research'):
                         from .web_tools import dated_failure
                         content = json.dumps(dated_failure(scope, dict(code='TOOL_BUDGET')))
+            record_receipt(scope, call, result if isinstance(result, dict) else json.loads(content))
             conversation.append(ToolMessage(content=content, tool_call_id=call['id'], name=call['name']))
         return dict(iteration=state['iteration']+1)
 
@@ -651,5 +561,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     runtime = ResponseRuntime(conversation, scope, budget, selection, executor)
     with model_budget(), publish_activity(publisher):
         response = await coordinate(model_round, dispatch_round, checkpoint=scope.get('_response_checkpoint'),
-            capture=runtime.capture, restore=runtime.restore, amendment=scope.get('resume_instruction'))
-    return await completed(response)
+            capture=runtime.capture, restore=runtime.restore, amendment=scope.get('resume_instruction'), validate=runtime.validate)
+    decision = FinishResponse.model_validate(response) if isinstance(response,dict) else FinishResponse(content=response.content)
+    finalize(scope, decision)
+    return await completed(AIMessage(content=decision.content))
