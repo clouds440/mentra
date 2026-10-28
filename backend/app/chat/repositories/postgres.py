@@ -128,8 +128,12 @@ class ChatRepository:
         if request.interaction_response:
             reply = request.interaction_response
             # Empty additive fields must not invalidate pre-upgrade pending sends.
-            excluded = {name for name in ('option_inputs', 'values') if not getattr(reply, name)}
-            fingerprint = sha256((fingerprint + reply.model_dump_json(exclude=excluded)).encode()).hexdigest()
+            excluded = {name for name in ('option_inputs', 'values', 'answers', 'additional_responses') if not getattr(reply, name)}
+            data = reply.model_dump(mode='json', exclude=excluded)
+            # Preserve the pre-questionnaire field order in existing receipts.
+            ordered = {key:data[key] for key in ('message_id', 'interaction_id', 'selected',
+                'option_inputs', 'values', 'answers', 'additional_responses') if key in data}
+            fingerprint = sha256((fingerprint + json.dumps(ordered, ensure_ascii=False, separators=(',', ':'))).encode()).hexdigest()
         if request.timezone:
             fingerprint = sha256((fingerprint + request.timezone).encode()).hexdigest()
         return fingerprint
@@ -196,21 +200,14 @@ class ChatRepository:
                 session.execute(update(t).where(t.c.id == pending['id']).values(state='FAILED', error='Generation interrupted.'))
             interaction_metadata = {}
             if request.interaction_response:
-                from app.chat.interactions import resolve_choice
+                from app.chat.interactions import resolve_responses
                 reply = request.interaction_response
                 source = session.execute(select(m).where(m.c.id == str(reply.message_id), m.c.learner_id == owner,
                     m.c.conversation_id == conversation_id, m.c.role == 'assistant')).mappings().first()
                 if not source: raise AppError('INTERACTION_NOT_FOUND', 'This interaction is unavailable.', 404)
                 metadata = dict(source['metadata'])
                 cards = [dict(x) for x in metadata.get('interactions', [])]
-                card, content = resolve_choice(cards, reply)
-                if card.get('submitted_turn_id'):
-                    raise AppError('INTERACTION_COMPLETED', 'This interaction has already been submitted.', 409)
-                if card['kind'] in ('single_choice', 'multiple_choice'):
-                    card.update(selected=reply.selected, option_inputs=reply.option_inputs)
-                else:
-                    card.update(values=reply.values)
-                card['submitted_turn_id'] = turn_id
+                content = resolve_responses(cards, reply, turn_id)
                 metadata['interactions'] = cards
                 session.execute(update(m).where(m.c.id == source['id']).values(metadata=metadata))
                 interaction_metadata = dict(interaction_response=reply.model_dump(mode='json'))

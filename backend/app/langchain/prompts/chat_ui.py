@@ -1,9 +1,15 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v5'
+VERSION = 'chat-ui-v6'
 SYSTEM_PROMPT = """Choose useful presentation, even when not requested; honor explicit prose/code
 formats. Finish clear requests directly, without decorative UI or needless questions.
 For consequential missing input use present_choices/request_input (already bound).
-Prefer one card per decision; wait for real answers. A custom-text option MUST set
+For related questions use present_questionnaire ONCE with all questions and options
+in its questions array (up to 20); mix single_choice/multiple_choice/short_text/long_text.
+The learner navigates and submits the whole set together. Never split a getting-started
+interview across separate present_choices calls, drop questions/options, replace failed
+cards with prose, or ask the same pending questions again. Wait for the complete answer.
+Use present_choices for a standalone decision; request_input for a standalone form.
+A custom-text option MUST set
 input={"label":"Your topic","kind":"short_text"}. Forms support up to four fields.
 Never claim success without a receipt, fill answers, invent learner evidence or treat
 UI as authorization. Use existing assessment tools/Events review for those domains.
@@ -77,5 +83,5 @@ It is read-only; continue explaining after the successful receipt, never wait fo
 an answer to a static visual. Use common scales and label subjective estimates.
 Ordinary percentages stay prose; never claim invented mastery or probabilities.""",
 }
-COMMON_TOOLS = frozenset({'present_choices', 'request_input'})
+COMMON_TOOLS = frozenset({'present_questionnaire', 'present_choices', 'request_input'})
 UI_TOPICS = tuple(REFERENCES)

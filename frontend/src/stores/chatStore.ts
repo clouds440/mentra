@@ -352,7 +352,15 @@ class ChatStore {
         const currentMessages = this.view(id).messages;
         const messages = currentMessages.map(message => {
           if (message.id !== reply.message_id) return message;
-          const next = { ...message, interactions: message.interactions?.map(card => card.id !== reply.interaction_id || card.kind === 'value_bars' ? card : card.kind === 'single_choice' || card.kind === 'multiple_choice' ? { ...card, selected: reply.selected ?? [], option_inputs: reply.option_inputs ?? {}, submitted_turn_id: body!.client_turn_id } : { ...card, values: reply.values ?? {}, submitted_turn_id: body!.client_turn_id }) };
+          const submissions = [reply, ...(reply.additional_responses ?? [])];
+          const next = { ...message, interactions: message.interactions?.map(card => {
+            const answer = submissions.find(item => item.interaction_id === card.id);
+            if (!answer || card.kind === 'value_bars') return card;
+            if (card.kind === 'questionnaire') return { ...card, answers: answer.answers ?? {}, submitted_turn_id: body!.client_turn_id };
+            return card.kind === 'single_choice' || card.kind === 'multiple_choice'
+              ? { ...card, selected: answer.selected ?? [], option_inputs: answer.option_inputs ?? {}, submitted_turn_id: body!.client_turn_id }
+              : { ...card, values: answer.values ?? {}, submitted_turn_id: body!.client_turn_id };
+          }) };
           if (sameData(message, next)) return message;
           this.loadedMessages.get(id)?.set(next.sequence, next);
           return next;

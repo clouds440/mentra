@@ -1,4 +1,4 @@
-import { ProgressBar } from '../ui/ProgressBar';
+import { QuestionProgress } from './QuestionProgress';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { Button, Textarea } from '../ui';
@@ -15,7 +15,7 @@ import { AnswerSheet } from './AssessmentWorkspace';
 import { useAuth } from '../auth/AuthProvider';
 import { assessmentSession } from '../../stores/assessmentSession';
 import { QuizAnswerReview } from './QuizAnswerReview';
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LoaderCircle, Sparkles } from 'lucide-react';
 import { questionKind, selectedIds, showsAssessmentMarks, PracticeNotice } from './AssessmentPaper';
 import { useQuestionNavigation } from './useQuestionNavigation';
 
@@ -86,9 +86,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
   return <section aria-label="Interactive quiz" className="space-y-4">
     <PracticeNotice assessment={assessment} />
     <div className="flex flex-wrap items-start justify-between gap-3"><AnswerSheetUpload attempt={attempt} onStart={onStart} draftAnswers={answers} assistance={assistance} onBusyChange={setUploading} disabled={disabled || busy} onChange={result => { setAttempt(result); assessmentSession.observe(owner, result); onChange(result); }} /><PrintPaperButton assessment={assessment} /></div>
-    <div className="flex flex-wrap items-center justify-between gap-2"><p role="status" className="text-xs font-medium text-muted">Question {index+1} of {assessment.questions.length} · {answered} answered</p><span className="flex items-center gap-1 text-[11px] font-medium text-accent"><Sparkles size={12} aria-hidden="true" />Practice at your pace</span></div>
-    <ProgressBar label="Quiz progress" value={answered} max={assessment.questions.length} showValue={false} />
-    <nav aria-label="Quiz questions" className="flex flex-wrap gap-1.5">{assessment.questions.map((q, i) => <button key={q.id} type="button" aria-label={`Go to question ${i+1}${answers[q.id]?.trim() ? ', answered' : ''}`} aria-current={index === i ? 'step' : undefined} disabled={blocked} onClick={() => setIndex(i)} className={`ui-button grid min-h-8 min-w-8 place-items-center rounded-md border px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent ${index === i ? 'border-accent bg-accent/10 text-accent' : answers[q.id]?.trim() ? 'border-border-strong bg-active text-heading' : 'border-border text-muted hover:bg-hover'}`}>{answers[q.id]?.trim() && index !== i ? <Check size={13} aria-hidden="true" /> : i+1}</button>)}</nav>
+    <QuestionProgress answered={assessment.questions.map(q => !!answers[q.id]?.trim())} index={index} disabled={blocked} onNavigate={setIndex} aside={<span className="flex items-center gap-1 text-[11px] font-medium text-accent"><Sparkles size={12} aria-hidden="true" />Practice at your pace</span>} />
     <div key={question.id} data-navigation={direction} className="question-transition quiz-question space-y-4 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
     <div className="flex items-center justify-between gap-2 text-[11px]"><span className="font-medium uppercase tracking-wider text-accent">{questionKind(question)}</span>{showsAssessmentMarks(assessment) && <span className="tabular-nums text-muted">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>}</div>
     <LearningTargetLabels question={question} /><MarkdownContent content={question.prompt} />

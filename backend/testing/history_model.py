@@ -105,6 +105,8 @@ class HistoryChatFactory(TestChatFactory):
         results = [x for x in messages if isinstance(x, ToolMessage) and x.name != 'enable_workflow_tools']
         if results:
             result = json.loads(results[-1].content)
+            if results[-1].name == 'present_questionnaire':
+                return AIMessage(content='Please answer these questions together.')
             if results[-1].name == 'search_study_material':
                 # The current workflow admits sources through tools, not the
                 # obsolete eagerly embedded prompt packet. Retrieval stays real.
@@ -146,6 +148,17 @@ class HistoryChatFactory(TestChatFactory):
         context = json.loads(system[marker+2:]) if marker >= 0 else {}
         scope = context.get('history_scope')
         if scope:
+            if lowered.startswith('show five getting-started questions'):
+                return AIMessage(content='', tool_calls=[self.tool_call('present_questionnaire', dict(question='Let’s get started', questions=[
+                    dict(id='goal', kind='single_choice', question='What is your main goal?', options=[dict(id='conversation',label='Everyday conversation'),dict(id='other',label='Other goal',input=dict(label='Your goal'))]),
+                    dict(id='time', kind='single_choice', question='How much time each day?', options=[dict(id='short',label='15 minutes'),dict(id='long',label='30 minutes')]),
+                    dict(id='skills', kind='multiple_choice', question='Which skills need attention?', options=[dict(id='listen',label='Listening'),dict(id='speak',label='Speaking'),dict(id='read',label='Reading'),dict(id='write',label='Writing')]),
+                    dict(id='style', kind='single_choice', question='How should I teach you?', options=[dict(id='steps',label='Step by step'),dict(id='chat',label='Conversation and corrections'),dict(id='vocab',label='Vocabulary first'),dict(id='grammar',label='Grammar foundations')]),
+                    dict(id='details', kind='short_text', question='Anything else I should know?'),
+                ]), 'questionnaire-create')])
+            if lowered.startswith('show five legacy questions'):
+                return AIMessage(content='', tool_calls=[self.tool_call('present_choices', dict(kind='single_choice',question=f'Legacy preference {i}',
+                    options=[dict(id='a',label=f'Choice A {i}'),dict(id='b',label=f'Choice B {i}')]),f'legacy-{i}') for i in range(1,6)])
             selected = context.get('study_source_selection', {})
             if selected.get('document_count') or selected.get('context_count'):
                 return AIMessage(content='', tool_calls=[self.tool_call('search_study_material', dict(query=question), 'study-search')])
@@ -162,6 +175,10 @@ class HistoryChatFactory(TestChatFactory):
             if lowered.startswith('show concept difficulty bars'):
                 return AIMessage(content='', tool_calls=[self.tool_call('present_visuals', dict(question='Relative difficulty', bars=[dict(label='Concept A',value=3,max=5,unit='points',note='Illustrative relative rating'),dict(label='Concept B',value=4,max=5,unit='points')]), 'static-bars')])
             if context.get('interaction_response'):
+                if context['interaction_response'].get('answers'):
+                    return AIMessage(content='Received all five answers together.')
+                if context['interaction_response'].get('additional_responses'):
+                    return AIMessage(content='Received all legacy answers together.')
                 entered = context['interaction_response'].get('option_inputs') or context['interaction_response'].get('values')
                 if entered:
                     return AIMessage(content='Received your input: ' + '; '.join(f'{key}: {value}' for key, value in entered.items()))

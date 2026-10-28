@@ -11,6 +11,7 @@ _admitted = ContextVar('admitted_tool_budget', default=None)
 class ToolBudget:
     calls: int = 0
     writes: int = 0
+    presentations: int = 0
     result_characters: int = 0
     cache: dict = field(default_factory=dict)
     result_tokens: int = 0
@@ -18,6 +19,13 @@ class ToolBudget:
     max_calls: int = 6
     max_result_tokens: int = 3200
     max_result_bytes: int = 12800
+
+    def present(self):
+        if _admitted.get() is self:
+            return
+        self.presentations += 1
+        if self.presentations > 20:
+            raise AppError('TOOL_BUDGET', 'Group related questions in one questionnaire.', 422)
 
     def call(self, write=False):
         if _admitted.get() is self:

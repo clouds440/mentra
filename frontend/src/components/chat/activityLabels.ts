@@ -8,6 +8,7 @@ export interface ActivityLabelInput {
 }
 
 const toolLabels: Record<string, string> = {
+  present_questionnaire: 'Preparing your questions',
   web_search: 'Searching the web',
   web_research: 'Researching your question',
   present_choices: 'Preparing choices for you',
@@ -51,6 +52,7 @@ const quietTools = new Set([
 ]);
 
 const completedLabels: Record<string, string> = {
+  present_questionnaire: 'Preparing your questions',
   web_search: 'Reviewing web results', web_research: 'Reviewing what I found',
   search_study_material: 'Connecting the relevant details', get_study_source_chunk: 'Connecting the relevant details',
   document_extract: 'Working with your attachment', history_lookup: 'Connecting our earlier discussion',

@@ -90,6 +90,45 @@ class InputCard(InputContent):
     submitted_turn_id: UUID | None = None
 
 
+class QuestionAnswer(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    selected: list[Annotated[str, Field(max_length=40)]] = Field(default_factory=list, max_length=10)
+    option_inputs: dict[Annotated[str, Field(max_length=40)], Annotated[str, Field(max_length=1000)]] = Field(default_factory=dict, max_length=10)
+    values: dict[Annotated[str, Field(max_length=40)], Annotated[str, Field(max_length=1000)]] = Field(default_factory=dict, max_length=4)
+
+
+class ConversationQuestion(ChatChoiceContent):
+    id: str = Field(min_length=1, max_length=40, pattern=r'^[a-zA-Z0-9_-]+$')
+
+
+class ConversationTextQuestion(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+    id: str = Field(min_length=1, max_length=40, pattern=r'^[a-zA-Z0-9_-]+$')
+    kind: Literal['short_text', 'long_text'] = 'short_text'
+    question: str = Field(min_length=1, max_length=1000)
+    required: bool = True
+    max_length: int = Field(default=300, ge=1, le=1000)
+
+
+class QuestionnaireContent(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+    kind: Literal['questionnaire'] = 'questionnaire'
+    question: str = Field(min_length=1, max_length=200)
+    questions: list[Annotated[ConversationQuestion | ConversationTextQuestion, Field(discriminator='kind')]] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode='after')
+    def unique_questions(self):
+        if len({item.id for item in self.questions}) != len(self.questions):
+            raise ValueError('Question identifiers must be unique.')
+        return self
+
+
+class QuestionnaireCard(QuestionnaireContent):
+    id: UUID
+    answers: dict[str, QuestionAnswer] = Field(default_factory=dict)
+    submitted_turn_id: UUID | None = None
+
+
 class ValueBar(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
     label: str = Field(min_length=1, max_length=120)
@@ -140,17 +179,19 @@ class ValueBarsCard(ValueBarsContent):
     id: UUID
 
 
-InteractionCard = Annotated[ChoiceCard | InputCard | ValueBarsCard, Field(discriminator='kind')]
+InteractionCard = Annotated[ChoiceCard | InputCard | ValueBarsCard | QuestionnaireCard, Field(discriminator='kind')]
 _card_adapter = TypeAdapter(InteractionCard)
 
 
-class InteractionResponse(BaseModel):
+class InteractionSubmission(QuestionAnswer):
     model_config = ConfigDict(extra='forbid')
-    message_id: UUID
     interaction_id: UUID
-    selected: list[Annotated[str, Field(max_length=40, pattern=r'^[a-zA-Z0-9_-]+$')]] = Field(default_factory=list, max_length=10)
-    option_inputs: dict[Annotated[str, Field(max_length=40)], Annotated[str, Field(max_length=1000)]] = Field(default_factory=dict, max_length=10)
-    values: dict[Annotated[str, Field(max_length=40)], Annotated[str, Field(max_length=1000)]] = Field(default_factory=dict, max_length=4)
+    answers: dict[Annotated[str, Field(max_length=40)], QuestionAnswer] = Field(default_factory=dict, max_length=20)
+
+
+class InteractionResponse(InteractionSubmission):
+    message_id: UUID
+    additional_responses: list[InteractionSubmission] = Field(default_factory=list, max_length=19)
 
 
 def _invalid():
@@ -184,7 +225,23 @@ def resolve_choice(cards, response):
     value = _card_adapter.validate_python(card)
     if isinstance(value, ValueBarsCard):
         _invalid()
-    if isinstance(value, ChoiceCard):
+    if isinstance(value, QuestionnaireCard):
+        if response.selected or response.option_inputs or response.values or set(response.answers) != {item.id for item in value.questions}:
+            _invalid()
+        lines = [value.question]
+        for item in value.questions:
+            answer = response.answers[item.id]
+            if isinstance(item, ConversationQuestion):
+                child = dict(id=str(value.id), **item.model_dump(exclude={'id'}))
+            else:
+                child = dict(id=str(value.id), kind='text_input', question=item.question,
+                    fields=[dict(id='answer', label='Your answer', kind=item.kind, required=item.required, max_length=item.max_length)])
+            _, text = resolve_choice([child], InteractionSubmission(interaction_id=value.id, **answer.model_dump()))
+            lines.append(text)
+        content = '\n\n'.join(lines)
+    elif response.answers:
+        _invalid()
+    elif isinstance(value, ChoiceCard):
         ordered = selected_options(value.options, value.kind, response.selected)
         allowed = {x.id for x in ordered if x.input}
         if response.values or set(response.option_inputs) - allowed:
@@ -207,22 +264,43 @@ def resolve_choice(cards, response):
                 entered = next(x.label for x in field.options if x.id == entered)
             lines.append(f'{field.label}: {entered}')
         content = value.question + '\n' + '\n'.join(lines)
-    if len(content) > 4000:
+    if len(content) > (16000 if isinstance(value, QuestionnaireCard) else 4000):
         _invalid()
     return card, content
+
+
+def resolve_responses(cards, response, turn_id):
+    submissions = [response, *response.additional_responses]
+    if len({item.interaction_id for item in submissions}) != len(submissions):
+        _invalid()
+    resolved = [(*resolve_choice(cards, item), item) for item in submissions]
+    if any(card.get('submitted_turn_id') for card, _, _ in resolved):
+        raise AppError('INTERACTION_COMPLETED', 'This interaction has already been submitted.', 409)
+    content = '\n\n'.join(text for _, text, _ in resolved)
+    if len(content) > 16000:
+        _invalid()
+    for card, _, answer in resolved:
+        if card['kind'] == 'questionnaire':
+            card.update(answers={key:value.model_dump(mode='json') for key,value in answer.answers.items()})
+        elif card['kind'] in ('single_choice', 'multiple_choice'):
+            card.update(selected=answer.selected, option_inputs=answer.option_inputs)
+        else:
+            card.update(values=answer.values)
+        card['submitted_turn_id'] = turn_id
+    return content
 
 
 def create_interaction_tools(owner, scope, budget):
     from langchain_core.tools import StructuredTool
 
     def stage(value, card_type):
-        budget.call(True)
+        budget.present()
         cards = scope.setdefault('interactions', [])
         identifier = uuid5(NAMESPACE_URL, f"choice:{owner}:{scope['current_user_message_id']}:{value.model_dump_json()}")
         card = card_type(id=identifier, **value.model_dump()).model_dump(mode='json')
         if not any(x['id'] == card['id'] for x in cards):
-            if len(cards) >= 3:
-                raise AppError('INTERACTION_LIMIT', 'Use at most three interactions per response.', 422)
+            if len(cards) >= 20:
+                raise AppError('INTERACTION_LIMIT', 'Group related questions in present_questionnaire.', 422)
             cards.append(card)
         next_step = ('Continue the explanation; these static visuals require no user input.' if isinstance(value, ValueBarsContent)
                      else 'Wait for the student input; do not answer on their behalf.')
@@ -237,7 +315,12 @@ def create_interaction_tools(owner, scope, budget):
     async def visualize(**arguments):
         return stage(ValueBarsContent(**arguments), ValueBarsCard)
 
-    return [StructuredTool.from_function(name='present_choices', args_schema=ChatChoiceContent,
+    async def questionnaire(**arguments):
+        return stage(QuestionnaireContent(**arguments), QuestionnaireCard)
+
+    return [StructuredTool.from_function(name='present_questionnaire', args_schema=QuestionnaireContent,
+        description='Ask related conversational questions together (up to 20) in one batch with one final submission. Mix single/multiple choices and short/long text; preserve every question and option. Use for onboarding, preferences, getting started and informal skill checks. No assessment, grading or mastery record.', coroutine=questionnaire),
+        StructuredTool.from_function(name='present_choices', args_schema=ChatChoiceContent,
         description='Display native single/multiple choices. Options may attach an input for a custom answer. Use assessment tools for graded questions.', coroutine=present),
         StructuredTool.from_function(name='request_input', args_schema=InputContent,
         description='Collect missing user information in a native text_input (one text field) or form (up to four fields). Not graded answers or authorization for domain mutations.', coroutine=request),

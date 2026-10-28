@@ -112,7 +112,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             required.discard('events')
         missing = required - attempted
         pending_input = [card for card in scope.get('interactions', [])[initial_interactions:]
-                         if card.get('kind') in ('single_choice', 'multiple_choice', 'text_input', 'form')]
+                         if card.get('kind') in ('single_choice', 'multiple_choice', 'text_input', 'form', 'questionnaire')]
         if (missing or missing_assessment()) and pending_input and not (
                 missing_assessment() and scope.get('_assessment_attempted')):
             # A native clarification defers assessment creation just as it
@@ -574,10 +574,11 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                         commit_web_result(scope, result)
                 except AppError:
                     write = is_write(call['name'], call['args'])
-                    if not write:
+                    from .capabilities import PRESENTATIONS
+                    if not write and call['name'] not in PRESENTATIONS:
                         raise
-                    # Domain effects have committed. Always report a compact
-                    # truthful receipt; never turn a saved write into unavailable.
+                    # Preserve committed domain effects and validated staged UI.
+                    # A compact receipt must not discard any displayed questions.
                     receipt = dict(outcome=result.get('outcome', result.get('status', 'returned')), details_omitted=True)
                     for key in ('event', 'proposal', 'memory', 'assessment'):
                         value = result.get(key)

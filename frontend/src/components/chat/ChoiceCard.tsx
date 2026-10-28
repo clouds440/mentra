@@ -5,9 +5,11 @@ import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { fieldError, InteractionField } from '../interactions/InteractionField';
 import { ValueBars } from '../interactions/ValueBars';
 import { Button } from '../ui';
+import { ConversationalQuestionnaire } from './ConversationalQuestionnaire';
 
 /** Existing durable choice adapter also owns text/forms; static bars never submit. */
 export const ChoiceCard = memo(function ChoiceCard({ card: stored, messageId, conversationId }: { card: InteractionCardData; messageId: string; conversationId: string }) {
+  if (stored.kind === 'questionnaire') return <ConversationalQuestionnaire cards={[stored]} messageId={messageId} conversationId={conversationId} />;
   if (!['single_choice', 'multiple_choice', 'text_input', 'form', 'value_bars'].includes(stored.kind)) return <p className="my-4 text-sm text-muted">This interactive item is not supported by this version. You can reply in the chat instead.</p>;
   if (stored.kind === 'value_bars') return <section className="my-4 space-y-4 rounded-panel border border-border p-4" aria-label={stored.question}>
     <h3 className="font-medium text-heading">{stored.question}</h3>
@@ -17,7 +19,7 @@ export const ChoiceCard = memo(function ChoiceCard({ card: stored, messageId, co
 });
 ChoiceCard.displayName = 'ChoiceCard';
 
-function AnswerCard({ stored, messageId, conversationId }: { stored: Exclude<InteractionCardData, { kind: 'value_bars' }>; messageId: string; conversationId: string }) {
+function AnswerCard({ stored, messageId, conversationId }: { stored: Exclude<InteractionCardData, { kind: 'value_bars' | 'questionnaire' }>; messageId: string; conversationId: string }) {
   const done = !!stored.submitted_turn_id;
   // Completed cards subscribe to no conversation updates. Active forms listen
   // only to the two fields they actually use, not every history/status update.

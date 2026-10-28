@@ -3,6 +3,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { MentraLogo } from '../brand/MentraLogo';
 import type { ChatMessageData } from '../../types/chat';
+import type { InteractionCardData } from '../../types/interactions';
 import { memo, useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
 import { SourceViewer, sourceLocation } from '../library/SourceViewer';
 import type { SourceReference } from '../../types/rag';
@@ -10,6 +11,7 @@ import type { HistoryReference, MemoryReference } from '../../types/memories';
 import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
 import { ChoiceCard } from './ChoiceCard';
+import { ConversationalQuestionnaire } from './ConversationalQuestionnaire';
 import { Link } from 'react-router-dom';
 import { WebCitation } from '../webSearch/WebCitation';
 import { WebCitations } from '../webSearch/WebCitations';
@@ -58,6 +60,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
   const [source, setSource] = useState<SourceReference>();
   const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
   const isAssistant = message.role === 'assistant';
+  const inputCards = message.interactions?.filter((card): card is Exclude<InteractionCardData, { kind: 'value_bars' }> => card.kind !== 'value_bars' && ['single_choice', 'multiple_choice', 'text_input', 'form', 'questionnaire'].includes(card.kind)) ?? [];
+  const grouped = inputCards.length > 1 || inputCards.some(card => card.kind === 'questionnaire');
   const citations = useMemo(() => citationPlugin([...(message.citations ?? []), ...(message.web_citations ?? []), ...(message.history_references ?? []).map(item => item.token), ...(message.memory_references ?? []).map(item => item.token)], message.content), [message.content, message.citations, message.web_citations, message.history_references, message.memory_references]);
   const hasReferences = !!(message.citations?.length || message.web_citations?.length || message.history_references?.length || message.memory_references?.length);
   const markdownPlugins = useMemo(() => hasReferences ? [citations] : [], [hasReferences, citations]);
@@ -98,7 +102,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
             <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
-            {message.conversation_id && message.interactions?.map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
+            {message.conversation_id && grouped && <ConversationalQuestionnaire cards={inputCards} messageId={message.id} conversationId={message.conversation_id} />}
+            {message.conversation_id && message.interactions?.filter(card => !grouped || !inputCards.some(input => input.id === card.id)).map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {!!message.event_proposals?.length && <div className="chat-domain-card">{message.event_proposals.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}</div>}
             {!!message.assessment_cards?.length && <div className="chat-domain-card"><Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense></div>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}

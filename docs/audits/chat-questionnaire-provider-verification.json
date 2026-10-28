@@ -1,0 +1,44 @@
+{
+  "model": "deepseek-flash",
+  "scope": "Synthetic English and Urdu prompts; no student database, assessments or grading services.",
+  "cases": [
+    {
+      "question_count": 5,
+      "options_per_question": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "grouped_card_count": 1,
+      "domain_writes": 0,
+      "question_ids": [
+        "goal",
+        "level",
+        "focus",
+        "time",
+        "style"
+      ]
+    },
+    {
+      "question_count": 5,
+      "options_per_question": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "grouped_card_count": 1,
+      "domain_writes": 0,
+      "question_ids": [
+        "goal",
+        "level",
+        "skill",
+        "time",
+        "style"
+      ]
+    }
+  ]
+}

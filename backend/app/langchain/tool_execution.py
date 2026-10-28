@@ -186,7 +186,11 @@ class ToolExecutor:
             attempts = attempt
             execution_started = False
             try:
-                self.budget.call(write)
+                from .capabilities import PRESENTATIONS
+                if name in PRESENTATIONS:
+                    self.budget.present()
+                else:
+                    self.budget.call(write)
                 envelope = current_budget.get()
                 if envelope and envelope.remaining <= envelope.answer_reserve:
                     raise AppError('TOOL_BUDGET', 'Tool work stopped to leave time for your answer.', 422)

@@ -15,7 +15,7 @@ class ChoiceSchemaTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_ids_stable_and_schema_rejects_code_or_duplicate_ids(self):
         args = dict(kind='multiple_choice', question='Choose', options=[dict(id='a', label='A'),dict(id='b',label='B')])
         scope = dict(current_user_message_id=str(uuid4()))
-        tool = create_interaction_tools('owner', scope, ToolBudget())[0]
+        tool = next(tool for tool in create_interaction_tools('owner', scope, ToolBudget()) if tool.name == 'present_choices')
         first = await tool.ainvoke(args)
         second = await tool.ainvoke(args)
         self.assertEqual(first['interaction_id'], second['interaction_id'])
@@ -85,7 +85,7 @@ class RichInteractionSchemaTests(unittest.IsolatedAsyncioTestCase):
         args = dict(kind='single_choice', question='Choose a topic', options=[dict(id='known', label='Known'), dict(id='custom', label='Other', input=dict(label='Your topic'))])
         scope = dict(current_user_message_id=str(uuid4()))
         tools = {tool.name: tool for tool in create_interaction_tools('owner', scope, ToolBudget())}
-        self.assertEqual(set(tools), {'present_choices', 'request_input', 'present_visuals'})
+        self.assertEqual(set(tools), {'present_questionnaire', 'present_choices', 'request_input', 'present_visuals'})
         await tools['present_choices'].ainvoke(args)
         card = scope['interactions'][0]
         reply = InteractionResponse(message_id=uuid4(), interaction_id=card['id'], selected=['custom'], option_inputs={'custom': 'درخت — indexes'})
@@ -105,7 +105,7 @@ class RichInteractionSchemaTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(AppError): resolve_choice([formcard], response.model_copy(update={'values': values}))
         for bad in [dict(form, fields=form['fields'] * 2), dict(kind='text_input', question='Question', fields=form['fields'])]:
             with self.assertRaises(ValidationError): InputContent(**bad)
-        visual_tool = create_interaction_tools('owner', scope, ToolBudget())[2]
+        visual_tool = next(tool for tool in create_interaction_tools('owner', scope, ToolBudget()) if tool.name == 'present_visuals')
         receipt = await visual_tool.ainvoke(dict(question='Relative difficulty', bars=[dict(label='Concept A', value=3, max=5, note='Illustrative')]))
         self.assertIn('no user input', receipt['next_step'])
         static = scope['interactions'][2]
@@ -158,6 +158,7 @@ class RichInteractionPersistenceTests(ChoicePersistenceTests):
         from hashlib import sha256
         body = self.prepare('single_choice')
         base = sha256(json.dumps([str(body.conversation_id), body.content, body.retrieval.model_dump(mode='json')], sort_keys=True).encode()).hexdigest()
-        old_reply = body.interaction_response.model_dump_json(exclude={'option_inputs','values'})
+        old_reply = json.dumps(dict(message_id=str(body.interaction_response.message_id),
+            interaction_id=str(body.interaction_response.interaction_id), selected=body.interaction_response.selected), separators=(',', ':'))
         expected = sha256((base + old_reply).encode()).hexdigest()
         self.assertEqual(self.repo._request_hash(body), expected)

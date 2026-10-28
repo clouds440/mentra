@@ -18,9 +18,21 @@ export interface InputCardData {
 }
 export interface ValueBarData { label: string; value: number; max: number; unit?: string; note?: string; group?: string; series?: string; color?: import('../lib/visualColors').VisualColor | null }
 export interface ValueBarsCardData { id: string; kind: 'value_bars'; question: string; bars: ValueBarData[] }
-export type InteractionCardData = ChoiceCardData | InputCardData | ValueBarsCardData;
-export interface InteractionResponse {
-  message_id: string; interaction_id: string; selected?: string[];
+export interface QuestionAnswer { selected?: string[]; option_inputs?: Record<string, string>; values?: Record<string, string> }
+export type ConversationQuestion = { id: string; question: string } & (
+  { kind: ChoiceKind; options: ChoiceCardData['options'] } |
+  { kind: 'short_text' | 'long_text'; required?: boolean; max_length?: number }
+);
+export interface QuestionnaireCardData {
+  id: string; kind: 'questionnaire'; question: string; questions: ConversationQuestion[];
+  answers: Record<string, QuestionAnswer>; submitted_turn_id: string | null;
+}
+export type InteractionCardData = ChoiceCardData | InputCardData | ValueBarsCardData | QuestionnaireCardData;
+export interface InteractionSubmission extends QuestionAnswer {
+  interaction_id: string; answers?: Record<string, QuestionAnswer>;
+}
+export interface InteractionResponse extends InteractionSubmission {
+  message_id: string; additional_responses?: InteractionSubmission[]; selected?: string[];
   option_inputs?: Record<string, string>; values?: Record<string, string>;
 }
 export interface InteractionDraft { selected: string[]; optionInputs: Record<string, string>; values: Record<string, string> }

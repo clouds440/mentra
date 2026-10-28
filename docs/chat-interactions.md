@@ -12,7 +12,7 @@ bundled Inter font dependencies.
 The single model-facing usage contract is
 `backend/app/langchain/prompts/chat_ui.py`. Its compact common guide is composed
 once through the CHAT registry, including direct chat, tool rounds and edits.
-`present_choices` and `request_input` are bound immediately. Mermaid, Lucide,
+`present_questionnaire`, `present_choices` and `request_input` are bound immediately. Mermaid, Lucide,
 semantic colors and simple inline bars need no reference lookup.
 
 Detailed charts, disclosures, custom colors and native multi-bar references remain
@@ -33,6 +33,7 @@ semantics; assessment/Events retain domain rules. Keep UI examples/policy here.
 
 | Capability | Contract and existing resource |
 |---|---|
+| Conversational questionnaire | `present_questionnaire`: one batch of 1–20 related questions with stable IDs; mix single/multiple choices and short/long text. All questions/options are retained. Reuses assessment `QuestionProgress`, navigation and choice/field controls, with one Submit all answers action. Creates chat metadata only, without assessment drafts, attempts, grades or automatic mastery. |
 | Choices + custom text | `present_choices`: each chat option may include `input` with a label, short/long text kind, requiredness and max length. Selecting it opens an input beneath that option in ChoiceCard. IDs/labels have no special behavior. Assessment ChoiceOption remains unchanged. |
 | Text/form | `request_input`: `text_input` has one text field; `form` has 1–4 fields with stable IDs. Fields support short/long text, bounded numbers and selections. Existing Input/Textarea/Select/FormField render the controls. |
 | Static numeric visuals | `present_visuals`: `question` titles 1–8 `bars` with `label`, `value`, `max`, optional `unit` and `note`. For difficulty/ratings/comparisons use meaningful common scales and label subjective estimates. Bars are read-only and cannot be submitted as answers. |
@@ -43,7 +44,8 @@ semantics; assessment/Events retain domain rules. Keep UI examples/policy here.
 Submissions extend the existing `interaction_response` with optional
 `option_inputs: {option_id: text}` or `values: {field_id: text}`. The same durable
 turn endpoint validates ownership, active/known fields, requiredness, length,
-selection/numeric bounds and the canonical 4,000-character user message. Server
+selection/numeric bounds and canonical content. Standalone inputs retain the
+4,000-character limit; complete questionnaire/batch summaries allow 16,000. Server
 labels build canonical content; accepted values and receipt save atomically.
 Empty additive fields are excluded from request fingerprints so pre-upgrade pending
 choice submissions can still replay. Hidden input values are never submitted.
@@ -54,6 +56,21 @@ An uncertain submission keeps its original payload and operation UUID. Freeze th
 form and offer an explicit retry of the original answer until persistence confirms
 the turn. A different answer cannot reuse the old operation, and completion of an
 older operation cannot clear a newer pending send.
+
+Questionnaire answers use `answers: {question_id: {selected, option_inputs, values}}`;
+text questions use `values.answer`. Existing assistant messages with several input
+cards are grouped in the same UI and submitted with `additional_responses` in one
+owned message transaction. Already submitted cards remain read-only and are not
+resubmitted. Every pending card/question must validate before any selection is
+saved. The server supplies canonical question/option labels; duplicate, unknown,
+cross-owner or invalid answers cannot partially commit a batch. Legacy request
+fingerprints retain their original field order and omit empty new fields.
+
+Presentation tools have their own bounded allowance (20 calls and 20 cards), separate
+from external lookup/write budgets. The normal model/time/input limits still apply.
+Prefer one questionnaire call over several standalone calls. A compact result receipt
+never discards already validated UI metadata. Pause/resume retains presentation counts
+and restores currently available common controls, including for older checkpoints.
 
 ### Rich Markdown
 

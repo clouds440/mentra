@@ -26,13 +26,14 @@ CAPABILITIES = (
                 'assessment_answer', 'assessment_status'),
                ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise', 'assessment_answer')),
     Capability('chat', 'Collect needed answers using clickable choices, custom text or compact forms; explain or draft directly.',
-               ('present_choices', 'request_input', 'present_visuals'), ('present_choices', 'request_input', 'present_visuals')),
+               ('present_questionnaire', 'present_choices', 'request_input', 'present_visuals')),
     Capability('web', 'Verify current external facts or research public sources.', ('web_search', 'web_research')),
 )
 DOMAINS = {tool: capability.domain for capability in CAPABILITIES for tool in capability.tools}
 DOMAINS['memory_summary_context'] = 'memory'
 DOMAINS['validate_study_selection'] = 'rag'
 WRITES = {tool for capability in CAPABILITIES for tool in capability.writes}
+PRESENTATIONS = frozenset({'present_questionnaire', 'present_choices', 'request_input', 'present_visuals'})
 OUTCOMES = {capability.domain: capability.outcome for capability in CAPABILITIES}
 
 

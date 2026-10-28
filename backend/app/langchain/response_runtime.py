@@ -30,7 +30,7 @@ class ResponseRuntime:
         return dict(policy_version=POLICY_VERSION, conversation=messages_to_dict(self.conversation), scope=payload,
             active=sorted(self.selection.active), pending=sorted(self.selection.pending),
             budget={key:getattr(self.budget, key) for key in
-                ('calls', 'writes', 'result_characters', 'result_tokens', 'delivered')})
+                ('calls', 'writes', 'presentations', 'result_characters', 'result_tokens', 'delivered')})
 
     def restore(self, value):
         previous = value['scope'].get('_memory_summary_fence')
@@ -59,6 +59,6 @@ class ResponseRuntime:
         self.executor.failed = state.get('failed', {})
         self.executor.results = state.get('results', {})
         self.executor.outages = state.get('outages', {})
-        self.selection.active = set(value['active']) & self.selection.by_name.keys()
-        self.selection.pending = set(value['pending']) & self.selection.by_name.keys()
+        self.selection.active = (set(value['active']) & self.selection.by_name.keys()) | self.selection.common
+        self.selection.pending = (set(value['pending']) & self.selection.by_name.keys()) | self.selection.common
         for key, amount in value['budget'].items(): setattr(self.budget, key, amount)
