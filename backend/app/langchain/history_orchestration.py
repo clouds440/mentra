@@ -111,12 +111,18 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         if scope.get('_captured_events'):
             required.discard('events')
         missing = required - attempted
+        pending_input = [card for card in scope.get('interactions', [])[initial_interactions:]
+                         if card.get('kind') in ('single_choice', 'multiple_choice', 'text_input', 'form')]
+        if (missing or missing_assessment()) and pending_input and not (
+                missing_assessment() and scope.get('_assessment_attempted')):
+            # A native clarification defers assessment creation just as it
+            # defers a lookup. Static visuals and old cards are not a request
+            # for input, and a failed generation still needs its honest receipt.
+            content = ('Choose an option below so I can continue with your request.'
+                       if all(card['kind'] in ('single_choice', 'multiple_choice') for card in pending_input)
+                       else 'Answer below so I can continue with your request.')
+            return dict(response=AIMessage(content=content), done=True)
         if missing:
-            if len(scope.get('interactions', [])) > initial_interactions:
-                # A durable clarification is a deferred request, not a fake
-                # completed lookup. Keep its controls without forcing a call
-                # with invented arguments or publishing unverified prose.
-                return dict(response=AIMessage(content='Choose an option below so I can continue with your request.'), done=True)
             candidates = [tool for tool in tools if domains.get(tool.name) in missing
                           and domains.get(tool.name) not in executor.outages
                           and tool.name in getattr(plan, 'tool_names', [])]

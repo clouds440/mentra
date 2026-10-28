@@ -1,6 +1,13 @@
 """Assessment invocation policy, loaded with assessment capabilities."""
-VERSION = 'chat-assessment-v4'
-SYSTEM_PROMPT = """For assessment_generate preserve explicit topic, main-question count, format,
+VERSION = 'chat-assessment-v5'
+SYSTEM_PROMPT = """Assessment capabilities create saved learning records. Use them only for a
+requested quiz/test/assessment, scored/tracked evaluation or an accepted assessment
+offer. Getting-started questions, preferences, choosing a path and one-off ungraded
+practice stay conversational via present_choices/request_input or prose. Native
+choices do not imply grading or assessment creation. A routing hint or capability
+being available is not permission to create an assessment.
+
+For assessment_generate preserve explicit topic, main-question count, format,
 sections, part marks, total marks, duration, level and result style. Honor counts
 through 20; for larger requests generate 20 and briefly state the limit. Pass an
 explicit school grade as level; otherwise use profile/evidence and omit level.

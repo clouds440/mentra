@@ -356,7 +356,7 @@ def create_workflow_tools(owner, scope, budget):
 
         tools.extend([
             StructuredTool.from_function(name='assessment_generate', args_schema=QuickPractice,
-                description='Test understanding with native interactive practice, including one question or a bare quiz request. Preserve requested type/count; written/printable delivery only when requested. Drafts stay in chat; auto-add follows the student setting. The engine resolves topics and concepts; no preliminary learner reads required. Private answers stay hidden.', coroutine=generate),
+                description='Create a persistent assessment draft for a requested quiz/test/assessment or scored/tracked evaluation, including a one-question quiz. Ordinary onboarding/preferences, conversational questions and one-off ungraded practice use present_choices/request_input or prose instead. Preserve requested type/count; written/printable only when requested. Auto-add follows the student setting; private answers stay hidden. No preliminary learner reads required.', coroutine=generate),
             StructuredTool.from_function(name='assessment_generate_advanced', args_schema=GeneratePractice,
                 description='Create assessments with explicit total marks, timing, sections or multipart paper structure. Same validated practice workflow and delivery controls; preserve exact requested structure. Ordinary quizzes use assessment_generate.', coroutine=generate),
             StructuredTool.from_function(name='assessment_answer', args_schema=AnswerPractice,

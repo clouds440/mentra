@@ -13,17 +13,22 @@ The learner/topic/subskill release and shared Send/Pause/Resume/Retry control ar
 | Resume exceeding the owner's background queue budget | Include pending resumed work in the transactional capacity check. |
 | Typing during background assessment generation | The shared control becomes Send; clearing the draft restores Pause. Paused/failed work similarly restores Resume/Retry. |
 | Release observability and provenance | Production defaults to JSON logs with parameter details disabled; both images accept an OCI source-revision label. |
+| Conversational questions routed into assessments | Only clear assessment requests require assessment receipts. Ordinary options, onboarding, goals, Socratic questions and one-off ungraded exercises stay in chat. Current-purpose prompts and the assessment tool description reinforce this across languages; old assessment cards do not make every later question an assessment. |
+| Valid assessment clarification rejected at completion | New native choices/text inputs/forms can defer creation. Existing cards and static visuals cannot substitute for a required result; actual generation failures retain honest failure handling. |
+| Retry of a pre-fix failed response | Old transient routing instructions are discarded when restoring the older checkpoint policy. User messages, tool results and completed receipts are preserved. |
 
 ## Verification evidence
 
 | Check | Result |
 | --- | --- |
 | Final focused backend suite | 68 passed, including the race fixes, ownership, durable continuation, topic persistence and assessment targeting. |
+| Conversation-routing follow-up | 69 routing/tool-recovery checks passed, including four native clarification variants, first-chat structured output, real assessment revisions, static-visual rejection and obsolete-checkpoint compatibility. Counts overlap other suites. |
 | Browser flows | Nine passed, including authenticated assessment creation and grading, topic navigation/selection and response controls. Four final desktop/mobile composer checks also passed after the background-draft fix. Counts overlap previous suites. |
 | Build and static checks | TypeScript/Vite production build, theme/UI checks, targeted Ruff and whitespace checks passed. The existing large-bundle advisory remains. |
 | Production frontend dependency audit | Zero reported vulnerabilities with development dependencies omitted; this is not a full application security audit. |
 | Large synthetic history and migration round trip | [Storage evidence](topic-storage-verification.json): 10,000 subskills, bounded detail/candidate packets, preserved synthetic learners through downgrade/reupgrade. These timings are not a production latency guarantee. |
 | Configured-model behavior | [Topic organization](topic-organization-live-verification.json), [continuation classification](response-continuation-live-verification.json), and [production-image runtime](learner-release-runtime-verification.json) used synthetic records only. |
+| Conversational question behavior | Eleven [configured-model cases](conversational-questions-live-verification.json) distinguish conversational questions, an explicitly deferred assessment and actual quiz creation. The [built-image HTTP record](conversational-questions-http-verification.json) verifies two successful persisted chat paths, reload, and zero assessment drafts/jobs, assessments, attempts or learner-evidence rows. |
 | Production-image HTTP checks | Declared/chunked body limits across five media types, small JSON, upload budgets, huge Range rejection and provider-close/cancellation lease release passed. |
 | Production-mode runtime | Readiness passed for database, AI, embeddings and Qdrant. Generated an actual question, paused/resumed it, rejected stale Stop, published owned topics, withheld private grading keys and created no mastery from generation. Secure/HttpOnly cookie and foreign-origin rejection passed. |
 | Local migration | [Preservation evidence](learner-release-migration-verification.json): `20261025_0031` → `20261027_0034`; all 84 existing application-table row counts unchanged. |
@@ -60,3 +65,9 @@ For rollback, stop writers and preserve the database/checkpoints before changing
 ## Deliberate boundaries
 
 Time reduces projected recall support, not historical mastery. Retention remains an explainable heuristic requiring calibration. Broad topics organize independently scored subskills without inventing syllabus coverage. Ordinary-chat automatic private learner-context prefetch remains disabled following the automatic approval review rejection; existing authorized on-demand retrieval remains available. See the implementation report for teaching-effectiveness, taxonomy-recall and ranking-scale evaluation limits.
+
+## Reported response failure: trace and correction
+
+The October 28 trace at `06:16:41 UTC` failed inside backend `history_orchestration.check_completion`, with `ASSESSMENT_UNAVAILABLE` (503). Native `present_choices` calls had already succeeded. The old router treated a request for getting-started questions as required assessment creation, then completion demanded an assessment receipt despite the valid clarification cards. The frontend displayed its generic persisted-error message; there was no frontend timeout in this failure.
+
+Both layers are corrected: purpose-based prompts plus conservative routing prevent accidental assessment creation, and completion accepts real pending user input even for an assessment request. This uses the existing chat model call rather than adding a classifier request to every message. Assessment records, attempts and mastery are not created merely because chat asks a question or offers choices.

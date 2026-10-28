@@ -28,7 +28,7 @@ def scope(query):
                 execution_plan=plan_request(query))
 
 
-class RoutingTests(unittest.TestCase):
+class RoutingTests(unittest.IsolatedAsyncioTestCase):
     def test_general_work_is_not_routed_by_words_inside_supplied_content(self):
         for query in ('Rewrite this text: My previous schedule changed today.',
                       'Translate this sentence: Remember my old notes.',
@@ -49,10 +49,9 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(plan_request('Research current battery chemistry').tool_names, ['web_research'])
 
     def test_practice_needs_only_the_generator_and_no_learner_prefetch(self):
-        for query in ('Give me 1 question quiz', 'Give me a test', 'Give me one MCQ on fractions',
+        for query in ('Give me 1 question quiz', 'Give me a test', 'Give me one MCQ quiz on fractions',
                       'مجھے ایک سوال کا کوئز دیں', 'Mujhe fractions ka aik sawal ka quiz do',
-                      'See if I understand fractions', 'Test my understanding of fractions',
-                      'Help me practice algebra'):
+                      'Test my understanding of fractions', 'How do I improve my English? Give me a quiz.'):
             with self.subTest(query=query):
                 plan = plan_request(query)
                 self.assertIn('assessment_generate', plan.tool_names)
@@ -66,6 +65,44 @@ class RoutingTests(unittest.TestCase):
                       'Do not create a quiz, explain fractions', 'Write unit tests for this code',
                       'The teacher will give a quiz', 'I will practice fractions tonight'):
             self.assertIsNone(plan_request(query).required_outcome)
+
+    def test_conversational_questions_do_not_require_or_prebind_assessments(self):
+        cases = (
+            "I'm a beginner. I want to learn English. Where do I start? Can you ask me a few options/questions to get started?",
+            'Ask me a few questions about my goals and interests.',
+            'Give me options to choose a learning path.',
+            'Make a beginner learning plan for English.',
+            'Help me practice algebra.',
+            'Give me one ungraded question and discuss my reasoning.',
+            'Ask me one MCQ, just here in chat.',
+            'See if I understand fractions by talking it through.',
+            'Can you ask questions about my study preferences?',
+            'I need help preparing for a test. Ask about my goals first.',
+            'Can you give me advice about my quiz?',
+            'مجھے انگریزی سیکھنے کے لیے میرے مقاصد کے بارے میں سوال پوچھیں',
+        )
+        previous = [dict(role='assistant', metadata=dict(assessment_cards=[dict(id='previous')]))]
+        for query in cases:
+            for rows in ((), previous):
+                with self.subTest(query=query, previous_assessment=bool(rows)):
+                    plan = plan_request(query, context_rows=rows)
+                    self.assertIsNone(plan.required_outcome)
+                    self.assertFalse(any(name in plan.tool_names for name in
+                        ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise')))
+
+    async def test_conversation_can_return_native_questions_without_assessment_service(self):
+        state = scope('Ask me a few questions to choose a learning path.')
+        model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[
+            AIMessage(content='', tool_calls=[dict(name='present_choices', id='goals', args=dict(
+                kind='single_choice', question='What do you want to work towards?',
+                options=[dict(id='work', label='Work'), dict(id='travel', label='Travel')]))]),
+            AIMessage(content='Choose what matters most to you.')]))
+        reply = await tool_reply(model, [HumanMessage(content=state['current_answer_text'])],
+            None, OWNER, state, (), {})
+        self.assertTrue(reply.content)
+        self.assertEqual(len(state['interactions']), 1)
+        self.assertFalse(state.get('assessment_cards'))
+        self.assertFalse(state.get('_assessment_attempted'))
 
     def test_agenda_is_read_only_and_combined_announcement_still_routes(self):
         self.assertEqual(plan_request('What is my agenda tomorrow?').tool_names, ['event_lookup'])
@@ -148,9 +185,73 @@ class DiscoveryTests(unittest.IsolatedAsyncioTestCase):
 
 
 class OutcomeTests(unittest.IsolatedAsyncioTestCase):
+    def test_old_checkpoint_keeps_receipts_without_replaying_obsolete_routing_instructions(self):
+        from langchain_core.messages import SystemMessage, ToolMessage
+        from app.history_management.budgets import ToolBudget
+        from app.langchain.response_runtime import ResponseRuntime
+        conversation = [HumanMessage(content='Ask me about my learning goals.'),
+            AIMessage(content='', tool_calls=[dict(name='present_choices', args={}, id='choices')]),
+            ToolMessage(content='{"outcome":"displayed"}', tool_call_id='choices'),
+            SystemMessage(content='The requested assessment has not been created. Use assessment_generate.')]
+        state = dict(_tool_execution_state=dict(results={'choices':dict(outcome='displayed')}))
+        runtime = ResponseRuntime(conversation, state, ToolBudget(), ToolSelection([], {}, {}), SimpleNamespace())
+        snapshot = runtime.capture()
+        snapshot.pop('policy_version')  # Pre-fix retained response.
+        runtime.restore(snapshot)
+        self.assertEqual([message.type for message in conversation], ['human', 'ai', 'tool'])
+        self.assertEqual(runtime.executor.results, {'choices':dict(outcome='displayed')})
+        conversation.append(SystemMessage(content='A current bounded protocol repair.'))
+        runtime.restore(runtime.capture())
+        self.assertEqual(conversation[-1].type, 'system')
+
+    async def test_native_clarification_defers_assessment_without_forcing_generation(self):
+        for first, name, arguments in (
+            (False, 'present_choices', dict(kind='single_choice', question='Which topic?',
+                options=[dict(id='joins', label='SQL joins'), dict(id='indexes', label='SQL indexes')])),
+            (True, 'request_input', dict(kind='text_input', question='Which topic would you like to practice?',
+                fields=[dict(id='topic', label='Topic')])),
+            (False, 'present_choices', dict(kind='multiple_choice', question='Which areas?',
+                options=[dict(id='joins', label='SQL joins'), dict(id='indexes', label='SQL indexes')])),
+            (False, 'request_input', dict(kind='form', question='What should we cover?',
+                fields=[dict(id='topic', label='Topic'), dict(id='goal', label='Goal')])),
+        ):
+            with self.subTest(tool=name, first=first):
+                state = scope('Create an assessment')
+                state['user_sequence'] = 1 if first else 2
+                generate = AsyncMock()
+                state['assessment_service'] = SimpleNamespace(generate_chat_from_topic=generate)
+                from app.chat.titles import NewChatReply
+                final = (AIMessage(content='', tool_calls=[dict(name='NewChatReply', id='final',
+                         args=dict(content='Here is your assessment.', conversation_title='Practice setup'))])
+                         if first else AIMessage(content='Here is your assessment.'))
+                model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[
+                    AIMessage(content='', tool_calls=[dict(name=name, args=arguments, id='clarify')]), final]))
+                reply = await tool_reply(model, [HumanMessage(content=state['current_answer_text'])],
+                    None, OWNER, state, (), {}, output_schema=NewChatReply if first else None)
+                self.assertEqual(len(state['interactions']), 1)
+                self.assertIn('below so I can continue', reply.content)
+                self.assertNotIn('Here is your assessment', reply.content)
+                self.assertFalse(state.get('_outcome_repaired'))
+                self.assertEqual(model.ainvoke_messages.await_count, 2)
+                generate.assert_not_awaited()
+
+    async def test_static_visual_does_not_replace_requested_assessment(self):
+        from app.core.exceptions import AppError
+        state = scope('Create an assessment')
+        state['assessment_service'] = SimpleNamespace()
+        model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[
+            AIMessage(content='', tool_calls=[dict(name='enable_workflow_tools',
+                args=dict(tool_names=['present_visuals']), id='enable')]),
+            AIMessage(content='', tool_calls=[dict(name='present_visuals', args=dict(question='Difficulty estimate',
+                bars=[dict(label='Estimated difficulty', value=2, max=5)]), id='bars')]),
+            AIMessage(content='Here is your assessment.'), AIMessage(content='Here is your assessment.')]))
+        with self.assertRaises(AppError) as error:
+            await tool_reply(model, [HumanMessage(content=state['current_answer_text'])], None, OWNER, state, (), {})
+        self.assertEqual(error.exception.code, 'ASSESSMENT_UNAVAILABLE')
+
     async def test_failed_generation_cannot_be_followed_by_a_fake_prose_quiz(self):
         from app.core.exceptions import AppError
-        state = scope('Give me one MCQ on fractions')
+        state = scope('Give me one MCQ quiz on fractions')
         generate = AsyncMock(side_effect=AppError('ASSESSMENT_UNAVAILABLE','Practice is unavailable.',503))
         state['assessment_service'] = SimpleNamespace(generate_chat_from_topic=generate)
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='',tool_calls=[
@@ -164,7 +265,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
     async def test_repair_keeps_the_advanced_generator_for_explicit_marks(self):
         state = scope('Create a quiz with 10 total marks')
         state['assessment_service'] = SimpleNamespace(generate_chat_from_topic=AsyncMock(return_value=dict(
-            id=str(uuid4()),assessment_id=None,assessment=dict(title='Ten marks',questions=[]))))
+            id=str(uuid4()),assessment_id=None,assessment=dict(id=str(uuid4()),title='Ten marks',questions=[]))))
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='Here is your quiz'),
             AIMessage(content='',tool_calls=[dict(name='assessment_generate_advanced',args=dict(topic='Fractions',count=2,total_marks=10),id='g')])]))
         await tool_reply(model,[HumanMessage(content=state['current_answer_text'])],None,OWNER,state,(),{})
@@ -188,7 +289,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unrelated_preparation_warning_does_not_allow_a_prose_quiz(self):
         from app.core.exceptions import AppError
-        state = scope('Give me one MCQ on fractions')
+        state = scope('Give me one MCQ quiz on fractions')
         state['assessment_service'] = SimpleNamespace()
         state['tool_warnings'] = [dict(tool_name='profile_context',code='TOOL_TIMEOUT')]
         model = SimpleNamespace(ainvoke_messages=AsyncMock(return_value=AIMessage(content='Question 1: Which is correct?')))
@@ -199,7 +300,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
     async def test_quiz_receipt_cannot_skip_requested_external_work(self):
         state = scope('Give me 1 question quiz about the latest news')
         state['assessment_service'] = SimpleNamespace(generate_chat_from_topic=AsyncMock(return_value=dict(
-            id=str(uuid4()),assessment_id=None,assessment=dict(title='News practice',questions=[]))))
+            id=str(uuid4()),assessment_id=None,assessment=dict(id=str(uuid4()),title='News practice',questions=[]))))
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='',tool_calls=[
             dict(name='assessment_generate',args=dict(topic='News',count=1,question_format='mcq'),id='g')]),
             AIMessage(content='News practice')]))
@@ -219,7 +320,12 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
                ('Find my saved preferences','user_memory','memory')]
         for query,name,domain in cases:
             with self.subTest(domain=domain):
-                action=AsyncMock(return_value=dict(outcome='ok',items=[]))
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                result = (dict(outcome='ok', current_date=now.date().isoformat(), current_datetime=now.isoformat(),
+                    reference_timezone='UTC', delivered_at=now.isoformat()) if domain == 'web'
+                    else dict(outcome='ok', items=[]))
+                action=AsyncMock(return_value=result)
                 async def run(_action=action, **arguments):return await _action(**arguments)
                 tool=StructuredTool.from_function(name=name,description='Synthetic owned lookup',args_schema=Query,coroutine=run)
                 model=SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='I checked it.'),
@@ -248,7 +354,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_repeated_text_only_quiz_fails_without_publishing_fake_success(self):
         from app.core.exceptions import AppError
-        state = scope('Give me one MCQ on fractions')
+        state = scope('Give me one MCQ quiz on fractions')
         state['assessment_service'] = SimpleNamespace()
         model = SimpleNamespace(ainvoke_messages=AsyncMock(return_value=AIMessage(content='Question 1: Which is correct?')))
         with self.assertRaises(AppError) as error:
@@ -260,7 +366,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
     async def test_compound_request_keeps_its_explanation_call(self):
         state = scope('Give me 1 question quiz on fractions and explain why it is useful')
         state['assessment_service'] = SimpleNamespace(generate_chat_from_topic=AsyncMock(return_value=dict(
-            id=str(uuid4()),assessment_id=None,assessment=dict(title='Fractions practice',questions=[]))))
+            id=str(uuid4()),assessment_id=None,assessment=dict(id=str(uuid4()),title='Fractions practice',questions=[]))))
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[AIMessage(content='',tool_calls=[
             dict(name='assessment_generate',args=dict(topic='Fractions',count=1,question_format='mcq'),id='g')]),
             AIMessage(content='This checks whether you can compare equal portions.')]))
@@ -271,7 +377,7 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
     async def test_real_card_completes_in_one_routing_call(self):
         state = scope('Give me 1 question quiz on fractions')
         service = SimpleNamespace(generate_chat_from_topic=AsyncMock(return_value=dict(
-            id=str(uuid4()), assessment_id=None, assessment=dict(title='Fractions practice', questions=[]))))
+            id=str(uuid4()), assessment_id=None, assessment=dict(id=str(uuid4()),title='Fractions practice', questions=[]))))
         state['assessment_service'] = service
         model = SimpleNamespace(ainvoke_messages=AsyncMock(return_value=AIMessage(content='', tool_calls=[
             dict(name='assessment_generate', args=dict(topic='Fractions', count=1, question_format='mcq'), id='generate')])) )
@@ -282,9 +388,9 @@ class OutcomeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(service.generate_chat_from_topic.call_args.kwargs['delivery'], 'interactive')
 
     async def test_prose_cannot_replace_a_requested_quiz(self):
-        state = scope('Give me one MCQ on fractions')
+        state = scope('Give me one MCQ quiz on fractions')
         service = SimpleNamespace(generate_chat_from_topic=AsyncMock(return_value=dict(
-            id=str(uuid4()), assessment_id=None, assessment=dict(title='Fractions practice', questions=[]))))
+            id=str(uuid4()), assessment_id=None, assessment=dict(id=str(uuid4()),title='Fractions practice', questions=[]))))
         state['assessment_service'] = service
         model = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=[
             AIMessage(content='Question 1: What is half of four?'),

@@ -1,0 +1,14 @@
+{
+  "scope": "Built backend image, production mode, disposable synthetic database and actual configured provider.",
+  "turn_state": "SUCCEEDED",
+  "conversational_cards": 2,
+  "explicit_assessment_clarification_succeeded": true,
+  "questions_survive_reload": true,
+  "assessment_and_evidence_counts": {
+    "assessment": 0,
+    "chat_assessment_draft": 0,
+    "assessment_generation_job": 0,
+    "assessment_attempt": 0,
+    "learning_evidence": 0
+  }
+}

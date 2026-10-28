@@ -1,0 +1,94 @@
+{
+  "model": "deepseek-flash",
+  "scope": "Synthetic prompts and in-memory assessment stub only; no student records.",
+  "cases": [
+    {
+      "query": "I'm a beginner. I want to learn English. Where do I start? Can you ask me a few options/questions to get started?",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 2,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Ask me a few questions about my goals before suggesting a learning path.",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Give me one ungraded grammar question here in chat; no quiz or saved assessment.",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 0,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Help me practice English through a conversation, one question at a time.",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Can you give me advice about my upcoming test and ask about my goals?",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "مجھے انگریزی سیکھنی ہے۔ پہلے میرے مقاصد اور دلچسپیوں کے بارے میں چند سوال پوچھیں، کوئی ٹیسٹ نہیں۔",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Quiero aprender inglés. Hazme unas preguntas sobre mis objetivos antes de empezar, sin examen.",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": null
+    },
+    {
+      "query": "Create an assessment, but first let me choose between English grammar and vocabulary using options. Wait for my choice before creating it.",
+      "expected_assessment": false,
+      "assessment_calls": 0,
+      "conversational_cards": 1,
+      "nonempty_reply": true,
+      "required_outcome": "assessment"
+    },
+    {
+      "query": "Create a one-question quiz on English greetings.",
+      "expected_assessment": true,
+      "assessment_calls": 1,
+      "conversational_cards": 0,
+      "nonempty_reply": true,
+      "required_outcome": "assessment"
+    },
+    {
+      "query": "Give me an assessment.",
+      "expected_assessment": true,
+      "assessment_calls": 1,
+      "conversational_cards": 0,
+      "nonempty_reply": true,
+      "required_outcome": "assessment"
+    },
+    {
+      "query": "مجھے انگریزی کا ایک سوال کا کوئز دیں",
+      "expected_assessment": true,
+      "assessment_calls": 1,
+      "conversational_cards": 0,
+      "nonempty_reply": true,
+      "required_outcome": "assessment"
+    }
+  ]
+}

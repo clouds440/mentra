@@ -10,6 +10,12 @@ def supplied_content_task(text: str) -> bool:
 
 
 def practice_request(text: str) -> bool:
+    """High-confidence assessment request, not every conversational question.
+
+    This hint can require a native assessment receipt. Ambiguous practice,
+    onboarding and Socratic questions stay model-directed conversation; the
+    model can discover assessment tools in any language when actually requested.
+    """
     text = text.strip().casefold()
     if re.search(r'\b(?:do not|don.t|never)\s+(?:create|give|generate|make|start|quiz|test)\b', text):
         return False
@@ -17,16 +23,25 @@ def practice_request(text: str) -> bool:
         return False
     if re.search(r'\b(?:unit tests?|test suite|test cases?|pytest)\b', text):
         return False
-    subject = bool(re.search(r'\b(?:quiz|test|mcqs?|assessment|questions?|practice|mock (?:paper|exam))\b|کوئز|سوال|اختبار|مسابقة|cuestionario|évaluation', text))
-    request = bool(re.search(r'(?:^|[.!?;]\s+)(?:please\s+)?(?:give|generate|create|make|build|prepare|ask|practice|assess)\b|\b(?:i (?:want|need)|(?:can|could|would) you|please (?:give|make|create)|mujhe|chahiye|poocho)\b|(?:دیں|دو|پوچھ|بنائیں)|^(?:hazme|crée|pose)', text))
+    subject = bool(re.search(r'\b(?:quiz|test|assessment|mock (?:paper|exam))\b|کوئز|اختبار|مسابقة|cuestionario|évaluation', text))
+    formal = r'(?:quiz|test|assessment|mock (?:paper|exam))'
+    # Keep a creation verb tied to its object within one clause. Asking for
+    # advice/options about an upcoming test is not asking us to create one.
+    prefix = (r'(?:^|[.!?;]\s+)(?:please\s+)?(?:give|generate|create|make|build|prepare|start)\b|'
+              r'\b(?:i (?:want|need)|(?:can|could|would) you (?:give|generate|create|make|build|prepare|start)|'
+              r'please (?:give|make|create)|let.s (?:do|take|start))\b')
+    request = any(not re.search(r'\b(?:about|for|with|advice|help|options|learn|study)\b', match[1])
+                  for match in re.finditer(r'(?:'+prefix+r')([^.!?;]{0,100}?)\b'+formal+r'\b', text))
+    request = request or bool(subject and re.search(
+        r'\b(?:mujhe|chahiye|poocho)\b|(?:دیں|دو|پوچھ|بنائیں)|^(?:hazme|crée|pose)', text))
     return (subject and request or bool(re.search(
-        r'\b(?:quiz|test|assess) me\b|\b(?:test|check|see) (?:if|whether|how (?:well|much)) i (?:understand|know|learned)|'
-        r'\b(?:check|test) my (?:understanding|knowledge)|\bhelp me (?:practice|practise)\b', text))
+        r'\b(?:quiz|test|assess) me\b|\btest (?:if|whether|how (?:well|much)) i (?:understand|know|learned)|'
+        r'\btest my (?:understanding|knowledge)\b', text))
         or bool(re.fullmatch(r'(?:a |an )?(?:quiz|mcq|assessment|practice test)[.!? ]*', text)))
 
 
 def assessment_mentioned(text: str) -> bool:
-    return bool(re.search(r'\b(?:assessment|quiz|mcqs?|mock paper|mock exam|answer sheet|test)\b|کوئز|سوال|اختبار|cuestionario', text, re.I))
+    return bool(re.search(r'\b(?:assessment|quiz|mock paper|mock exam|answer sheet|test)\b|کوئز|اختبار|cuestionario', text, re.I))
 
 
 def web_request(text: str) -> bool:

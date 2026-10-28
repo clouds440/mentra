@@ -3,6 +3,7 @@ import json
 from langchain_core.messages import messages_to_dict, messages_from_dict, HumanMessage
 from app.chat.response import ChatResponse
 
+POLICY_VERSION = 'conversation-assessment-v2'
 PUBLIC = ('history_references', 'memory_references', 'event_references', 'event_proposals',
           'assessment_cards', 'interactions', 'web_sources', 'web_searches')
 PRIVATE = ('_tool_execution_state', '_assessment_receipt', '_captured_events', '_ui_topics',
@@ -26,7 +27,7 @@ class ResponseRuntime:
         # Store only data, never service objects, closures, coroutines or source
         # selection permissions. Explicit sources are revalidated on every run.
         payload = json.loads(json.dumps(payload, default=lambda value: value.model_dump(mode='json')))
-        return dict(conversation=messages_to_dict(self.conversation), scope=payload,
+        return dict(policy_version=POLICY_VERSION, conversation=messages_to_dict(self.conversation), scope=payload,
             active=sorted(self.selection.active), pending=sorted(self.selection.pending),
             budget={key:getattr(self.budget, key) for key in
                 ('calls', 'writes', 'result_characters', 'result_tokens', 'delivered')})
@@ -38,6 +39,12 @@ class ResponseRuntime:
             from app.core.exceptions import AppError
             raise AppError('CHAT_RESUME_CONTEXT_CHANGED', 'Saved memories changed. Retry this response to use current context.', 409)
         self.conversation[:] = messages_from_dict(value['conversation'])
+        if value.get('policy_version') != POLICY_VERSION:
+            # Old checkpoints may contain a router repair demanding an
+            # assessment for an ordinary conversation. Reapply current policy;
+            # retain user messages, tool results and completed domain receipts.
+            # System context is rebuilt by tool_reply, outside this transcript.
+            self.conversation[:] = [message for message in self.conversation if message.type != 'system']
         payload = dict(value['scope'])
         public = ChatResponse(role='assistant', content='', **{key:payload[key] for key in (*PUBLIC, 'sources') if key in payload})
         for key in PUBLIC:

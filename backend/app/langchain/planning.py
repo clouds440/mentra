@@ -71,10 +71,12 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
     memory = bool(re.search(r'\b(?:my preferences?|saved preferences?|my profile|saved memor(?:y|ies))\b|\bwhat do you (?:know|remember) about me\b|\b(?:please )?remember (?:that|my|this preference|i|we)\b|\b(?:save|store)\b.*\b(?:preference|fact|goal|memory)\b', text)) and not history
     personal = history or memory
     event = bool(re.search(r'\b(agenda|deadline|remind|upcoming|schedule|event)\b|\bwhen\b.*\bexam\b', text))
-    from .request_intent import practice_request, assessment_mentioned, web_request
+    from .request_intent import practice_request, assessment_mentioned, web_request, supplied_content_task
     requested_practice = practice_request(query)
     assessment = requested_practice or bool(re.search(r'\b(grade|evaluate|mark)\b.*\b(answers?|paper)\b', text))
-    if assessment_mentioned(text) and not re.match(r'^(explain|define|what (?:is|are)|rewrite|translate|edit|debug)\b', text):
+    if assessment_mentioned(text) and re.search(
+            r'\b(?:show|open|review|submit|resume|status|results?)\b.*\b(?:my|the|this|that|previous|last)\b|'
+            r'\b(?:my|this|that|previous|last) (?:assessment|quiz|test|answer sheet)\b', text):
         assessment = True
     from app.history_management.events.capture import event_candidate
     scheduled = event_candidate(query)
@@ -82,16 +84,20 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
         event = True
         assessment = assessment and requested_practice
     recent = next((row.get('metadata', {}) for row in reversed(context_rows) if row.get('role') == 'assistant'), {})
-    assessment_edit = bool(recent.get('assessment_cards') and re.match(r'^(?:please\s+|(?:can|could|would) you\s+)?(?:harder|easier|revise|change|make|edit|update|replace|rewrite|shorten|simplify)\b', text)
+    assessment_edit = bool(recent.get('assessment_cards') and re.match(r'^(?:and\s+)?(?:please\s+|(?:can|could|would) you\s+)?(?:harder|easier|revise|change|make|edit|update|replace|rewrite|shorten|simplify)\b', text)
+                           and re.search(r'\b(?:it|this|that|assessment|quiz|test|questions?|harder|easier)\b', text[:120])
                            and not re.search(r'\b(?:new|another|different) (?:assessment|quiz|test|paper)\b', text))
-    if assessment_edit or re.search(r'\b(harder|easier|revise|change|question|answers?|it|that)\b', text) and recent.get('assessment_cards'):
+    if assessment_edit or recent.get('assessment_cards') and re.search(
+            r'\b(?:this|that|the|my|previous|last|current) (?:assessment|quiz|test|question|answer)\b|'
+            r'\b(?:question|answer) (?:number )?\d+\b|^(?:my )?answer(?: is|:)', text):
         assessment = True
     if re.search(r'\b(it|that|move|reschedule)\b', text) and recent.get('event_references'):
         event = True
     capability = bool(re.fullmatch(r'(what can you do|how can you help(?: me)?|what are your capabilities|what can mentra do)[?!. ]*', text))
     from .request_intent import response_edit_source
     edit_source = response_edit_source(query, context_rows) if not attachments else None
-    direct = bool(edit_source) or general_query(query) and not selected_sources and not attachments
+    direct = bool(edit_source) or (general_query(query) and not selected_sources and not attachments
+                                  and (supplied_content_task(query) or not requested_practice))
     if direct:
         assessment = personal = history = memory = event = scheduled = requested_practice = False
     # Assessment workflows resolve their own targets. Do not prefetch broad
@@ -130,9 +136,8 @@ def plan_request(query: str, *, attachments=False, selected_sources=False, conte
         elif requested_practice:
             names.append('assessment_generate_advanced' if re.search(r'\b(?:paper|sections?|parts?|marks?|minutes?|duration)\b', text) else 'assessment_generate')
         elif re.search(r'\b(grade|evaluate|mark|submit|answers?)\b', text): names.extend(['assessment_lookup', 'assessment_answer'])
-        elif re.search(r'\b(generate|create|give|build|prepare|make|want|need)\b|\b(?:quiz|test) me\b', text): names.append('assessment_generate')
         elif re.search(r'\b(question|status|progress|explain)\b', text): names.extend(['assessment_lookup', 'assessment_question', 'assessment_status'])
-        else: names.append('assessment_generate')
+        else: names.append('assessment_lookup')
     required_domains = []
     if external: required_domains.append('web')
     if event and (not scheduled or re.search(r'\b(?:remind|add|create|schedule|reschedule|move)\b', text)):
