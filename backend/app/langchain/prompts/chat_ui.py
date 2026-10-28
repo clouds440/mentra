@@ -36,7 +36,7 @@ UI as authorization. Use existing assessment tools/Events review for those domai
 Prefer bars for a few ratings, Mermaid for flows, Recharts for trends/distributions.
 The charts reference supports opt-in live data controls for illustrative exploration;
 charts are read-only by default.
-Mermaid: fenced mermaid, accTitle/accDescr; no init/frontmatter, HTML, resources or
+Mermaid: fenced mermaid; diagram declaration first, then accTitle/accDescr. Plain text labels, no <br/>; no init/frontmatter, HTML, resources or
 clicks. Colors may use style/classDef/linkStyle with fill/stroke/color six-digit hex
 or basic color names, and stroke-width 0-6px only; pair fills with readable text.
 Icon: :icon[BookOpen] beside words. For brand/other icons use a known public HTTPS

@@ -267,3 +267,18 @@ Final acceptance: **92 production browser checks passed (2.5 minutes)**, plus **
 The 200-message/200-bar performance fixture recorded **zero completed message/content/card/icon rerenders**, typing p95 **9.8ms** and **no typing long tasks**. One 80ms non-typing task was recorded; this is measured local fixture evidence, not a guarantee of text-equivalent cost for arbitrary charts or remote image downloads. Editable charts coalesce slider updates to one frame, skip update animation and freeze the hidden inline plot/table during fullscreen interaction. Controls/data changes remain local and explicitly resettable.
 
 Local rollout: rebuilt/restarted `mentra-backend:latest` (`6580bd454ec9`) and `mentra-frontend:latest` (`23fc81e5c9a1`). Both are healthy; frontend HTTP and API readiness returned 200, and every background service uses the rebuilt backend image. Deployed asset checks found the lazy ChartControls bundle and captioned-image viewer; the running backend exposes the updated UI guide. Disposable test database/volume and temporary reports/traces were removed. No registry push or public deployment was performed.
+
+## Mermaid compatibility — 2026-10-29
+
+The horse-journey response was rejected before rendering because labels contained
+HTML break tags; its accessibility metadata also preceded the flowchart declaration.
+The renderer now normalizes attribute-free break tags to plain spacing and moves a
+contiguous leading accessibility metadata block after a flowchart/graph declaration.
+Saved source and source/download controls remain intact. Other HTML, attributes,
+initialization directives, external resources and output SVG still pass existing guards.
+The shared model guide explicitly requires declaration-first, plain-text labels.
+
+Production frontend build passed. The reusable browser probe
+`frontend/scripts/verify-mermaid-normalization.mjs` passed actual Mermaid rendering,
+visible journey labels, fullscreen viewing, metadata ordering, break normalization
+and unsafe HTML rejection. Run against a local Vite server using `MERMAID_TEST_URL`.

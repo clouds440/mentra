@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { normalizeMermaidSource } from '../../lib/mermaidSource';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
@@ -85,7 +86,8 @@ export function MermaidDiagram({ code }: { code: string }) {
     let active = true;
     const generation = diagramCacheGeneration();
     const current = () => active && generation === diagramCacheGeneration();
-    if (!safeSource(code)) { setErrorKey(key); return; }
+    const normalized = normalizeMermaidSource(code);
+    if (!safeSource(normalized)) { setErrorKey(key); return; }
     const task = async () => {
       if (!current()) return;
       try {
@@ -106,7 +108,7 @@ export function MermaidDiagram({ code }: { code: string }) {
             // leaves labels in foreignObject, which our SVG sanitizer removes.
             maxTextSize: 12000, maxEdges: 120, htmlLabels: false, flowchart: { htmlLabels: false },
             themeVariables: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', primaryTextColor: color('foreground'), lineColor: color('muted') } });
-          raw = (await mermaid.render(`mentraDiagram${++serial}`, styledSource(code, theme === 'dark'))).svg;
+          raw = (await mermaid.render(`mentraDiagram${++serial}`, styledSource(normalized, theme === 'dark'))).svg;
           if (!current()) return;
         }
         const svg = namespaceSvg(raw, id);
