@@ -1,0 +1,18 @@
+{
+  "scope": "Dedicated disposable PostgreSQL schema; synthetic data only.",
+  "upgrade_downgrade_reupgrade_preserves_learners": true,
+  "subskills": 10000,
+  "grouped_search_ms": [
+    292.50639997189865,
+    251.52219997835346,
+    294.20309999841265,
+    225.3822000056971,
+    285.4139999835752
+  ],
+  "median_ms": 285.4139999835752,
+  "max_ms": 294.20309999841265,
+  "topic_payload_bytes": 412,
+  "detail_page_items": 10,
+  "candidate_topics": 1,
+  "max_candidate_subskills": 5
+}

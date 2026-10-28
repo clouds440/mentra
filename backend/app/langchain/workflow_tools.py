@@ -130,10 +130,11 @@ def create_workflow_tools(owner, scope, budget):
             # Same arguments in a retried turn produce the same operation ID.
             body = GeneratePractice(**arguments)
             identity = body.model_dump_json(exclude={'delivery'} if body.delivery == 'interactive' else set())
+            if scope.get('resume_instruction'): identity += '\n' + scope['resume_instruction']
             request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{identity}")
             selection = scope.get('retrieval_selection') or ChatSelection()
             result = await service.generate_chat_from_topic(owner, scope['conversation_id'], client_request_id=request_id,
-                **body.model_dump(), instructions=scope.get('current_answer_text', ''), document_ids=selection.document_ids or [])
+                source_turn_id=scope.get('turn_id'), **body.model_dump(), instructions=scope.get('current_answer_text', ''), document_ids=selection.document_ids or [])
             scope.setdefault('assessment_cards', []).append(result)
             scope['_assessment_receipt'] = dict(title=result.get('title') or result.get('assessment', {}).get('title'),
                 state='pending' if result.get('generation_job_id') else 'ready')
@@ -319,7 +320,7 @@ def create_workflow_tools(owner, scope, budget):
                 paper_sections=paper_sections or [], instructions=instructions,
                 grounded=bool(source['sources']), document_ids=list(dict.fromkeys(str(s['document_id']) for s in source['sources'])),
                 revision_draft_id=draft_id, revision_assessment_id=assessment_id, revision_instructions=instructions,
-                revision_question_numbers=question_numbers or []))
+                revision_question_numbers=question_numbers or []), source_turn_id=scope.get('turn_id'))
             scope.setdefault('assessment_cards', []).append(result)
             if result.get('generation_job_id'):
                 return dict(outcome='queued', generation_job_id=result['generation_job_id'], title=result['title'],

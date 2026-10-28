@@ -16,6 +16,16 @@ class AssessmentWorkflows:
         from app.assessments.blueprint import blueprint
         from app.core.observability.timing import run_in_threadpool
         await run_in_threadpool(self.learner.get_context_summaries, owner, [request.context_id])
+        if request.topic_id:
+            if request.concept_ids:
+                memberships = await run_in_threadpool(self.learner.get_skill_topics, owner,
+                    [str(value) for value in request.concept_ids])
+                if any(memberships.get(str(value), {}).get('topic_id') != str(request.topic_id) for value in request.concept_ids):
+                    raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'A selected subskill is no longer in this topic.', 409)
+            else:
+                selected = await run_in_threadpool(self.learner.get_topic_practice_concepts,
+                    owner, request.context_id, str(request.topic_id), request.count or 5)
+                request = request.model_copy(update={'concept_ids': selected})
         from app.assessments.structure import small_practice, small_blueprint
         compact = not revision and small_practice(request)
         from app.assessments.revision import reusable_revision
@@ -43,8 +53,8 @@ class AssessmentWorkflows:
             if inferred and not compact:
                 ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
                 known = list(dict.fromkeys(item.concept_id for item in [*ranked['recommendations'], *ranked['verification']]))[:10]
-                known_concepts = await run_in_threadpool(self.learner.get_concepts, known)
-                known_names = [known_concepts[identifier].canonical_name for identifier in known]
+                known_labels = {item.concept_id: item.name for item in [*ranked['recommendations'], *ranked['verification']]}
+                known_names = [known_labels[identifier] for identifier in known]
                 try:
                     plan = await invoke_generated(self.llm, PromptSource.ASSESSMENT_TARGETS,
                         dict(topic=request.topic, count=request.count, purpose=request.purpose,
@@ -82,6 +92,12 @@ class AssessmentWorkflows:
         ])
         recommendations, verification = ranked['recommendations'], ranked['verification']
         targets = [dict(id=identifier, name=target_concepts[identifier].canonical_name) for identifier in concepts]
+        if hasattr(self.learner, 'get_skill_topics'):
+            memberships = await run_in_threadpool(self.learner.get_skill_topics, owner, concepts)
+            for target in targets:
+                if target['id'] in memberships:
+                    membership = memberships[target['id']]
+                    target.update(name=membership['label'], topic_name=membership['name'])
         questions = []
         title = None
         from app.assessments.schemas import GeneratedQuestion, PaperInfo
@@ -109,6 +125,9 @@ class AssessmentWorkflows:
         else:
             question_plan, paper = blueprint(request)
         if not paper: question_plan = question_plan[:min(request.count or 20,20)]
+        if request.concept_ids:
+            for index, item in enumerate(question_plan):
+                item['target_subskill_id'] = str(request.concept_ids[index % len(request.concept_ids)])
         async def save_progress():
             if checkpoint:
                 await checkpoint(dict(schema_version=1, plan=question_plan, paper=paper.model_dump(mode='json') if paper else None,
@@ -205,6 +224,19 @@ class AssessmentWorkflows:
                 merged[index] = question
             questions = merged
         generated = GeneratedAssessment(title=title, questions=questions, paper=paper)
+        if request.concept_ids and not set(map(str, request.concept_ids)).issubset(
+                {identifier for question in questions for identifier in question.concept_ids}):
+            raise AppError('ASSESSMENT_INVALID_GENERATION', 'Some selected subskills were not covered. Please retry.', 502)
+        if hasattr(self.learner, 'get_skill_topics'):
+            memberships = await run_in_threadpool(self.learner.get_skill_topics, owner,
+                list({identifier for question in questions for identifier in question.concept_ids}))
+            for index, question in enumerate(generated.questions):
+                if reuse and index not in reuse['positions']:
+                    continue  # Preserve the saved labels on unchanged source questions.
+                question.learning_targets = [dict(subskill_id=identifier, subskill_name=memberships[identifier]['label'],
+                    **(dict(topic_id=memberships[identifier]['topic_id'], topic_name=memberships[identifier]['name'])
+                        if memberships[identifier]['topic_id'] is not None else {})) for identifier in question.concept_ids
+                    if identifier in memberships]
         return generated, sources
 
     async def grade(self, job, *, checkpoint=None):
@@ -234,7 +266,8 @@ class AssessmentWorkflows:
                 correct = chosen == expected
                 grades.append(QuestionGrade(question_id=question['id'], score=score, confidence=1,
                     feedback=(('Correct. ' if correct else 'Partly correct. ' if score else 'Incorrect. ') + question['model_answer'])[:2000],
-                    concept_grades={identifier:ConceptGrade(score=score, max_score=question['marks'], confidence=1)
+                    concept_grades={identifier:ConceptGrade(score=score, max_score=question['marks'],
+                        confidence=1 if len(question['concept_ids']) == 1 else .4)
                         for identifier in question['concept_ids']}))
         if checkpoint and grades: await checkpoint(grades)
         async def grade_batch(batch):

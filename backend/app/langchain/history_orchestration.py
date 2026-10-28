@@ -425,6 +425,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             return {}  # A single bounded protocol repair uses the next model round.
         conversation.append(response)
 
+        from langgraph.func import task
+        @task
+        async def durable_write(call):
+            value = await invoke(call)
+            return dict(value=value, runtime=runtime.capture())
+
         async def invoke(call):
             tool = dispatch.get(call['name'])
             if tool is None or not tool_enabled(call['name']):
@@ -529,7 +535,12 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                     for index, item in batch:
                         key = tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
                         pending[index] = values[singleflight[key]]
-                result = pending[position] if position in pending else await invoke(call)
+                if scope.get('_response_checkpoint') and is_write(call['name'], call['args']):
+                    saved = await durable_write(call)
+                    runtime.restore(saved['runtime'])
+                    result = saved['value']
+                else:
+                    result = pending[position] if position in pending else await invoke(call)
                 if isinstance(result, Exception):
                     raise result
                 if isinstance(result, StagedRead):
@@ -629,6 +640,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     from .graphs.tool_coordinator import coordinate
     from .workflow_budget import model_budget
     from .activity import publish_activity
+    from .response_runtime import ResponseRuntime
+    runtime = ResponseRuntime(conversation, scope, budget, selection, executor)
     with model_budget(), publish_activity(publisher):
-        response = await coordinate(model_round, dispatch_round)
+        response = await coordinate(model_round, dispatch_round, checkpoint=scope.get('_response_checkpoint'),
+            capture=runtime.capture, restore=runtime.restore, amendment=scope.get('resume_instruction'))
     return await completed(response)

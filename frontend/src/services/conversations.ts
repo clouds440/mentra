@@ -20,5 +20,6 @@ export const getTurn = (id: string, signal?: AbortSignal, incremental = false, a
 };
 export const sendTurn = (body: PendingTurn, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/turns`, { method: 'POST', headers: { Prefer: 'respond-async' }, body: JSON.stringify(body), signal });
 export const stopTurn = (id: string, turnId: string, attempt: number, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/turns/${turnId}/stop`, { method:'POST', body:JSON.stringify({attempt}), signal });
+export const resumeTurn = (id: string, turnId: string, attempt: number, expected_revision: number, signal?: AbortSignal) => apiRequest<MessagePage>(`${base}/${id}/turns/${turnId}/resume`, {method:'POST', body:JSON.stringify({attempt, expected_revision}), signal});
 export const renameChat = (chat: Conversation, title: string, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}`, { method: 'PATCH', body: JSON.stringify({ expected_revision: chat.revision, title }), signal });
 export const deleteChat = (chat: Conversation, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}?expected_revision=${chat.revision}`, { method: 'DELETE', signal });

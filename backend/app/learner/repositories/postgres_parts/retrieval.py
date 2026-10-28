@@ -3,12 +3,19 @@
 from sqlalchemy import select, func, case, or_, literal, Integer
 from app.learner.repositories.tables import concept, concept_alias as aliases, concept_redirect as redirects, learning_context as contexts, context_concept as links, concept_relation as relations
 from .base import PostgresRepositoryBase
+from app.learner.repositories.tables.topics import topic_skill, learning_topic
 
 
-def matches(term):
+def matches(term, learner_id=None):
     alias_match = select(aliases.c.id).where(aliases.c.concept_id == concept.c.id, aliases.c.confidence >= 0.9,
                   func.strpos(literal(' ') + aliases.c.normalized_alias + ' ', ' ' + term + ' ') > 0).exists()
-    return or_(func.strpos(literal(' ') + concept.c.normalized_name + ' ', ' ' + term + ' ') > 0, alias_match)
+    private_match = select(topic_skill.c.concept_id).join(learning_topic,
+        (learning_topic.c.id == topic_skill.c.topic_id) & (learning_topic.c.learner_id == topic_skill.c.learner_id)).where(
+            topic_skill.c.learner_id == learner_id, topic_skill.c.concept_id == concept.c.id,
+            or_(func.lower(topic_skill.c.label).contains(term, autoescape=True),
+                topic_skill.c.phrases.contains(term, autoescape=True),
+                learning_topic.c.normalized_name.contains(term, autoescape=True))).exists()
+    return or_(func.strpos(literal(' ') + concept.c.normalized_name + ' ', ' ' + term + ' ') > 0, alias_match, private_match)
 
 
 class RetrievalStore(PostgresRepositoryBase):
@@ -49,7 +56,7 @@ class RetrievalStore(PostgresRepositoryBase):
             return set()
         stmt = select(contexts.c.id).join(links, links.c.context_id == contexts.c.id).join(concept, concept.c.id == links.c.concept_id).where(
             contexts.c.learner_id == learner_id, links.c.learner_id == learner_id, contexts.c.status != 'ARCHIVED',
-            concept.c.status == 'ACTIVE', or_(*(matches(term) for term in terms))).distinct()
+            concept.c.status == 'ACTIVE', or_(*(matches(term, learner_id) for term in terms))).distinct()
         with self._session() as session:
             return set(session.execute(stmt).scalars())
 
@@ -60,7 +67,7 @@ class RetrievalStore(PostgresRepositoryBase):
         if concept_ids is not None:
             filters.append(concept.c.id.in_(concept_ids))
         if query_terms:
-            predicates = [matches(term) for term in query_terms]
+            predicates = [matches(term, learner_id) for term in query_terms]
             filters.append(or_(*predicates))
             exact_alias = select(aliases.c.id).where(aliases.c.concept_id == concept.c.id,
                 aliases.c.confidence >= 0.9, aliases.c.normalized_alias == normalized_query).exists()

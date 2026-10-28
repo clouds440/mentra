@@ -25,3 +25,11 @@ class ConceptIdentityResolver:
             dict(operation='match', labels=labels, topic=topic,
                  candidates=[dict(id=concept.id, name=concept.canonical_name, description=(concept.description or '')[:300]) for concept in candidates]),
             ConceptIdentityMatches)
+
+    async def organize(self, labels, topic, context, candidates, existing):
+        from app.learner.topics import TopicOrganization
+        return await self.llm.ainvoke(PromptSource.TOPIC_ORGANIZATION,
+            dict(labels=labels, topic=topic, context=context, existing_ungrouped=existing,
+                candidates=[{key: value for key, value in candidate.items()
+                    if key in ('id', 'name', 'scope', 'subskills')} for candidate in candidates]),
+            output_schema=TopicOrganization)

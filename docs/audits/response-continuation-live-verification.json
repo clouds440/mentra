@@ -1,0 +1,41 @@
+{
+  "model": "deepseek-flash",
+  "scope": "Synthetic messages only; no student records.",
+  "cases": [
+    {
+      "message": "continue",
+      "expected": "continue",
+      "actual": "continue"
+    },
+    {
+      "message": "Make the questions a little harder.",
+      "expected": "change",
+      "actual": "change"
+    },
+    {
+      "message": "Actually explain differential equations instead.",
+      "expected": "new",
+      "actual": "new"
+    },
+    {
+      "message": "انہی سوالات کو تھوڑا آسان کر دو",
+      "expected": "change",
+      "actual": "change"
+    },
+    {
+      "message": "تابع من حيث توقفت",
+      "expected": "continue",
+      "actual": "continue"
+    },
+    {
+      "message": "My corrected answer to question one is LEFT JOIN.",
+      "expected": "new",
+      "actual": "new"
+    },
+    {
+      "message": "I always confuse inner and outer joins.",
+      "expected": "new",
+      "actual": "new"
+    }
+  ]
+}

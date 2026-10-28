@@ -26,14 +26,15 @@ import { MarkdownContent } from '../content/MarkdownContent';
 import { AnswerContent } from '../content/AnswerContent';
 import { assessments } from '../../services/assessments';
 import { practiceDraft } from '../../services/practiceIntent';
+import { restoreAssessmentTargets, rememberAssessmentTargets } from '../../services/assessmentTargetDraft';
 import { AssessmentCreateForm } from './AssessmentCreateForm';
 import type { Assessment, AssessmentListItem, AssessmentAttempt, AssessmentGeneration } from '../../types/assessments';
 import type { LearningContext } from '../../types/rag';
 import { assessmentSession, useEvaluatedAttempt } from '../../stores/assessmentSession';
 import { QuizAnswerReview } from './QuizAnswerReview';
 
-export function AssessmentWorkspace() { const { identity } = useAuth(); return <Workspace key={identity?.learner_id} />; }
-function Workspace() {
+export function AssessmentWorkspace() { const { identity } = useAuth(); return <Workspace key={identity?.learner_id} owner={identity?.learner_id ?? ''} />; }
+function Workspace({owner}: {owner:string}) {
   const [params, setParams] = useSearchParams();
   const id = params.get('assessment');
   const attemptId = params.get('attempt');
@@ -53,13 +54,15 @@ function Workspace() {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [more, setMore] = useState<number | null>(null);
-  const [draft, setDraft] = useState<AssessmentGeneration>(() => practiceDraft(params));
-  const intentKey = JSON.stringify([params.get('context'), params.get('topic'), params.get('purpose'), params.getAll('concept'), params.getAll('document')]);
+  const [draft, setDraft] = useState<AssessmentGeneration>(() => restoreAssessmentTargets(owner, practiceDraft(params),
+    params.has('concept') || params.has('document') || params.has('learning_topic') || params.has('topic') || params.has('context')));
+  useEffect(() => { rememberAssessmentTargets(owner, draft); }, [owner, draft.topic_id, draft.context_id, draft.topic, draft.concept_ids]);
+  const intentKey = JSON.stringify([params.get('context'), params.get('topic'), params.get('learning_topic'), params.get('purpose'), params.getAll('concept'), params.getAll('document')]);
   const previousIntent = useRef(intentKey);
   useEffect(() => {
     if (previousIntent.current === intentKey) return;
     previousIntent.current = intentKey;
-    if (params.has('concept') || params.has('document')) { setDraft(practiceDraft(params)); }
+    if (params.has('concept') || params.has('document') || params.has('learning_topic')) { setDraft(practiceDraft(params)); }
   }, [intentKey]);
   const active = useRef<AbortController | null>(null);
   const startOperation = useRef(crypto.randomUUID());

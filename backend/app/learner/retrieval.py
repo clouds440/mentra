@@ -54,7 +54,9 @@ class RetrievalService:
                 challenge = recommended_difficulty(state)
                 if state and state.mastery is not None and not prediction.supported and not state.verification_required:
                     score, reason, challenge = max(score, 0.75), 'difficulty_unverified', factor['target_difficulty']
-                score *= (0.2 + 0.8 * factor['importance']) * (0.5 + 0.5 * factor['relevance'])
+                # Scope selection and the ranking policy already account for
+                # relevance. Apply the explicit learning importance only once.
+                score *= (0.2 + 0.8 * factor['importance'])
                 status = diagnostics(state, retention)['knowledge_status']
                 if verification:
                     if supported_only and (reason in ('insufficient_evidence', 'difficulty_unverified')
@@ -71,7 +73,30 @@ class RetrievalService:
                     yield StudyRecommendation(concept_id=concept.id, name=concept.canonical_name, context_id=factor.get('context_id'),
                                               reason=reason, priority=score, recommended_difficulty=challenge,
                                               importance=factor['importance'], relevance=factor['relevance'], knowledge_status=status)
-        return nlargest(request.limit, ranked(), key=lambda item: (item.priority, item.concept_id))
+        # Group before taking the shortlist: a large weak topic must not crowd
+        # out every other topic merely because it has many children.
+        context_ids = list({value['context_id'] for value in factors.values() if value.get('context_id')})
+        parents = self.repository.topic_parent_ids(request.learner_id, context_ids)
+        best = {}
+        for item in ranked():
+            parent = parents.get(item.concept_id, item.concept_id)
+            previous = best.get(parent)
+            if previous is None or (item.priority, item.concept_id) > (previous.priority, previous.concept_id):
+                best[parent] = item
+        selected = nlargest(request.limit, best.values(), key=lambda item: (item.priority, item.concept_id))
+        memberships = self.repository.skill_memberships(request.learner_id, [item.concept_id for item in selected])
+        result, seen = [], set()
+        for item in selected:
+            group = memberships.get(item.concept_id, {})
+            key = group.get('topic_id') or item.concept_id
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(item.model_copy(update=dict(name=group.get('label', item.name),
+                topic_id=group.get('topic_id'), topic_name=group.get('name'))))
+            if len(result) == request.limit:
+                break
+        return result
 
     def packet(self, request):
         contexts = self.contexts.select(request.learner_id, request.context_ids, request.query, request.include_related)
@@ -137,6 +162,7 @@ class RetrievalService:
             if cache is not None:
                 cache[key] = misconceptions, factors
         now = self.clock()
+        memberships = self.repository.skill_memberships(learner_id, ids)
         items = []
         for concept in concepts:
             state = states.get(concept.id)
@@ -144,7 +170,10 @@ class RetrievalService:
             info = diagnostics(state, retention)
             factor = factors.get(concept.id, dict(importance=0.5, relevance=0.5, target_difficulty=0.5))
             prediction = self.states.predict(state, concept.id, factor['target_difficulty'])
-            items.append(LearnerContextConcept(concept_id=concept.id, name=concept.canonical_name,
+            membership = memberships.get(concept.id, {})
+            items.append(LearnerContextConcept(concept_id=concept.id, name=membership.get('label', concept.canonical_name),
+                         topic_id=membership.get('topic_id'), topic_name=membership.get('name'),
+                         context_id=factor.get('context_id'),
                          mastery=state.mastery if state else None,
                          estimate_confidence=state.estimate_confidence if state else None,
                          retention_confidence=retention, knowledge_status=info['knowledge_status'],

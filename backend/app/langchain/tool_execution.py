@@ -20,7 +20,7 @@ from .workflow_budget import current_budget
 from .activity import current_tool_call
 from app.core.config import settings
 
-LIFECYCLE_CODES = {'CHAT_ATTEMPT_EXPIRED', 'CHAT_STALE_ATTEMPT', 'CHAT_DELETED', 'CHAT_NOT_FOUND'}
+LIFECYCLE_CODES = {'CHAT_ATTEMPT_EXPIRED', 'CHAT_STALE_ATTEMPT', 'CHAT_DELETED', 'CHAT_NOT_FOUND', 'CHAT_GENERATION_STOPPED'}
 
 
 class ToolFailure(BaseModel):

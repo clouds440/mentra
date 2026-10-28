@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Mic, Square, LoaderCircle, BookOpenText } from 'lucide-react';
+import { ArrowUp, Play, Pause, RotateCcw, Paperclip, Mic, Square, LoaderCircle, BookOpenText } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
@@ -19,6 +19,10 @@ interface ChatComposerProps {
   canStop?: boolean;
   stopping?: boolean;
   onStop?: () => void;
+  canResume?: boolean;
+  onResume?: () => void;
+  canRetry?: boolean;
+  onRetry?: () => void;
   onFiles: (files: File[]) => void;
   hasAttachments?: boolean;
   attachments?: ReactNode;
@@ -31,13 +35,17 @@ export function ChatComposer({
   onChange,
   onSubmit,
   isThinking,
-  canStop, stopping, onStop,
+  canStop, stopping, onStop, canResume, onResume, canRetry, onRetry,
   onFiles,
   hasAttachments,
   attachments,
   materialPickerRequest,
 }: ChatComposerProps) {
   const evaluation = useAssessmentEvaluation();
+  const pause = !!canStop && (isThinking || (!value.trim() && !hasAttachments));
+  const resume = !!canResume && !value.trim() && !hasAttachments && !isThinking;
+  const retry = !!canRetry && !value.trim() && !hasAttachments && !isThinking;
+  const submit = () => pause ? onStop?.() : resume ? onResume?.() : retry ? onRetry?.() : onSubmit();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const previousPickerRequest = useRef(materialPickerRequest);
@@ -86,7 +94,7 @@ export function ChatComposer({
     if (pickerRef.current?.handleKeyDown(event)) return;
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      if (!voice.busy) onSubmit();
+      if (!voice.busy) submit();
     }
   }
 
@@ -142,7 +150,7 @@ export function ChatComposer({
       onPaste={handlePaste}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!voice.busy) onSubmit();
+        if (!voice.busy) submit();
       }}
     >
       {attachments}
@@ -212,14 +220,16 @@ export function ChatComposer({
               : <Mic size={17} aria-hidden="true" />}
           </Button>
           <Button
-            aria-label={canStop ? 'Stop response' : 'Send message'}
-            className="composer-send icon-control h-8 min-h-8 w-8 rounded-control p-0"
-            disabled={canStop ? stopping : (!value.trim() && !hasAttachments) || isThinking || voice.busy}
+            data-response-action={pause ? 'pause' : resume ? 'resume' : retry ? 'retry' : 'send'}
+            aria-label={pause ? 'Pause response' : resume ? 'Resume response' : retry ? 'Retry response' : 'Send message'}
+            title={pause ? 'Pause this response' : resume ? 'Resume paused response' : retry ? 'Retry the failed step' : 'Send message'}
+            className={`composer-send icon-control h-8 min-h-8 w-8 rounded-control p-0 ${pause ? 'bg-warning/15 text-warning hover:bg-warning/25' : resume ? 'bg-success/15 text-success hover:bg-success/25' : retry ? 'bg-danger/15 text-danger hover:bg-danger/25' : ''}`}
+            disabled={pause ? stopping : (!resume && !retry && !value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
-            type={canStop ? 'button' : 'submit'}
-            onClick={canStop ? onStop : undefined}
+            type={pause ? 'button' : 'submit'}
+            onClick={pause ? onStop : undefined}
           >
-            {canStop ? <Square aria-hidden="true" size={15} fill="currentColor" /> : <ArrowUp aria-hidden="true" size={17} strokeWidth={2.2} />}
+            {pause ? <Pause aria-hidden="true" size={16} fill="currentColor" /> : resume ? <Play aria-hidden="true" size={16} fill="currentColor" /> : retry ? <RotateCcw aria-hidden="true" size={17} /> : <ArrowUp aria-hidden="true" size={17} strokeWidth={2.2} />}
           </Button>
         </div>
       </div>

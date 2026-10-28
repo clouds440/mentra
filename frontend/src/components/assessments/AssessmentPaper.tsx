@@ -5,6 +5,7 @@ import { Clock3, FileText } from 'lucide-react';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { PrintPaperButton } from './PrintPaperButton';
 import { useState } from 'react';
+import { LearningTargetLabels } from './LearningTargetLabels';
 
 export const showsAssessmentMarks = (assessment: Assessment) => !assessment.preferences?.result_style || assessment.preferences.result_style === 'marks';
 
@@ -57,7 +58,7 @@ export function AssessmentPaper({ assessment, printMode = false }: { assessment:
       {question.section && question.section !== assessment.questions[index - 1]?.section && <h3 className="border-b border-border pb-2 pt-2 text-sm font-semibold text-heading">{question.section}</h3>}
       {!!question.context && (question.number !== assessment.questions[index-1]?.number || question.context !== assessment.questions[index-1]?.context) && <div className="rounded-lg border border-border bg-surface p-3"><MarkdownContent content={question.context} /></div>}
       <div className="flex items-center justify-between gap-3 text-xs"><h4 className="font-medium text-heading">{questionLabel(question, index)}</h4>{showsAssessmentMarks(assessment) && <span className="shrink-0 tabular-nums text-muted">[{question.marks} {question.marks === 1 ? 'mark' : 'marks'}]</span>}</div>
-      <MarkdownContent content={question.prompt} />
+      {!printMode && <LearningTargetLabels question={question} />}<MarkdownContent content={question.prompt} />
       {!!question.options?.length && <ol className="grid gap-1 text-sm text-muted sm:grid-cols-2">{question.options.map((option, i) => <li key={option.id} className="flex gap-2"><span className="font-medium">{String.fromCharCode(65 + i)}.</span><MarkdownContent content={option.label} /></li>)}</ol>}
     </section>)}
   </div>;

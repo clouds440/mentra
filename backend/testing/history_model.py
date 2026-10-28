@@ -23,6 +23,20 @@ class HistoryChatFactory(TestChatFactory):
         class Structured:
             async def ainvoke(self, messages):
                 data = json.loads(messages[-1].content)
+                if schema.__name__ == 'TopicOrganization':
+                    candidates = data['candidates']
+                    parent = next((item for item in candidates if item['name'] == data['topic']), None)
+                    placements = []
+                    for label in data['labels']:
+                        skill = next((skill for item in candidates for skill in item['subskills']
+                            if skill['label'].casefold() == label.casefold()), None)
+                        home = next((item for item in candidates if skill and skill in item['subskills']), parent)
+                        placements.append(dict(label=label, skill_name=label,
+                            action='reuse' if skill else 'add_subskill' if home else 'create_concept',
+                            skill_id=skill['concept_id'] if skill else None, topic_id=home['id'] if home else None,
+                            topic_name=home['name'] if home else data['topic'],
+                            scope=home['scope'] if home else f'Practice within {data["topic"]}.', ability=f'Apply {label}.'))
+                    return schema(placements=placements)
                 if schema.__name__ == 'AssessmentTargets':
                     return schema(concept_names=data.get('existing_concepts', [])[:3] or [data['topic'] + ': foundational concepts', data['topic'] + ': basic applications'])
                 if schema.__name__ == 'ConceptSearchTerms':
@@ -57,7 +71,8 @@ class HistoryChatFactory(TestChatFactory):
                         options = dict(options=[dict(id='a', label='A supported explanation.'), dict(id='b', label='An unsupported explanation.')], correct_option_id='a') if kind == 'mcq' else dict(options=[dict(id='true', label='True'), dict(id='false', label='False')], correct_option_id='true') if kind == 'true_false' else {}
                         if plan.get('answer_mode') == 'multiple_choice':
                             options = dict(options=[dict(id='a',label='First correct choice'),dict(id='b',label='Second correct choice'),dict(id='c',label='Incorrect choice')], correct_option_ids=['a','b'])
-                        target = data['targets'][0] if data['targets'] else dict(name=data['topic'])
+                        target = next((item for item in data['targets'] if item['id'] == plan.get('target_subskill_id')),
+                            data['targets'][0] if data['targets'] else dict(name=data['topic']))
                         concepts = dict(concept_ids=[target['id']]) if target.get('id') else dict(concept_names=[target['name']])
                         questions.append(dict(prompt=f'{"Explain simply" if revised else "Explain"} {target["name"]} ({data.get("question_offset", 0)+index+1}).', **concepts, difficulty=.2 if revised else .4, marks=plan.get('marks', 2), model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **options))
                     return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=questions)

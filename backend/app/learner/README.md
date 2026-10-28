@@ -220,12 +220,32 @@ the learner's selected curriculum and trusted relations. Strong misconception cl
   self-report adjusts question difficulty only. Submit actual graded answers through
   the calibration evidence channel.
 
-These are implemented and tested integration boundaries. The repository's current
-anonymous HTTP chat has no trusted student identity and therefore does not automatically
-attach learner history or record inferred answers. Authenticated/session-scoped graph
-orchestration, document retrieval/ingestion, assessment generation/grading, OCR, and
-onboarding screens are separate product workflows; they must call these contracts when
-implemented. No unrestricted student-ID HTTP mutation routes are introduced.
+Authenticated conversation orchestration binds the owner on the server and exposes
+learner tools on demand. Assessment and chat-answer workers submit provenance-bearing
+observations through this facade. A mention, preference, grouping confirmation or
+paused response is not learning evidence. Ordinary chat retrieval behavior remains
+unchanged; automatic private learner-context prefetch is not enabled by this release.
+The deprecated stateless chat endpoint also requires authentication.
+
+The display hierarchy is broader topic -> subskills. `TopicService` chooses natural
+breadth through the configured resolver, with no fixed topic catalog or child count.
+Existing canonical concept IDs remain the underlying evidence/scoring identities;
+private human labels, scope and membership are owner-scoped. Grouping, moving and
+renaming never copy mastery between children. Generated mappings are staged until an
+assessment publishes. Resolver failures may leave a useful unclassified skill rather
+than inventing membership. Historical regrouping uses preview/apply/undo receipts.
+
+`mastery-v3` retains bounded per-challenge observations; `retention-v3` and performance
+prediction use the same age/stability function. Time alone preserves mastery while
+recall support fades. Successful independent recall at least 24 elapsed hours apart
+extends stability; failures and weak chat observations cannot rejuvenate old success.
+These are heuristic support estimates, not calibrated probabilities of remembering.
+Relevance is a scope preference applied once in ranking. Unknown recall has neutral
+uncertainty rather than maximum forgetting risk. Recommendations select the strongest
+need within each topic before taking a bounded topic shortlist.
+
+See `docs/audits/Learner_Implementation_Report_2026-10-27.md` from the repository root
+for implementation checks, migration/deployment limits and deferred work.
 
 ## Lifecycle, audit, and evaluation
 

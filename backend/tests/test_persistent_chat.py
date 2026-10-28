@@ -121,7 +121,7 @@ class PersistentChatTests(unittest.TestCase):
         self.repo.finish(self.owner, job, dict(content='Late answer'))
         page = self.repo.status(self.owner, cid)
         self.assertEqual(page['turn']['error'], 'Response stopped.')
-        self.assertEqual([row['content'] for row in page['items']], [request.content, 'Response stopped. Ready when you are.'])
+        self.assertEqual([row['content'] for row in page['items']], [request.content, 'Response paused. Resume within 30 minutes, or send a new message.'])
         self.assertEqual(self.repo.context_rows(self.owner, cid), [])
         next_request = request.model_copy(update={'client_turn_id':uuid4(), 'expected_revision':page['conversation']['revision'], 'content':'A new question'})
         self.assertTrue(self.repo.begin_turn(self.owner, next_request)['run'])

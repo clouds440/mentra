@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { Button, Textarea } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
+import { LearningTargetLabels } from './LearningTargetLabels';
 import { ApiError } from '../../services/api';
 import { assessments } from '../../services/assessments';
 import type { Assessment, AssessmentAttempt } from '../../types/assessments';
@@ -90,7 +91,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
     <nav aria-label="Quiz questions" className="flex flex-wrap gap-1.5">{assessment.questions.map((q, i) => <button key={q.id} type="button" aria-label={`Go to question ${i+1}${answers[q.id]?.trim() ? ', answered' : ''}`} aria-current={index === i ? 'step' : undefined} disabled={blocked} onClick={() => setIndex(i)} className={`ui-button grid min-h-8 min-w-8 place-items-center rounded-md border px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent ${index === i ? 'border-accent bg-accent/10 text-accent' : answers[q.id]?.trim() ? 'border-border-strong bg-active text-heading' : 'border-border text-muted hover:bg-hover'}`}>{answers[q.id]?.trim() && index !== i ? <Check size={13} aria-hidden="true" /> : i+1}</button>)}</nav>
     <div key={question.id} data-navigation={direction} className="question-transition quiz-question space-y-4 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
     <div className="flex items-center justify-between gap-2 text-[11px]"><span className="font-medium uppercase tracking-wider text-accent">{questionKind(question)}</span>{showsAssessmentMarks(assessment) && <span className="tabular-nums text-muted">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>}</div>
-    <MarkdownContent content={question.prompt} />
+    <LearningTargetLabels question={question} /><MarkdownContent content={question.prompt} />
     {question.context && <div className="border-l-2 border-accent/30 pl-3 text-sm text-muted"><MarkdownContent content={question.context} /></div>}
     {question.options?.length ? <ChoiceOptions kind={question.answer_mode === 'multiple_choice' ? 'multiple_choice' : 'single_choice'} question={`Answer question ${index+1}`} hideLegend options={question.options}
       selected={selectedIds(question, answers[question.id])} disabled={blocked} renderLabel={label => <MarkdownContent content={label} />}

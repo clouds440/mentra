@@ -51,7 +51,8 @@ def collect(session, owner):
     for item in items:
         item['resolved'] = latest[item['_root_id']]
         item['occurrences'] = failures[item['_root_id']]
-        item['topics'] = [dict(id=identifier, name=names.get(identifier, 'Learning topic')) for identifier in item['topic_ids']]
+        saved_labels = {target['subskill_id']: target['subskill_name'] for target in item['_question'].get('learning_targets', [])}
+        item['topics'] = [dict(id=identifier, name=saved_labels.get(identifier, names.get(identifier, 'Learning topic'))) for identifier in item['topic_ids']]
         item['priority'] = 'Repeated mistake' if item['occurrences'] > 1 else 'Incorrect answer' if item['score'] == 0 else 'Partial answer'
     items.sort(key=lambda x: (not x['resolved'], x['occurrences'], 1-x['score']/x['marks'], x['marks'], x['occurred_at']), reverse=True)
     return items

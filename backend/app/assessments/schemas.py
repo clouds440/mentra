@@ -88,6 +88,7 @@ class GenerationRequest(Contract):
     topic: str = Field(min_length=1, max_length=200)
     concept_names: list[str] = Field(default_factory=list)
     concept_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    topic_id: UUID | None = None
     confirm_new_concepts: bool = False
     count: int | None = Field(default=5, ge=1)
     purpose: Literal['practice', 'verification', 'calibration'] = 'practice'
@@ -121,6 +122,8 @@ class GenerationRequest(Contract):
 
     @model_validator(mode='after')
     def revision_target(self):
+        if self.count is not None and self.concept_ids and self.count < len(self.concept_ids):
+            raise ValueError('Choose at least one question per selected subskill.')
         if self.concept_ids and not self.context_id:
             raise ValueError('Exact practice topics require a learning context.')
         if self.question_formats:
@@ -132,7 +135,7 @@ class GenerationRequest(Contract):
                 raise ValueError('Choose at least one question per selected format.')
             self.question_format = self.question_formats[0] if len(self.question_formats) == 1 else 'mixed'
         targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
-        if targets and self.concept_ids:
+        if targets and (self.concept_ids or self.topic_id):
             raise ValueError('Revisions retain their original concepts; exact practice targets require a new assessment.')
         if targets > 1 or bool(targets) != bool(self.revision_instructions):
             raise ValueError('Revisions require exactly one source assessment and instructions.')
@@ -154,6 +157,7 @@ class GenerationRequest(Contract):
         if not self.question_formats: exclude.add('question_formats')
         if not self.revision_question_numbers: exclude.add('revision_question_numbers')
         if not self.concept_ids: exclude.add('concept_ids')
+        if self.topic_id is None: exclude.add('topic_id')
         if self.question_format == 'written': exclude.add('question_format')
         if not self.paper_sections: exclude.add('paper_sections')
         if self.total_marks is None: exclude.add('total_marks')
@@ -202,6 +206,7 @@ class MCQOption(Contract):
     label: str = Field(min_length=1)
 
 class GeneratedQuestion(Contract):
+    learning_targets: list[dict[str, str]] = Field(default_factory=list)
     question_type: str | None = None
     answer_mode: Literal['text', 'single_choice', 'multiple_choice'] | None = None
     context: str = ''
@@ -308,6 +313,7 @@ class SubmitAnswers(Contract):
     assistance: AssessmentAssistance = AssessmentAssistance.unknown
 
 class PublicQuestion(Contract):
+    learning_targets: list[dict[str, str]] = Field(default_factory=list)
     question_type: str | None = None
     answer_mode: Literal['text', 'single_choice', 'multiple_choice'] | None = None
     context: str = ''

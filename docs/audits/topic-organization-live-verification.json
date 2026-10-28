@@ -1,0 +1,109 @@
+{
+  "model": "deepseek-flash",
+  "scope": "Synthetic provider/domain checks; no real student data.",
+  "natural_six_skill_group": {
+    "placements": [
+      {
+        "label": "Inner joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL queries that combine rows from multiple tables using inner joins.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Left outer joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL queries using left outer joins, including handling unmatched rows with NULLs.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Right outer joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL queries using right outer joins, including handling unmatched rows with NULLs.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Full outer joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL queries using full outer joins to preserve unmatched rows from both tables.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Self joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL self joins that join a table to itself using aliases.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Cross joins",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL cross joins and explain their Cartesian product result.",
+        "action": "create_concept"
+      }
+    ],
+    "needs_wider_lookup": false
+  },
+  "repeated_niche": {
+    "placements": [
+      {
+        "label": "Keep every row from the left table, including unmatched ones",
+        "skill_name": "Left outer joins",
+        "skill_id": "06d787d0-5ec9-4ddd-9241-ab31e420746b",
+        "topic_id": "bc4e2c84-0f89-49f2-bb13-72ad8573a4c0",
+        "topic_name": "SQL joins",
+        "scope": "Combining rows from two or more tables in SQL using join operations, including inner, outer, self and cross joins, and the semantics of matched and unmatched rows.",
+        "ability": "Write and interpret SQL queries using left outer joins, including handling unmatched rows with NULLs.",
+        "action": "reuse"
+      }
+    ],
+    "needs_wider_lookup": false
+  },
+  "different_subject": {
+    "placements": [
+      {
+        "label": "Chain rule",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "Differentiation rules",
+        "scope": "Rules for computing derivatives of functions, including power, product, quotient and chain rules, and their application to composite and combined functions.",
+        "ability": "Differentiate composite functions by applying the chain rule, identifying inner and outer functions and differentiating each layer.",
+        "action": "create_concept"
+      },
+      {
+        "label": "Product rule",
+        "skill_name": null,
+        "skill_id": null,
+        "topic_id": null,
+        "topic_name": "Differentiation rules",
+        "scope": "Rules for computing derivatives of functions, including power, product, quotient and chain rules, and their application to composite and combined functions.",
+        "ability": "Differentiate products of functions using the product rule.",
+        "action": "create_concept"
+      }
+    ],
+    "needs_wider_lookup": false
+  }
+}

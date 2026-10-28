@@ -4,6 +4,8 @@ x-production: &production
   APP_ENV: production
   FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the actual public HTTPS frontend origin}
   CORS_ORIGINS: ${CORS_ORIGINS:?Set explicit public HTTPS browser origins}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+  LOG_PARAMETER_DETAILS: ${LOG_PARAMETER_DETAILS:-false}
 
 services:
   backend:

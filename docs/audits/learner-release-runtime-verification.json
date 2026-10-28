@@ -1,0 +1,22 @@
+{
+  "app_env": "production",
+  "synthetic_database": true,
+  "health": "ok",
+  "readiness": "ready",
+  "readiness_checks": {
+    "database": "ok",
+    "ai": "ok",
+    "embedding": "ok",
+    "qdrant": "ok"
+  },
+  "openapi_paths": 107,
+  "configured_provider_generated_questions": 1,
+  "pause_resume": true,
+  "stale_stop_rejected": true,
+  "protected_grading_keys": true,
+  "topic_publication": true,
+  "no_mastery_from_generation": true,
+  "secure_cookie": true,
+  "foreign_browser_origin_rejected": true,
+  "public_tls_dns_verified": false
+}

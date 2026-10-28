@@ -33,6 +33,7 @@ class PostgresRepositoryBase:
             yield repository
         else:
             with read_sessions(self._session_factory) as bound:
+                bound.session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'))
                 with self.read_scope(bound) as repository:
                     yield repository
 
@@ -56,6 +57,8 @@ class PostgresRepositoryBase:
         if self._active_session is not None:
             yield self._active_session
         elif self._read_session is not None:
+            if not self._read_session.in_transaction():
+                self._read_session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'))
             yield self._read_session
         else:
             with self._session_factory.begin() as session:

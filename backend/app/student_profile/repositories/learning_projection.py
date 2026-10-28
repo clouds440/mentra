@@ -39,7 +39,7 @@ def project_learning_profile(unit_of_work, owner):
     recent = session.execute(select(e).join(d, d.c.evidence_id == e.c.id).where(e.c.learner_id == owner,
         d.c.learner_id == owner, d.c.status == 'ACCEPTED', e.c.evidence_confidence >= .8,
         e.c.metadata_json['profile_context_version'].as_integer() == profile.context_version,
-        e.c.source_type.in_(['QUIZ','CALIBRATION','HANDWRITTEN_ASSESSMENT','CHAT']))
+        e.c.source_type.in_(['QUIZ','MOCK_EXAM','CALIBRATION','HANDWRITTEN_ASSESSMENT','CHAT']))
         .order_by(e.c.occurred_at.desc(), d.c.sequence.desc()).limit(160)).mappings().all()
     selected, groups = [], {}
     for record in recent:

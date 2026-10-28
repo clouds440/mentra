@@ -115,6 +115,7 @@ services:
     build:
       context: ./backend
       args:
+        MENTRA_REVISION: ${MENTRA_REVISION:-unknown}
         EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
         RAG_RERANKER_MODEL: ${RAG_RERANKER_MODEL:-}
         SPEECH_MODEL: ${SPEECH_MODEL:-base}
@@ -326,6 +327,7 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        MENTRA_REVISION: ${MENTRA_REVISION:-unknown}
     container_name: mentra-frontend
     restart: unless-stopped
     read_only: true

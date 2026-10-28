@@ -17,6 +17,7 @@ def explain(engine, owner, concept_id, context_id=None):
     if not concepts:
         raise AppError('LEARNING_TOPIC_UNAVAILABLE', 'This topic is unavailable in your learning contexts.', 404)
     concept = concepts[0]
+    membership = engine.repository.skill_memberships(owner, [concept.id]).get(concept.id, {})
     factor = engine.repository.context_factors(owner, contexts, [concept.id]).get(concept.id, {})
     engine.states.load(owner, [concept.id])  # Refresh a stale policy before the read snapshot.
     with engine.repository.transaction(learner_ids=[owner]) as repository:
@@ -39,7 +40,7 @@ def explain(engine, owner, concept_id, context_id=None):
     next_check = ('Try a few new questions without hints to build an initial estimate.' if info['knowledge_status']=='insufficient_evidence'
         else 'Check your understanding with new questions without hints.' if info['knowledge_status']=='needs_verification'
         else 'Practise with new questions at the suggested difficulty.')
-    return ProgressExplanation(concept_id=concept.id, context_id=factor.get('context_id'), name=concept.canonical_name, **{key:info[key] for key in
+    return ProgressExplanation(concept_id=concept.id, context_id=factor.get('context_id'), name=membership.get('label', concept.canonical_name), **{key:info[key] for key in
         ('knowledge_status','mastery_lower_bound','mastery_upper_bound','independent_item_count','recommended_difficulty')},
         mastery=state.mastery if state else None, evidence_count=state.evidence_count if state else 0,
         last_practice_at=state.last_evidence_at if state else None,

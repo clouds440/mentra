@@ -621,6 +621,9 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
     background: rgb(var(--primary));
   }
   .composer-send:hover::before { background: rgb(var(--primary-hover)); }
+  .composer-send[data-response-action="pause"]::before { background: rgb(var(--warning) / .18); }
+  .composer-send[data-response-action="resume"]::before { background: rgb(var(--success) / .18); }
+  .composer-send[data-response-action="retry"]::before { background: rgb(var(--danger) / .18); }
   .composer-send svg { width: 15px; height: 15px; }
 }
 

@@ -14,6 +14,34 @@ class AssessmentGenerationWorker:
         jobs = self.service.generation_jobs
         job = await run_in_threadpool(jobs.claim)
         if not job: return False
+        processing = asyncio.create_task(self._process(job))
+        async def watch():
+            failures = 0
+            while not processing.done():
+                await asyncio.sleep(.5)
+                try:
+                    if not await run_in_threadpool(jobs.active, job):
+                        processing.cancel()
+                        return
+                    failures = 0
+                except Exception:
+                    failures += 1
+                    if failures >= 3:
+                        processing.cancel()
+                        return
+        watcher = asyncio.create_task(watch())
+        try:
+            await processing
+        except asyncio.CancelledError:
+            if not processing.cancelled(): raise
+        finally:
+            watcher.cancel()
+            if not processing.done(): processing.cancel()
+            await asyncio.gather(processing, watcher, return_exceptions=True)
+        return True
+
+    async def _process(self, job):
+        jobs = self.service.generation_jobs
         intent = AssessmentIntent.model_validate(job['request'])
         request = None
         owner, conversation = job['learner_id'], job['conversation_id']
@@ -78,7 +106,7 @@ class AssessmentGenerationWorker:
                 result = value.model_dump(mode='json')
             await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
         except Exception as error:
-            message = error.message if isinstance(error, AppError) and error.code in ('ASSESSMENT_SOURCES_REQUIRED','ASSESSMENT_PAPER_MARKS','ASSESSMENT_INVALID_GENERATION') else 'Generation was interrupted. Completed sections are kept; retry to continue.'
+            message = error.message if isinstance(error, AppError) and error.code in ('ASSESSMENT_SOURCES_REQUIRED','ASSESSMENT_PAPER_MARKS','ASSESSMENT_INVALID_GENERATION','ASSESSMENT_TARGET_CHANGED') else 'Generation was interrupted. Completed sections are kept; retry to continue.'
             try: await run_in_threadpool(jobs.update, job, state='failed', error=message)
             except AppError: pass  # A newer lease owns publication now.
         finally:

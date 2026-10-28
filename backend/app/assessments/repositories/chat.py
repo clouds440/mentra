@@ -114,6 +114,9 @@ class ChatAssessmentRepository:
             row = dict(id=str(uuid4()), learner_id=owner, conversation_id=conversation, payload=payload,
                 operation_id=str(request.client_request_id), assessment_id=None, created_at=self.repository.clock())
             session.execute(chat_drafts.insert().values(**row))
+            if self.repository.publish_skills:
+                self.repository.publish_skills(owner,
+                    [identifier for question in payload['questions'] for identifier in question['concept_ids']], tx, request.context_id, request.topic_id)
             auto = session.scalar(select(preferences.c.auto_add).where(preferences.c.learner_id == owner))
             # Interactive work is a real assessment immediately; retain draft-first
             # policy for written worksheets unless the account opted into auto-add.

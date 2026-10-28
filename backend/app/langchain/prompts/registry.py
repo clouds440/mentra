@@ -14,6 +14,7 @@ class PromptSource(StrEnum):
     CHAT_UI_BARS = 'chat_ui_bars'
     CHAT_ASSESSMENT = "chat_assessment"
     RESPONSE_EDIT = 'response_edit'
+    RESPONSE_CONTINUATION = 'response_continuation'
     CHAT_TITLE = 'chat_title'
     LEARNER_CONTEXT = "learner_context"
     STUDENT_PROFILE_EVALUATION = "student_profile_evaluation"
@@ -26,6 +27,7 @@ class PromptSource(StrEnum):
     ASSESSMENT_SELECTION = 'assessment_selection'
     ASSESSMENT_TARGETS = 'assessment_targets'
     CONCEPT_IDENTITY = 'concept_identity'
+    TOPIC_ORGANIZATION = 'topic_organization'
     ASSESSMENT_GRADING = 'assessment_grading'
     ASSESSMENT_TRANSCRIPTION = 'assessment_transcription'
     CHAT_EVIDENCE = 'chat_evidence'
@@ -57,6 +59,8 @@ def get_system_prompt(source: PromptSource) -> str:
         from .chat_assessment import SYSTEM_PROMPT
     elif source is PromptSource.RESPONSE_EDIT:
         from .response_edit import SYSTEM_PROMPT
+    elif source is PromptSource.RESPONSE_CONTINUATION:
+        from .response_continuation import SYSTEM_PROMPT
     elif source is PromptSource.CHAT_TITLE:
         from .chat_title import SYSTEM_PROMPT
     elif source is PromptSource.LEARNER_CONTEXT:
@@ -81,6 +85,8 @@ def get_system_prompt(source: PromptSource) -> str:
         from .assessment_targets import SYSTEM_PROMPT
     elif source is PromptSource.CONCEPT_IDENTITY:
         from .concept_identity import SYSTEM_PROMPT
+    elif source is PromptSource.TOPIC_ORGANIZATION:
+        from .topic_organization import SYSTEM_PROMPT
     elif source is PromptSource.ASSESSMENT_GRADING:
         from .assessment_grading import SYSTEM_PROMPT
     elif source is PromptSource.ASSESSMENT_TRANSCRIPTION:
@@ -118,6 +124,8 @@ def get_prompt_version(source: PromptSource) -> str:
         from .chat_assessment import VERSION
     elif source is PromptSource.RESPONSE_EDIT:
         from .response_edit import VERSION
+    elif source is PromptSource.RESPONSE_CONTINUATION:
+        from .response_continuation import VERSION
     elif source is PromptSource.CHAT_TITLE:
         from .chat_title import VERSION
     elif source is PromptSource.LEARNER_CONTEXT:
@@ -142,6 +150,8 @@ def get_prompt_version(source: PromptSource) -> str:
         from .assessment_targets import VERSION
     elif source is PromptSource.CONCEPT_IDENTITY:
         from .concept_identity import VERSION
+    elif source is PromptSource.TOPIC_ORGANIZATION:
+        from .topic_organization import VERSION
     elif source is PromptSource.ASSESSMENT_GRADING:
         from .assessment_grading import VERSION
     elif source is PromptSource.ASSESSMENT_TRANSCRIPTION:

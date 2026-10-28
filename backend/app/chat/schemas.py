@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -16,6 +16,7 @@ class SendTurn(BaseModel):
     retrieval: ChatSelection = Field(default_factory=ChatSelection)
     interaction_response: InteractionResponse | None = None
     retry: bool = False
+    resume_from: UUID | None = None
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=4)
     timezone: str | None = Field(default=None, max_length=100)
 
@@ -35,6 +36,12 @@ class EditConversation(BaseModel):
 class StopTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     attempt: int = Field(ge=1)
+
+
+class ResumeTurn(StopTurn):
+    expected_revision: int = Field(ge=1)
+    instruction: str | None = Field(default=None, min_length=1, max_length=4000)
+    client_request_id: UUID = Field(default_factory=uuid4)
 
 
 class ChatSearchHit(BaseModel):

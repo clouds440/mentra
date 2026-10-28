@@ -68,6 +68,24 @@ async def generation_job(identifier: UUID, request: Request, identity=Depends(re
 async def retry_generation(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.generation_jobs.retry, identity.learner_id, str(identifier))
 
+
+class StopGeneration(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=1)
+
+
+@router.post('/generation-jobs/{identifier}/stop')
+async def stop_generation(identifier: UUID, body: StopGeneration, request: Request, identity=Depends(require_onboarded_identity)):
+    value = await run_in_threadpool(request.app.state.assessment_service.generation_jobs.stop,
+        identity.learner_id, str(identifier), body.expected_revision)
+    if value['state'] == 'stopped' and value.get('source_turn_id'):
+        conversation_service = request.app.state.conversation_service
+        page = await run_in_threadpool(conversation_service.repository.status, identity.learner_id,
+            value['conversation_id'], value['source_turn_id'])
+        await conversation_service.stop(identity.learner_id, value['conversation_id'], value['source_turn_id'],
+            page['turn']['attempt'], stopped_job=(value['id'], value['revision']))
+    return value
+
 @router.put('/attempts/{identifier}/draft', response_model=Attempt)
 async def save_draft(identifier: UUID, body: SaveDraftAnswers,
                      request: Request, identity=Depends(require_onboarded_identity)):

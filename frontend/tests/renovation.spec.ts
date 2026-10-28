@@ -52,7 +52,7 @@ test('activity stays mounted through acknowledgement and coalesces safe feedback
   await page.route('**/turns/*/stop', async route => {
     await new Promise<void>(resolve => { stop = resolve; }); await route.fallback();
   });
-  await page.getByRole('button', { name: 'Stop response', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause response', exact: true }).click();
   await expect(activity).toContainText('Stopping this response');
   await expect.poll(() => !!stop).toBe(true); stop!();
   await expect(activity).toHaveCount(0);

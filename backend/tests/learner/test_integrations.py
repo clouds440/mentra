@@ -150,7 +150,8 @@ class LearnerIntegrationTests(unittest.TestCase):
         state = self.engine.get_concept_state(ConceptStateRequest(learner_id='e2ba227d-7165-5d43-91db-f7185326e0c4', concept_id=self.concepts[0].id))
         self.assertEqual(state.evidence_count, 0)
         self.assertIsNone(state.mastery)
-        self.assertEqual(state.mastery_policy_version, 'mastery-v2')
+        from app.learner.scoring import HeuristicMasteryPolicy
+        self.assertEqual(state.mastery_policy_version, HeuristicMasteryPolicy().version)
 
     def test_untrusted_semantic_identity_never_accepted(self):
         class Resolver:

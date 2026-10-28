@@ -55,4 +55,7 @@ USER 10001:10001
 
 EXPOSE 8000
 
+ARG MENTRA_REVISION=unknown
+LABEL org.opencontainers.image.revision=${MENTRA_REVISION}
+
 CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --no-access-log --host \"$BACKEND_HOST\" --port \"$BACKEND_PORT\""]

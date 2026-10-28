@@ -16,6 +16,7 @@ from app.core.logging import workflow_logger
 class AssessmentService:
     def __init__(self, repository, workflows, reader=None, admission=None, files=None):
         self.repository, self.workflows = repository, workflows
+        self.repository.publish_skills = getattr(workflows.learner, 'publish_topic_skills_in_transaction', None)
         self.admission = admission
         self.files=files or repository.files
         self.reader = reader or create_document_reader(isolated=True)
@@ -25,7 +26,7 @@ class AssessmentService:
         from .repositories.generation import GenerationJobs
         self.generation_jobs = GenerationJobs(repository)
 
-    async def queue_generation(self, owner, request, conversation=None):
+    async def queue_generation(self, owner, request, conversation=None, source_turn_id=None):
         previous = await run_in_threadpool(self.generation_jobs.replay, owner, request, conversation)
         if previous: return previous
         if request.grounded and not request.document_ids:
@@ -35,13 +36,16 @@ class AssessmentService:
         if request.concept_ids:
             await run_in_threadpool(self.workflows.learner.get_practice_concepts, owner, request.context_id,
                                    [str(identifier) for identifier in request.concept_ids])
+        if request.topic_id and not request.concept_ids:
+            await run_in_threadpool(self.workflows.learner.get_topic_practice_concepts,
+                owner, request.context_id, str(request.topic_id), 1)
         if conversation: await run_in_threadpool(self.chat.recent, owner, conversation)
         if request.revision_instructions: await self._revision_source(owner, request, conversation)
-        return await run_in_threadpool(self.generation_jobs.enqueue, owner, request, conversation)
+        return await run_in_threadpool(self.generation_jobs.enqueue, owner, request, conversation, source_turn_id)
 
-    async def generate_chat(self, owner, conversation, request):
-        if request.question_format == 'mock_paper' or request.count is None or request.count > 10:
-            job = await self.queue_generation(owner, request, conversation)
+    async def generate_chat(self, owner, conversation, request, source_turn_id=None):
+        if source_turn_id or request.question_format == 'mock_paper' or request.count is None or request.count > 10:
+            job = await self.queue_generation(owner, request, conversation, source_turn_id)
             return dict(id=job['id'], generation_job_id=job['id'], title=request.topic)
         previous = await run_in_threadpool(self.chat.replay, owner, conversation, request)
         if previous: return previous
@@ -66,9 +70,14 @@ class AssessmentService:
             except Exception: workflow_logger.event('assessment.generation_cleanup_deferred', code='CLAIM_CLEANUP_UNAVAILABLE')
 
     async def generate_chat_from_topic(self, owner, conversation, *, client_request_id, topic=None,
-                                       context_id=None, **options):
+                                       context_id=None, source_turn_id=None, **options):
         # Verify conversation ownership before creating any context or targets.
         await run_in_threadpool(self.chat.recent, owner, conversation)
+        if source_turn_id:
+            from .schemas import AssessmentIntent
+            intent = AssessmentIntent(client_request_id=client_request_id, context_id=context_id, topic=topic, **options)
+            job = await self.queue_generation(owner, intent, conversation, source_turn_id)
+            return dict(id=job['id'], generation_job_id=job['id'], title=topic or 'Your assessment')
         # A short explicit-topic quiz needs no extra model call to choose a type.
         # Larger, structured and topicless work retains semantic selection.
         if topic and options.get('question_format') == 'auto':
@@ -81,7 +90,7 @@ class AssessmentService:
         if not topic or options.get('question_format') == 'auto':
             from .schemas import AssessmentIntent
             intent = AssessmentIntent(client_request_id=client_request_id, context_id=context_id, topic=topic, **options)
-            job = await self.queue_generation(owner, intent, conversation)
+            job = await self.queue_generation(owner, intent, conversation, source_turn_id)
             return dict(id=job['id'], generation_job_id=job['id'], title=topic or 'Your assessment')
         if context_id is None:
             from app.learner.schemas import ResolveLearningContextRequest
@@ -92,11 +101,11 @@ class AssessmentService:
         request = GenerationRequest(client_request_id=client_request_id, context_id=context_id,
             topic=topic, confirm_new_concepts=False, **options)
         if request.question_format == 'mock_paper' or request.count is None or request.count > 10:
-            job = await self.queue_generation(owner, request, conversation)
+            job = await self.queue_generation(owner, request, conversation, source_turn_id)
             return dict(id=job['id'], generation_job_id=job['id'], title=topic)
         # Authorization is internal; keep legacy request fingerprints unchanged
         # so a retry can recover an assessment created before this behavior change.
-        return await self.generate_chat(owner, conversation, request)
+        return await self.generate_chat(owner, conversation, request, source_turn_id)
 
     async def generate(self, owner, request):
         previous = await run_in_threadpool(self.repository.replay, owner, request)

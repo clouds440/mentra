@@ -34,12 +34,15 @@ turns = Table('chat_turn', metadata,
     Column('user_sequence', BigInteger, nullable=False), Column('assistant_sequence', BigInteger),
     Column('state', Text, nullable=False), Column('error', Text), Column('attempt', Integer, nullable=False),
     Column('lease_until', DateTime(timezone=True)), Column('selection', JSONB, nullable=False),
+    Column('resume_until', DateTime(timezone=True)), Column('resume_instruction', Text),
+    Column('resume_operation_id', Uuid(as_uuid=False)), Column('resume_request_hash', Text),
     Column('created_at', DateTime(timezone=True), nullable=False),
     ForeignKeyConstraint(['learner_id', 'conversation_id'], ['chat_conversation.learner_id', 'chat_conversation.id'], ondelete='CASCADE'),
     CheckConstraint("state IN ('RUNNING','SUCCEEDED','FAILED')", name='chat_turn_state'),
     UniqueConstraint('learner_id', 'id'),
     Column('attachment_ids', JSONB, nullable=False, server_default='[]'),
     Index('idx_chat_turn_active', 'learner_id', 'conversation_id', 'state'))
+Index('idx_chat_resume_expiry', turns.c.resume_until)
 
 sync_state = Table('chat_sync_state', metadata, owner(True),
     Column('revision', BigInteger, nullable=False), Column('floor', BigInteger, nullable=False),

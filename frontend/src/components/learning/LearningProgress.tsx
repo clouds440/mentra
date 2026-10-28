@@ -15,7 +15,7 @@ import { progressPage, type ProgressPageData } from '../../services/learning';
 import type { EventProposal } from '../../types/events';
 import type { LearningOverview } from '../../types/learning';
 import type { LearningContext } from '../../types/rag';
-import { UnderstandingTable } from './UnderstandingTable';
+import { TopicProgress } from './TopicProgress';
 import { QuickReview } from './QuickReview';
 import { LearningSuggestions } from './LearningSuggestions';
 import { supportedReview } from './progressLabels';
@@ -39,7 +39,7 @@ function Progress() {
   usePageRefresh(() => setReload(value => value + 1), true, ['learning', 'learning-contexts', 'event-proposals']);
   useEffect(() => {
     const controller = new AbortController(); setError('');
-    if (tab === 'learning') { void progressPage(controller.signal, context || undefined).then(data => { if (!controller.signal.aborted) { setLearning(data.overview); setContexts(data.contexts); setBootstrap(data); setTotalConcepts(data.understanding.total_concepts); } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load learning progress.'); }); }
+    if (tab === 'learning') { void progressPage(controller.signal, context || undefined).then(data => { if (!controller.signal.aborted) { setLearning(data.overview); setContexts(data.contexts); setBootstrap(data); } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load learning progress.'); }); }
     return () => controller.abort();
   }, [tab, context, reload]);
   return <div className="h-full overflow-y-auto"><div className="page-container">
@@ -51,7 +51,7 @@ function Progress() {
       <div className="workspace-toolbar"><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={context} onChange={event => { setLearning(null); setTotalConcepts(null); setContext(event.target.value); }}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></div>
       {!learning && !error && <Skeleton variant="table" />}
       {learning && <><QuickReview learning={learning} context={context} /><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
-        {tab === 'learning' && <UnderstandingTable key={context} initial={bootstrap?.understanding} context={context} reload={reload} onTotal={setTotalConcepts} />}
+        {tab === 'learning' && <TopicProgress key={context} context={context} reload={reload} onTotal={setTotalConcepts} />}
         <LearningSuggestions learning={learning} context={context} />
       </>}
     </section>

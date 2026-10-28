@@ -52,6 +52,8 @@ def count_messages(messages):
 
 
 def output_budget(source, config=settings):
+    if source.value == 'response_continuation':
+        return 256
     if source.value == 'chat_summary':
         return config.chat_summary_max_tokens + 100
     if source.value == 'memory_summary':

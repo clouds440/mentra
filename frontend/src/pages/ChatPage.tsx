@@ -36,6 +36,19 @@ export function ChatPage() {
   const id = conversationId ?? draftId;
   useLayoutEffect(() => { if (!conversationId) chatStore.markDraft(id); }, [id, conversationId]);
   const view = useConversation(id);
+  const [, refreshPause] = useState(0);
+  useEffect(() => {
+    if (!view.turn?.can_resume || !view.turn.resume_until) return;
+    const timer = setTimeout(() => refreshPause(value => value+1), Math.max(0, Date.parse(view.turn.resume_until)-Date.now()+50));
+    return () => clearTimeout(timer);
+  }, [view.turn?.resume_until, view.turn?.can_resume]);
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if ((event as CustomEvent).detail?.conversationId === id) void chatStore.open(id, false, true);
+    };
+    window.addEventListener('mentra:assessment-generation', changed);
+    return () => window.removeEventListener('mentra:assessment-generation', changed);
+  }, [id]);
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
   const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>();
   const [draft, setDraft] = useState('');
@@ -193,11 +206,9 @@ export function ChatPage() {
           {(validation || view.error || view.unsent) && <div className="mb-3 rounded-xl border border-danger/20 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger" role="alert">
             <p>{validation || view.error || 'Your question was not sent.'}</p>
             {view.unsent && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
-            {view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.' && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.send(id, '', selection, true)}>Retry response</button>}
             {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
-            {!view.turn && view.error && chatStore.hasPending(id) && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-2' })} onClick={() => void chatStore.send(id, '', selection, true)}>Retry sending</button>}
           </div>}
-          <ChatComposer key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && view.busy && view.turn?.state === 'RUNNING'} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+          <ChatComposer key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && !!(view.turn?.can_stop ?? (view.busy && view.turn?.state === 'RUNNING'))} canResume={!!view.turn?.can_resume && (!view.turn.resume_until || Date.parse(view.turn.resume_until) > Date.now())} onResume={() => void chatStore.resumeResponse(id)} canRetry={view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.' || !!view.error && chatStore.hasPending(id)} onRetry={() => void chatStore.send(id, '', selection, true)} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
             attachments={<>
               {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="staged-file relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
                 {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />

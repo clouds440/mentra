@@ -140,8 +140,8 @@ test('source selection clears once after success and retrieval limits are descri
 test('stopping a response retains the selected source for retry', async ({ page }) => {
   await workspace(page, true, true, '', true);
   await page.goto('/chat/polish-chat');
-  await expect(page.getByRole('button', { name: 'Stop response' })).toBeEnabled();
-  await page.getByRole('button', { name: 'Stop response' }).click();
+  await expect(page.getByRole('button', { name: 'Pause response' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Pause response' }).click();
   await expect(page.getByText('Response stopped. Ready when you are.')).toBeVisible();
   await expect(page.getByText('Using selected material', { exact: true })).toBeVisible();
 });
@@ -423,7 +423,7 @@ test('full width titles reveal overlay controls and history opens at the bottom'
 test('Stop replaces Send and the saved stopped response survives reload', async ({page}) => {
   await workspace(page, true);
   await page.goto('/chat/polish-chat');
-  await page.getByRole('button', {name:'Stop response', exact:true}).click();
+  await page.getByRole('button', {name:'Pause response', exact:true}).click();
   await expect(page.getByRole('article', {name:'Mentra response'}).last()).toContainText('Response stopped. Ready when you are.');
   await expect(page.getByRole('button', {name:'Send message', exact:true})).toBeVisible();
   await expect(page.getByLabel('Current activity')).toHaveCount(0);

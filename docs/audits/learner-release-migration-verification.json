@@ -1,0 +1,10 @@
+{
+  "schema_before": "20261025_0031",
+  "schema_after": "20261027_0034",
+  "existing_tables_preserved": 84,
+  "existing_row_counts_unchanged": true,
+  "new_tables": [
+    "learning_topic",
+    "topic_skill"
+  ]
+}

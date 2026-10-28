@@ -172,6 +172,9 @@ class PerformanceEstimate(LearnerSchema):
 class LearnerContextConcept(LearnerSchema):
     concept_id: str
     name: str
+    topic_id: str | None = None
+    topic_name: str | None = None
+    context_id: str | None = None
     mastery: float | None = Field(default=None, ge=0, le=1)
     estimate_confidence: float | None = Field(default=None, ge=0, le=1)
     retention_confidence: float | None = Field(default=None, ge=0, le=1)
@@ -255,6 +258,8 @@ class StudyRecommendationsRequest(LearnerSchema):
 
 
 class StudyRecommendation(LearnerSchema):
+    topic_id: str | None = None
+    topic_name: str | None = None
     context_id: str | None = None
     concept_id: str
     name: str
@@ -273,6 +278,8 @@ class VerificationCandidatesRequest(LearnerSchema):
 
 
 class VerificationCandidate(LearnerSchema):
+    topic_id: str | None = None
+    topic_name: str | None = None
     context_id: str | None = None
     concept_id: str
     name: str

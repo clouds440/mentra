@@ -74,6 +74,8 @@ async def lifespan(application):
     from app.assessments.evidence_worker import AssessmentEvidenceWorker
     grading_worker = AssessmentWorker(application.state.assessment_service)
     assessment_evidence_worker = AssessmentEvidenceWorker(application.state.assessment_service)
+    from app.assessments.generation_worker import AssessmentGenerationWorker
+    generation_worker = AssessmentGenerationWorker(application.state.assessment_service)
     from app.chat.attachments import AttachmentService
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
@@ -98,7 +100,12 @@ async def lifespan(application):
             await assessment_evidence_worker.run_once()
             await asyncio.sleep(0.2)
 
-    task = asyncio.create_task(process_jobs())
+    async def process_generation():
+        while not stopping.is_set():
+            await generation_worker.run_once()
+            await asyncio.sleep(.2)
+
+    task = asyncio.gather(process_jobs(), process_generation())
     application.state.rag_stopping = stopping
     application.state.rag_worker_task = task
     try:

@@ -7,6 +7,7 @@ import { Button, Dialog, IconButton } from '../ui';
 import { ViewToggle } from '../ui/ViewToggle';
 import { useQuestionNavigation } from './useQuestionNavigation';
 import { MistakePractice } from './MistakePractice';
+import { LearningTargetLabels } from './LearningTargetLabels';
 
 /** Join by immutable question ID; model response order never determines attribution. */
 export function AssessmentFeedback({ assessment, attempt }: { assessment: Assessment; attempt: AssessmentAttempt }) {
@@ -27,7 +28,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
   const percent = maximum ? score/maximum*100 : 0;
   const current=Math.min(selected,Math.max(0,results.length-1));
   const visible = results.slice(current,current+1);
-  const renderFeedback = ({question, index, grade, outcome}: typeof results[number]) => <QuestionFeedback label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')} answer={selectedAnswer(question, attempt.answers[question.id])} correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} />;
+  const renderFeedback = ({question, index, grade, outcome}: typeof results[number]) => <div className="space-y-2"><LearningTargetLabels question={question} /><QuestionFeedback label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')} answer={selectedAnswer(question, attempt.answers[question.id])} correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} /></div>;
   return <section aria-label="Assessment feedback" className="assessment-feedback min-w-0 space-y-3">
     <div className="space-y-3 rounded-xl border border-border-strong bg-surface p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-heading">Your results</h2>{style === 'marks' && <p className="text-sm font-semibold tabular-nums text-heading">Final result: {Number(score.toFixed(4))}/{Number(maximum.toFixed(4))}</p>}</div>
@@ -38,6 +39,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
         return <span key={outcome} className={`inline-flex items-center gap-1.5 text-xs font-medium ${style.color}`}><style.Icon aria-hidden="true" size={15} />{results.filter(item => item.outcome === outcome).length} {style.label.toLowerCase()}</span>;
       })}</div>
     </div>
+    {!!assessment.questions.some(question => question.learning_targets?.length) && <section aria-label="Topics covered" className="rounded-control border border-border p-3"><h3 className="text-sm font-medium text-heading">Skills checked in this assessment</h3><p className="mt-1 text-xs text-muted">These results apply to the listed subskills. Other skills in each topic remain untested.</p><ul className="mt-2 space-y-2">{[...new Map(assessment.questions.flatMap(question => (question.learning_targets ?? []).map(target => [target.subskill_id, target] as const))).values()].map(target => <li key={target.subskill_id} className="text-xs text-muted">{target.topic_name ? `${target.topic_name} · ` : ''}{target.subskill_name}</li>)}</ul></section>}
     <MistakePractice key={`${attempt.id}:${attempt.grade_revision}`} assessment={assessment} attempt={attempt} />
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">All {results.length} results</p><ViewToggle label="Result view" view={view} onChange={setView} /></div>
     {view === 'grid' ? <div className="workspace-compact-grid">{results.map((item, position) => {

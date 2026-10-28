@@ -68,6 +68,8 @@ class LearnerEngine:
         self.states = StateService(repository, self.evidence, self.mastery_policy, self.retention_policy, self.clock)
         self.retrieval = RetrievalService(repository, self.contexts, self.retention_policy,
                                           ranking_policy or WeightedRankingPolicy(), self.clock, self.states)
+        from .organization import TopicService
+        self.topics = TopicService(self, generated_concept_resolver)
 
     def register_concept(self, name: str, description: str | None = None, aliases: tuple[str, ...] = ()) -> Concept:
         """Trusted registry operation, never exposed as an unrestricted LLM tool."""
@@ -77,7 +79,71 @@ class LearnerEngine:
         return self.concepts.resolve(request)
 
     async def resolve_generated_concepts(self, request: GeneratedConceptsRequest) -> list[Concept]:
+        if self.generated_concepts.resolver is not None and hasattr(self.generated_concepts.resolver, 'organize'):
+            self.topics.resolver = self.generated_concepts.resolver
+            return await self.topics.resolve(request)
         return await self.generated_concepts.resolve(request)
+
+    async def resolve_encountered_concept(self, request: ConceptResolutionRequest) -> ConceptResolution:
+        """A chat-mentioned skill may be organized, but never scored by mention."""
+        from starlette.concurrency import run_in_threadpool
+        if not request.context_id or not hasattr(self.generated_concepts.resolver, 'organize'):
+            return await run_in_threadpool(self.resolve_concept, request)
+        context = await run_in_threadpool(self.contexts.require, request.learner_id, request.context_id)
+        values = await self.topics.resolve(GeneratedConceptsRequest(learner_id=request.learner_id,
+            context_id=request.context_id, topic=(request.surrounding_text or context.name)[:200], labels=[request.label]), published=True)
+        value = values[0]
+        return ConceptResolution(status='resolved', concept_id=value.id, canonical_name=value.canonical_name,
+            confidence=.8, method='organized_subskill')
+
+    def get_learning_topics(self, request):
+        return self.topics.page(request)
+
+    def get_topic_subskills(self, request, topic_id):
+        return self.topics.skills(request, topic_id)
+
+    async def organize_learning_topics(self, owner, context_id, *, preview=False):
+        return await self.topics.organize_existing(owner, context_id, preview=preview)
+
+    def apply_topic_organization(self, owner, identifier, *, undo=False):
+        return self.topics.apply_proposal(owner, identifier, undo=undo)
+
+    def move_topic_subskill(self, owner, source, skill_id, target, operation, revision, *, undo=False):
+        with self.repository.transaction(learner_ids=[owner]) as repository:
+            result = repository.move_topic_skill(owner, source, skill_id, target, operation, revision, undo=undo)
+            repository.publish_topic_skills(owner, [skill_id])
+            return result
+
+    def rename_learning_topic(self, owner, identifier, name, revision):
+        with self.repository.transaction(learner_ids=[owner]) as repository:
+            return repository.rename_topic(owner, identifier, name, revision)
+
+    def publish_topic_skills_in_transaction(self, owner, ids, unit_of_work, context_id=None, topic_id=None):
+        with self.repository.bound_transaction(unit_of_work, learner_ids=[owner]) as repository:
+            if topic_id:
+                memberships = repository.skill_memberships(owner, ids)
+                if any(memberships.get(identifier, {}).get('topic_id') != str(topic_id) for identifier in ids):
+                    from app.core.exceptions import AppError
+                    raise AppError('ASSESSMENT_TARGET_CHANGED', 'A selected subskill moved to another topic. Refresh your targets before generating again.', 409)
+            repository.publish_topic_skills(owner, ids)
+            memberships = repository.skill_memberships(owner, ids)
+            for identifier, membership in memberships.items():
+                target_context = context_id or membership['context_id']
+                if target_context is None:
+                    continue
+                self.contexts.require(owner, target_context, repository)
+                repository.add_context_concept(target_context, identifier, learner_id=owner)
+
+    def get_skill_topics(self, owner, ids):
+        return self.repository.skill_memberships(owner, ids)
+
+    def get_topic_practice_concepts(self, owner, context_id, topic_id, limit=5):
+        self.contexts.require(owner, context_id)
+        selected = self.repository.topic_practice_skills(owner, context_id, topic_id, self.clock(), min(20, limit))
+        if not selected:
+            from app.core.exceptions import AppError
+            raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'Choose a topic with available subskills.', 422)
+        return selected
 
     def get_concept(self, concept_id: str) -> Concept:
         return self.concepts.get(concept_id)
@@ -274,7 +340,8 @@ class LearnerEngine:
         by_id = {row.id: row for row in rows}
         if any(identifier not in by_id for identifier in ids):
             raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'A practice topic is no longer available in this learning context.', 404)
-        return [by_id[identifier] for identifier in ids]
+        memberships = self.repository.skill_memberships(learner_id, ids)
+        return [replace(by_id[identifier], canonical_name=memberships.get(identifier, {}).get('label', by_id[identifier].canonical_name)) for identifier in ids]
 
     def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False):
         """One consistent ranking input set for recommendations and verification."""

@@ -283,11 +283,23 @@ class ChatStore {
   }
   async stopResponse(id: string) {
     const turn = this.view(id).turn, signal = this.controller.signal;
-    if (!this.owner || !turn || turn.state !== 'RUNNING') return;
+    if (!this.owner || !turn || !(turn.can_stop ?? turn.state === 'RUNNING')) return;
     try {
       const page = await api.stopTurn(id, turn.id, turn.attempt, signal);
       if (this.alive(signal)) { await this.applyPage(page); this.channel?.postMessage({ changed:true }); }
     } catch (error) { if (this.alive(signal)) this.setView(id, {error:this.error(error)}); }
+  }
+
+  async resumeResponse(id: string) {
+    const view = this.view(id), turn = view.turn, signal = this.controller.signal;
+    if (!this.owner || !turn?.can_resume || view.busy) return;
+    this.setView(id, {busy:true, error:null});
+    try {
+      const page = await api.resumeTurn(id, turn.id, turn.attempt, view.revision, signal);
+      if (!this.alive(signal)) return;
+      await this.applyPage(page); this.channel?.postMessage({changed:true});
+      if (page.turn?.state === 'RUNNING') this.poll(id);
+    } catch (error) { if (this.alive(signal)) this.setView(id, {busy:false, error:this.error(error)}); }
   }
 
   async older(id: string) {
@@ -316,7 +328,7 @@ class ChatStore {
       body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
     body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
-    body = { ...body, retry };
+    body = { ...body, retry, resume_from: body.resume_from ?? (!retry && (view.turn?.can_resume || view.turn?.can_retry) ? view.turn.id : undefined) };
     this.pending.set(id, body);
     const started = performance.now();
     this.responseStarts.set(id, started);
@@ -329,6 +341,9 @@ class ChatStore {
     if (!this.alive(signal)) return;
     try {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;
+      if (body.resume_from && (page.turn?.id === body.resume_from || page.continued_turn_id === body.resume_from)) {
+        this.pending.delete(id); await this.persist(() => cache.pending(null, id));
+      }
       performance.measure('mentra.chat.acknowledged', { start: started });
       await this.applyPage(page);
       if (!this.alive(signal)) return;

@@ -85,6 +85,15 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
                                          context_ids=[kwargs['context_id']], max_concepts=1))
         return learner.resolve_concept(ConceptResolutionRequest(learner_id=learner_id, **kwargs)).model_dump(mode='json')
 
+    async def resolve_encountered(**kwargs):
+        from starlette.concurrency import run_in_threadpool
+        if not hasattr(learner, 'resolve_encountered_concept'):
+            return await run_in_threadpool(resolve, **kwargs)
+        if not kwargs.get('context_id'):
+            contexts = await run_in_threadpool(learner.get_active_contexts, ActiveContextsRequest(learner_id=learner_id))
+            if len(contexts.contexts) == 1: kwargs['context_id'] = contexts.contexts[0].context_id
+        return (await learner.resolve_encountered_concept(ConceptResolutionRequest(learner_id=learner_id, **kwargs))).model_dump(mode='json')
+
     tools = [
         StructuredTool.from_function(active, name='get_active_learning_contexts', description='Get current learning contexts.'),
         StructuredTool.from_function(context, name='get_relevant_learner_context', args_schema=ContextToolInput,
@@ -95,8 +104,8 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
                                      description='Get ranked study weaknesses for current or requested contexts.'),
         StructuredTool.from_function(verification, name='get_verification_candidates', args_schema=RankingToolInput,
                                      description='Get concepts to verify, with suggested difficulty and reasons.'),
-        StructuredTool.from_function(resolve, name='resolve_student_concept', args_schema=ResolutionToolInput,
-                                     description='Resolve a label to canonical identity; ambiguous labels stay candidates.'),
+        StructuredTool.from_function(resolve, coroutine=resolve_encountered, name='resolve_student_concept', args_schema=ResolutionToolInput,
+                                     description='Resolve an encountered skill within its learning area, reusing its broader topic and subskill. Naming a skill never establishes mastery.'),
     ]
     if provenance is not None:
         def record(**kwargs):

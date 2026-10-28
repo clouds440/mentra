@@ -1,0 +1,110 @@
+{
+  "scope": "Pure domain probes; no PostgreSQL, browser, or live model verification.",
+  "retention_curve_same_day_10_successes": {
+    "0": 0.917915,
+    "7": 0.78084,
+    "30": 0.458958,
+    "60": 0.229479,
+    "90": 0.114739
+  },
+  "retention_after_30_days_spaced_10_successes": 0.7611022560101003,
+  "mastery_before_and_after_elapsed_time": [
+    0.8454545454545456,
+    0.8454545454545456
+  ],
+  "status_now": {
+    "knowledge_status": "demonstrated",
+    "mastery_lower_bound": 0.6409331731348362,
+    "mastery_upper_bound": 1,
+    "independent_item_count": 10,
+    "recommended_difficulty": 0.9
+  },
+  "status_after_30_days": {
+    "knowledge_status": "needs_verification",
+    "mastery_lower_bound": 0.6409331731348362,
+    "mastery_upper_bound": 1,
+    "independent_item_count": 10,
+    "recommended_difficulty": 0.9
+  },
+  "routes": {
+    "Explain transitive dependency": {
+      "modules": [
+        "chat",
+        "profile"
+      ],
+      "direct": true
+    },
+    "What should I study next?": {
+      "modules": [
+        "chat",
+        "profile",
+        "learner"
+      ],
+      "direct": false
+    },
+    "Mujhe agla kya parhna chahiye?": {
+      "modules": [
+        "chat",
+        "profile"
+      ],
+      "direct": false
+    },
+    "I keep confusing joins and subqueries": {
+      "modules": [
+        "chat",
+        "profile"
+      ],
+      "direct": false
+    }
+  },
+  "relevance_scores": {
+    "0.5": {
+      "base": 0.18823518154296154,
+      "final": 0.08470583169433268,
+      "reason": "low_mastery"
+    },
+    "1": {
+      "base": 0.23823518154296155,
+      "final": 0.14294110892577694,
+      "reason": "low_mastery"
+    }
+  },
+  "prediction_before_late_chat_failure": [
+    0.5667924946752051,
+    0.12294603844302314,
+    1.0,
+    true,
+    10.0
+  ],
+  "prediction_after_late_chat_failure": [
+    0.9210526315789473,
+    0.7709610680677814,
+    1.0,
+    true,
+    10.4
+  ],
+  "retention_after_late_chat_failure": 0.09867586264793088,
+  "multi_concept_mcq": {
+    "questions": [
+      {
+        "question_id": "q",
+        "score": 1.0,
+        "confidence": 1.0,
+        "feedback": "Correct. Answer a",
+        "concept_grades": {
+          "fractions": {
+            "score": 1.0,
+            "max_score": 1.0,
+            "confidence": 1.0
+          },
+          "algebra": {
+            "score": 1.0,
+            "max_score": 1.0,
+            "confidence": 1.0
+          }
+        },
+        "misconceptions": []
+      }
+    ]
+  }
+}

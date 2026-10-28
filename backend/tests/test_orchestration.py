@@ -116,7 +116,7 @@ class DurableOrchestrationTests(unittest.TestCase):
             self.assertIn('study%20file.png', original.headers['content-disposition'])
             stopped = client.post(f"/conversations/{job['conversation_id']}/turns/{job['turn_id']}/stop", json={'attempt':1})
             self.assertEqual(stopped.status_code, 200)
-            self.assertEqual(stopped.json()['items'][-1]['content'], 'Response stopped. Ready when you are.')
+            self.assertEqual(stopped.json()['items'][-1]['content'], 'Response paused. Resume within 30 minutes, or send a new message.')
             app.dependency_overrides[require_onboarded_identity] = lambda: SimpleNamespace(learner_id=self.other)
             self.assertEqual(client.get(path).status_code, 404)
 

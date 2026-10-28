@@ -17,7 +17,7 @@ from app.learner.scoring.signals import difficulty_band, skill_estimate
 @dataclass(frozen=True)
 class HeuristicMasteryPolicy:
     confidence_policy: ConfidencePolicy = HeuristicConfidencePolicy()
-    version: str = 'mastery-v2'
+    version: str = 'mastery-v3'
     max_effective_weight: float = 12
 
     def __post_init__(self):
@@ -105,6 +105,13 @@ class HeuristicMasteryPolicy:
         for metric, contribution in contributions.items():
             key = f'{band}_{metric}'
             data[key] = data.get(key, 0) * band_scale + contribution
+        # Each observation keeps its own age. A new failure/weak chat answer
+        # cannot rejuvenate the weight of old successful demonstrations.
+        observations = [dict(row, weight=row['weight'] * band_scale)
+                        for row in data.get(f'{band}_observations', [])]
+        observations.append(dict(weight=weight, outcome=outcome,
+            at=evidence.occurred_at.astimezone(timezone.utc).isoformat()))
+        data[f'{band}_observations'] = observations[-64:]
         band_items = list(data.get(f'{band}_items', []))
         if evidence.item_id and item not in band_items:
             band_items.append(item)
@@ -124,6 +131,14 @@ class HeuristicMasteryPolicy:
             data['verification_successes'] = 0
         successful = outcome >= 0.8 and quality >= 0.8 and repetitions == 0
         verified = successful and evidence.source_type != 'CHAT'
+        if verified:
+            times = list(data.get(f'{band}_recall_times', []))
+            # Calendar midnight is not spaced recall. Require an elapsed day,
+            # and maintain stability separately for each challenge level.
+            from datetime import datetime
+            if not times or (evidence.occurred_at - datetime.fromisoformat(times[-1])).total_seconds() >= 86400:
+                times.append(evidence.occurred_at.astimezone(timezone.utc).isoformat())
+            data[f'{band}_recall_times'] = times[-32:]
         if verification and verified and difficulty >= data.get('verification_difficulty', 0.5):
             data['verification_successes'] = data.get('verification_successes', 0) + 1
             if data['verification_successes'] >= 2:

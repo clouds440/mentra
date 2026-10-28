@@ -169,13 +169,13 @@ class ChatRepository:
                 if not request.retry or existing['state'] != 'FAILED':
                     return dict(run=False, turn_id=turn_id, conversation_id=conversation_id)
                 # Only the most recent question can be retried without branching history.
-                if conversation['message_count'] != existing['user_sequence']:
+                if conversation['message_count'] not in (existing['user_sequence'], existing['assistant_sequence']):
                     raise conflict()
                 attempt = existing['attempt'] + 1
-                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),log_context=log_context))
+                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),resume_until=None,log_context=log_context))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
-                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'], title_revision=conversation['revision']+1)
+                return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'], resume_instruction=existing['resume_instruction'], title_revision=conversation['revision']+1)
             row = session.execute(select(c).where(c.c.id == conversation_id)).mappings().first()
             if row is None:
                 if request.expected_revision != 0:
@@ -240,7 +240,8 @@ class ChatRepository:
                 from app.core.observability.context import current
                 current.get().outcome = 'skipped'
                 return False
-            values = dict(state='FAILED' if error else 'SUCCEEDED', error=error, lease_until=None)
+            values = dict(state='FAILED' if error else 'SUCCEEDED', error=error, lease_until=None,
+                resume_until=now()+timedelta(minutes=30) if error else None)
             conversation_values = dict()
             sequence = row['message_count']
             if not error:
@@ -248,8 +249,11 @@ class ChatRepository:
                 # turn selection for retry/audit while clearing the next draft.
                 from app.rag.schemas import ChatSelection
                 conversation_values['selection'] = ChatSelection().model_dump()
-                sequence += 1
+                replacing_pause = turn['assistant_sequence'] is not None
+                if not replacing_pause:
+                    sequence += 1
                 payload = dict(response)
+                if turn['resume_instruction']: payload['resume_instructions'] = turn['resume_instruction']
                 generated_title = payload.pop('conversation_title', None)
                 from app.history_management.repositories.postgres import MemoryRepository
                 if not MemoryRepository.references_current(session, owner, payload):
@@ -265,10 +269,17 @@ class ChatRepository:
                             pass
                 content = payload.pop('content')
                 payload.pop('role', None)
-                session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=row['id'], sequence=sequence,
-                    role='assistant', content=content, metadata=payload, created_at=now()))
+                if replacing_pause:
+                    sequence = turn['assistant_sequence']
+                    session.execute(update(m).where(m.c.learner_id == owner, m.c.conversation_id == row['id'],
+                        m.c.sequence == sequence).values(content=content, metadata=payload))
+                else:
+                    session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=row['id'], sequence=sequence,
+                        role='assistant', content=content, metadata=payload, created_at=now()))
                 values['assistant_sequence'] = sequence
             session.execute(update(t).where(t.c.id == job['turn_id']).values(**values))
+            from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
+            if not error or job.get('_discard_checkpoint'): delete_response_checkpoints(session, owner, job['turn_id'])
             if response is not None:
                 from app.langchain.repositories.evidence import ChatEvidenceRepository
                 ChatEvidenceRepository.queue(session, owner, job)
@@ -280,7 +291,7 @@ class ChatRepository:
 
         return True
 
-    def stop_turn(self, owner, conversation_id, turn_id, attempt):
+    def stop_turn(self, owner, conversation_id, turn_id, attempt, stopped_job=None):
         """Fence publication first; cancellation must never overwrite a finished turn."""
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
@@ -291,20 +302,96 @@ class ChatRepository:
                 raise AppError('CHAT_NOT_FOUND', 'This response is unavailable.', 404)
             if turn['attempt'] != attempt:
                 raise AppError('CHAT_STALE_ATTEMPT', 'This response has changed. Check the conversation.', 409)
-            if turn['state'] != 'RUNNING':
+            from app.assessments.repositories.postgres import AssessmentRepository
+            from app.assessments.repositories.generation import GenerationJobs
+            from app.assessments.repositories.tables import generation_jobs
+            from app.db.owner_transactions import OwnedUnitOfWork
+            jobs = GenerationJobs(AssessmentRepository(self.sessions))
+            linked = session.scalars(select(generation_jobs.c.id).where(generation_jobs.c.learner_id == owner,
+                generation_jobs.c.source_turn_id == turn_id, generation_jobs.c.state.in_(['queued', 'running']))).all()
+            stopped_jobs = [jobs.stop_in_transaction(OwnedUnitOfWork(owner, session), identifier) for identifier in linked]
+            if stopped_job:
+                identifier, revision = stopped_job
+                acknowledged = session.execute(select(generation_jobs).where(generation_jobs.c.id == identifier,
+                    generation_jobs.c.learner_id == owner, generation_jobs.c.source_turn_id == turn_id).with_for_update()).mappings().first()
+                if not acknowledged or acknowledged['revision'] != revision or acknowledged['state'] != 'stopped':
+                    raise AppError('REVISION_CONFLICT', 'This generation changed. Refresh its progress.', 409)
+                if identifier not in linked: stopped_jobs.append(jobs.public(acknowledged))
+                if turn['state'] == 'FAILED' and not linked: return False
+            if turn['state'] != 'RUNNING' and not any(item['state'] == 'stopped' for item in stopped_jobs):
                 return False
-            sequence = row['message_count'] + 1
-            session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id,
-                sequence=sequence, role='assistant', content='Response stopped. Ready when you are.',
-                metadata={'response_stopped': True}, created_at=now()))
+            sequence = turn['assistant_sequence'] or row['message_count'] + 1
+            from .tables import activity
+            partial = session.scalars(select(activity.c.payload).where(activity.c.learner_id == owner,
+                activity.c.turn_id == turn_id, activity.c.attempt == attempt).order_by(activity.c.sequence)).all()
+            text_parts = []
+            for event in partial:
+                if event.get('token_reset'): text_parts = []
+                if event.get('token_delta'): text_parts.append(event['token_delta'])
+            metadata = dict(response_stopped=True)
+            cards = [dict(id=item['id'], generation_job_id=item['id'], title=item['title']) for item in stopped_jobs]
+            if cards: metadata['assessment_cards'] = cards
+            notice = ''.join(text_parts)[:32000] or 'Response paused. Resume within 30 minutes, or send a new message.'
+            if turn['assistant_sequence']:
+                prior = session.execute(select(m).where(m.c.conversation_id == conversation_id, m.c.sequence == sequence)).mappings().one()
+                metadata = dict(prior['metadata'], **metadata)
+                session.execute(update(m).where(m.c.id == prior['id']).values(metadata=metadata))
+            else:
+                session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id,
+                    sequence=sequence, role='assistant', content=notice, metadata=metadata, created_at=now()))
             session.execute(update(t).where(t.c.id == turn_id).values(state='FAILED', error='Response stopped.',
-                assistant_sequence=sequence, lease_until=None))
-            session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence,
+                assistant_sequence=sequence, lease_until=None, resume_until=now() + timedelta(minutes=30)))
+            session.execute(update(c).where(c.c.id == conversation_id).values(message_count=max(row['message_count'], sequence),
                 revision=row['revision'] + 1, updated_at=now()))
             self._change(session, owner, conversation_id, state)
             return True
 
+    def resume_turn(self, owner, conversation_id, turn_id, attempt, revision, instruction=None, operation=None, fingerprint=None):
+        from app.assessments.repositories.generation import GenerationJobs
+        from app.assessments.repositories.postgres import AssessmentRepository
+        GenerationJobs(AssessmentRepository(self.sessions)).expire_stopped(owner)
+        with self.sessions.begin() as session:
+            state = self._sync_lock(session, owner)
+            row = self._conversation(session, owner, conversation_id, True)
+            turn = session.execute(select(t).where(t.c.id == turn_id, t.c.learner_id == owner,
+                t.c.conversation_id == conversation_id).with_for_update()).mappings().first()
+            if not turn: raise AppError('CHAT_NOT_FOUND', 'This response is unavailable.', 404)
+            if operation and turn['resume_operation_id'] == operation:
+                if turn['resume_request_hash'] != fingerprint: raise conflict()
+                return dict(run=False, turn_id=turn_id, conversation_id=conversation_id)
+            if turn['attempt'] != attempt or row['revision'] != revision: raise conflict()
+            if turn['state'] != 'FAILED' or not turn['resume_until'] or turn['resume_until'] <= now():
+                raise AppError('CHAT_RESUME_EXPIRED', 'This paused response has expired. Send a new request.', 409)
+            latest = session.scalar(select(func.max(t.c.user_sequence)).where(t.c.learner_id == owner, t.c.conversation_id == conversation_id))
+            if latest != turn['user_sequence']: raise conflict()
+            from app.assessments.repositories.tables import generation_jobs
+            # Requeue without nesting owner transactions; same operation IDs and
+            # saved question batches survive. Changes are handled by chat tools.
+            if not instruction:
+                active = session.scalar(select(func.count()).select_from(generation_jobs).where(
+                    generation_jobs.c.learner_id == owner, generation_jobs.c.state.in_(['queued', 'running'])))
+                pending = session.scalar(select(func.count()).select_from(generation_jobs).where(
+                    generation_jobs.c.learner_id == owner, generation_jobs.c.source_turn_id == turn_id,
+                    generation_jobs.c.state == 'stopped'))
+                if active + pending > 2:
+                    raise AppError('ASSESSMENT_GENERATION_BUSY', 'Let your current assessments finish before resuming this response.', 409)
+                session.execute(update(generation_jobs).where(generation_jobs.c.learner_id == owner,
+                    generation_jobs.c.source_turn_id == turn_id, generation_jobs.c.state == 'stopped').values(
+                        state='queued', revision=generation_jobs.c.revision + 1, attempts=0,
+                        resume_until=None, claim_id=None, claim_until=None))
+            amendments = '\n'.join(filter(None, [turn['resume_instruction'], instruction]))[-8000:] or None
+            session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None,
+                attempt=attempt+1, lease_until=now()+timedelta(minutes=3), resume_until=None, resume_instruction=amendments))
+            if operation:
+                session.execute(update(t).where(t.c.id == turn_id).values(resume_operation_id=operation, resume_request_hash=fingerprint))
+            session.execute(update(c).where(c.c.id == conversation_id).values(revision=row['revision']+1, updated_at=now()))
+            self._change(session, owner, conversation_id, state)
+            return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt+1,
+                selection=turn['selection'], attachment_ids=turn['attachment_ids'], user_sequence=turn['user_sequence'],
+                resume=True, resume_instruction=amendments, new_instruction=instruction, title_revision=row['revision']+1)
+
     def status(self, owner, conversation_id, turn_id=None, incremental=False, after=None):
+        self.expire_paused(owner)
         with self.sessions.begin() as session:
             session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'))
             row = self._conversation(session, owner, conversation_id)
@@ -318,6 +405,16 @@ class ChatRepository:
         # Lease expiry is a mutation; recheck under the owner lock before changing it.
         return self._status_locked(owner, conversation_id, turn_id, incremental, after)
 
+    def expire_paused(self, owner=None):
+        from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
+        with self.sessions.begin() as session:
+            query = select(t.c.learner_id, t.c.id).where(t.c.resume_until <= now())
+            if owner: query = query.where(t.c.learner_id == owner)
+            rows = session.execute(query.limit(100).with_for_update(skip_locked=True)).all()
+            for learner, identifier in rows:
+                delete_response_checkpoints(session, learner, identifier)
+                session.execute(update(t).where(t.c.id == identifier).values(resume_until=None, resume_instruction=None))
+
     def _status_locked(self, owner, conversation_id, turn_id=None, incremental=False, after=None):
         with self.sessions.begin() as session:
             # Consistent locking order across every writer.
@@ -328,11 +425,11 @@ class ChatRepository:
                 query = query.where(t.c.id == turn_id)
             turn = session.execute(query.order_by(t.c.user_sequence.desc()).limit(1)).mappings().first()
             if turn and turn['state'] == 'RUNNING' and turn['lease_until'] < now():
-                session.execute(update(t).where(t.c.id == turn['id']).values(state='FAILED', error='Generation interrupted. Retry this message.', lease_until=None))
+                session.execute(update(t).where(t.c.id == turn['id']).values(state='FAILED', error='Generation interrupted. Retry this message.', lease_until=None, resume_until=now()+timedelta(minutes=30)))
                 row = dict(row, revision=row['revision']+1, updated_at=now())
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=row['revision'], updated_at=row['updated_at']))
                 self._change(session, owner, conversation_id, state)
-                turn = dict(turn, state='FAILED', error='Generation interrupted. Retry this message.')
+                turn = dict(turn, state='FAILED', error='Generation interrupted. Retry this message.', resume_until=now()+timedelta(minutes=30))
             return self._status_page(session, owner, conversation_id, row, turn, incremental, after)
 
     def _status_page(self, session, owner, conversation_id, row, turn, incremental, after):
@@ -345,7 +442,15 @@ class ChatRepository:
             page = dict(items=[self._public_message(item) for item in rows], has_more=False, next_cursor=None)
         else:
             page = self._page(session, owner, conversation_id)
-        return dict(conversation=row, turn={k:v for k,v in turn.items() if k != 'log_context'} if turn else None, incremental=incremental, **page)
+        public_turn = {k:v for k,v in turn.items() if k not in ('log_context', 'resume_instruction', 'resume_request_hash')} if turn else None
+        if public_turn:
+            public_turn['can_resume'] = bool(turn['resume_until'] and turn['resume_until'] > now() and turn['error'] == 'Response stopped.')
+            public_turn['can_retry'] = turn['state'] == 'FAILED' and turn['error'] != 'Response stopped.'
+            from app.assessments.repositories.tables import generation_jobs
+            public_turn['can_stop'] = turn['state'] == 'RUNNING' or bool(session.scalar(select(generation_jobs.c.id).where(
+                generation_jobs.c.learner_id == owner, generation_jobs.c.source_turn_id == turn['id'],
+                generation_jobs.c.state.in_(['queued', 'running'])).limit(1)))
+        return dict(conversation=row, turn=public_turn, incremental=incremental, **page)
 
     def edit(self, owner, conversation_id, revision, title=None, remove=False):
         with self.sessions.begin() as session:
@@ -366,6 +471,9 @@ class ChatRepository:
                 EventProposalRepository.detach_chat(session, owner, conversation_id)
                 # Keep only the conversation tombstone; content is actually removed.
                 from .tables import attachments, summaries
+                from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
+                for identifier in session.scalars(select(t.c.id).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner)):
+                    delete_response_checkpoints(session, owner, identifier)
                 session.execute(delete(summaries).where(summaries.c.conversation_id == conversation_id, summaries.c.learner_id == owner))
                 from app.assessments.repositories.chat import ChatAssessmentRepository
                 ChatAssessmentRepository.detach_chat(session, owner, conversation_id)

@@ -15,7 +15,11 @@ class LifecycleStore(PostgresRepositoryBase):
                 session.execute(insert(links).values(**dict(row), concept_id=child_id).on_conflict_do_nothing())
 
     def merge_identity(self, source_id, target_id):
+        from app.learner.repositories.tables.topics import topic_skill
         with self._session() as session:
+            for membership in session.execute(select(topic_skill).where(topic_skill.c.concept_id == source_id)).mappings().all():
+                session.execute(insert(topic_skill).values(**dict(membership, concept_id=target_id))
+                    .on_conflict_do_nothing(index_elements=['learner_id', 'concept_id']))
             old_ids = [source_id, target_id, *session.execute(select(redirects.c.source_id).where(redirects.c.target_id.in_([source_id, target_id]))).scalars()]
             learners = list(session.execute(select(evidence.c.learner_id).where(evidence.c.concept_id.in_(old_ids)).distinct()).scalars())
             session.execute(insert(redirects).values(source_id=source_id, target_id=target_id))

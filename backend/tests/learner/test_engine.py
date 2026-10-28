@@ -179,7 +179,7 @@ class LearnerEngineTests(unittest.TestCase):
         engine.recompute_learner_state('b9cdd0f0-9119-5d06-a170-103315c7f4e7', self.concept.id)
         self.assertEqual(engine.get_concept_state(ConceptStateRequest(
             learner_id='b9cdd0f0-9119-5d06-a170-103315c7f4e7', concept_id=self.concept.id)).mastery_policy_version, 'experimental-v2')
-        self.assertEqual(self.state().mastery_policy_version, 'mastery-v2')
+        self.assertEqual(self.state().mastery_policy_version, HeuristicMasteryPolicy().version)
 
     def test_merge_redirect_preserves_provenance_and_deduplicates(self):
         other = self.engine.register_concept('DB Dependency')

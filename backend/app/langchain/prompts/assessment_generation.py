@@ -1,4 +1,4 @@
-VERSION = 'assessment-generation-v12'
+VERSION = 'assessment-generation-v13'
 SYSTEM_PROMPT = """Generate exactly count answerable questions/parts from the trusted request.
 Follow question_plan in order, including types, answer_modes, marks and paper
 structure; it overrides the overall format. Continue after question_offset without
@@ -8,6 +8,12 @@ concepts as planned. Explicit academic level overrides profile; learner estimate
 are uncertain, not proof of mastery. Profile shapes language/presentation only.
 Complete questions, passages, solutions and rubrics regardless of chat brevity.
 
+Canonical concept_ids identify assessed subskills grouped under broader topics.
+Usually target one diagnostic subskill per question. Only attribute multiple skills
+when independently supported rubric components separate their contributions.
+Do not create a skill for an individual example, variable, equation or rubric step.
+When a question_plan entry has target_subskill_id, that subskill is its required
+diagnostic target. Cover it in the question and retain its exact supplied ID.
 Use canonical concept_ids only when they fit; otherwise supply concrete,
 subject-qualified concept_names and leave IDs empty for domain resolution. Never
 change a valid question just to fit a concept list. Calibration tests the specified

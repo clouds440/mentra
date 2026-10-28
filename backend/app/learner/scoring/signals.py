@@ -71,7 +71,7 @@ def diagnostics(state: LearnerConceptState | None, retention: float | None = Non
 
 
 def performance_estimate(state: LearnerConceptState | None, difficulty: float,
-                         now: datetime) -> tuple[float, float, float, bool, float]:
+                         now: datetime, half_life_days: float = 30) -> tuple[float, float, float, bool, float]:
     if state is None:
         return 0.5, 0, 1, False, 0
     band = difficulty_band(difficulty)
@@ -79,11 +79,21 @@ def performance_estimate(state: LearnerConceptState | None, difficulty: float,
     success = state.policy_data.get(f'{band}_success', 0)
     if weight < 2 or len(state.policy_data.get(f'{band}_items', [])) < 3:
         return 0.5, 0, 1, False, weight
+    observations = state.policy_data.get(f'{band}_observations')
+    if observations:
+        from .retention import observation_freshness
+        aged = [(row['weight'] * observation_freshness(state, datetime.fromisoformat(row['at']), now, half_life_days, band),
+                 row['outcome']) for row in observations]
+        fresh_weight = sum(value for value, _ in aged)
+        fresh_success = sum(value * outcome for value, outcome in aged)
+        mean = 0.5 + (fresh_success - 0.5 * fresh_weight) / (1 + weight)
+        lower, upper = estimate_interval(fresh_success, fresh_weight)
+        return mean, lower, upper, True, weight
     mean = (0.5 + success) / (1 + weight)
     lower, upper = estimate_interval(success, weight)
     last = state.policy_data.get(f'{band}_last_at')
-    age = max(0, (now - datetime.fromisoformat(last)).total_seconds() / 86400) if last else float('inf')
-    reliability = 2 ** (-max(0, age - 7) / 30)
+    from .retention import observation_freshness
+    reliability = observation_freshness(state, datetime.fromisoformat(last), now, half_life_days, band) if last else 0
     # Stale knowledge increases uncertainty in future performance; it does not
     # rewrite evidence-based mastery. These intervals remain heuristic, not calibrated.
     return (0.5 + reliability * (mean - 0.5), reliability * lower,

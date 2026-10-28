@@ -287,7 +287,7 @@ class DirectAnswerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result, DirectNewChatReply)
         self.assertEqual(len(calls), 1)
         self.assertEqual(scope['_tool_budget'].calls, 0)
-        self.assertEqual([getattr(t, 'name', getattr(t, '__name__', '')) for t in calls[0]['tools']], ['enable_workflow_tools', 'DirectNewChatReply'])
+        self.assertEqual([getattr(t, 'name', getattr(t, '__name__', '')) for t in calls[0]['tools']], ['present_choices', 'request_input', 'enable_workflow_tools', 'DirectNewChatReply'])
         self.assertIsNone(calls[0]['on_delta'])
 
     async def test_uncertain_candidate_is_rejected_and_clarification_allowed(self):

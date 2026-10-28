@@ -6,8 +6,9 @@ export async function workspace(page: Page, running = false, populated = false, 
   const file = {id:'image-file', filename:'study.png', size_bytes:1024};
   const items: Record<string, unknown>[] = Array.from({length:messageCount}, (_, i) => ({id:`message-${i}`, conversation_id:conversation.id, sequence:i+1, role:i % 2 ? 'assistant' : 'user', content:`${i === messageCount - 1 ? 'Latest answer' : 'Earlier question and explanation'} ${'Learning takes practice. '.repeat(20)}`, created_at:conversation.created_at, ...(i === 38 ? {attachments:[file]} : {})}));
   let state = running ? 'RUNNING' : 'SUCCEEDED';
+  let error: string | null = null, attempt = 1, background = false;
   let turnId = 'polish-turn', userSequence = 39;
-  const snapshot = () => ({conversation, items, has_more:false, next_cursor:null, turn:{id:turnId, state, attempt:1, user_sequence:userSequence, selection, error:state === 'FAILED' ? 'Response stopped.' : null}});
+  const snapshot = () => ({conversation, items, has_more:false, next_cursor:null, turn:{id:turnId, state, attempt, user_sequence:userSequence, selection, can_stop:state === 'RUNNING' || background, can_resume:state === 'FAILED' && error === 'Response stopped.', resume_until:new Date(Date.now()+30*60*1000).toISOString(), error}});
   const context = {context_id:'context-1', name:'A broader learning context with a longer descriptive name', status:'ACTIVE'};
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -29,7 +30,8 @@ export async function workspace(page: Page, running = false, populated = false, 
       items.push({id:`sent-${turnId}`, conversation_id:conversation.id, sequence:userSequence, role:'user', content:request.content, created_at:conversation.created_at});
       body = snapshot();
     }
-    else if (path.endsWith('/stop')) { expect(route.request().postDataJSON()).toEqual({attempt:1}); state='FAILED'; conversation.revision++; items.push({id:'stopped', conversation_id:conversation.id, sequence:41, role:'assistant', content:'Response stopped. Ready when you are.', created_at:conversation.created_at}); body = snapshot(); }
+    else if (path.endsWith('/stop')) { expect(route.request().postDataJSON()).toEqual({attempt}); state='FAILED'; error='Response stopped.'; conversation.revision++; items.push({id:'stopped', conversation_id:conversation.id, sequence:41, role:'assistant', content:'Response stopped. Ready when you are.', created_at:conversation.created_at}); body = snapshot(); }
+    else if (path.endsWith('/resume')) { state='RUNNING'; error=null; attempt++; conversation.revision++; body=snapshot(); }
     else if (path.endsWith('/status')) {
       const url = new URL(route.request().url());
       body = url.searchParams.has('after') ? { ...snapshot(), incremental:true, items:items.filter(item => Number(item.sequence) > Number(url.searchParams.get('after'))) } : snapshot();
@@ -38,6 +40,7 @@ export async function workspace(page: Page, running = false, populated = false, 
     else if (path.endsWith('/documents') || path.endsWith('/documents/page')) body = {items:populated ? [{id:'material-1', title:'Motion and forces', filename:'Physics notes.pdf', context_ids:[context.context_id], jobs:[], active_generation_id:'generation-1', archived:false}] : [], total:populated ? 1 : 0, limit:30, offset:0, contexts:[context]};
     else if (path.endsWith('/learning-contexts')) body = [context];
     else if (path.endsWith('/learning/understanding')) body = {items:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [],total:populated ? 1 : 0,total_concepts:populated ? 1 : 0,limit:10,offset:0,generated_at:conversation.created_at};
+    else if (path.endsWith('/learning/topics')) body = {items:populated ? [{id:'motion-topic', name:'Motion and forces', scope:'Force, motion and their relationships.', context_id:context.context_id, subskill_count:6, checked_count:1, revision:1}] : [],total:populated ? 1 : 0,ungrouped_count:0,limit:10,offset:0,generated_at:conversation.created_at};
     else if (path.endsWith('/learning')) body = {learner:{concepts:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [], generated_at:conversation.created_at, context_ids:[]}, recommendations:populated ? [{concept_id:'forces', name:'Forces', reason:'A little more practice will help you connect the ideas.'}] : [], verification:[]};
     else if (path.endsWith('/learning/page')) body = {overview:{learner:{concepts:[],generated_at:conversation.created_at,context_ids:[]}, recommendations:populated ? [{concept_id:'forces', name:'Forces', reason:'A little more practice will help you connect the ideas.'}] : [],verification:[]},contexts:[context],candidates:[],understanding:{items:populated ? [{concept_id:'forces',name:'Forces',knowledge_status:'developing',mastery:.6,estimate_confidence:.5,retention_confidence:.4}] : [],total:populated ? 1 : 0,total_concepts:populated ? 1 : 0,limit:10,offset:0,generated_at:conversation.created_at}};
     else if (path.endsWith('/assessments/mistakes')) body = {items:[],total:0,active_count:0,next_offset:null,contexts:[],assessments:[],topics:[]};
@@ -54,6 +57,8 @@ export async function workspace(page: Page, running = false, populated = false, 
     await route.fulfill({json:body});
   });
   return {
+    background() { background=true; },
+    fail() { state='FAILED'; error='Mentra could not finish this response. Retry to continue.'; conversation.revision++; },
     keepLastMessages(count: number) { items.splice(0, items.length - count); },
     startWithAnswer() { items.shift(); },
     complete(content: string, warnings: Record<string, unknown>[] = []) {

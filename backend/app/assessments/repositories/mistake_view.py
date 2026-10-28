@@ -54,7 +54,9 @@ WITH expanded AS (
     FROM catalog GROUP BY assessment_id, assessment_title
 ), topic_facets AS (
     SELECT DISTINCT ON (topic.value) topic.value id, catalog_order first_seen,
-        topic.position first_position
+        topic.position first_position,
+        (SELECT target->>'subskill_name' FROM jsonb_array_elements(coalesce(question->'learning_targets','[]'::jsonb)) target
+            WHERE target->>'subskill_id'=topic.value LIMIT 1) saved_label
     FROM catalog CROSS JOIN LATERAL jsonb_array_elements_text(question->'concept_ids')
         WITH ORDINALITY topic(value, position)
     ORDER BY topic.value, catalog_order, topic.position
@@ -74,14 +76,16 @@ SELECT coalesce((SELECT jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name)
         'occurrences', occurrences, 'resolved', resolved, 'occurred_at', occurred_at,
         'priority', CASE WHEN occurrences>1 THEN 'Repeated mistake' WHEN score=0 THEN 'Incorrect answer' ELSE 'Partial answer' END,
         'topics', coalesce((SELECT jsonb_agg(jsonb_build_object('id', topic.value,
-            'name', coalesce(c.canonical_name, 'Learning topic')) ORDER BY topic.position)
+            'name', coalesce((SELECT target->>'subskill_name'
+                FROM jsonb_array_elements(coalesce(question->'learning_targets','[]'::jsonb)) target
+                WHERE target->>'subskill_id'=topic.value LIMIT 1), c.canonical_name, 'Learning topic')) ORDER BY topic.position)
             FROM jsonb_array_elements_text(question->'concept_ids') WITH ORDINALITY topic(value, position)
             LEFT JOIN concept c ON c.id=topic.value), '[]'::jsonb)
         ) ORDER BY CASE WHEN :recent THEN occurred_at END DESC,
             CASE WHEN :recent THEN attempt_id END DESC, CASE WHEN :recent THEN question_id END, catalog_order) FROM page), '[]'::jsonb) items,
     coalesce((SELECT jsonb_agg(jsonb_build_object('id', assessment_id, 'title', assessment_title)
         ORDER BY first_seen) FROM assessment_facets), '[]'::jsonb) assessments,
-    coalesce((SELECT jsonb_agg(jsonb_build_object('id', f.id, 'name', coalesce(c.canonical_name,'Learning topic'))
+    coalesce((SELECT jsonb_agg(jsonb_build_object('id', f.id, 'name', coalesce(f.saved_label,c.canonical_name,'Learning topic'))
         ORDER BY f.first_seen, f.first_position, f.id) FROM topic_facets f LEFT JOIN concept c ON c.id=f.id), '[]'::jsonb) topics
 """)
 

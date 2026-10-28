@@ -1,11 +1,17 @@
 export interface LearningConcept {
+  ability?: string | null;
+  topic_id?: string | null; topic_name?: string | null; context_id?: string | null;
   concept_id: string; name: string; mastery: number | null; estimate_confidence: number | null;
   retention_confidence: number | null; knowledge_status: string; misconceptions: string[];
 }
+
+export interface LearningTopic { id: string; name: string; scope: string; context_id?: string | null; matching_skills?: string[]; subskill_count: number; checked_count: number; revision: number }
+export interface LearningTopicsPage { items: LearningTopic[]; total: number; ungrouped_count: number; limit: number; offset: number; generated_at: string }
+export interface TopicSkillsPage { topic: LearningTopic; items: LearningConcept[]; total: number; limit: number; offset: number; generated_at: string }
 export interface LearningOverview {
   learner: { concepts: LearningConcept[]; generated_at: string; context_ids: string[] };
-  recommendations: { context_id?: string; concept_id: string; name: string; reason: string; knowledge_status: string; recommended_difficulty: number }[];
-  verification: { context_id?: string; concept_id: string; name: string; reason: string }[];
+  recommendations: { topic_id?: string | null; topic_name?: string | null; context_id?: string; concept_id: string; name: string; reason: string; knowledge_status: string; recommended_difficulty: number }[];
+  verification: { topic_id?: string | null; topic_name?: string | null; context_id?: string; concept_id: string; name: string; reason: string }[];
 }
 
 export interface LearningProgressPage {

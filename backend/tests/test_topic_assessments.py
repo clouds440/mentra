@@ -36,6 +36,31 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
             client_turn_id=uuid4(), expected_revision=0, content='Give me a beginner interactive assessment'))
         return cid
 
+    async def test_private_storage_names_never_become_practice_or_mistake_labels(self):
+        from app.langchain.concept_identity import ConceptIdentityResolver
+        from app.assessments.schemas import GenerationRequest
+        from app.assessments.repositories.revision_practice import list_mistakes, collect
+        self.learner.generated_concepts.resolver = ConceptIdentityResolver(self.service.workflows.llm)
+        context = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner, name='Algebra', activate=True))
+        first = await self.service.generate(self.owner, GenerationRequest(client_request_id=uuid4(), context_id=context.context_id,
+            topic='Linear equations', concept_names=['Linear equations'], count=1, question_format='written'))
+        identifier = first.questions[0].concept_ids[0]
+        self.assertTrue(self.learner.get_concept(identifier).canonical_name.startswith('skill-'))
+        self.assertEqual(self.learner.get_practice_concepts(self.owner, context.context_id, [identifier])[0].canonical_name, 'Linear equations')
+        again = await self.service.generate(self.owner, GenerationRequest(client_request_id=uuid4(), context_id=context.context_id,
+            topic='Linear equations', count=5, question_format='written'))
+        self.assertTrue(all('Linear equations' in question.prompt and 'skill-' not in question.prompt for question in again.questions))
+        self.assertTrue(all(target['subskill_name'] == 'Linear equations' for question in again.questions for target in question.learning_targets))
+        attempt = self.service.repository.start(self.owner, str(first.id), StartAttempt(client_request_id=uuid4()))
+        self.service.submit(self.owner, str(attempt.id), SubmitAnswers(client_request_id=uuid4(), expected_revision=attempt.revision,
+            answers={str(first.questions[0].id):'A partial explanation'}))
+        await run_assessment_pipeline(self.service)
+        mistakes = list_mistakes(self.service.repository, self.owner)
+        self.assertEqual(mistakes['items'][0]['topics'][0]['name'], 'Linear equations')
+        self.assertEqual(mistakes['topics'][0]['name'], 'Linear equations')
+        with self.db.sessions() as session:
+            self.assertEqual(collect(session, self.owner)[0]['topics'][0]['name'], 'Linear equations')
+
     def request(self, label, context):
         return GeneratedConceptsRequest(learner_id=self.owner, context_id=context.context_id,
             topic=context.name, labels=[label])
@@ -217,9 +242,9 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
             return await invoke(source, payload, **kwargs)
         with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
             result = await self.service.generate_chat_from_topic(self.owner, self.conversation(),
-                client_request_id=uuid4(), topic='AI basics', count=3, question_format='mcq')
+                client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
         self.assertEqual(len(plans), 2)
-        self.assertEqual(len(result['assessment']['questions']), 3)
+        self.assertEqual(len(result['assessment']['questions']), 5)
         self.assertEqual(self.db.repository.list_concepts(10)[0].canonical_name, 'AI basics')
 
     async def test_permanently_invalid_questions_never_save_a_partial_assessment(self):

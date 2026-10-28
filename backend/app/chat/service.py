@@ -73,8 +73,8 @@ class ConversationService:
                         raise  # Disconnecting the caller must not stop generation.
         return await run_in_threadpool(self.repository.status, owner, job['conversation_id'], job['turn_id'], True)
 
-    async def stop(self, owner, conversation_id, turn_id, attempt):
-        stopped = await run_in_threadpool(self.repository.stop_turn, owner, conversation_id, turn_id, attempt)
+    async def stop(self, owner, conversation_id, turn_id, attempt, *, stopped_job=None):
+        stopped = await run_in_threadpool(self.repository.stop_turn, owner, conversation_id, turn_id, attempt, stopped_job)
         if stopped:
             task = self.turn_tasks.get((owner, conversation_id, turn_id, attempt))
             if task:
@@ -82,6 +82,41 @@ class ConversationService:
         # A newer turn may already exist on another tab. Return the latest
         # canonical page rather than making that new turn appear finished.
         return await run_in_threadpool(self.repository.status, owner, conversation_id)
+
+    async def resume(self, owner, conversation_id, turn_id, body, generate, *, with_scope=True, fingerprint=None):
+        # As with Send, the service owns admission through task creation even
+        # if the HTTP caller disconnects while the transaction is committing.
+        admission = workflow_logger.start_task(self._resume(owner, conversation_id, turn_id, body, generate,
+            with_scope=with_scope, fingerprint=fingerprint), name='chat.resume.admit')
+        self.tasks.add(admission)
+        admission.add_done_callback(self._admission_done)
+        return await asyncio.shield(admission)
+
+    async def _resume(self, owner, conversation_id, turn_id, body, generate, *, with_scope=True, fingerprint=None):
+        reservation = None
+        if self.admission:
+            reservation = await run_in_threadpool(self.admission.acquire, 'model', owner,
+                capacity=16, owner_capacity=2, seconds=300)
+        try:
+            job = await run_in_threadpool(self.repository.resume_turn, owner, conversation_id, turn_id,
+                body.attempt, body.expected_revision, body.instruction, str(body.client_request_id),
+                fingerprint or body.model_dump_json(exclude={'client_request_id'}))
+        except BaseException:
+            if reservation: await run_in_threadpool(self.admission.release, reservation)
+            raise
+        if not job['run']:
+            if reservation: await run_in_threadpool(self.admission.release, reservation)
+            page = await run_in_threadpool(self.repository.status, owner, conversation_id)
+            return dict(page, continued_turn_id=turn_id)
+        job['_admission'] = reservation
+        task = workflow_logger.start_task(self._generate(owner, job, generate, with_scope), name='chat.resume')
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+        key = (owner, conversation_id, turn_id, job['attempt'])
+        self.turn_tasks[key] = task
+        task.add_done_callback(lambda done: self.turn_tasks.pop(key, None))
+        page = await run_in_threadpool(self.repository.status, owner, conversation_id)
+        return dict(page, continued_turn_id=turn_id)
 
     async def _watch_active(self, owner, job, generation, history_scope=None):
         # Durable fencing also cancels work when another process handles Stop.
@@ -132,6 +167,9 @@ class ConversationService:
             if summary and summary['through_sequence'] >= job['user_sequence']:
                 summary = None  # Never give a retried older turn future context.
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
+            if job.get('resume_instruction'):
+                history[-1] = ('user', history[-1][1] + '\n\nRequested changes while paused:\n' + job['resume_instruction'])
+                rows = [dict(row, content=history[-1][1]) if row['sequence'] == job['user_sequence'] else row for row in rows]
             # Context selection runs once, after retrieval, when the complete prompt budget is known.
             if with_scope:
                 current = next(row for row in rows if row['sequence'] == job['user_sequence'])
@@ -143,12 +181,16 @@ class ConversationService:
                 activity_sink = DurableActivitySink(ActivityRepository(self.repository.sessions), owner, job)
                 scope['activity'] = ActivityPublisher(activity_sink)
                 scope['_generation_deadline'] = deadline
+                scope['_response_checkpoint'] = (self.repository.sessions.kw['bind'], owner, job)
+                scope['resume_instruction'] = job.get('new_instruction')
                 scope['conversation_summary'] = summary
                 await scope['activity'].emit('planning', 'running', 'Planning your request')
-                invocation = generate(history, job['selection'], scope)
+                invocation = lambda: generate(history, job['selection'], scope)
             else:
-                invocation = generate(history, job['selection'])
-            generation = asyncio.ensure_future(invocation)
+                invocation = lambda: generate(history, job['selection'])
+            from app.langchain.graphs.response import run_response
+            generation = asyncio.ensure_future(run_response(invocation,
+                self.repository.sessions.kw['bind'], owner, job))
             watcher = asyncio.create_task(self._watch_active(owner, job, generation, scope if with_scope else None))
             try:
                 response = await asyncio.wait_for(generation, timeout=max(.001, deadline - monotonic()))
@@ -165,10 +207,12 @@ class ConversationService:
             if current.get().outcome == 'unknown':
                 current.get().outcome = 'degraded' if response.get('retrieval_warning') or response.get('tool_warnings') else 'success'
         except asyncio.CancelledError:
+            if scope and scope.get('_memory_context_changed'): job['_discard_checkpoint'] = True
             message = 'Saved memories changed while answering. Retry this message to use current context.' if scope and scope.get('_memory_context_changed') else 'Generation interrupted. Retry this message.'
             await run_in_threadpool(self.repository.finish, owner, job, None, message)
             raise
         except Exception as error:
+            if isinstance(error, AppError) and error.code == 'CHAT_RESUME_CONTEXT_CHANGED': job['_discard_checkpoint'] = True
             from app.core.observability.context import current
             if current.get():
                 current.get().outcome = 'failed'

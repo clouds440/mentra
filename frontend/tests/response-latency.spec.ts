@@ -32,13 +32,13 @@ for (const packet of ['valid', 'stale', 'invalid'] as const) {
       await route.fulfill({ json: body });
     });
     await page.goto('/chat/latency-chat');
-    await expect(page.getByRole('button', { name: 'Stop response' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Pause response' })).toBeEnabled();
     const initial = reads;
     release();
     if (packet === 'stale') {
       await expect.poll(() => delivered).toBe(true);
       await expect(page.getByText('Validated final explanation')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Stop response' })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Pause response' })).toBeEnabled();
     } else {
       await expect(page.getByText('Validated final explanation')).toBeVisible();
       expect(reads - initial).toBe(packet === 'valid' ? 0 : 1);

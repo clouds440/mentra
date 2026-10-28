@@ -23,6 +23,7 @@ class AssessmentRepository:
         self.sessions, self.transactions = sessions, OwnerTransactions(sessions)
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.files=files
+        self.publish_skills = None
 
     def _assessment(self, session, owner, identifier):
         row = session.execute(select(a).where(a.c.learner_id == owner, a.c.id == identifier)).mappings().first()
@@ -109,6 +110,8 @@ class AssessmentRepository:
                 from .revision_practice import revision_lineage
                 row['practice_lineage'] = revision_lineage(revision_snapshot, questions)
             session.execute(a.insert().values(**row))
+            if self.publish_skills:
+                self.publish_skills(owner, [identifier for question in questions for identifier in question['concept_ids']], tx, request.context_id, request.topic_id)
             return self.public(row)
 
     def detail(self, owner, identifier):
