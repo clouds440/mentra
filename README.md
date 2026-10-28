@@ -13,9 +13,9 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
 
 ## Current features
 
-- **Persistent chat:** account-owned conversations, rename/delete, recoverable
-  generation and Stop, incremental cross-tab/device synchronization, and immediate
-  session-cache rendering followed by database reconciliation on revisits. Search
+- **Persistent chat:** account-owned conversations, rename/delete, durable response
+  pause/resume and retry controls, incremental cross-tab/device synchronization,
+  and immediate session-cache rendering followed by database reconciliation on revisits. Search
   finds literal phrases in owned titles/messages and opens the exact saved exchange,
   including messages outside the current window.
 - **Chat context:** private rolling summaries stored by chat ID, recent verbatim
@@ -25,9 +25,14 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
   recovered by ID from selected owned chats. Normal chat input is 8,192 tokens,
   with a bounded 12,288-token recovery allowance and a separate 2,048-token output
   reserve. Original displayed messages remain intact.
-- **Rich answers:** Markdown, shared Prism code blocks, rendered equations, citations, interactive
-  choices, compact assessment cards and a copy-as-plain-text action. Scrolling is
-  contained within chat, and answers use a short top-to-bottom reveal.
+- **Rich answers:** Markdown, shared Prism code blocks, equations, citations,
+  Mermaid diagrams, Recharts graphs, colored emphasis, on-demand icons, comparison
+  bars and captioned images. Visuals offer fullscreen views and portable exports;
+  exploratory charts can expose local data controls. See the capabilities below.
+- **Conversational input:** choices with attached custom-text fields, compact forms
+  and multi-question questionnaires with one final submission. These remain ungraded
+  chat interactions; actual practice uses assessment cards and the grading pipeline.
+  Completed answers can be copied as plain text.
 - **Attachments and voice:** stage uploads or paste files/images inside the
   composer before sending; up to four files including three images per message.
   Durable authenticated previews open in a download overlay and can be added to
@@ -61,8 +66,10 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
   as UI answers. Incomplete extraction preserves saved drafts, and recognized
   option letters/text normalize to immutable choice IDs. Downloading an unsaved
   chat question paper does not publish it or create an attempt.
-- **Learning Progress:** concept review, searchable understanding, practice
-  recommendations and evidence-supported follow-up reviews. Accepting a topic
+- **Learning Progress:** broader topics with independently tracked subskills,
+  searchable understanding, practice recommendations and evidence-supported follow-up
+  reviews. Topic organization preserves existing skill IDs and evidence; grouping or
+  renaming never transfers mastery between skills. Accepting a topic
   does not count as mastery evidence. Practice/review actions retain exact owned
   concept/context targets; Quick review prepares three questions for an eligible
   topic, with explicit generation before starting. Per-topic evidence details explain
@@ -70,17 +77,23 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
 - **Events and notifications:** an owned agenda, reminders, manual editing and
   durable proposals. Actual first-party event announcements are captured before
   chat answers and auto-saved when complete/unambiguous; uncertain details remain
-  reviewable. Event announcements alone do not request practice quizzes. An
-  independent Notifications inbox receives reminder publications.
-  Events can be downloaded as calendar snapshots; imported files do not sync later changes.
+  reviewable. The agenda uses modal viewing/editing; Add event saves a suggestion
+  directly, with Edit details available separately. Event announcements alone do not
+  request practice quizzes. An independent Notifications inbox receives reminder
+  publications. Events can be downloaded as calendar snapshots; imported files do
+  not sync later changes.
 - **Web tools:** keyless You.com MCP `web_search` and a separate authenticated
   `web_research` tool using `YOU_WEB_SEARCH_API_KEY`, with independent quotas,
   caching, source dates and citations. Research can consume provider credits.
 - **Identity and personalization:** standalone username/password accounts,
   HTTP-only sessions, current-password-verified password changes in Settings,
   mandatory profile onboarding, optional calibration, evidence-backed memories,
-  preferred names and shared Light/Dark/System themes. Password changes preserve
-  the current session and revoke other active sessions. New browser sessions have
+  preferred names and shared Light/Dark/System themes. Teaching defaults independently
+  control approach, participation (including Interactive), explanation detail, visual
+  support and learning purpose. Current requests override defaults; preferences do
+  not establish mastery or authorize quizzes. Main-chat typography uses bundled Inter
+  with Small/Medium/Large sizes in Settings, defaulting to Medium. Password changes
+  preserve the current session and revoke other active sessions. New browser sessions have
   an absolute 30-day default lifetime. Retired external/platform sign-in routes
   are not available; legacy records remain preserved.
 - **Background context:** a dedicated summarizer maintains separate private chat
@@ -90,6 +103,31 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
 - **Diagnostics:** correlated request/job/tool/model traces with execution timing,
   supplied/skipped/defaulted parameter shapes and sanitized failures. Query and
   response bodies are not retained in logs.
+
+## Interactive learning and visuals
+
+| Capability | Behavior |
+| --- | --- |
+| Choices and questionnaires | Selecting a custom-answer option opens its input. Related questions submit together; server validation and durable receipts protect saved answers. |
+| Diagrams | Mermaid flows and relationships with readable labels, supported colors, source view, fullscreen viewing, and standalone SVG/PNG downloads. |
+| Charts | Recharts line, bar, area, composed, pie, radar and scatter charts from validated data-only JSON, with colors, legends, exact data tables and SVG/PNG downloads. No model-generated JavaScript executes. |
+| Exploratory chart controls | The model may set `enableControls: true` for illustrative data. Compact sliders/inputs update the chart, table and exports locally; Reset restores the supplied data. Default is read-only; factual comparisons should stay fixed. |
+| Comparison bars | Explicit static meters show exact values, scales and percentages. Grouped series render side by side with stable colors; ordinary percentages remain text. |
+| Text and icons | Semantic/custom colors, callouts, disclosures, and lazy Lucide icons or supported public image URLs/SVG paths. Failed icons show a quiet placeholder. |
+| Captioned images | Direct image URLs render with their caption attached inside one container and a fullscreen viewer. |
+
+Shared model-facing guidance lives in
+[`chat_ui.py`](backend/app/langchain/prompts/chat_ui.py). Common input tools and
+compact visual guidance are always available. Detailed chart, multi-bar, custom-color
+and disclosure references load through `enable_workflow_tools` when useful, rather
+than being included in every turn. Discovery can require an additional tool/model
+round; it adds no separate classifier or mandatory review call. See
+[interaction contracts](docs/chat-interactions.md) for formats and limits.
+
+Renderers reuse existing message metadata and shared controls. Completed message
+content is memoized; expensive visual libraries load near the viewport, and response
+icons load individually. Chart edits stay within their own component. These measures
+limit unrelated rerenders and startup cost; complex visuals still cost more than text.
 
 ## Quick start
 
@@ -130,8 +168,11 @@ docker compose --profile local-db up -d postgres
 
 For that profile, set `DATABASE_URL=postgresql://mentra:mentra_local@postgres:5432/mentra`
 for containers; native clients use the configured localhost port instead. The API
-applies Alembic migrations before starting. The repository migration head is
-`20261021_0030`; verify the actual database revision rather than assuming deployment.
+applies Alembic migrations at container startup before launching the API; failure
+blocks API startup, and an advisory lock serializes concurrent migration runners.
+Image builds need no live database. There is no migration deployment GitHub Action;
+backend regression CI remains. Compare the image's Alembic head with the database
+revision using the update checks below rather than relying on a hardcoded version.
 Read the [production runbook](docs/production-readiness.md) before migrating an existing installation;
 the storage migration refuses to discard legacy file data.
 
@@ -181,7 +222,7 @@ their own checks; readiness validates configuration without generating a respons
 | `/progress` | Learning Progress; `?tab=events` opens the agenda |
 | `/events` | Redirect to the Progress Events tab |
 | `/notifications` | Notifications inbox |
-| `/settings` | Profile, calibration, password and assessment preferences; `?tab=memories` or `?tab=notifications` selects those settings |
+| `/settings` | Teaching/profile preferences, chat font size, calibration, password and assessment preferences; `?tab=memories` or `?tab=notifications` selects those settings |
 | `/onboarding`, `/calibration` | Profile setup and optional calibration |
 
 ## Services and persistence
@@ -214,11 +255,11 @@ request/response schemas.
 | API family | Capabilities |
 | --- | --- |
 | `/auth`, `/student-profile` | Local identity/session/password changes, onboarding and calibration |
-| `/conversations`, `/chat-attachments` | Durable turns, Stop, sync, saved-message search/windows, public activity and attachment associations |
+| `/conversations`, `/chat-attachments` | Durable turns, pause/resume/retry, interaction submissions, sync, saved-message search/windows, public activity and attachment associations |
 | `/files` | Single multipart intake, upload receipts/cancellation, sanitized metadata and authenticated GET/HEAD content |
 | `/documents`, `/rag`, `/learning-contexts` | Materials/versions/jobs, source access/retrieval and owned learning context lifecycle |
 | `/assessments` | Papers/chat drafts, generation jobs, attempts, answer-sheet preparation, submissions/corrections, mistake practice and question PDFs |
-| `/learning` | Aggregate progress, concept review, searchable understanding and evidence explanations |
+| `/learning` | Topic/subskill organization, aggregate progress, concept review, searchable understanding and evidence explanations |
 | `/memories`, `/events`, `/event-proposals`, `/notifications` | Owned memory/agenda/inbox management, proposal decisions, sync and calendar exports |
 | `/speech/transcriptions` | Transcribe a previously uploaded speech file by JSON reference |
 | `/health`, `/health/ready` | Liveness and dependency readiness; neither proves every worker queue is draining |
@@ -247,6 +288,7 @@ local named volumes and must not be used as a routine update step.
 Check schema/dependency consistency after an update:
 
 ```sh
+docker compose exec backend python -m alembic -c /app/alembic.ini heads
 docker compose exec backend python -m alembic -c /app/alembic.ini current
 docker compose exec backend python -m alembic -c /app/alembic.ini check
 docker compose exec backend python -m pip check
@@ -304,13 +346,14 @@ compaction queues rather than owning transcripts or memories.
 | `frontend/src/`, `frontend/tests/` | React workspace, domain API clients, local caches and browser tests |
 | `docs/` | Current contracts/setup/runbooks and dated verification/design records |
 | `deploy/`, root Compose files | Proxy template and local/production process configuration |
-| `.github/workflows/` | Backend verification and migration gates |
+| `.github/workflows/` | Backend regression verification; migrations run through container startup or the manual operator command |
 
 The stack uses Pydantic/SQLAlchemy/Alembic for contracts and persistence,
 LangChain/LangGraph for model/tool workflows, SentenceTransformers for retrieval
 models, Faster Whisper for speech, and ReportLab for question PDFs. The browser
-uses React Router, Tailwind, Markdown/Prism and KaTeX, with Playwright for browser
-verification. Detailed model/library tables live in the backend atlas.
+uses React Router, Tailwind, Markdown/Prism, KaTeX, Mermaid, Recharts and Lucide,
+with Playwright for browser verification. Detailed model/library tables live in
+the backend atlas.
 
 | Documentation | Scope |
 | --- | --- |
@@ -320,6 +363,9 @@ verification. Detailed model/library tables live in the backend atlas.
 | [Private files](backend/app/files/README.md) | Cloudinary originals, upload receipts, bindings, authenticated delivery and cleanup |
 | [Persistent chat](docs/persistent-chat.md), [context summaries](backend/app/chat/SUMMARIES.md) | Storage, synchronization, attachments and model context |
 | [Saved-chat search](docs/saved-chat-search.md), [rich content](docs/code-rendering.md) | Original exchange recovery, code and equation rendering |
+| [Interactive UI](docs/chat-interactions.md), [visual verification](docs/Interactive_UI_Verification.md) | Native inputs, diagrams/charts, colors/icons, exports, rendering limits and recorded acceptance |
+| [Teaching preferences](docs/Teaching_Preferences.md), [student profile](docs/student-profile.md) | Actionable teaching defaults, onboarding, calibration and compatibility |
+| [Learner engine](backend/app/learner/README.md) | Topic/subskill organization, evidence boundaries, mastery and retention |
 | [History and memory](docs/history-management.md), [memory summaries](docs/memory-summaries.md) | Exact history recovery, durable user memories and supported background compaction |
 | [Assessment engine](docs/Assessment_Engine.md), [recovery](docs/Assessment_Recovery.md), [mistake practice](docs/mistake-practice.md) | Papers/parts, answer-sheet review, question PDFs, grading/evidence, revision lineage and retries |
 | [Chat assessments](docs/chat-assessments.md), [interactions](docs/chat-interactions.md) | Generation, local answers, submission and grading |
