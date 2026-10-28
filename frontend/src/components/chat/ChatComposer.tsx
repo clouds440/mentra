@@ -25,6 +25,7 @@ interface ChatComposerProps {
   onRetry?: () => void;
   onFiles: (files: File[]) => void;
   hasAttachments?: boolean;
+  onResize?: () => void;
   attachments?: ReactNode;
 }
 
@@ -40,6 +41,7 @@ export function ChatComposer({
   hasAttachments,
   attachments,
   materialPickerRequest,
+  onResize,
 }: ChatComposerProps) {
   const evaluation = useAssessmentEvaluation();
   const pause = !!canStop && (isThinking || (!value.trim() && !hasAttachments));
@@ -47,6 +49,7 @@ export function ChatComposer({
   const retry = !!canRetry && !value.trim() && !hasAttachments && !isThinking;
   const submit = () => pause ? onStop?.() : resume ? onResume?.() : retry ? onRetry?.() : onSubmit();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const measureRef = useRef<HTMLTextAreaElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const previousPickerRequest = useRef(materialPickerRequest);
   useEffect(() => {
@@ -66,19 +69,31 @@ export function ChatComposer({
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, isThinking);
 
+  function resizeTextarea() {
+    const textarea = textareaRef.current;
+    if (!textarea || textarea.hidden) return;
+    // Never collapse the visible textarea: its temporary height change clamps
+    // the sibling chat's scrollTop even if its final height is unchanged.
+    let measure = measureRef.current;
+    if (!measure) {
+      measure = textarea.cloneNode() as HTMLTextAreaElement;
+      measure.removeAttribute('id'); measure.removeAttribute('name');
+      for (const attr of [...measure.attributes]) if (attr.name.startsWith('aria-') || attr.name === 'placeholder' || attr.name === 'autofocus') measure.removeAttribute(attr.name);
+      measure.setAttribute('aria-hidden', 'true'); measure.tabIndex = -1;
+      measure.disabled = true; measure.hidden = false;
+      Object.assign(measure.style, { position: 'fixed', top: '0', left: '0', visibility: 'hidden', pointerEvents: 'none', height: '0px', minHeight: '0px', maxHeight: 'none' });
+      textarea.parentElement!.appendChild(measure); measureRef.current = measure;
+    }
+    measure.style.width = `${textarea.getBoundingClientRect().width}px`; measure.value = textarea.value;
+    const previous = textarea.getBoundingClientRect().height;
+    textarea.style.height = `${Math.min(measure.scrollHeight, 192)}px`;
+    if (textarea.getBoundingClientRect().height !== previous) onResize?.();
+  }
+  useLayoutEffect(() => { resizeTextarea(); }, [value]);
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    textarea.style.height = '0px';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
-  }, [value]);
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const resize = () => {
-      textarea.style.height = '0px';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 192)}px`;
-    };
+    const resize = resizeTextarea;
     resize();
     let width = textarea.clientWidth;
     const observer = new ResizeObserver(() => {
@@ -87,7 +102,7 @@ export function ChatComposer({
       resize();
     });
     observer.observe(textarea);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); measureRef.current?.remove(); measureRef.current = null; };
   }, []);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {

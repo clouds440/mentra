@@ -13,6 +13,7 @@ import { ColorText } from './ColorText';
 import { InlineIcon } from './InlineIcon';
 import { DeferredVisual } from './DeferredVisual';
 import { ProgressBar } from '../ui/ProgressBar';
+import { CaptionedImage } from './CaptionedImage';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram').then(module => ({ default: module.MermaidDiagram })));
 const RechartsFigure = lazy(() => import('./RechartsFigure').then(module => ({ default: module.RechartsFigure })));
@@ -42,6 +43,7 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins }: Markd
     pre: MarkdownCode,
     a: linkComponent ?? (({ children, href }) => <a href={href} rel="noopener noreferrer">{children}</a>),
     table: ({ children }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
+    'mentra-image': ({ node }: RichProps) => <CaptionedImage src={String(node?.properties.src ?? '')} alt={String(node?.properties.alt ?? '')} label={String(node?.properties.label ?? '')} source={node?.properties.source ? String(node.properties.source) : undefined} />,
     'mentra-icon': ({ node }: RichProps) => <InlineIcon name={String(node?.properties.name ?? '')} viewBox={String(node?.properties.viewBox ?? node?.properties.viewbox ?? '0 0 24 24')} variant={node?.properties.variant ? String(node.properties.variant) : undefined} />,
     'mentra-color': ({ node, children }: RichProps) => <ColorText tone={String(node?.properties.tone ?? '')} hex={node?.properties.hex ? String(node.properties.hex) : undefined}>{children}</ColorText>,
     'mentra-bar': ({ node }: RichProps) => <div className="my-4"><ProgressBar mode="meter" label={String(node?.properties.label ?? '')} value={Number(node?.properties.value)} max={Number(node?.properties.max)} unit={String(node?.properties.unit ?? '')} /></div>,
@@ -51,7 +53,8 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins }: Markd
   const markdown = useMemo(() => normalizeMathDelimiters(content), [content]);
   const directives = usesRichDirectives(content);
   const diagrams = /(?:```|~~~)\s*(?:mermaid|recharts)/i.test(content);
-  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(directives || diagrams ? [remarkRichContent] : []), ...(plugins ?? noPlugins)], [directives, diagrams, plugins]);
+  const images = /!\[/.test(content);
+  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(directives || diagrams || images ? [remarkRichContent] : []), ...(plugins ?? noPlugins)], [directives, diagrams, images, plugins]);
   return <div className="markdown-content"><ReactMarkdown remarkPlugins={remarkPlugins}
     rehypePlugins={[[rehypeKatex, { trust: false, maxExpand: 500, maxSize: 20, throwOnError: false }]]} components={components}>{markdown}</ReactMarkdown></div>;
 }

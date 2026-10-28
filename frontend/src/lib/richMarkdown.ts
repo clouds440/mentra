@@ -12,9 +12,19 @@ export function remarkRichContent() {
     let diagrams = 0;
     let charts = 0;
     let icons = 0;
+    const containsImage = (node: RootContent): boolean => node.type === 'image' || 'children' in node && node.children.some(child => containsImage(child as RootContent));
     function visit(parent: { children?: RootContent[] }) {
       parent.children = parent.children?.map(child => {
         const node = child as DirectiveNode;
+        if (child.type === 'paragraph' && containsImage(child)) child.data = { ...child.data, hName: 'div' };
+        // A linked image retains its source link in the caption; avoid nested
+        // interactive elements when the image itself opens the viewer.
+        if (child.type === 'link' && child.children.length === 1 && child.children[0].type === 'image') {
+          const image = child.children[0];
+          node.data = { hName: 'mentra-image', hProperties: { src: image.url, alt: image.alt ?? '', label: image.title || image.alt || 'Image', source: child.url } };
+          node.children = []; return child;
+        }
+        if (child.type === 'image') { child.data = { hName: 'mentra-image', hProperties: { src: child.url, alt: child.alt ?? '', label: child.title || child.alt || 'Image' } }; return child; }
         if (child.type === 'code' && child.lang?.toLowerCase() === 'mermaid' && ++diagrams > 3) child.lang = 'text';
         if (child.type === 'code' && child.lang?.toLowerCase() === 'recharts' && ++charts > 3) child.lang = 'text';
         if (!['textDirective', 'leafDirective', 'containerDirective'].includes(node.type)) { if ('children' in child) visit(child); return child; }

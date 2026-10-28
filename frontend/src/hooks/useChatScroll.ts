@@ -17,6 +17,8 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
   const scrolledUp = useRef(false);
   const jumping = useRef(false);
   const jumpVisible = useRef(false);
+  const footerVisible = useRef(false);
+  const viewportHeight = useRef(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [anchor, setAnchor] = useState<number | null>(null);
   const groups = useMemo(() => {
@@ -33,6 +35,7 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
     prepend.current = null; bottom.current = true; followAnchor.current = false;
     userScrollUntil.current = 0; lastScrollTop.current = 0; scrolledUp.current = false;
     jumping.current = false; jumpVisible.current = false; setShowScrollToBottom(false); setAnchor(null);
+    footerVisible.current = false; viewportHeight.current = 0;
   }, [id]);
   useLayoutEffect(() => {
     if (loading || !messages.length) return;
@@ -59,9 +62,13 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
     const style = getComputedStyle(el);
     const inset = parseFloat(style.paddingTop);
     const contentHeight = Math.max(0, el.clientHeight - inset - parseFloat(style.paddingBottom));
-    const contentSize = `${contentHeight}px`;
-    if (el.style.getPropertyValue('--chat-content-height') !== contentSize) el.style.setProperty('--chat-content-height', contentSize);
     const footer = el.querySelector<HTMLElement>('[data-chat-footer]');
+    if (viewportHeight.current && viewportHeight.current !== el.clientHeight && footerVisible.current && !scrolledUp.current) {
+      // If the reader could see the footer, resizing the composer must keep it
+      // visible, rather than reapplying the old exchange's top anchor.
+      followAnchor.current = false; bottom.current = true;
+    }
+    viewportHeight.current = el.clientHeight;
     const available = Math.max(0, contentHeight - (footer?.getBoundingClientRect().height ?? 0));
     const size = `${available}px`;
     if (el.style.getPropertyValue('--latest-turn-height') !== size) el.style.setProperty('--latest-turn-height', size);
@@ -81,6 +88,7 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
       bottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
     } else if (bottom.current) el.scrollTop = el.scrollHeight;
     lastScrollTop.current = el.scrollTop;
+    footerVisible.current = !!footer && footer.getBoundingClientRect().bottom <= el.getBoundingClientRect().bottom + 1;
     updateJumpButton();
   }
   const positioning = useRef(position); positioning.current = position;
@@ -94,6 +102,9 @@ export function useChatScroll(id: string, messages: StoredMessage[], loading: bo
 
   return {
     container, latest, groups, anchor, showScrollToBottom,
+    // Composer layout effects run before paint; do not wait one observer frame
+    // with the footer still positioned for the previous viewport height.
+    onComposerResize() { positioning.current(); },
     anchorNextSend() {
       requested.current = Math.max(0, ...messages.map(message => message.sequence)) + 1;
       followAnchor.current = false; bottom.current = false;

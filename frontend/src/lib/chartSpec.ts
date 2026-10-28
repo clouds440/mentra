@@ -2,7 +2,7 @@ import { visualColor } from './visualColors';
 export const chartTypes = ['LineChart', 'BarChart', 'AreaChart', 'ComposedChart', 'PieChart', 'RadarChart', 'ScatterChart'] as const;
 export type ChartType = typeof chartTypes[number];
 export type ChartSeries = { dataKey: string; name: string; type: 'Line' | 'Bar' | 'Area'; color?: string };
-export type ChartSpec = { type: ChartType; title: string; description?: string; xKey: string; unit?: string; stacked: boolean; series: ChartSeries[]; data: Record<string, string | number | null>[]; colors?: string[] };
+export type ChartSpec = { type: ChartType; title: string; description?: string; xKey: string; unit?: string; stacked: boolean; series: ChartSeries[]; data: Record<string, string | number | null>[]; colors?: string[]; enableControls?: boolean };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const only = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).every(key => keys.includes(key));
 const text = (value: unknown, max: number): value is string => typeof value === 'string' && !!value.trim() && value.length <= max;
@@ -14,7 +14,8 @@ export function parseChartSpec(code: string): ChartSpec | null {
   if (code.length > 24000) return null;
   try {
     const value: unknown = JSON.parse(code);
-    if (!record(value) || !only(value, ['type', 'title', 'description', 'xKey', 'unit', 'stacked', 'series', 'data', 'colors'])) return null;
+    if (!record(value) || !only(value, ['type', 'title', 'description', 'xKey', 'unit', 'stacked', 'series', 'data', 'colors', 'enableControls'])) return null;
+    if (value.enableControls !== undefined && typeof value.enableControls !== 'boolean') return null;
     if (value.colors !== undefined && (!Array.isArray(value.colors) || !value.colors.length || value.colors.length > 24 || value.colors.some(color => typeof color !== 'string' || !visualColor(color)))) return null;
     if (!chartTypes.includes(value.type as ChartType) || !text(value.title, 120) || !key(value.xKey)) return null;
     if (value.description !== undefined && !text(value.description, 500) || value.unit !== undefined && !text(value.unit, 32) || value.stacked !== undefined && typeof value.stacked !== 'boolean') return null;
@@ -49,6 +50,16 @@ export function parseChartSpec(code: string): ChartSpec | null {
     }
     if (series.some(item => data.every(row => row[item.dataKey] === null))) return null;
     if (type === 'PieChart' && !data.some(row => Number(row[series[0].dataKey]) > 0)) return null;
-    return { type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, series, data };
+    return { type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, enableControls: value.enableControls === true, series, data };
   } catch { return null; }
+}
+
+/** Keep every local edit inside the original validated chart contract. */
+export function editChartValue(spec: ChartSpec, row: number, field: string, value: number): ChartSpec | null {
+  if (!spec.enableControls || !spec.data[row] || !Number.isFinite(value) || Math.abs(value) > 1e12) return null;
+  if (!spec.series.some(item => item.dataKey === field) && !(field === spec.xKey && typeof spec.data[row][field] === 'number')) return null;
+  if (['PieChart', 'RadarChart'].includes(spec.type) && field !== spec.xKey && value < 0) return null;
+  if (spec.type === 'PieChart' && value === 0 && !spec.data.some((item, index) => index !== row && Number(item[field]) > 0)) return null;
+  if (spec.data[row][field] === value) return spec;
+  return { ...spec, data: spec.data.map((item, index) => index === row ? { ...item, [field]: value } : item) };
 }

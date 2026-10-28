@@ -33,7 +33,7 @@ function Progress() {
   const [reload, setReload] = useState(0);
   const [totalConcepts, setTotalConcepts] = useState<number | null>(null);
   const receiveProposals = useCallback((values: EventProposal[] | null) => {
-    if (values) setProposals(values);
+    if (values) setProposals(current => [...values, ...(current ?? []).filter(item => !['pending', 'deciding'].includes(item.state) && !values.some(value => value.id === item.id)).slice(-10)]);
     else setError('Unable to load event proposals.');
   }, []);
   usePageRefresh(() => setReload(value => value + 1), true, ['learning', 'learning-contexts', 'event-proposals']);
@@ -55,6 +55,6 @@ function Progress() {
         <LearningSuggestions learning={learning} context={context} />
       </>}
     </section>
-    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda onProposals={receiveProposals} reload={reload} />}<h2 className="border-t border-border pt-6 text-lg font-medium text-heading">For your review</h2>{!proposals && !error && <Skeleton variant="card" />}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}{proposals?.map(value => <EventProposalCard key={value.id} initial={value} />)}</section>
+    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda onProposals={receiveProposals} reload={reload} />}<section aria-label="Event suggestions" className="workspace-panel space-y-4"><div><h2 className="text-lg font-medium text-heading">For your review</h2><p className="mt-1 text-sm text-muted">Suggestions from your chats. Add as shown, edit details or dismiss.</p></div>{!proposals && !error && <Skeleton variant="card" />}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}<div className="grid gap-3 lg:grid-cols-2">{proposals?.map(value => <EventProposalCard key={value.id} initial={value} onResolved={result => setProposals(current => current?.map(item => item.id === result.id ? result : item) ?? [result])} />)}</div></section></section>
   </div></div>;
 }

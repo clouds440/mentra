@@ -7,7 +7,7 @@ import { EventEditor } from './EventEditor';
 import { eventProposals } from '../../services/eventProposals';
 import type { EventProposal, EventDraft } from '../../types/events';
 
-export function EventProposalCard({ initial }: { initial: EventProposal }) {
+export function EventProposalCard({ initial, onResolved }: { initial: EventProposal; onResolved?: (value: EventProposal) => void }) {
   const [value, setValue] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -19,10 +19,11 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
     return () => controller.current?.abort();
   }, [initial.id]);
   async function decide(decision: 'approve' | 'dismiss', details?: EventDraft) {
+    if (busy) return;
     controller.current?.abort(); const request = new AbortController(); controller.current = request; setBusy(true); setError('');
     try {
       const result = await eventProposals.decide(value, decision, request.signal, details);
-      if (!request.signal.aborted) { setValue(result); setEditing(false); }
+      if (!request.signal.aborted) { setValue(result); setEditing(false); onResolved?.(result); }
     } catch (reason) {
       if (!request.signal.aborted) { setError(reason instanceof ApiError ? reason.message : 'Unable to save decision.');
         const refreshed = await eventProposals.detail(value.id, request.signal).catch(() => null);
@@ -40,7 +41,7 @@ export function EventProposalCard({ initial }: { initial: EventProposal }) {
     {!pending && <p role="status" className="text-sm">{value.state === 'approved' ? 'Event saved.' : `Proposal ${value.state}.`}</p>}
     {value.event_id && <Link className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${value.event_id}`}>View event</Link>}
     {pending && !editing && <div className="flex flex-wrap gap-2">
-      <Button size="sm" disabled={busy} loading={busy} onClick={() => { if (value.action === 'status') void decide('approve').catch(() => {}); else setEditing(true); }}>{value.action === 'create' ? 'Add event' : 'Review update'}</Button>
+      <Button size="sm" disabled={busy} loading={busy} onClick={() => void decide('approve').catch(() => {})}>{value.action === 'create' ? 'Add event' : 'Save update'}</Button>
       {value.action !== 'status' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(true)}>Edit details</Button>}
       <Button size="sm" variant="ghost" disabled={busy} loading={busy} onClick={() => void decide('dismiss').catch(() => {})}>Dismiss</Button>
     </div>}

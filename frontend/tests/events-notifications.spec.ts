@@ -16,13 +16,11 @@ test('event editing, reminder inbox and notification preferences', async ({ page
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   await page.getByLabel('Date', { exact: true }).fill(tomorrow);
   await chooseOption(page.getByLabel('Reminder', { exact: true }), 'disabled');
-  await page.getByRole('button', { name: 'Check dates & reminder' }).click();
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
   const detail = page.getByRole('region', { name: 'Event details' });
   await expect(detail.getByRole('heading', { name: 'Revision session' })).toBeVisible();
   await detail.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Title', { exact: true }).fill('Revised session');
-  await page.getByRole('button', { name: 'Check dates & reminder' }).click();
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
   await expect(detail.getByRole('heading', { name: 'Revised session' })).toBeVisible();
   await detail.getByRole('button', { name: 'Complete', exact: true }).click();
@@ -42,6 +40,7 @@ test('event editing, reminder inbox and notification preferences', async ({ page
     const response = await page.request.get('http://127.0.0.1:18003/api/v1/notifications');
     return (await response.json()).unread_count;
   }).toBe(1);
+  await detail.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('link', { name: /^Notifications/ }).click();
   await expect(page.getByRole('heading', { name: 'Reminder test' })).toBeVisible();
   await page.getByRole('button', { name: 'Mark read', exact: true }).click();

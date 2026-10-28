@@ -3,6 +3,7 @@
 Run from repository root with PYTHONPATH=backend. Synthetic data; no domain writes.
 """
 import asyncio
+import argparse
 import json
 import re
 from pathlib import Path
@@ -27,6 +28,9 @@ async def main():
     results = []
     chart_example = None
     scenarios = [
+        ('chart_controls', 'Illustrate y = 2x with x values 1, 2, 3 in a Recharts chart. Let me tweak the illustrative values locally with chart controls.', None),
+        ('canonical_chart', 'Compare these canonical recorded React and Angular results in Recharts: metric A React 20 Angular 15, metric B React 30 Angular 25. These are fixed recorded facts, not editable illustrative values.', None),
+        ('captioned_image', 'Use this provided image URL to illustrate the cell explanation: https://images.example.org/cell.png . Put a short descriptive caption attached to the image.', None),
         ('custom_topic', 'Offer me three learning topics to choose from, and let me type my own topic inside the same card.', 'present_choices'),
         ('form', 'Before you plan my study session, collect my topic and how many minutes I have in one compact form.', 'request_input'),
         ('bars', 'Compare illustrative difficulty ratings of arrays, binary search and dynamic programming on a 1 to 5 scale using one native multi-bar card. Label the ratings as illustrative.', 'present_visuals'),
@@ -44,6 +48,13 @@ async def main():
         ('icon_sources', 'Explain React and Angular in two short phrases, each with its logo using an icon URL or SVG path. They are not Lucide icon names. Use known public HTTPS icon assets or small SVG paths, no external lookups.', None),
         ('chart_colors', 'Draw one Recharts bar chart with React as the first series and Angular second. Metric A: React 20 Angular 15. Metric B: React 30 Angular 25. Choose distinct explicit colors for the two series. No external lookups.', None),
     ]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--only', help='Comma-separated scenario names (follow-up requires chart).')
+    requested = parser.parse_args().only
+    if requested:
+        names = set(requested.split(','))
+        assert names <= {item[0] for item in scenarios}, 'Unknown scenario'
+        scenarios = [item for item in scenarios if item[0] in names]
     for name, request, expected in scenarios:
         scope = {'current_user_message_id': str(uuid4()), 'execution_plan': SimpleNamespace(tool_names=[])}
         tools = create_interaction_tools('synthetic-ui-check', scope, ToolBudget())
@@ -76,6 +87,17 @@ async def main():
         else:
             raise AssertionError(f'{name}: unnecessary model loop')
         content = str(response.content)
+        if name in ('chart_controls', 'canonical_chart'):
+            match = re.search(r'```recharts\s*\n(.*?)```', content, re.S)
+            assert match, f'{name}: missing chart: {content}'
+            chart = json.loads(match[1])
+            assert isinstance(chart.get('enableControls', False), bool)
+            assert chart.get('enableControls', False) == (name == 'chart_controls'), f'{name}: wrong edit permission'
+            scope['chart_spec'] = chart
+        if name == 'captioned_image':
+            assert re.search(r'!\[[^\]]+\]\(https://images.example.org/cell.png\s+["\'][^"\']+["\']\)', content), 'Missing attached caption'
+        if name == 'custom_topic':
+            assert not re.search(r'\babove\b', content, re.I), 'Native card incorrectly referenced as above'
         cards = ChatResponse(content='', interactions=scope.get('interactions', [])).model_dump(mode='json')['interactions']
         if expected == 'clarify':
             assert any(tool in seen for tool in ('present_choices', 'request_input')), 'Missing topic should use native clarification'
@@ -125,7 +147,8 @@ async def main():
         if name == 'prose_only':
             assert not any(marker in content for marker in ('```', ':icon[', ':color[', '::bar'))
         results.append({'scenario': name, 'tools': seen, 'rounds': rounds, 'passed': True, 'cards': cards,
-                        **({'chart_spec': scope['chart_spec'], 'chart_expected_values': [25, 30] if name == 'chart_followup' else [20, 30]} if 'chart_spec' in scope else {})})
+                        **({'chart_spec': scope['chart_spec'], 'chart_expected_values': [2, 4, 6] if name == 'chart_controls' else [25, 30] if name == 'chart_followup' else [20, 30],
+                            'chart_expected_types': ['LineChart', 'ScatterChart', 'BarChart', 'AreaChart', 'ComposedChart'] if name == 'chart_controls' else ['BarChart', 'LineChart', 'ComposedChart'] if name == 'canonical_chart' else ['BarChart']} if 'chart_spec' in scope else {})})
         print(f'{name}: passed, {len(rounds)} model rounds, tools={seen}', flush=True)
     path = Path('backend/.cache/chat-ui-live.json')
     path.parent.mkdir(parents=True, exist_ok=True)

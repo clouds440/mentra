@@ -21,7 +21,7 @@ export function axes(spec: ChartSpec, scatter = false, xName?: string) {
     <YAxis key="y" dataKey={scatter ? 'y' : undefined} name={scatter ? spec.series.length === 1 ? spec.series[0].name : 'Value' : undefined} tick={tick} tickLine={false} axisLine={false} width={58} domain={['LineChart', 'ScatterChart'].includes(spec.type) ? ['auto', 'auto'] : [0, 'auto']} />];
 }
 export function motion(spec: ChartSpec) {
-  return { isAnimationActive: spec.data.length * spec.series.length <= 120 ? 'auto' as const : false as const, animationDuration: 250, animationBegin: 0 };
+  return { isAnimationActive: !spec.enableControls && spec.data.length * spec.series.length <= 120 ? 'auto' as const : false as const, animationDuration: 250, animationBegin: 0 };
 }
 export function annotations(spec: ChartSpec) {
   return [<Tooltip key="tooltip" isAnimationActive={false} formatter={(value, _name, item) => `${value}${spec.unit && !(spec.type === 'ScatterChart' && item.dataKey === 'x') ? ` ${spec.unit}` : ''}`} contentStyle={tooltipStyle} labelStyle={{ color: 'rgb(var(--foreground))' }} itemStyle={{ color: 'rgb(var(--foreground))' }} />,

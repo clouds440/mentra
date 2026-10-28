@@ -302,8 +302,8 @@ def create_interaction_tools(owner, scope, budget):
             if len(cards) >= 20:
                 raise AppError('INTERACTION_LIMIT', 'Group related questions in present_questionnaire.', 422)
             cards.append(card)
-        from app.langchain.prompts.chat_ui import INPUT_NEXT_STEP
-        next_step = ('Continue the explanation; these static visuals require no user input.' if isinstance(value, ValueBarsContent)
+        from app.langchain.prompts.chat_ui import INPUT_NEXT_STEP, VISUAL_NEXT_STEP
+        next_step = (VISUAL_NEXT_STEP if isinstance(value, ValueBarsContent)
                      else INPUT_NEXT_STEP)
         return dict(interaction_id=card['id'], outcome='displayed', next_step=next_step)
 

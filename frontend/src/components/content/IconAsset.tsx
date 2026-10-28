@@ -1,3 +1,4 @@
+import { publicImageUrl as publicUrl } from '../../lib/imageUrls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { observeVisible } from './DeferredVisual';
 import { diagramCacheGeneration, onRichContentOwnerChange } from '../../lib/richContentCache';
@@ -6,14 +7,6 @@ const LIMIT = 65536;
 type Entry = { controller: AbortController; promise: Promise<Blob | null> };
 const cache = new Map<string, Entry>();
 onRichContentOwnerChange(() => { cache.forEach(entry => entry.controller.abort()); cache.clear(); });
-function publicUrl(value: string) {
-  try {
-    const url = new URL(value);
-    if (value.length > 500 || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.port || url.origin === location.origin) return null;
-    if (!/^[a-z\d.-]+\.[a-z]{2,}$/i.test(url.hostname) || /(?:^|\.)(?:localhost|local|internal|test|invalid)$/i.test(url.hostname)) return null;
-    return url.href;
-  } catch { return null; }
-}
 function load(url: string) {
   const existing = cache.get(url);
   if (existing) { cache.delete(url); cache.set(url, existing); return existing.promise; }

@@ -1,11 +1,16 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v7'
+VERSION = 'chat-ui-v8'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example, '
-                   'then wait for student input. The card does not display earlier prose. '
+                   'then wait for student input. The card appears below your final reply, not above it. '
                    'Do not solve the activity or answer on the student\'s behalf.')
+VISUAL_NEXT_STEP = ('Continue the explanation; these static visuals require no user input. '
+                    'The visual card appears below your final reply, not above it.')
 SYSTEM_PROMPT = """Choose useful presentation, even when not requested; honor explicit prose/code
 formats. Finish clear requests directly, without decorative UI or needless questions.
+Native input/visual cards render BELOW the final answer text. Markdown diagrams,
+charts and images render at their written position. Prefer position-neutral references
+like "the choices" or "the chart"; never assume a native card is above the reply.
 Apply response_style participation and visual_support independently. Interactive
 teaching favors one useful activity after a manageable explanation; use native
 controls when suited, then wait without answering for the learner. Simple facts
@@ -28,6 +33,8 @@ Never claim success without a receipt, fill answers, invent learner evidence or 
 UI as authorization. Use existing assessment tools/Events review for those domains.
 
 Prefer bars for a few ratings, Mermaid for flows, Recharts for trends/distributions.
+The charts reference supports opt-in live data controls for illustrative exploration;
+charts are read-only by default.
 Mermaid: fenced mermaid, accTitle/accDescr; no init/frontmatter, HTML, resources or
 clicks. Colors may use style/classDef/linkStyle with fill/stroke/color six-digit hex
 or basic color names, and stroke-width 0-6px only; pair fills with readable text.
@@ -35,6 +42,10 @@ Icon: :icon[BookOpen] beside words. For brand/other icons use a known public HTT
 image URL in :icon[https://host/icon.svg], or :icon[M12 2L2 22H22Z] for SVG path data
 (optional viewBox="0 0 24 24", variant="outline"). Never invent Lucide brand names
 or URLs; URL assets must be small public images with no query, credentials or redirects.
+For useful photographs/illustrations, use ![descriptive alt text](https://host/image.jpg "Attached caption").
+The image and caption share one container with a fullscreen viewer. Use known,
+user-provided or tool-verified direct image URLs; never invent URLs or embed web pages.
+Use images when they help explain the topic, not as decoration; keep captions factual.
 Semantic emphasis:
 :color[Success]{tone="success"} (success/warning/danger/info/accent). Static bar:
 ::bar{label="Difficulty" value="3" max="5" unit="points"}.
@@ -60,7 +71,13 @@ REFERENCES = {
 Example: {"type":"BarChart","title":"Illustrative study time","xKey":"topic","unit":"minutes","data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],"series":[{"dataKey":"minutes","name":"Study time"}]}.
 Types: LineChart, BarChart, AreaChart, ComposedChart, PieChart, RadarChart, ScatterChart.
 Required: type,title,xKey,data,series. Optional: description,unit,stacked (bar/area/composed
-only), colors (category palette, especially pie). Each series has dataKey, optional name
+only), colors (category palette, especially pie), enableControls (boolean, default false).
+Set enableControls=true only for illustrative/exploratory data the learner should
+tweak (e.g. a simple x/y relationship). Keep false for canonical comparisons,
+measured facts, grades, or source-grounded data, unless the user explicitly asks
+to explore edits. Local sliders/inputs and Reset update the chart/data/export without
+changing the saved answer. Clearly label illustrative data; never invent measurements.
+Each series has dataKey, optional name
 and color. Colors accept blue,purple,green,amber,red,neutral or six-digit hex; keep an
 entity's color consistent across related charts. ComposedChart also requires type Line,
 Bar or Area per series. Simple identifier keys; each row has xKey plus every series key.

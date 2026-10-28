@@ -1,8 +1,9 @@
 import { Component, lazy, memo, Suspense, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
-import { parseChartSpec, type ChartSpec } from '../../lib/chartSpec';
+import { parseChartSpec, editChartValue, type ChartSpec } from '../../lib/chartSpec';
 import { cacheChart, readChart, diagramCacheGeneration } from '../../lib/richContentCache';
+const ChartControls = lazy(() => import('./ChartControls').then(module => ({ default: module.ChartControls })));
 
 // Import only the selected family; no Recharts implementation is in this module.
 const renderers = {
@@ -30,16 +31,30 @@ const ChartCanvas = memo(function ChartCanvas({ spec }: { spec: ChartSpec }) {
   return <div className="chart-plot"><ChartBoundary key={spec.type}><Suspense fallback={<p role="status" className="p-4 text-sm text-muted">Preparing chart…</p>}><Renderer spec={plot} xName={spec.xKey} /></Suspense></ChartBoundary></div>;
 });
 ChartCanvas.displayName = 'ChartCanvas';
+const ChartDataTable = memo(function ChartDataTable({ spec }: { spec: ChartSpec }) { return <div className="markdown-table-scroll p-3"><table><caption className="sr-only">{spec.title} — exact data{spec.unit ? ` (${spec.unit})` : ''}</caption><thead><tr><th scope="col">{spec.xKey}</th>{spec.series.map(item => <th key={item.dataKey} scope="col">{item.name}{spec.unit ? ` (${spec.unit})` : ''}</th>)}</tr></thead><tbody>{spec.data.map((row, i) => <tr key={i}><th scope="row">{row[spec.xKey]}</th>{spec.series.map(item => <td key={item.dataKey}>{row[item.dataKey] === null ? '—' : String(row[item.dataKey])}</td>)}</tr>)}</tbody></table></div>; });
 function RechartsFigureContent({ code }: { code: string }) {
   const titleId = useId();
   const figureRef = useRef<HTMLElement>(null); const viewerRef = useRef<HTMLDialogElement>(null);
   const [downloading, setDownloading] = useState<'svg' | 'png'>(); const [downloadError, setDownloadError] = useState(false);
-  const spec = useMemo(() => {
+  const original = useMemo(() => {
     const cached = readChart(code);
     if (cached !== undefined) return cached;
     const parsed = parseChartSpec(code); cacheChart(code, parsed); return parsed;
   }, [code]);
+  const [edited, setEdited] = useState<{ original: ChartSpec; value: ChartSpec }>();
+  const [reset, setReset] = useState(0);
+  const spec = edited?.original === original ? edited.value : original;
+  const current = useRef(spec); current.current = spec;
+  function edit(row: number, field: string, value: number) {
+    if (!original || !current.current) return false;
+    const next = editChartValue(current.current, row, field, value);
+    if (!next) return false;
+    if (next !== current.current) { current.current = next; setEdited({ original, value: next }); }
+    return true;
+  }
+  const controls = spec?.enableControls && original ? <Suspense fallback={null}><ChartControls key={`${code}:${reset}`} spec={spec} original={original} onEdit={edit} onReset={() => { current.current = original; setEdited(undefined); setReset(value => value + 1); }} /></Suspense> : null;
   const [source, setSource] = useState(false); const [data, setData] = useState(false); const [expanded, setExpanded] = useState(false);
+  const background = useRef(spec); if (!expanded) background.current = spec;
   async function download(format: 'svg' | 'png') {
     if (!spec || downloading) return;
     const generation = diagramCacheGeneration();
@@ -54,6 +69,7 @@ function RechartsFigureContent({ code }: { code: string }) {
     } catch { setDownloadError(true); } finally { setDownloading(undefined); }
   }
   if (!spec) return <div className="my-4"><p role="status" className="text-sm text-muted">This chart has unsupported or invalid data. Its source is available below.</p><CodeBlock code={code} language="json" /></div>;
+  const display = expanded && background.current ? background.current : spec;
   const downloads = <><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'png'} onClick={() => void download('png')}>Download PNG</Button></>;
   return <figure ref={figureRef} className="recharts-figure my-4 min-w-0 overflow-hidden rounded-panel border border-border bg-card" aria-labelledby={titleId}>
     <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2"><span id={titleId} className="text-sm font-medium text-heading">{spec.title}</span><span className="flex flex-wrap gap-1">
@@ -64,9 +80,10 @@ function RechartsFigureContent({ code }: { code: string }) {
     </span></figcaption>
     {(spec.description || spec.unit) && <p className="px-3 pt-3 text-sm text-muted">{spec.description}{spec.description && spec.unit ? ' ' : ''}{spec.unit ? `Values in ${spec.unit}.` : ''}</p>}
     {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>}
-    {source ? <CodeBlock code={code} language="json" /> : <ChartCanvas spec={spec} />}
-    {data && <div className="markdown-table-scroll p-3"><table><caption className="sr-only">{spec.title} — exact data{spec.unit ? ` (${spec.unit})` : ''}</caption><thead><tr><th scope="col">{spec.xKey}</th>{spec.series.map(item => <th key={item.dataKey} scope="col">{item.name}{spec.unit ? ` (${spec.unit})` : ''}</th>)}</tr></thead><tbody>{spec.data.map((row, i) => <tr key={i}><th scope="row">{row[spec.xKey]}</th>{spec.series.map(item => <td key={item.dataKey}>{row[item.dataKey] === null ? '—' : String(row[item.dataKey])}</td>)}</tr>)}</tbody></table></div>}
-    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div><ChartCanvas spec={spec} /></Dialog>}
+    {source ? <CodeBlock code={display !== original ? JSON.stringify(display, null, 2) : code} language="json" /> : <ChartCanvas spec={display} />}
+    {!expanded && controls}
+    {data && <ChartDataTable spec={display} />}
+    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div><ChartCanvas spec={spec} />{controls}</Dialog>}
   </figure>;
 }
 RechartsFigureContent.displayName = 'RechartsFigure';

@@ -19,10 +19,13 @@ test('event proposal recovers in Progress and commits once',async({page})=>{
   await page.goto('/progress?tab=events');
   const proposal=page.getByRole('region',{name:'Event proposal'});
   await expect(proposal.getByRole('heading',{name:'Algebra exam'})).toBeVisible();
+  const decisions: unknown[] = []; let previews = 0;
+  page.on('request', request => { if(request.method()==='POST' && request.url().includes('/decisions')) decisions.push(request.postDataJSON()); if(request.url().includes('/temporal-preview')) previews++; });
   await proposal.getByRole('button',{name:'Add event',exact:true}).click();
-  await page.getByRole('button',{name:'Check dates & reminder'}).click();
-  await page.getByRole('button',{name:'Save event',exact:true}).click();
   await expect(proposal.getByText('Event saved.',{exact:true})).toBeVisible();
+  expect(decisions).toHaveLength(1); expect(previews).toBe(0);
+  expect(decisions[0]).toMatchObject({decision:'approve'});
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await proposal.getByRole('link',{name:'View event',exact:true}).click();
   await expect(page.getByRole('region',{name:'Event details'}).getByRole('heading',{name:'Algebra exam'})).toBeVisible();
 });
