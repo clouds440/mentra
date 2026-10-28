@@ -159,10 +159,10 @@ test('profile saves apply immediately and tab focus refreshes without BroadcastC
   await page.goto('/settings');
   await page.getByRole('button',{name:'Edit profile',exact:true}).click();
   await page.getByLabel('What should Mentra call you?',{exact:true}).fill('Updated immediately');
-  await chooseOption(page.getByLabel('Learning preference',{exact:true}), 'concise');
+  await chooseOption(page.getByLabel('Explanation detail',{exact:true}), 'brief');
   await page.getByRole('button',{name:'Save profile',exact:true}).click();
   await expect(page.getByText('Updated immediately',{exact:true})).toBeVisible();
-  await expect(page.getByText('Concise / direct',{exact:true})).toBeVisible();
+  await expect(page.getByText('Brief',{exact:true})).toBeVisible();
   const before=reads;
   profile.details.preferred_name='Changed in another tab';profile.version++;
   await page.waitForTimeout(550);

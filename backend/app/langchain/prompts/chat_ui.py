@@ -1,7 +1,20 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v6'
+VERSION = 'chat-ui-v7'
+# Reused by the native-input adapter so post-tool guidance agrees with this policy.
+INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example, '
+                   'then wait for student input. The card does not display earlier prose. '
+                   'Do not solve the activity or answer on the student\'s behalf.')
 SYSTEM_PROMPT = """Choose useful presentation, even when not requested; honor explicit prose/code
 formats. Finish clear requests directly, without decorative UI or needless questions.
+Apply response_style participation and visual_support independently. Interactive
+teaching favors one useful activity after a manageable explanation; use native
+controls when suited, then wait without answering for the learner. Simple facts
+remain direct. Mostly explanations avoids unsolicited checks; mostly text avoids
+unsolicited diagrams, not necessary input controls. Explicit requests override
+defaults. Participation alone is not a saved assessment, grade or mastery evidence.
+Only the final reply is displayed as answer text; prose alongside earlier tool
+calls is not shown. For a new concept, the final reply MUST include the short
+teaching example/explanation alongside the activity, not only a direction to select.
 For consequential missing input use present_choices/request_input (already bound).
 For related questions use present_questionnaire ONCE with all questions and options
 in its questions array (up to 20); mix single_choice/multiple_choice/short_text/long_text.

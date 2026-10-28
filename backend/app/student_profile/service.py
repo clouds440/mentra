@@ -23,8 +23,12 @@ class StudentProfileService:
         with self.repository.transaction(learner_id) as store:
             profile = store.profile()
             # Older callers omit this optional field; only an explicit blank/null clears it.
-            if profile.details and 'preferred_name' not in request.details.model_fields_set:
-                request.details = request.details.model_copy(update={'preferred_name': profile.details.preferred_name})
+            if profile.details:
+                # Old clients must not erase newer preferences they cannot edit.
+                preserved = {key: getattr(profile.details, key) for key in
+                             ('preferred_name', 'participation', 'visual_support', 'learning_purpose')
+                             if key not in request.details.model_fields_set}
+                request.details = request.details.model_copy(update=preserved)
             if profile.version != request.expected_version:
                 # A lost response retry with identical details is harmless.
                 if profile.details == request.details:

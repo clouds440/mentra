@@ -260,12 +260,12 @@ test('memory pages load only on demand, reconcile another tab and retain profile
   await register(page);
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
-  await page.getByLabel('Field or area of study', { exact: true }).fill('Draft physics');
+  await page.getByLabel('Background or interests', { exact: true }).fill('Draft physics');
   expect(calls).toBe(0);
   await page.getByRole('tab', { name: 'Memories' }).click();
   await expect(page.getByText('A fresh start')).toBeVisible();
   await page.getByRole('tab', { name: 'Profile & preferences' }).click();
-  await expect(page.getByLabel('Field or area of study', { exact: true })).toHaveValue('Draft physics');
+  await expect(page.getByLabel('Background or interests', { exact: true })).toHaveValue('Draft physics');
   await page.getByRole('tab', { name: 'Memories' }).click();
   const peer = await context.newPage();
   await peer.goto('/settings?tab=memories');

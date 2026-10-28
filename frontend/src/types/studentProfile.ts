@@ -4,8 +4,11 @@ export interface ProfileDetails {
   education_level: EducationLevel;
   field_of_study: string;
   learning_goal: string;
-  learning_preference: 'balanced' | 'concise' | 'examples_first' | 'step_by_step' | 'conceptual';
+  learning_preference: 'balanced' | 'concise' | 'examples_first' | 'step_by_step' | 'conceptual' | 'interactive';
   explanation_depth: 'brief' | 'standard' | 'deep';
+  participation?: 'adaptive' | 'interactive' | 'mostly_explanations';
+  visual_support?: 'adaptive' | 'prefer_visuals' | 'mostly_text';
+  learning_purpose?: 'general' | 'fundamentals' | 'apply' | 'exam' | 'explore';
 }
 export type Dimension = 'overall_proficiency' | 'reasoning' | 'quantitative' | 'comprehension' | 'domain_familiarity';
 export interface ProfileEstimate {

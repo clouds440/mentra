@@ -83,14 +83,14 @@ test('calibration submits together, evaluates results, and profile preferences r
   await page.getByRole('button', { name: 'Enter Mentra' }).click();
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Edit profile' }).click();
-  await chooseOption(page.getByLabel('Learning preference', { exact: true }), 'concise');
-  await chooseOption(page.getByLabel('Explanation depth', { exact: true }), 'brief');
+  await chooseOption(page.getByLabel('Teaching approach', { exact: true }), 'balanced');
+  await chooseOption(page.getByLabel('Explanation detail', { exact: true }), 'brief');
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Concise / direct', { exact: true })).toBeVisible();
+  await expect(page.getByText('Brief', { exact: true })).toBeVisible();
   const after = await (await context.request.get('http://127.0.0.1:18003/api/v1/student-profile')).json();
-  expect(after.details.learning_preference).toBe('concise');
+  expect(after.details.learning_preference).toBe('balanced');
   expect(after.estimates).toEqual(before.estimates);
 });
 

@@ -27,8 +27,12 @@ class ProfileDetails(Contract):
     education_level: EducationLevel
     field_of_study: str = Field(min_length=1, max_length=120)
     learning_goal: str = Field(min_length=5, max_length=500)
-    learning_preference: Literal['balanced', 'concise', 'examples_first', 'step_by_step', 'conceptual']
+    # Legacy concise/interactive values remain readable in immutable snapshots.
+    learning_preference: Literal['balanced', 'concise', 'examples_first', 'step_by_step', 'conceptual', 'interactive']
     explanation_depth: Literal['brief', 'standard', 'deep']
+    participation: Literal['adaptive', 'interactive', 'mostly_explanations'] = 'adaptive'
+    visual_support: Literal['adaptive', 'prefer_visuals', 'mostly_text'] = 'adaptive'
+    learning_purpose: Literal['general', 'fundamentals', 'apply', 'exam', 'explore'] = 'general'
     preferred_name: str | None = Field(default=None, max_length=80)
 
     @field_validator('preferred_name', mode='before')

@@ -308,9 +308,11 @@ class StudentProfileTests(unittest.TestCase):
 
     def test_fact_edits_invalidate_scope_but_preference_edits_preserve_estimates(self):
         result = self.complete()
-        preferred = self.fill_details(learning_preference='concise', explanation_depth='brief')
+        preferred = self.fill_details(learning_preference='examples_first', explanation_depth='brief',
+            participation='interactive', visual_support='prefer_visuals', learning_purpose='apply')
         self.assertEqual(preferred.estimates, result.profile.estimates)
         self.assertEqual(preferred.context_version, result.profile.context_version)
+        self.assertEqual(preferred.calibration_status, result.profile.calibration_status)
         major = self.fill_details(field_of_study='History')
         self.assertEqual(major.estimates.reasoning, preferred.estimates.reasoning)
         self.assertIsNone(major.estimates.domain_familiarity.value)
@@ -318,6 +320,24 @@ class StudentProfileTests(unittest.TestCase):
         self.assertTrue(all(getattr(changed_level.estimates, dim).value is None for dim in DIMENSIONS))
         self.assertEqual(changed_level.onboarding_phase, 'complete')
         self.assertIsNone(self.service.calibration.get(A))
+
+    def test_legacy_clients_preserve_new_preferences_and_pending_calibration(self):
+        initial = self.fill_details(participation='interactive', visual_support='prefer_visuals', learning_purpose='exam')
+        attempt = self.service.calibration.start(A)
+        before = self.service.get(A)
+        legacy = details(preferred_name='Updated name')
+        updated = self.service.update_details(A, ProfileUpdate(expected_version=before.version, details=legacy))
+        self.assertEqual(updated.details.participation, 'interactive')
+        self.assertEqual(updated.details.visual_support, 'prefer_visuals')
+        self.assertEqual(updated.details.learning_purpose, 'exam')
+        self.assertEqual(updated.context_version, initial.context_version)
+        self.assertEqual(self.service.calibration.get(A).id, attempt.id)
+        # An explicit adaptive/default selection must still clear the preference.
+        cleared = self.service.update_details(A, ProfileUpdate(expected_version=updated.version,
+            details=details(participation='adaptive', visual_support='adaptive', learning_purpose='general')))
+        self.assertEqual(cleared.details.participation, 'adaptive')
+        self.assertEqual(cleared.details.visual_support, 'adaptive')
+        self.assertEqual(cleared.details.learning_purpose, 'general')
 
     def test_owner_scope_and_immutable_evidence_constraints(self):
         result = self.complete()

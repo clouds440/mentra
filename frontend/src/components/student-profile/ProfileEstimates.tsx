@@ -18,7 +18,7 @@ export function ProfileEstimates({ profile }: { profile: StudentProfile }) {
   const waiting = ['pending', 'evaluating', 'failed'].includes(profile.evaluation_status);
   return <section aria-label="Broad proficiency estimates">
     <h3 className="text-sm font-medium text-heading">Broad starting estimates</h3>
-    <p className="mt-2 text-xs leading-5 text-muted">Provisional signals at your stated education level, not a grade or a measure of intelligence. They can develop with evidence.</p>
+    <p className="mt-2 text-xs leading-5 text-muted">Provisional signals at your stated education level, not a grade or a measure of intelligence. They can develop with evidence. Your work on individual topics guides topic difficulty; these estimates do not change your preferences.</p>
     {waiting && <div className="mt-4 rounded-xl border border-border bg-surface px-4 py-3">
       <p className="text-sm leading-6 text-muted">Your answers are saved. {profile.evaluation_status === 'failed' ? 'AI evaluation is temporarily unavailable.' : 'AI evaluation has not finished yet.'}</p>
       <Button className="mt-3" variant="secondary" size="sm" disabled={pending} loading={pending} onClick={() => { void retry(); }}>

@@ -4,14 +4,15 @@ import { ApiError } from '../../services/api';
 import { profileError, updateDetails } from '../../services/studentProfile';
 import { useStudentProfile } from './StudentProfileProvider';
 import type { EducationLevel, ProfileDetails } from '../../types/studentProfile';
-import { educationLevels, preferences, depths } from './options';
+import { educationLevels, editableDetails } from './options';
+import { TeachingPreferences } from './TeachingPreferences';
 
 export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCancel?: () => void }) {
   const { profile, replace, refresh } = useStudentProfile();
   const [editingVersion, setEditingVersion] = useState(profile?.version ?? 0);
   const [conflict, setConflict] = useState(false);
-  const [details, setDetails] = useState<Omit<ProfileDetails, 'education_level'> & { education_level: EducationLevel | '' }>(profile?.details ?? {
-    education_level: '', field_of_study: '', learning_goal: '', learning_preference: 'balanced', explanation_depth: 'standard',
+  const [details, setDetails] = useState<Omit<ProfileDetails, 'education_level'> & { education_level: EducationLevel | '' }>(profile?.details ? editableDetails(profile.details) : {
+    education_level: '', field_of_study: '', learning_goal: '', learning_preference: 'balanced', explanation_depth: 'standard', participation: 'adaptive', visual_support: 'adaptive', learning_purpose: 'general',
   });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
     setPending(true);
     try {
       const next = await refresh();
-      if (next.details) setDetails(next.details);
+      if (next.details) setDetails(editableDetails(next.details));
       setEditingVersion(next.version); setConflict(false); setError(null); setFields({});
     } catch (failure) { setError(profileError(failure)); }
     finally { setPending(false); }
@@ -81,13 +82,14 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
           <option value="" disabled>Select a level</option>
           {educationLevels.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
         </Select>{fieldError('education_level')}
+        <p className="mt-2 text-xs leading-5 text-subtle">Helps with vocabulary and assumed background. Your work on each topic guides difficulty.</p>
       </div>
       <div>
-        <label htmlFor="field_of_study" className="mb-2 block text-sm font-medium text-heading">Field or area of study</label>
+        <label htmlFor="field_of_study" className="mb-2 block text-sm font-medium text-heading">Background or interests</label>
         <Input id="field_of_study" name="field_of_study" required maxLength={120} value={details.field_of_study}
           placeholder="e.g. General studies, Computer science" aria-invalid={Boolean(fields.field_of_study)}
           aria-describedby={fields.field_of_study ? 'field_of_study-error' : 'field-hint'} onChange={(event) => change('field_of_study', event.target.value)} />
-        {fieldError('field_of_study') || <p id="field-hint" className="mt-2 text-xs leading-5 text-subtle">General studies is fine if you haven’t chosen a major.</p>}
+        {fieldError('field_of_study') || <p id="field-hint" className="mt-2 text-xs leading-5 text-subtle">Helps Mentra choose relevant examples. General studies is fine; this does not limit what you can learn.</p>}
       </div>
       <div>
         <label htmlFor="learning_goal" className="mb-2 block text-sm font-medium text-heading">Primary learning goal</label>
@@ -96,21 +98,10 @@ export function ProfileForm({ onSaved, onCancel }: { onSaved?: () => void; onCan
           aria-invalid={Boolean(fields.learning_goal)} aria-describedby={fields.learning_goal ? 'learning_goal-error' : undefined}
           onChange={(event) => change('learning_goal', event.target.value)} />{fieldError('learning_goal')}
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div><label htmlFor="learning_preference" className="mb-2 block text-sm font-medium text-heading">Learning preference</label>
-          <Select id="learning_preference" name="learning_preference" value={details.learning_preference}
-            onChange={(event) => change('learning_preference', event.target.value as ProfileDetails['learning_preference'])}>
-            {preferences.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-          </Select></div>
-        <div><label htmlFor="explanation_depth" className="mb-2 block text-sm font-medium text-heading">Explanation depth</label>
-          <Select id="explanation_depth" name="explanation_depth" value={details.explanation_depth}
-            onChange={(event) => change('explanation_depth', event.target.value as ProfileDetails['explanation_depth'])}>
-            {depths.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-          </Select></div>
-      </div>
+      <TeachingPreferences details={details} onChange={(key, value) => change(key, value)} errors={fields} />
     </fieldset>
     <p className="text-xs leading-5 text-subtle">Only you can change these details. Mentra adapts its estimates, not your education level or preferences.</p>
-    {onCancel && <p className="text-xs leading-5 text-subtle">Changing your education level resets broad estimates. Changing your field resets domain familiarity.</p>}
+    {onCancel && <p className="text-xs leading-5 text-subtle">Changing your education level resets broad estimates. Changing your background resets domain familiarity. Preference-only changes preserve calibration and learning evidence.</p>}
     <div className="flex flex-wrap gap-3 pt-1">
       <Button type="submit" disabled={pending || conflict} loading={pending}>
         {onCancel ? 'Save profile' : 'Continue'}</Button>

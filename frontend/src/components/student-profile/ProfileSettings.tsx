@@ -4,19 +4,22 @@ import { Button } from '../ui';
 import { useStudentProfile } from './StudentProfileProvider';
 import { ProfileForm } from './ProfileForm';
 import { ProfileEstimates } from './ProfileEstimates';
-import { educationLevels, preferences, depths } from './options';
+import { educationLevels, preferences, depths, participationOptions, visualOptions, purposeOptions, editableDetails } from './options';
 
 export function ProfileSettings() {
   const { profile, error } = useStudentProfile();
   const [editing, setEditing] = useState(false);
   if (!profile?.details) return null;
-  const details = profile.details;
+  const details = editableDetails(profile.details);
   const entries: [string, string | undefined][] = [
     ['What Mentra calls you', details.preferred_name || 'Not set'],
     ['Education level', educationLevels.find((option) => option.value === details.education_level)?.label],
-    ['Field or area of study', details.field_of_study], ['Primary learning goal', details.learning_goal],
-    ['Learning preference', preferences.find((option) => option.value === details.learning_preference)?.label],
-    ['Explanation depth', depths.find((option) => option.value === details.explanation_depth)?.label],
+    ['Background or interests', details.field_of_study], ['Primary learning goal', details.learning_goal],
+    ['Learning purpose', purposeOptions.find(option => option.value === details.learning_purpose)?.label],
+    ['Teaching approach', preferences.find((option) => option.value === details.learning_preference)?.label],
+    ['Participation', participationOptions.find(option => option.value === details.participation)?.label],
+    ['Explanation detail', depths.find((option) => option.value === details.explanation_depth)?.label],
+    ['Visual support', visualOptions.find(option => option.value === details.visual_support)?.label],
   ];
   return <section className="workspace-panel space-y-5" aria-label="Student profile settings">
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -26,7 +29,7 @@ export function ProfileSettings() {
     </div>
     {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
     {editing ? <ProfileForm onSaved={() => setEditing(false)} onCancel={() => setEditing(false)} />
-      : <dl className="grid gap-3 sm:grid-cols-2">{entries.map(([label, value]) => <div key={label} className={`rounded-control border border-border bg-surface p-3 ${['Primary learning goal', 'Field or area of study'].includes(label) ? 'sm:col-span-2' : ''}`}>
+      : <dl className="grid gap-3 sm:grid-cols-2">{entries.map(([label, value]) => <div key={label} className={`rounded-control border border-border bg-surface p-3 ${['Primary learning goal', 'Background or interests'].includes(label) ? 'sm:col-span-2' : ''}`}>
         <dt className="text-xs text-subtle">{label}</dt><dd className="mt-1 text-sm leading-6 text-body break-words">{value}</dd></div>)}</dl>}
     <div className="mt-5 border-t border-border pt-4"><ProfileEstimates profile={profile} /></div>
     {profile.calibration_status !== 'completed' && <div className="mt-6 flex flex-col items-start gap-3 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
