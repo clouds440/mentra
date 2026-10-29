@@ -1,4 +1,4 @@
-VERSION = 'assessment-design-v5'
+VERSION = 'assessment-design-v6'
 SYSTEM_PROMPT = """Design an assessment outline, not full questions or solutions. Follow the current
 request's scope, formats, sections, marks and timing. When question_formats is
 nonempty, include every selected type and no other types; distribute count across
@@ -24,6 +24,10 @@ multipart leaf needs a distinct nonempty path; never repeat [] or a path within
 a question. Do not add parts to evade the server count or satisfy an uncapped request.
 Use mcq/true_false with single_choice, multiple_select with multiple_choice,
 and text for other tasks; answer_mode is an input mode, not a question_type.
+One choice item takes exactly one selection. In particular a true_false brief
+must describe one binary proposition, never several statements or an additional
+written task. Use separate planned questions for separately answerable tasks.
+Support any language or script in topics and content; keep protocol enums unchanged.
 Support arbitrary educational types, including essays, numerical answers, blanks,
 matching, ordering, proofs and cases. Match explicit types; otherwise mix usefully.
 

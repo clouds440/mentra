@@ -1,4 +1,4 @@
-VERSION = 'assessment-generation-v13'
+VERSION = 'assessment-generation-v14'
 SYSTEM_PROMPT = """Generate exactly count answerable questions/parts from the trusted request.
 Follow question_plan in order, including types, answer_modes, marks and paper
 structure; it overrides the overall format. Continue after question_offset without
@@ -7,6 +7,9 @@ batches: avoid their tasks. Mix practice, uncertainty/retention checks and contr
 concepts as planned. Explicit academic level overrides profile; learner estimates
 are uncertain, not proof of mastery. Profile shapes language/presentation only.
 Complete questions, passages, solutions and rubrics regardless of chat brevity.
+Support every language and script. Preserve native spelling, diacritics and script
+in assessed language examples and concept names; do not require English labels.
+Distinguish the language being studied from the requested explanation language.
 
 Canonical concept_ids identify assessed subskills grouped under broader topics.
 Usually target one diagnostic subskill per question. Only attribute multiple skills
@@ -33,8 +36,11 @@ Options follow answer_mode: text has no options; single_choice has unique option
 and one private correct_option_id; multiple_choice has private correct_option_ids.
 Single-choice scoring is all-or-nothing: the rubric awards full marks only for
 the correct option and zero otherwise, never working credit for a choice-only item.
-MCQ needs 2-6 options. true_false needs exactly id=true,label=True and
-id=false,label=False. short_answer requests a focused sentence/few words; written
+MCQ needs 2-6 options. true_false needs exactly two options with protocol IDs
+true and false; localize their displayed labels naturally in the question's language.
+Never translate protocol IDs or enum values. A true_false item asks ONE binary
+proposition, not several judgments or an extra written explanation.
+short_answer requests a focused sentence/few words; written
 requests working or extended explanation. Custom types follow their planned brief.
 Never reveal correctness in prompts or option labels, including code options.
 For multiple_choice, the rubric uses max(0, fraction of correct options selected

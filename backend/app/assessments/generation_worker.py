@@ -47,10 +47,12 @@ class AssessmentGenerationWorker:
         owner, conversation = job['learner_id'], job['conversation_id']
         repository = self.service.repository
         claim, heartbeat, generation, reservation = None, None, None, None
+        stage = 'admission'
         try:
             if self.service.admission:
                 context = self.service.admission.async_reserve('model', owner, capacity=16, owner_capacity=2, seconds=1140)
                 await context.__aenter__(); reservation = context
+            stage = 'selection'
             if conversation: await run_in_threadpool(self.service.chat.recent, owner, conversation)
             if job['progress'].get('resolved_request'):
                 request = GenerationRequest.model_validate(job['progress']['resolved_request'])
@@ -60,11 +62,13 @@ class AssessmentGenerationWorker:
                     request = await asyncio.wait_for(resolve_assessment_intent(self.service.workflows, owner, intent), 120)
                 job['progress'] = dict(job['progress'], resolved_request=request.model_dump(mode='json'))
                 await run_in_threadpool(jobs.update, job, progress=job['progress'])
+            stage = 'replay'
             previous = await run_in_threadpool(self.service.chat.replay, owner, conversation, request) if conversation else await run_in_threadpool(repository.replay, owner, request)
             if previous:
                 result = previous if isinstance(previous, dict) else previous.model_dump(mode='json')
                 await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
                 return True
+            stage = 'claim'
             claim = await run_in_threadpool(repository.claim_generation, owner, request)
             snapshot = job['progress'].get('mistake_revision')
             revision = dict(questions=snapshot['questions'], instructions=request.instructions, mistake_revision=True) if snapshot else await self.service._revision_source(owner, request, conversation)
@@ -73,6 +77,7 @@ class AssessmentGenerationWorker:
                 value = dict(value, resolved_request=request.model_dump(mode='json'))
                 if snapshot: value['mistake_revision'] = snapshot
                 await run_in_threadpool(jobs.update, job, progress=value)
+                job['progress'] = value
                 await run_in_threadpool(repository.renew_generation, owner, request.client_request_id, claim)
             async def renew():
                 while True:
@@ -80,6 +85,7 @@ class AssessmentGenerationWorker:
                     await run_in_threadpool(jobs.update, job)
                     await run_in_threadpool(repository.renew_generation, owner, request.client_request_id, claim)
             heartbeat = asyncio.create_task(renew())
+            stage = 'generation'
             with model_budget(deadline=monotonic()+900, max_rounds=256, max_input_tokens=1_000_000, max_total_tokens=2_000_000):
                 generation = asyncio.create_task(self.service.workflows.generate(owner, request, revision=revision,
                     checkpoint=checkpoint, resume=job['progress']))
@@ -99,6 +105,7 @@ class AssessmentGenerationWorker:
                     question.concept_ids = original['concept_ids']
                 generated.title = 'Revision assessment'
 
+            stage = 'publication'
             if conversation:
                 result = await run_in_threadpool(self.service.chat.save, owner, conversation, request, generated, sources, claim)
             else:
@@ -106,8 +113,12 @@ class AssessmentGenerationWorker:
                 result = value.model_dump(mode='json')
             await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
         except Exception as error:
+            from app.core.logging import workflow_logger
+            code = error.code if isinstance(error, AppError) else type(error).__name__
+            workflow_logger.event('assessment.generation_failed', stage=stage,error_code=code,error_type=type(error).__name__)
             message = error.message if isinstance(error, AppError) and error.code in ('ASSESSMENT_SOURCES_REQUIRED','ASSESSMENT_PAPER_MARKS','ASSESSMENT_INVALID_GENERATION','ASSESSMENT_TARGET_CHANGED') else 'Generation was interrupted. Completed sections are kept; retry to continue.'
-            try: await run_in_threadpool(jobs.update, job, state='failed', error=message)
+            try: await run_in_threadpool(jobs.update, job, state='failed', error=message,
+                progress=dict(job['progress'],failure=dict(stage=stage,code=code)))
             except AppError: pass  # A newer lease owns publication now.
         finally:
             if generation and not generation.done():

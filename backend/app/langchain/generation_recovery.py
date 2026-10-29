@@ -16,6 +16,9 @@ Generated = TypeVar('Generated', bound=BaseModel)
 
 class GenerationMismatch(ValueError):
     """A server-owned reason for repairing otherwise well-formed output."""
+    def __init__(self, problem, **details):
+        super().__init__(problem)
+        self.details = details
 
 
 async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict, *,
@@ -36,8 +39,10 @@ async def invoke_generated(llm: 'MentraLLM', source: PromptSource, payload: dict
             # through diagnostic receipts. Every new call uses the shared budget.
             feedback = dict(problem=str(error) if isinstance(error, GenerationMismatch)
                             else 'invalid_structured_output')
+            if isinstance(error, GenerationMismatch):
+                feedback.update(error.details)
             workflow_logger.event('assessment.output_repair', prompt_source=source.value,
-                                  attempt=attempt + 1, problem=feedback['problem'])
+                                  attempt=attempt + 1, **feedback)
     raise AppError('ASSESSMENT_INVALID_GENERATION',
                    'This quiz needs another attempt. Please try again.', 502)
 
@@ -51,11 +56,13 @@ def validate_questions(result: GeneratedAssessment, *, count: int, question_form
         expected = plan[index]['question_type'] if plan else question_format
         choice = plan[index].get('answer_mode') in ('single_choice', 'multiple_choice') if plan and 'answer_mode' in plan[index] else expected in ('mcq', 'true_false')
         if bool(question.options) != choice:
-            raise GenerationMismatch('wrong_question_format')
+            raise GenerationMismatch('wrong_question_format', question_index=index+1,
+                expected_type=expected, expected_answer_mode=plan[index].get('answer_mode') if plan else 'single_choice' if choice else 'text',
+                actual_option_count=len(question.options),
+                correction='Provide options and a private key for a choice item; provide no options or choice keys for text. Follow this plan entry, not the overall mixed format.')
         if plan and plan[index].get('answer_mode') and question.answer_mode != plan[index]['answer_mode']:
             raise GenerationMismatch('answer_mode_must_match_the_question_plan')
-        if expected == 'true_false' and ({option.id for option in question.options} != {'true', 'false'}
-            or {option.label.casefold() for option in question.options} != {'true', 'false'}):
+        if expected == 'true_false' and (len(question.options)!=2 or {option.id for option in question.options} != {'true', 'false'}):
             raise GenerationMismatch('true_false_requires_true_and_false_options')
         if plan and 'marks' in plan[index] and question.marks != plan[index]['marks']:
             raise GenerationMismatch('marks_must_match_the_paper_plan')
