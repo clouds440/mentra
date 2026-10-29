@@ -79,10 +79,11 @@ class MemoryCaptureRepository:
             if not source: return None
             offset = claim['content_offset']; text = source['content'][offset:offset+6000]
             profile = session.scalar(select(student_profile.c.details).where(student_profile.c.learner_id == claim['learner_id']))
-            existing = [dict(row) for row in session.execute(select(m.c.id, m.c.content, m.c.category, m.c.revision, m.c.status).where(
-                m.c.learner_id == claim['learner_id'], m.c.status == 'active', or_(m.c.expires_at.is_(None), m.c.expires_at > now())).order_by(m.c.pinned.desc(), m.c.updated_at.desc()).limit(12)).mappings()]
+            existing = [dict(row) for row in session.execute(select(m).where(
+                m.c.learner_id == claim['learner_id'], m.c.status == 'active').order_by(m.c.pinned.desc(), m.c.updated_at.desc()).limit(12)).mappings()]
+            active_count=session.scalar(select(func.count()).select_from(m).where(m.c.learner_id==claim['learner_id'],m.c.status=='active'))
             return dict(source=dict(source), text=text, prefix=source['content'][:500] if offset else '',
-                next_offset=offset+len(text), complete=offset+len(text) >= len(source['content']), profile=profile, existing=existing)
+                next_offset=offset+len(text), complete=offset+len(text) >= len(source['content']), profile=profile, existing=existing,active_count=active_count)
 
     def finish(self, claim, *, packet=None, error=None, retry_at=None):
         with self.sessions.begin() as session:

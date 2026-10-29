@@ -117,12 +117,16 @@ class HistoryManagement:
                 return dict(outcome='rejected', reason='That saved statement was corrected. The previous save result is no longer current.')
             return self._write_result(scope, receipt)
         # Exact duplicates and turn retries are handled transactionally by receipts.
-        cache_key = fingerprint(json.dumps([body.content, body.evidence_quote, identifier], sort_keys=True))
+        cache_key = fingerprint(json.dumps([body.content, body.evidence_quote, identifier,str(body.memory_id),body.expected_revision], sort_keys=True))
         if cache_key not in budget.cache:
             existing = await run_in_threadpool(self.repository.related, owner, body.content,
                 [x['memory_id'] for x in scope['memory_references']])
+            if body.action=='revise':
+                target=await run_in_threadpool(self.repository.detail,owner,str(body.memory_id))
+                existing=[target,*[item for item in existing if str(item['id'])!=str(body.memory_id)]]
             budget.cache[cache_key] = await self.validator.validate(body.content, body.evidence_quote, row['content'],
-                [dict(id=x['id'], content=x['content']) for x in existing], row['created_at'])
+                [dict(id=x['id'], content=x['content']) for x in existing], row['created_at'],
+                **({'revision_target_id':str(body.memory_id)} if body.action=='revise' else {}))
         decision = budget.cache[cache_key]
         if decision['outcome'] not in ('active', 'pending', 'conflict'):
             return decision
@@ -132,6 +136,22 @@ class HistoryManagement:
             expiry = min(expiry, decision['valid_until'])
         if expiry <= now():
             return dict(outcome='rejected', reason='That information has already expired; it cannot be saved as a current memory.')
+        from .memory.validation import RevisionAdmission
+        admission=RevisionAdmission.model_validate(decision['admission']) if decision.get('admission') else None
+        if body.action=='revise' and admission and getattr(admission,'same_fact',False) and admission.change and admission.explicit_user_statement:
+            from .memory.capture_schemas import CapturedMemory
+            from .repositories.memory_reconciliation import MemoryReconciler
+            target=await run_in_threadpool(self.repository.detail,owner,str(body.memory_id))
+            if target['revision']!=body.expected_revision:
+                from .repositories.postgres import conflict
+                raise conflict()
+            item=CapturedMemory(content=body.content,category=body.category,evidence_quote=body.evidence_quote,
+                admission=admission,action='update',target_memory_id=body.memory_id,expected_revision=body.expected_revision,
+                same_fact=True,change=admission.change,explicit_correction=admission.explicit_correction)
+            await run_in_threadpool(MemoryReconciler(self.repository).apply,owner,
+                dict(message_id=row['id'],content_offset=0,turn_id=scope['turn_id'],conversation_id=row['conversation_id']),
+                dict(source=row,text=row['content']),[item],[target],scope.get('_memory_summary_fence'),scope,operation)
+            return self._write_result(scope,await run_in_threadpool(self.repository.receipt,owner,operation) or dict(outcome='rejected'))
         result = await run_in_threadpool(self.repository.write, owner, body.content, body.category, operation,
             origin='ai', status=decision['outcome'], scope=scope,
             conflict_ids=decision.get('conflict_ids', []),
@@ -172,6 +192,10 @@ class HistoryManagement:
         if not memory:
             return result
         compact = dict(id=memory['id'], revision=memory['revision'], status=memory['status'])
+        if result['outcome']=='needs_review':
+            return dict(outcome='confirmation_required',memory=compact,reason='An independently saved matching memory exists. Review the records in Settings before merging them.')
+        if result['outcome']=='outdated_source':
+            return dict(outcome='rejected',memory=compact,reason='This source predates a newer saved assertion; the newer memory was kept.')
         if memory.get('stale'):
             return dict(outcome='rejected', memory=compact, reason='The saved memory has expired. Ask for a current statement or review it in Settings.')
         if memory['status'] == 'active':

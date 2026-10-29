@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
-from app.history_management.schemas import MemoryCreate, MemoryEdit, PreferencesEdit
+from app.history_management.schemas import MemoryCreate, MemoryEdit, MemoryRestore, PreferencesEdit
 
 router = APIRouter(prefix='/memories', tags=['memories'])
 
@@ -53,6 +53,17 @@ async def create(body: MemoryCreate, request: Request, identity=Depends(require_
 @router.get('/{memory_id}')
 async def detail(memory_id: UUID, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(repository(request).detail, identity.learner_id, str(memory_id))
+
+
+@router.get('/{memory_id}/revisions')
+async def revisions(memory_id: UUID, request: Request, before: int | None = Query(None, ge=1),
+        limit: int = Query(20, ge=1, le=20), identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(repository(request).revision_page, identity.learner_id, str(memory_id), before, limit)
+
+
+@router.post('/{memory_id}/restore')
+async def restore(memory_id: UUID, body: MemoryRestore, request: Request, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(repository(request).restore_revision, identity.learner_id, str(memory_id), body)
 
 
 @router.patch('/{memory_id}')

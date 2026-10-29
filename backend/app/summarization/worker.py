@@ -90,7 +90,10 @@ async def run():
             await wait(5)
 
     # Independent slots keep working when another summary/provider call is slow.
-    await asyncio.gather(maintain(), *(consume() for _ in range(settings.summarizer_concurrency)))
+    try:
+        await asyncio.gather(maintain(), *(consume() for _ in range(settings.summarizer_concurrency)))
+    finally:
+        await run_in_threadpool(capture.close)
 
 
 if __name__ == '__main__':

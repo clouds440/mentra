@@ -24,7 +24,15 @@ History citations use `H` tokens, memory citations use `M` tokens, and Library c
 
 Admission first checks provenance and credential patterns, then performs a bounded structured semantic validation. Explicit supported statements can become active; inferences remain pending until the user confirms them. Sensitive information requires a specific affirmative remember request. Unsupported/transient statements, profile duplicates and credentials are rejected. Verification outages save nothing, rather than persisting potentially sensitive candidates. This is a conservative safeguard, not a universal guarantee of model correctness.
 
-Related-memory admission uses ranked OR keywords and previously recalled IDs, so a changed value need not match the old value literally. The verifier identifies actual conflicting IDs from that bounded set. Search remains lexical: arbitrary paraphrases are not guaranteed to match. Tool instructions ask the model to recall stable related keywords before proposing corrections. AI revision attempts require user review instead of silently overwriting independently saved records.
+Explicit memory recall uses ranked lexical search and previously recalled IDs. The verifier validates revisions against the supplied target, quote and current revision; clear supported changes to the same fact can update it. Manual content requires an explicit correction. Independently saved matching records and ambiguous contradictions require review.
+
+### Background reconciliation
+
+Automatic capture now reconciles before creating. Up to six decisions share **one** model call: create a new independently changeable fact, update/enrich an existing one, reaffirm equivalent support, or propose a conflict for review. Same topic alone does not imply the same fact. Updates keep the memory ID, pin and ownership; they immediately invalidate stale summary content. Source timestamps prevent late jobs from replacing newer assertions. Capture applies the complete plan and source cursor atomically under the owner lock; stale revisions, deleted sources, expired claims and preference changes cannot commit partial batches.
+
+For owners with more than 12 active records, CPU-local multilingual E5 similarity supplies up to eight candidates alongside lexical matches and recent records, bounded to 20 before prompt admission. PostgreSQL stores revision/model-fenced vectors; no memory vectors are sent to Qdrant or an external embedding service. Indexing refreshes 32 records per job pass. Incomplete indexing or a semantic outage defers capture rather than creating avoidable duplicates. `MEMORY_SEMANTIC_ENABLED=false` explicitly selects lexical/recent fallback. This remains bounded retrieval and model interpretation, not a guarantee that every paraphrase matches. Historical duplicates are not bulk merged.
+
+Every new revision records its actual content and metadata. Evidence has revision intervals: superseded quotes stay in history and are excluded from current support. Current support is capped at five quotes. Settings > Memories > Evidence > View history offers paginated versions and Restore; restoring writes a new manual assertion with a current revision check, preserving pinning. Migration `20261029_0038` snapshots existing **current** content only; unknown old content is labelled unavailable. Forget deletes the memory, all history, evidence and local vectors, and suppresses every recorded version and source. Newer explicit changes may reverse an outdated assertion; forgotten assertions remain blocked from automatic recreation.
 
 The public contracts import without SQLAlchemy or LangChain. The factory composes the canonical chat read facade, owned PostgreSQL memory repository, validator, optional profile facade and independent Events service with optional public learner context lookup. SQL lives under repositories. Learner mastery and evidence are not modified by this module.
 
@@ -88,6 +96,8 @@ All endpoints are under `/api/v1/memories` and require onboarded identity. Cooki
 | `GET /preferences` | Automatic-write policy and capacity limits |
 | `PATCH /preferences` | Revision-fenced policy update |
 | `GET /{id}` | Owned current memory and bounded evidence |
+| `GET /{id}/revisions?before=...&limit=20` | Owned revision snapshots and historical support |
+| `POST /{id}/restore` | Restore wording as a new revision, with `expected_revision` and `restore_revision` |
 | `PATCH /{id}` | Content, pin, confirm, expiry or explicit conflict resolution |
 | `DELETE /{id}?expected_revision=...` | Content/evidence purge and suppression |
 | `GET /history/{conversation_id}?sequence=...` | Owned bounded reference window |

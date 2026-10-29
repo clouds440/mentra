@@ -25,6 +25,7 @@ class MemoryCreate(Contract):
 class MemoryEdit(Contract):
     expected_revision: int = Field(ge=1)
     content: str | None = Field(default=None, min_length=1, max_length=500)
+    category: Literal['preference','fact','goal'] | None = None
     pinned: bool | None = None
     confirm: bool = False
     expires_at: datetime | None = None
@@ -38,9 +39,16 @@ class MemoryEdit(Contract):
             raise ValueError('Expiration must include a timezone.')
         if self.clear_expiration and self.expires_at is not None:
             raise ValueError('Choose an expiration date or clear it, not both.')
+        if self.category is not None and self.content is None:
+            raise ValueError('Category changes require memory content.')
         if self.conflict_revisions is not None and not self.resolve_conflict:
             raise ValueError('Conflict revisions require explicit conflict resolution.')
         return self
+
+
+class MemoryRestore(Contract):
+    expected_revision: int = Field(ge=1)
+    restore_revision: int = Field(ge=1)
 
 
 class PreferencesEdit(Contract):

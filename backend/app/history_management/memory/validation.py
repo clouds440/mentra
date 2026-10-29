@@ -2,6 +2,7 @@
 import re
 from datetime import datetime, timezone
 from uuid import UUID
+from typing import Literal
 from pydantic import Field
 from pydantic import BaseModel
 from app.langchain.prompts import PromptSource
@@ -26,6 +27,12 @@ class Admission(BaseModel):
     conflicting_memory_ids: list[UUID] = Field(default_factory=list, max_length=5)
 
 
+class RevisionAdmission(Admission):
+    same_fact: bool = False
+    change: Literal['enrichment','correction','change_over_time'] | None = None
+    explicit_correction: bool = False
+
+
 from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
@@ -33,7 +40,7 @@ class MemoryValidator:
     def __init__(self, llm):
         self.llm = llm
 
-    async def validate(self, content, quote, message, existing=(), source_date=None):
+    async def validate(self, content, quote, message, existing=(), source_date=None, revision_target_id=None):
         if SECRET.search(content) or SECRET.search(quote):
             return dict(outcome='rejected', reason='Credentials and secrets cannot be saved.')
         if quote not in message:
@@ -46,12 +53,15 @@ class MemoryValidator:
                 context = message[:500] + '\n[Source excerpt]\n' + message[max(0, start-500):start+2500]
             result = await asyncio.wait_for(self.llm.ainvoke(PromptSource.MEMORY_VALIDATION,
                 dict(claim=content, evidence_quote=quote, user_message=context, existing=list(existing),
+                    revision_target_id=revision_target_id,
                     source_date=(source_date or datetime.now(timezone.utc)).isoformat()),
-                output_schema=Admission), timeout=12)
+                output_schema=RevisionAdmission), timeout=12)
         except Exception:
             # Do not persist a possibly sensitive candidate when validation fails.
             return dict(outcome='unavailable', reason='Memory validation was unavailable; nothing was saved.')
-        return self.admit(content, quote, message, existing, result)
+        decision=self.admit(content, quote, message, existing, result)
+        if decision['outcome'] in ('active','pending','conflict'):decision['admission']=result.model_dump(mode='json')
+        return decision
 
     @staticmethod
     def admit(content, quote, message, existing, result):

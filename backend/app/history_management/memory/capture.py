@@ -1,7 +1,7 @@
 """Quiet semantic capture; no extra model call or acknowledgement in a chat reply."""
 import asyncio
+from time import monotonic
 from datetime import timedelta
-from hashlib import sha256
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import workflow_logger
@@ -9,16 +9,20 @@ from app.core.observability.timing import run_in_threadpool
 from app.langchain.prompts import PromptSource
 from app.summarization.execution import generation, SummaryDeferred
 from .capture_schemas import MemoryCapture
-from .validation import MemoryValidator, SECRET
-from ..repositories.postgres import MemoryRepository, fingerprint, now
+from .validation import SECRET
+from ..repositories.postgres import MemoryRepository, now
 from ..repositories.memory_capture import MemoryCaptureRepository
 
 
 class AutomaticMemories:
-    def __init__(self, sessions, llm):
+    def __init__(self, sessions, llm, semantic=None):
         self.jobs = MemoryCaptureRepository(sessions)
         self.memories = MemoryRepository(sessions, settings.memory_active_limit, settings.memory_pending_limit)
         self.llm = llm
+        from .semantic import MemorySemanticLookup
+        self.semantic=semantic or MemorySemanticLookup(sessions)
+
+    def close(self):self.semantic.close()
 
     async def run_once(self):
         if not settings.memory_capture_enabled: return False
@@ -37,9 +41,15 @@ class AutomaticMemories:
                     await run_in_threadpool(self.jobs.finish, claim, packet=packet)
                     execution.outcome = 'skipped'; return True
                 related = await run_in_threadpool(self.memories.related, claim['learner_id'], text[:4000], [])
-                existing = list({str(row['id']): row for row in [*related, *packet['existing']]}.values())[:17]
+                semantic=[]
+                if packet['active_count']>12:
+                    semantic,ready=await run_in_threadpool(self.semantic.related,claim['learner_id'],text)
+                    if not ready:raise SummaryDeferred(now()+timedelta(seconds=15 if getattr(self.semantic,'retry_after',0)>monotonic() else 1))
+                existing = list({str(row['id']): row for row in [*semantic,*related, *packet['existing']]}.values())[:20]
                 payload = dict(user_message=text, contextual_prefix=packet['prefix'], source_date=message['created_at'].isoformat(),
-                    current_profile=packet['profile'], existing=[dict(id=str(item['id']), content=item['content'], revision=item['revision'], status=item['status']) for item in existing])
+                    current_profile=packet['profile'], existing=[{key:(str(item[key]) if key=='id' else
+                        item[key].isoformat() if hasattr(item[key],'isoformat') else item[key])
+                        for key in ('id','content','revision','status','category','origin','pinned','source_at','expires_at') if key in item} for item in existing])
                 from app.langchain.token_policy import check_input
                 while True:
                     try:
@@ -58,25 +68,13 @@ class AutomaticMemories:
                 # One combined extraction/admission call; no per-candidate calls.
                 async with generation():
                     result = await self.llm.ainvoke(PromptSource.MEMORY_CAPTURE, payload, output_schema=MemoryCapture)
-                outcomes = {}
-                scope = dict(_capture_claim=claim, _memory_summary_fence=fence, turn_id=claim['turn_id'], conversation_id=claim['conversation_id'])
-                for item in result.items:
-                    if item.evidence_quote not in text: continue
-                    decision = MemoryValidator.admit(item.content, item.evidence_quote, message['content'], existing, item.admission)
-                    if decision['outcome'] not in ('active', 'conflict'): continue
-                    if item.equivalent_memory_id and any(str(row['id']) == str(item.equivalent_memory_id) and row['status'] == 'active' for row in existing):
-                        continue
-                    days = {'fact': settings.memory_fact_days, 'goal': settings.memory_goal_days, 'preference': settings.memory_preference_days}[item.category]
-                    expiry = message['created_at'] + timedelta(days=days)
-                    if decision.get('valid_until'): expiry = min(expiry, decision['valid_until'])
-                    if expiry <= now(): continue
-                    operation = sha256(f"automatic:{claim['message_id']}:{item.category}:{fingerprint(item.content)}".encode()).hexdigest()
-                    receipt = await run_in_threadpool(self.memories.write, claim['learner_id'], item.content, item.category, operation,
-                        origin='ai', status=decision['outcome'], conflict_ids=decision.get('conflict_ids', []), expires_at=expiry, scope=scope,
-                        evidence=dict(conversation_id=claim['conversation_id'], message_id=claim['message_id'], quote=item.evidence_quote,
-                            source_date=message['created_at'], source_deleted=False, explicit_consent=decision['explicit_consent']))
-                    outcomes[receipt['outcome']] = outcomes.get(receipt['outcome'], 0)+1
-                await run_in_threadpool(self.jobs.finish, claim, packet=packet)
+                from ..repositories.memory_reconciliation import MemoryReconciler
+                # Validate IDs against exactly the packet that reached the model,
+                # not candidates discarded while admitting its input budget.
+                admitted={item['id'] for item in payload['existing']}
+                existing=[item for item in existing if str(item['id']) in admitted]
+                outcomes=await run_in_threadpool(MemoryReconciler(self.memories).apply,claim['learner_id'],claim,
+                    dict(packet,text=text),result.items,existing,fence)
                 workflow_logger.event('memory.capture_completed', candidate_count=len(result.items), outcomes=outcomes,
                     source_complete=packet['complete'])
                 execution.outcome = 'success'

@@ -13,6 +13,7 @@ export function MemoryList({ items, busy, editing, onEvidence, onEdit, onConfirm
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize text-muted"><Sparkles size={14} aria-hidden="true" />{item.category}</span>
         <div className="flex flex-wrap items-center gap-2">
+          {item.revision > 1 && <span className="text-xs text-muted">Updated</span>}
           {item.pinned && <span className="inline-flex items-center gap-1 text-xs text-accent"><Pin size={12} aria-hidden="true" />Pinned</span>}
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${item.status === 'active' && !item.stale ? 'bg-hover text-muted' : 'bg-active text-accent'}`}>
             {item.status === 'active' && !item.stale && <Check size={12} aria-hidden="true" />}

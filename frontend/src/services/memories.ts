@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { HistoryWindow, MemoryPage, MemoryPreferences, UserMemory } from '../types/memories';
+import type { HistoryWindow, MemoryPage, MemoryPreferences, MemoryRevisionPage, UserMemory } from '../types/memories';
 
 const base = '/api/v1/memories';
 export const memoryApi = {
@@ -17,6 +17,8 @@ export const memoryApi = {
   preferences: (signal?: AbortSignal) => apiRequest<MemoryPreferences>(`${base}/preferences`, { signal }),
   configure: (value: boolean, revision: number) => apiRequest<MemoryPreferences>(`${base}/preferences`, { method: 'PATCH', body: JSON.stringify({ automatic_memory: value, expected_revision: revision }) }),
   detail: (id: string, signal?: AbortSignal) => apiRequest<UserMemory>(`${base}/${id}`, { signal }),
+  revisions: (id: string, before?: number, signal?: AbortSignal) => apiRequest<MemoryRevisionPage>(`${base}/${id}/revisions${before ? `?before=${before}` : ''}`, { signal }),
+  restore: (memory: UserMemory, revision: number) => apiRequest<UserMemory>(`${base}/${memory.id}/restore`, { method: 'POST', body: JSON.stringify({ expected_revision: memory.revision, restore_revision: revision }) }),
   create: (content: string, category: string, clientRequestId: string) => apiRequest<{ outcome: string; memory: UserMemory }>(base, { method: 'POST', body: JSON.stringify({ content, category, client_request_id: clientRequestId }) }),
   edit: (memory: UserMemory, fields: Record<string, unknown>) => apiRequest<UserMemory>(`${base}/${memory.id}`, { method: 'PATCH', body: JSON.stringify({ ...fields, expected_revision: memory.revision }) }),
   remove: (memory: UserMemory) => apiRequest<{ deleted: boolean }>(`${base}/${memory.id}?expected_revision=${memory.revision}`, { method: 'DELETE' }),

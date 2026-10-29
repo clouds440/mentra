@@ -50,6 +50,34 @@ test('memory cards have distinct surfaces and button controls in both themes and
   }
 });
 
+test('memory history restores old wording as a new version with refreshed evidence', async ({ page }) => {
+  await register(page);
+  const origin = { Origin: 'http://127.0.0.1:15173' };
+  const created = await page.request.post('http://127.0.0.1:18003/api/v1/memories', {
+    headers: origin, data: { content: 'I prefer Python examples.', category: 'preference', client_request_id: randomUUID() },
+  });
+  expect(created.ok()).toBe(true);
+  const { memory } = await created.json();
+  const edited = await page.request.patch(`http://127.0.0.1:18003/api/v1/memories/${memory.id}`, {
+    headers: origin, data: { content: 'I prefer TypeScript examples.', expected_revision: 1 },
+  });
+  expect(edited.ok()).toBe(true);
+  await page.goto('/settings?tab=memories');
+  await page.getByRole('button', { name: 'Evidence', exact: true }).click();
+  await page.getByRole('button', { name: 'View history', exact: true }).click();
+  const history = page.getByLabel('Memory revision history');
+  await expect(history).toContainText('I prefer Python examples.');
+  await history.getByRole('button', { name: 'Restore this version', exact: true }).click();
+  await expect(page.getByText('Earlier wording restored as a new version.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Saved memories' })).toContainText('I prefer Python examples.');
+  const evidence = page.getByRole('region', { name: 'Memory evidence' });
+  await expect(evidence).toContainText('“I prefer Python examples.”');
+  await expect(evidence).not.toContainText('“I prefer TypeScript examples.”');
+  await page.getByRole('button', { name: 'View history', exact: true }).click();
+  await expect(history).toContainText('Version 3');
+  await expect(history).toContainText('I prefer TypeScript examples.');
+});
+
 test('Settings drawer, tabs, manual CRUD, evidence and draft retention', async ({ page }, info) => {
   await register(page);
   let prefetches = 0;
@@ -72,6 +100,8 @@ test('Settings drawer, tabs, manual CRUD, evidence and draft retention', async (
   await page.getByRole('textbox', { name: 'Memory', exact: true }).fill('I prefer Python examples.');
   await page.getByRole('button', { name: 'Save memory', exact: true }).click();
   await expect(page.getByRole('list').filter({ hasText: 'I prefer Python examples.' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Memory evidence' })).toContainText('“I prefer Python examples.”');
+  await expect(page.getByRole('region', { name: 'Memory evidence' })).not.toContainText('“I prefer beautifully highlighted TypeScript examples.”');
   await page.getByRole('button', { name: 'Pin', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unpin', exact: true })).toBeVisible();
   await page.reload();

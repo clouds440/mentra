@@ -24,6 +24,14 @@ export interface MemoryEvidence {
   explicit_consent: boolean;
 }
 export interface MemoryPage { items: UserMemory[]; next_cursor: string | null }
+export interface MemoryRevision {
+  revision: number;
+  actor: 'manual' | 'ai';
+  created_at: string;
+  snapshot: Pick<UserMemory, 'content' | 'category' | 'status' | 'origin' | 'pinned' | 'expires_at'> | null;
+  evidence: MemoryEvidence[];
+}
+export interface MemoryRevisionPage { items: MemoryRevision[]; next_before: number | null }
 export interface MemoryPreferences { automatic_memory: boolean; revision: number; active_limit?: number; pending_limit?: number; manual_limit?: number }
 export interface HistoryReference { token: string; conversation_id: string; title: string; sequence: number }
 export interface MemoryReference { token: string; memory_id: string; revision: number }

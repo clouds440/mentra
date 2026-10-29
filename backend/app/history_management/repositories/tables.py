@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Text, BigInteger, Boolean, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, func, literal_column
+from sqlalchemy import Table, Column, Text, BigInteger, Boolean, DateTime, Uuid, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, LargeBinary, Integer, func, literal_column
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 from app.auth.repositories.tables import learner  # noqa: F401 - Register the referenced learner table.
@@ -16,6 +16,7 @@ memories = Table('hm_memory', metadata,
     Column('conflicts', JSONB, nullable=False),
     Column('pinned', Boolean, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
     Column('updated_at', DateTime(timezone=True), nullable=False), Column('confirmed_at', DateTime(timezone=True)),
+    Column('source_at', DateTime(timezone=True)),
     Column('expires_at', DateTime(timezone=True)), UniqueConstraint('learner_id', 'id'),
     UniqueConstraint('learner_id', 'fingerprint', name='uq_hm_memory_fingerprint'),
     CheckConstraint("status IN ('active','pending','conflict')", name='memory_status'),
@@ -30,18 +31,22 @@ evidence = Table('hm_memory_evidence', metadata,
     Column('conversation_id', Uuid(as_uuid=False)), Column('message_id', Uuid(as_uuid=False)),
     Column('quote', Text, nullable=False), Column('source_date', DateTime(timezone=True), nullable=False),
     Column('source_deleted', Boolean, nullable=False), Column('explicit_consent', Boolean, nullable=False),
+    Column('valid_from_revision', BigInteger, nullable=False, server_default='1'),
+    Column('valid_until_revision', BigInteger),
     ForeignKeyConstraint(['learner_id', 'memory_id'], ['hm_memory.learner_id', 'hm_memory.id'], ondelete='CASCADE'),
     Index('idx_hm_evidence_source', 'learner_id', 'conversation_id'))
 
 revisions = Table('hm_memory_revision', metadata, owner(True),
     Column('memory_id', Uuid(as_uuid=False), primary_key=True), Column('revision', BigInteger, primary_key=True),
     Column('actor', Text, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('snapshot', JSONB),
     ForeignKeyConstraint(['learner_id', 'memory_id'], ['hm_memory.learner_id', 'hm_memory.id'], ondelete='CASCADE'))
 
 preferences = Table('hm_preferences', metadata, owner(True), Column('automatic_memory', Boolean, nullable=False),
     Column('revision', BigInteger, nullable=False))
 
 suppression = Table('hm_suppression', metadata, owner(True), Column('fingerprint', Text, primary_key=True),
+    Column('reason', Text, nullable=False, server_default='forgotten'),
     Column('created_at', DateTime(timezone=True), nullable=False))
 
 receipts = Table('hm_tool_receipt', metadata, owner(True), Column('operation_key', Text, primary_key=True),
@@ -52,6 +57,13 @@ receipts = Table('hm_tool_receipt', metadata, owner(True), Column('operation_key
     Index('idx_hm_receipt_source', 'learner_id', 'conversation_id'))
 
 TABLES = (memories, evidence, revisions, preferences, suppression, receipts)
+
+memory_vectors = Table('hm_memory_vector', metadata, owner(True),
+    Column('memory_id', Uuid(as_uuid=False), primary_key=True),Column('revision',BigInteger,nullable=False),
+    Column('model_key',Text,nullable=False),Column('dimension',Integer,nullable=False),
+    Column('vector',LargeBinary,nullable=False),
+    ForeignKeyConstraint(['learner_id','memory_id'],['hm_memory.learner_id','hm_memory.id'],ondelete='CASCADE'))
+TABLES = (*TABLES, memory_vectors)
 
 summary_state = Table('hm_memory_summary_state', metadata,
     Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),

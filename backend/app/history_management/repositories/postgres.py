@@ -11,6 +11,7 @@ from app.core.exceptions import AppError
 from app.db.owner_transactions import lock_owner
 from app.chat.repositories.tables import turns
 from .tables import memories as m, evidence as e, revisions as r, preferences as p, suppression as s, receipts as rc
+from .memory_history import MemoryHistory, snapshot, archive_evidence, suppress
 
 
 def now():
@@ -32,7 +33,7 @@ def conflict():
 from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
-class MemoryRepository:
+class MemoryRepository(MemoryHistory):
     def page(self, owner, query='', status=None, cursor=None, limit=30):
         from app.db.reads import read_sessions
         with read_sessions(self.sessions) as sessions:
@@ -104,7 +105,9 @@ class MemoryRepository:
                     .where(m.c.learner_id == owner, m.c.id.in_(ids))).mappings()}
                 row['conflicts'] = [dict(memory_id=key, content=live[key]['content'], revision=live[key]['revision'])
                     for key in ids if key in live]
-            row['evidence'] = [dict(x) for x in session.execute(select(e).where(e.c.learner_id == owner, e.c.memory_id == identifier).order_by(e.c.source_date.desc()).limit(5)).mappings()]
+            row['evidence'] = [dict(x) for x in session.execute(select(e).where(e.c.learner_id == owner, e.c.memory_id == identifier,
+                e.c.valid_from_revision<=row['revision'],or_(e.c.valid_until_revision.is_(None),e.c.valid_until_revision>=row['revision']))
+                .order_by(e.c.source_date.desc()).limit(5)).mappings()]
             return self._public(row)
 
     def receipt(self, owner, operation):
@@ -123,6 +126,8 @@ class MemoryRepository:
         value['stale'] = bool(value.get('expires_at') and value['expires_at'] <= now())
         for item in value.get('evidence', []):
             item.pop('learner_id', None)
+            item.pop('valid_from_revision',None)
+            item.pop('valid_until_revision',None)
         return value
 
     def list(self, owner, query='', status=None, cursor=None, limit=30, recall=False):
@@ -174,7 +179,9 @@ class MemoryRepository:
             return [dict(x) for x in session.execute(base.limit(5)).mappings()]
 
     def _revision(self, session, owner, identifier, revision, actor, before=None):
-        session.execute(r.insert().values(learner_id=owner, memory_id=identifier, revision=revision, actor=actor, created_at=now()))
+        if before:
+            session.execute(update(r).where(r.c.learner_id==owner,r.c.memory_id==identifier,r.c.revision==before['revision'],r.c.snapshot.is_(None)).values(snapshot=snapshot(before)))
+        session.execute(r.insert().values(learner_id=owner, memory_id=identifier, revision=revision, actor=actor, created_at=now(),snapshot=snapshot(self._get(session,owner,identifier))))
         from .memory_summaries import capture
         capture(session, owner, before, self._get(session, owner, identifier))
 
@@ -253,23 +260,26 @@ class MemoryRepository:
                     # Typing a matching candidate is an explicit user assertion,
                     # not an AI-driven promotion. Reaffirm freshness and provenance.
                     stamp = now()
-                    values = dict(status='active', origin='manual', category=category,
+                    values = dict(status='active', origin='manual', category=category,source_at=stamp,
                         confirmed_at=stamp, updated_at=stamp, expires_at=expires_at,
                         pinned=duplicate['pinned'] or pinned, revision=duplicate['revision'] + 1)
                     session.execute(update(m).where(m.c.learner_id == owner, m.c.id == duplicate['id']).values(**values))
                     for source in session.scalars(select(e.c.message_id).where(e.c.learner_id == owner,
                             e.c.memory_id == duplicate['id'], e.c.message_id.is_not(None))):
-                        session.execute(insert(s).values(learner_id=owner, fingerprint=source_fingerprint(source), created_at=stamp).on_conflict_do_nothing())
-                    session.execute(delete(e).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id']))
+                        suppress(session,owner,[source_fingerprint(source)],stamp)
+                    archive_evidence(session,owner,duplicate['id'],duplicate['revision'])
                     session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=duplicate['id'],
-                        quote=content, source_date=stamp, source_deleted=False, explicit_consent=True))
+                        quote=content, source_date=stamp, source_deleted=False, explicit_consent=True,valid_from_revision=values['revision']))
                     self._revision(session, owner, duplicate['id'], values['revision'], 'manual', duplicate)
                     self._receipt(session, owner, operation, 'saved', duplicate['id'], scope, request_hash)
                     return dict(outcome='saved', memory=self._public(dict(duplicate, **values)))
                 if evidence and status == 'active' and not session.execute(select(e.c.id).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id'], e.c.message_id == evidence['message_id'])).first():
+                    if duplicate.get('source_at') and evidence['source_date'] <= duplicate['source_at']:
+                        self._receipt(session,owner,operation,'already_known',duplicate['id'],scope,request_hash)
+                        return dict(outcome='already_known',memory=self._public(duplicate))
                     # New explicit support may strengthen a candidate's evidence,
                     # but never silently promotes it. Keep at most five quotes.
-                    previous_evidence = list(session.scalars(select(e.c.id).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id']).order_by(e.c.source_date.desc())))
+                    previous_evidence = list(session.scalars(select(e.c.id).where(e.c.learner_id == owner, e.c.memory_id == duplicate['id'],e.c.valid_until_revision.is_(None)).order_by(e.c.source_date.desc())))
                     if len(previous_evidence) >= 5:
                         # Preserve non-plaintext source suppression before
                         # discarding a quote, so forgetting cannot later be
@@ -277,10 +287,10 @@ class MemoryRepository:
                         retired_sources = session.scalars(select(e.c.message_id).where(e.c.learner_id == owner,
                             e.c.id.in_(previous_evidence[4:]), e.c.message_id.is_not(None)))
                         for source in retired_sources:
-                            session.execute(insert(s).values(learner_id=owner, fingerprint=source_fingerprint(source), created_at=now()).on_conflict_do_nothing())
-                        session.execute(delete(e).where(e.c.learner_id == owner, e.c.id.in_(previous_evidence[4:])))
-                    session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=duplicate['id'], **evidence))
-                    values = dict(revision=duplicate['revision']+1, updated_at=now())
+                            suppress(session,owner,[source_fingerprint(source)],now())
+                        session.execute(update(e).where(e.c.learner_id == owner,e.c.id.in_(previous_evidence[4:])).values(valid_until_revision=duplicate['revision']))
+                    session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=duplicate['id'],valid_from_revision=duplicate['revision']+1, **evidence))
+                    values = dict(revision=duplicate['revision']+1, updated_at=now(),source_at=max(filter(None,[duplicate.get('source_at'),evidence['source_date']])))
                     if duplicate['origin'] == 'ai' and duplicate['status'] == 'active' and expires_at is not None:
                         values.update(expires_at=expires_at, confirmed_at=evidence['source_date'])
                     session.execute(update(m).where(m.c.learner_id == owner, m.c.id == duplicate['id']).values(**values))
@@ -307,8 +317,8 @@ class MemoryRepository:
                 revision = current['revision'] + 1
                 session.execute(update(m).where(m.c.id == memory_id, m.c.learner_id == owner).values(content=content,
                     fingerprint=claim_hash, category=category, status=status, origin=origin, revision=revision,
-                    updated_at=stamp, confirmed_at=stamp, pinned=pinned, expires_at=expires_at))
-                session.execute(delete(e).where(e.c.learner_id == owner, e.c.memory_id == memory_id))
+                    updated_at=stamp, confirmed_at=stamp, source_at=stamp, pinned=pinned, expires_at=expires_at))
+                archive_evidence(session,owner,memory_id,current['revision'])
                 identifier = memory_id
             else:
                 count = session.scalar(select(func.count()).select_from(m).where(m.c.learner_id == owner,
@@ -323,12 +333,13 @@ class MemoryRepository:
                 session.execute(m.insert().values(id=identifier, learner_id=owner, content=content, fingerprint=claim_hash,
                     category=category, status=status, origin=origin, revision=revision, pinned=pinned,
                     conflicts=conflicts,
-                    created_at=stamp, updated_at=stamp, confirmed_at=stamp if status == 'active' else None, expires_at=expires_at))
+                    created_at=stamp, updated_at=stamp, confirmed_at=stamp if status == 'active' else None, expires_at=expires_at,
+                    source_at=evidence['source_date'] if evidence else stamp))
             if evidence:
-                session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=identifier, **evidence))
+                session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=identifier, valid_from_revision=revision,**evidence))
             else:
                 session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=identifier,
-                    quote=content, source_date=stamp, source_deleted=False, explicit_consent=True))
+                    quote=content, source_date=stamp, source_deleted=False, explicit_consent=True,valid_from_revision=revision))
             self._revision(session, owner, identifier, revision, origin, current if memory_id else None)
             outcome = 'saved' if status == 'active' else status
             self._receipt(session, owner, operation, outcome, identifier, scope, request_hash)
@@ -343,7 +354,7 @@ class MemoryRepository:
             row = self._get(session, owner, identifier)
             if row['revision'] != body.expected_revision:
                 raise conflict()
-            values = dict(revision=row['revision'] + 1, updated_at=now(), origin='manual')
+            values = dict(revision=row['revision'] + 1, updated_at=now())
             if row['status'] == 'conflict' and (body.confirm or body.content is not None):
                 if not body.resolve_conflict:
                     raise AppError('MEMORY_CONFLICT_REVIEW', 'Review and explicitly resolve the conflicting records first.', 409)
@@ -359,7 +370,8 @@ class MemoryRepository:
                     self._revision(session, owner, other['id'], other['revision'] + 1, 'manual', other)
                 values['conflicts'] = []
             if body.content is not None:
-                values.update(content=body.content, fingerprint=fingerprint(body.content), status='active', confirmed_at=now())
+                values.update(content=body.content, fingerprint=fingerprint(body.content), status='active', origin='manual', confirmed_at=now(),source_at=now())
+                if body.category is not None:values['category']=body.category
                 duplicate = session.execute(select(m.c.id).where(m.c.learner_id == owner, m.c.fingerprint == values['fingerprint'], m.c.id != identifier)).first()
                 if duplicate:
                     raise AppError('MEMORY_DUPLICATE', 'That memory already exists.', 409)
@@ -368,21 +380,24 @@ class MemoryRepository:
                     # Otherwise an AI can recreate the obsolete fact later.
                     retired = [row['fingerprint']] + [source_fingerprint(x) for x in session.scalars(select(e.c.message_id)
                         .where(e.c.learner_id == owner, e.c.memory_id == identifier, e.c.message_id.is_not(None)))]
-                    for key in retired:
-                        session.execute(insert(s).values(learner_id=owner, fingerprint=key, created_at=now()).on_conflict_do_nothing())
+                    suppress(session,owner,[row['fingerprint']],now(),reason='outdated')
+                    suppress(session,owner,retired[1:],now())
                 values['expires_at'] = None  # A new explicit assertion refreshes applicability.
-                session.execute(delete(e).where(e.c.learner_id == owner, e.c.memory_id == identifier))
+                archive_evidence(session,owner,identifier,row['revision'])
                 session.execute(e.insert().values(id=str(uuid4()), learner_id=owner, memory_id=identifier,
-                    quote=body.content, source_date=now(), source_deleted=False, explicit_consent=True))
+                    quote=body.content, source_date=now(), source_deleted=False, explicit_consent=True,valid_from_revision=values['revision']))
             if body.confirm:
-                values.update(status='active', confirmed_at=now())
+                values.update(status='active', origin='manual', confirmed_at=now(),source_at=now())
             if body.pinned is not None:
                 values['pinned'] = body.pinned
             if body.clear_expiration or body.expires_at:
                 values['expires_at'] = None if body.clear_expiration else body.expires_at
             session.execute(update(m).where(m.c.learner_id == owner, m.c.id == identifier).values(**values))
             self._revision(session, owner, identifier, values['revision'], 'manual', row)
-            return self._public(dict(row, **values))
+            support=[dict(item) for item in session.execute(select(e).where(e.c.learner_id==owner,e.c.memory_id==identifier,
+                e.c.valid_from_revision<=values['revision'],or_(e.c.valid_until_revision.is_(None),e.c.valid_until_revision>=values['revision']))
+                .order_by(e.c.source_date.desc()).limit(5)).mappings()]
+            return self._public(dict(row, **values,evidence=support))
 
     def maintain(self, owner, limit=100, *, prune_receipts=True):
         from datetime import timedelta
@@ -413,8 +428,8 @@ class MemoryRepository:
             if row['revision'] != revision:
                 raise conflict()
             hashes = [row['fingerprint']] + [source_fingerprint(x) for x in session.scalars(select(e.c.message_id).where(e.c.learner_id == owner, e.c.memory_id == identifier, e.c.message_id.is_not(None)))]
-            for value in hashes:
-                session.execute(insert(s).values(learner_id=owner, fingerprint=value, created_at=now()).on_conflict_do_nothing())
+            hashes += [fingerprint(value['content']) for value in session.scalars(select(r.c.snapshot).where(r.c.learner_id==owner,r.c.memory_id==identifier)) if value]
+            suppress(session,owner,hashes,now())
             session.execute(update(rc).where(rc.c.learner_id == owner, rc.c.memory_id == identifier).values(memory_id=None, outcome='rejected'))
             # Conflict snapshots are also personal content; remove every cached
             # copy of a forgotten claim, without silently activating candidates.
