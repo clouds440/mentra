@@ -102,3 +102,12 @@ receipts are published in chat, not a second copy of the provider research repor
 Contract checked against https://you.com/docs/api-reference/research and
 https://you.com/docs/guides/research/quickstart. A live authenticated standard-effort
 query restricted to python.org returned a research report and five valid sources.
+
+## Search metadata and dispatch failures
+
+Generic tool-dispatch rejections (including TOOL_NOT_ENABLED) remain tool receipts
+for bounded recovery; they are not public SearchResult records. Citation/metadata
+publication validates the admitted search envelope first and discards unadmitted
+staging on rejection, preserving earlier valid sources. Checkpoint restoration also
+filters legacy malformed search metadata before strict ChatResponse validation,
+without discarding its private recovery receipts or tool messages.

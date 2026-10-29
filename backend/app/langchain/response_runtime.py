@@ -76,6 +76,11 @@ class ResponseRuntime:
             # System context is rebuilt by tool_reply, outside this transcript.
             self.conversation[:] = [message for message in self.conversation if message.type != 'system']
         payload = dict(value['scope'])
+        if 'web_searches' in payload:
+            from .web_tools import validated_web_searches
+            # Repair old checkpoints poisoned by generic TOOL_NOT_ENABLED receipts.
+            # Keep their tool messages/private failure state for bounded recovery.
+            payload['web_searches'] = validated_web_searches(payload['web_searches'])
         if value.get('policy_version')!=POLICY_VERSION:
             payload['tool_warnings']=[item for item in payload.get('tool_warnings',[]) if item.get('code')!='REQUEST_OUTCOME_INCOMPLETE']
         public = ChatResponse(role='assistant', content='', **{key:payload[key] for key in (*PUBLIC, 'sources') if key in payload})

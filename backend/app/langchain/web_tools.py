@@ -1,6 +1,6 @@
 """Thin adapter: bounded evidence, staged citations, dated reuse and public website progress."""
 import json
-from pydantic import Field
+from pydantic import Field, ValidationError
 from time import monotonic
 from uuid import uuid4
 from langchain_core.messages import HumanMessage
@@ -67,14 +67,31 @@ def dated_failure(scope, receipt):
     return fit_result(value, scope, budget) if budget else value.model_dump(mode='json', exclude_none=True)
 
 
+def validated_web_searches(records):
+    """Keep actual search envelopes, not generic dispatch/recovery receipts."""
+    valid = []
+    for record in records:
+        try:
+            result = SearchResult.model_validate(record)
+        except ValidationError:
+            continue
+        valid.append(result.model_dump(mode='json', exclude={'sources', 'research_report'}, exclude_none=True))
+        if len(valid) == 6:
+            break
+    return valid
+
+
 def commit_web_result(scope, result):
-    """Called only after the coordinator admitted the exact serialized tool packet."""
+    """Only admitted, validated search packets can publish citations/metadata."""
     staged = scope.pop('_web_pending', None)
+    records = validated_web_searches([result])
+    if not records:
+        # Dispatch failures are still returned to the model as tool receipts.
+        # They did not execute a search and must not become public SearchResult.
+        return
     if staged is not None:
         scope['web_sources'] = staged
-    records = scope.setdefault('web_searches', [])
-    if len(records) < 6:
-        records.append({key: value for key, value in result.items() if key not in ('sources', 'research_report')})
+    scope['web_searches'] = validated_web_searches([*scope.get('web_searches', []), *records])
 
 
 def create_web_tools(service, owner, scope, budget, *, research=False):

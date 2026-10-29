@@ -330,3 +330,38 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ProviderError):
             async for _ in stream: pass
         await stream.aclose()
+
+
+class WebReceiptBoundaryTests(unittest.TestCase):
+    def envelope(self, outcome='ok'):
+        return WebSearchService(AsyncMock(), Usage(), enabled=True, clock=lambda: NOW).envelope(outcome).model_dump(mode='json')
+
+    def test_dispatch_rejection_cannot_poison_public_search_metadata_or_citations(self):
+        scope = {'web_sources': [{'token': 'W1'}]}
+        commit_web_result(scope, self.envelope())
+        scope['_web_pending'] = [{'token': 'unadmitted'}]
+        for code in ('TOOL_NOT_ENABLED', 'TOOL_UNKNOWN', 'TOOL_INVALID_ARGUMENTS'):
+            commit_web_result(scope, dict(outcome='rejected', code=code, category='invalid_arguments', effect_certainty='not_started'))
+        self.assertEqual(len(scope['web_searches']), 1)
+        self.assertEqual(scope['web_sources'], [{'token': 'W1'}])
+        self.assertNotIn('_web_pending', scope)
+        ChatResponse(role='assistant', content='A grounded answer.', web_searches=scope['web_searches'])
+
+    def test_real_dated_failures_are_retained(self):
+        scope = {}
+        commit_web_result(scope, self.envelope('unavailable'))
+        self.assertEqual(scope['web_searches'][0]['outcome'], 'unavailable')
+        ChatResponse(role='assistant', content='Search unavailable.', web_searches=scope['web_searches'])
+
+    def test_poisoned_checkpoint_restores_without_discarding_valid_searches(self):
+        from types import SimpleNamespace
+        from app.langchain.response_runtime import ResponseRuntime
+        conversation, scope = [], {}
+        selection = SimpleNamespace(active=set(), pending=set(), explicit=set(), by_name={}, common=set())
+        runtime = ResponseRuntime(conversation, scope, ToolBudget(), selection, SimpleNamespace())
+        state = runtime.capture()
+        rejection = dict(outcome='rejected', code='TOOL_NOT_ENABLED', category='invalid_arguments', effect_certainty='not_started')
+        state['scope']['web_searches'] = [self.envelope(), rejection]
+        runtime.restore(state)
+        self.assertEqual(len(scope['web_searches']), 1)
+        self.assertEqual(scope['web_searches'][0].outcome, 'ok')
