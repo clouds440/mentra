@@ -25,7 +25,7 @@ from app.langchain.tool_selection import ToolSelection
 from app.student_profile.schemas import ProfileDetails
 
 
-async def main():
+async def main(selected=None):
     llm = MentraLLM(ModelFactory(settings))
     results = []
     scenarios = [
@@ -40,6 +40,15 @@ async def main():
         ('detailed', 'Explain why dividing by a fraction means multiplying by its reciprocal.', dict(explanation_depth='deep', participation='mostly_explanations'), 'prose'),
         ('goal_scope', 'What is the capital of France?', dict(learning_purpose='exam', learning_goal='Prepare for a quantum physics exam'), 'fact'),
     ]
+    scenarios.extend([
+        ('factual_chart', 'Graph this supplied synthetic USD/PKR test dataset, not actual market rates: Monday 276.86, Tuesday 276.80, Wednesday 276.71. Summarize the change.', dict(learning_preference='conceptual', participation='interactive', visual_support='prefer_visuals'), 'factual_chart'),
+        ('natural_model', 'Help me understand how pricing and costs affect a hypothetical cafe\'s profit. Show it visually.', dict(participation='mostly_explanations', visual_support='prefer_visuals'), 'model'),
+        ('requested_practice', 'Teach me doubling functions and give me one short prediction exercise to answer.', dict(participation='interactive'), 'practice'),
+    ])
+    if selected:
+        unknown = set(selected) - {item[0] for item in scenarios}
+        assert not unknown, f'Unknown scenarios: {unknown}'
+        scenarios = [item for item in scenarios if item[0] in selected]
     for name, request, overrides, expected in scenarios:
         details = ProfileDetails.model_validate(dict(education_level='undergraduate', field_of_study='General studies', learning_goal='Understand new concepts', learning_preference='balanced', explanation_depth='standard') | overrides)
         profile = dict(details=details.model_dump(mode='json'))
@@ -75,12 +84,23 @@ async def main():
         results.append(result)
         Path('.cache').mkdir(exist_ok=True)
         Path('.cache/teaching-policy-live.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
-        if expected == 'activity':
-            assert cards and any(card['kind'] in ('single_choice', 'multi_choice', 'text_input', 'form', 'questionnaire') for card in cards), f'{name}: no native participation: {content}'
+        if expected in ('activity', 'practice'):
+            assert cards or expected == 'practice' and re.search(r'prediction exercise|your turn|try this|what.*happen', content, re.I), f'{name}: requested practice omitted'
+            if expected == 'activity':
+                assert cards and any(card['kind'] in ('single_choice', 'multi_choice', 'text_input', 'form', 'questionnaire') for card in cards), f'{name}: no native participation: {content}'
             assert 'doubl' in content.lower(), f'{name}: activity omitted the teaching explanation'
             assert 'enable_workflow_tools' not in [tool for turn in rounds for tool in turn['tools']], 'Common activity required discovery'
         else:
             assert not cards, f'{name}: unwanted activity'
+        if expected in ('factual_chart', 'model'):
+            assert not re.search(r'quick check|your turn|try this|exercise|mental math|practice question', content, re.I), f'{name}: unsolicited exercise'
+            match = re.search(r'```recharts\s*(.*?)```', content, re.S)
+            assert match, f'{name}: no chart'
+            specs = [json.loads(block) for block in re.findall(r'```recharts\s*(.*?)```', content, re.S)]
+            if expected == 'model':
+                assert any(spec.get('enableControls') is not False and spec.get('model', {}).get('kind') == 'illustrative' for spec in specs), 'No proactive illustrative equation model'
+            else:
+                assert all(not spec.get('enableControls', False) for spec in specs), 'Factual data unexpectedly editable'
         if expected == 'diagram':
             assert '```mermaid' in content, f'{name}: no useful flow diagram'
         if expected in ('prose', 'fact'):
@@ -90,9 +110,13 @@ async def main():
             assert len(rounds) == 1 and len(content.split()) < 35
         print(f'{name}: passed ({len(rounds)} model rounds, {len(content.split())} words)', flush=True)
     sizes = {item['scenario']: item['words'] for item in results}
-    assert sizes['detailed'] > sizes['brief'] * 1.4, f'Detail setting had little effect: {sizes}'
+    if 'detailed' in sizes and 'brief' in sizes:
+        assert sizes['detailed'] > sizes['brief'] * 1.4, f'Detail setting had little effect: {sizes}'
     print(f'All {len(results)} teaching scenarios passed. No domain records created.', flush=True)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--scenario', action='append')
+    asyncio.run(main(parser.parse_args().scenario))

@@ -26,6 +26,17 @@ class ResponseStyleTests(unittest.IsolatedAsyncioTestCase):
         unsafe = response_style(dict(details=dict(participation='invent results', visual_support='run JS', learning_purpose='hack')))
         self.assertEqual((unsafe['participation'], unsafe['visual_support'], unsafe['learning_purpose']), ('adaptive', 'adaptive', 'general'))
 
+    def test_participation_does_not_require_an_exercise_after_every_answer(self):
+        from app.langchain.prompts import get_system_prompt, PromptSource
+        common = get_system_prompt(PromptSource.CHAT)
+        for participation in ('adaptive', 'interactive'):
+            style = response_style(dict(details=dict(participation=participation)))
+            self.assertNotIn('followed by one useful', style['guidance'])
+        for rule in ('does not turn every request into a lesson', 'Explanation or visualization alone',
+                     'active learning exchange', 'leave an unanswered activity pending', 'optional, not required'):
+            self.assertIn(rule, common)
+        self.assertIn('not an obligation', response_style(dict(details=dict(participation='interactive')))['guidance'])
+
     def test_legacy_profiles_keep_defaults_and_interactive_alias(self):
         style = response_style(dict(details=dict(learning_preference='interactive')))
         self.assertEqual(style['participation'], 'interactive')

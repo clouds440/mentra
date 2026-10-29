@@ -1,8 +1,10 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v10'
+VERSION = 'chat-ui-v11'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
-INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example, '
-                   'then wait for student input. The card appears below your final reply, not above it. '
+INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example. '
+                   'Prose sent with tool calls is hidden: repeat that explanation in the final reply. '
+                   'Do not replace requested teaching with only "the exercise is ready". '
+                   'Then wait for student input. The card appears below your final reply, not above it. '
                    'Do not solve the activity or answer on the student\'s behalf.')
 VISUAL_NEXT_STEP = ('Continue the explanation; these static visuals require no user input. '
                     'The visual card appears below your final reply, not above it.')
@@ -11,11 +13,22 @@ formats. Finish clear requests directly, without decorative UI or needless quest
 Native input/visual cards render BELOW the final answer text. Markdown diagrams,
 charts and images render at their written position. Prefer position-neutral references
 like "the choices" or "the chart"; never assume a native card is above the reply.
-Apply response_style participation and visual_support independently. Interactive
-teaching favors one useful activity after a manageable explanation; use native
-controls when suited, then wait without answering for the learner. Simple facts
-remain direct. Mostly explanations avoids unsolicited checks; mostly text avoids
-unsolicited diagrams, not necessary input controls. Explicit requests override
+Apply response_style participation and visual_support independently. Participation
+is contextual, never a routine ending. An unsolicited mini exercise/check is eligible
+only in an active learning exchange: the learner requested teaching/practice, is
+already working through the topic with you, or a brief check directly advances a
+learning goal they are currently pursuing. Saved Interactive participation can favor
+an activity within that eligible exchange; it does not turn every request into a lesson.
+A factual lookup, current-data report, conversion, chart, practical recommendation,
+transaction or finished artifact should normally end when delivered, even with
+Interactive enabled. Explanation or visualization alone is not a reason to add practice.
+In eligible learning, offer at most one small, relevant prediction, choice or exercise
+when it adds value; it is optional, not required after each explanation. Avoid repeated
+checks, leave an unanswered activity pending rather than adding another, and respect
+requests to explain without testing. Adaptive participation is selective, not automatic.
+Use native controls when suited, then wait without answering for the learner.
+Mostly explanations avoids unsolicited checks; mostly text avoids unsolicited
+visuals, not necessary input controls. Explicit current requests override these
 defaults. Participation alone is not a saved assessment, grade or mastery evidence.
 Only the final reply is displayed as answer text; prose alongside earlier tool
 calls is not shown. For a new concept, the final reply MUST include the short
@@ -34,7 +47,11 @@ Never claim success without a receipt, fill answers, invent learner evidence or 
 UI as authorization. Use existing assessment tools/Events review for those domains.
 
 Prefer bars for a few ratings, Mermaid for flows, Recharts for trends/distributions.
-The charts reference supports optional equation-linked controls for useful models, or independent data edits without an equation; charts are read-only by default.
+The charts reference supports optional equation-linked controls for useful models, or independent data edits without an equation; charts without a model are read-only by default. For a quantitative explanation or simulation,
+proactively provide an equation-linked chart when adjustable relationships materially
+help the current task; do not wait for the user to request equations or sliders.
+Prefer linked calculations over disconnected edits when inputs determine outputs.
+An exploratory visual is optional support, not a request for a quiz or exercise.
 Mermaid: fenced mermaid; diagram declaration first, then accTitle/accDescr. Plain text labels, no <br/>; no init/frontmatter, HTML, resources or
 clicks. Colors may use style/classDef/linkStyle with fill/stroke/color six-digit hex
 or basic color names, and stroke-width 0-6px only; pair fills with readable text.
@@ -71,13 +88,34 @@ REFERENCES = {
 Example: {"type":"BarChart","title":"Illustrative study time","xKey":"topic","unit":"minutes","data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],"series":[{"dataKey":"minutes","name":"Study time"}]}.
 Types: LineChart, BarChart, AreaChart, ComposedChart, PieChart, RadarChart, ScatterChart.
 Required: type,title,xKey,data,series. Optional: description,unit,stacked (bar/area/composed
-only), colors (category palette, especially pie), enableControls (boolean, default false), model (optional equation-driven data).
+only), colors (category palette, especially pie), enableControls (boolean; defaults to true for a valid model, false otherwise), model (optional equation-driven data).
 Set enableControls=true only for illustrative/exploratory data the learner should
 tweak (e.g. a simple x/y relationship). Keep false for canonical comparisons,
 measured facts, grades, or source-grounded data, unless the user explicitly asks
 to explore edits. Local Slider/Number modes and Reset update the chart/data/export without
 changing the saved answer. Clearly label illustrative data; never invent measurements.
-When an explicit dependency or a useful contextual model helps exploration, include
+Choose controls proactively when meaningful input changes help the requested explanation or exploration; no explicit control request is required.
+For an interactive model, prefer enableControls=true explicitly. A valid model also
+enables controls when the flag is omitted; explicit false keeps the chart read-only.
+If the model fails validation or calculation, usable supplied data still renders
+without controls. Provide valid default numeric series values when possible so
+this fallback can work; null-only outputs cannot supply a fallback graph.
+Global parameter keys MUST differ from xKey, every data/series key and each other.
+The xKey values are sampled row inputs, not a second global setting of the same name.
+To adjust a sampled row field, declare it in model.inputs, not model.parameters;
+that changes the chosen row, not every point. Global assumptions change the curve.
+There is no built-in current-setting marker, selected-x highlight or reference point;
+do not promise those features. Never describe selecting an x value as recalculating
+an entire curve governed by that same x. Choose a graph/control arrangement that
+actually represents the dependency and the intended exploration.
+Every equation output must exist in series; inline helper expressions instead of
+creating unplotted helper outputs. Every row may contain only xKey, series keys and
+explicit model.inputs. Validate these names against your own emitted JSON.
+If you explain how inputs determine calculated outputs, use model so changing those
+inputs actually recalculates outputs. Do not substitute independent editable cells
+for that relationship. Without model, editing one cell does NOT update any other
+value: never describe it as a linked simulation. Independent editing is appropriate
+when there is no useful dependency, not a shortcut for omitting known calculations. When a supported dependency or a useful contextual model helps exploration, include
 model={"kind":"illustrative","note":"Explain assumptions and units","parameters":[{"key":"gain","label":"Gain","value":2,"min":0,"max":5}],"equations":[{"dataKey":"y","expression":"gain * x"}]} with a numeric x row field and a y series.
 This is a format example, not a required equation. Design useful relationships for
 this context; invented approximations/simulations are allowed but MUST be labeled

@@ -68,13 +68,15 @@ test('exports include current model equations, assumptions and parameter values'
   expect(svg).not.toMatch(/<foreignObject|<script|var\(--/);
 });
 
-test('unsafe models fail locally and read-only models have no editing controls', async ({ page }) => {
+test('unsafe models show supplied data and read-only models have no editing controls', async ({ page }) => {
   const bad = chart(); bad.model.equations = [{ dataKey: 'y', expression: 'window.alert(1)' }];
   const fixed = { ...chart(), enableControls: false };
   await richChat(page, '```recharts\n' + JSON.stringify(bad) + '\n```\n\n```recharts\n' + JSON.stringify(fixed) + '\n```');
   await page.goto('/chat/polish-chat');
-  await expect(page.getByRole('status').filter({ hasText: 'unsupported or invalid data' })).toBeVisible();
-  await expect(page.locator('.recharts-wrapper')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing the supplied data' })).toBeVisible();
+  await expect(page.locator('.recharts-wrapper').first()).toBeVisible();
+  await page.getByRole('button', { name: 'View data', exact: true }).first().click();
+  await expect(page.locator('.recharts-figure').first().locator('tbody tr').first().locator('td').first()).toHaveText('2');
   await expect(page.getByRole('region', { name: 'Chart controls' })).toHaveCount(0);
 });
 
@@ -110,4 +112,30 @@ for (const type of ['LineChart', 'BarChart', 'AreaChart', 'ComposedChart', 'PieC
   const rows = page.locator('.recharts-figure tbody tr');
   await expect(rows.first().locator('td').nth(1)).toHaveText('3');
   await expect(rows.nth(2).locator('td').nth(1)).toHaveText('9');
+});
+
+test('omitted controls flag enables a valid model and survives fullscreen reset', async ({ page }) => {
+  const { enableControls: _flag, ...spec } = chart();
+  await richChat(page, '```recharts\n' + JSON.stringify(spec) + '\n```');
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByRole('slider', { name: 'Adjust selected value' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Number', exact: true }).click();
+  await dialog.getByRole('spinbutton', { name: 'Selected value', exact: true }).fill('3');
+  await dialog.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(dialog.getByRole('spinbutton', { name: 'Selected value', exact: true })).toHaveValue('2');
+});
+test('failed model fallback remains downloadable and visible in fullscreen', async ({ page }) => {
+  const spec = chart(); spec.model.equations = [{ dataKey: 'y', expression: 'sqrt(-gain)' }];
+  await richChat(page, '```recharts\n' + JSON.stringify(spec) + '\n```');
+  await page.goto('/chat/polish-chat');
+  await expect(page.locator('.recharts-wrapper')).toBeVisible();
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download SVG', exact: true }).click();
+  const download = await pending; expect(await download.path()).toBeTruthy();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('status')).toHaveText('Equation controls are unavailable. Showing the supplied data.');
+  await expect(page.getByRole('dialog').locator('.recharts-wrapper')).toBeVisible();
+  await expect(page.getByRole('slider')).toHaveCount(0);
 });

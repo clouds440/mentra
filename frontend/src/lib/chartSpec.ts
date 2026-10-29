@@ -4,7 +4,7 @@ import { visualColor } from './visualColors';
 export const chartTypes = ['LineChart', 'BarChart', 'AreaChart', 'ComposedChart', 'PieChart', 'RadarChart', 'ScatterChart'] as const;
 export type ChartType = typeof chartTypes[number];
 export type ChartSeries = { dataKey: string; name: string; type: 'Line' | 'Bar' | 'Area'; color?: string };
-export type ChartSpec = { type: ChartType; title: string; description?: string; xKey: string; unit?: string; stacked: boolean; series: ChartSeries[]; data: Record<string, string | number | null>[]; colors?: string[]; enableControls?: boolean; model?: ChartModel };
+export type ChartSpec = { type: ChartType; title: string; description?: string; xKey: string; unit?: string; stacked: boolean; series: ChartSeries[]; data: Record<string, string | number | null>[]; colors?: string[]; enableControls?: boolean; model?: ChartModel; modelUnavailable?: boolean };
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const only = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).every(key => keys.includes(key));
 const text = (value: unknown, max: number): value is string => typeof value === 'string' && !!value.trim() && value.length <= max;
@@ -37,9 +37,14 @@ export function parseChartSpec(code: string): ChartSpec | null {
     if (type === 'RadarChart' && value.data.length < 3) return null;
     const chartFields = [xKey, ...series.map(item => item.dataKey)];
     const model = value.model === undefined ? undefined : parseChartModel(value.model, chartFields, series.map(item => item.dataKey));
-    if (model === null) return null;
-    const fields = [...new Set([...chartFields, ...(model?.inputs.map(item => item.dataKey) ?? [])])];
-    const derived = new Set(model?.equations.map(item => item.dataKey));
+    // A failed model must not discard otherwise usable supplied observations.
+    // Only bounded, declared model fields may extend the base row contract.
+    const rawInputs = record(value.model) && Array.isArray(value.model.inputs) && value.model.inputs.length <= 8
+      ? value.model.inputs.filter(record).map(item => item.dataKey).filter(key) : [];
+    const rawOutputs = record(value.model) && Array.isArray(value.model.equations) && value.model.equations.length <= 6
+      ? value.model.equations.filter(record).map(item => item.dataKey).filter(key) : [];
+    const fields = [...new Set([...chartFields, ...rawInputs, ...rawOutputs])];
+    let modelInputsValid = true;
     const data: ChartSpec['data'] = [];
     for (const row of value.data) {
       if (!record(row) || !only(row, fields)) return null;
@@ -49,20 +54,22 @@ export function parseChartSpec(code: string): ChartSpec | null {
       for (const item of series) {
         const cell = row[item.dataKey];
         if (cell !== null && !number(cell)) return null;
-        if (cell === null && ['PieChart', 'RadarChart', 'ScatterChart'].includes(type) && !derived.has(item.dataKey)) return null;
         clean[item.dataKey] = cell as number | null;
       }
-      for (const input of model?.inputs ?? []) { const cell = row[input.dataKey]; if (!number(cell)) return null; clean[input.dataKey] = cell; }
+      for (const input of model?.inputs ?? []) { const cell = row[input.dataKey]; if (!number(cell)) modelInputsValid = false; else clean[input.dataKey] = cell; }
       data.push(clean);
     }
-    const calculated = model ? calculateChartModel(model, data) : data;
-    if (!calculated || !validChartData(type, series, calculated)) return null;
-    return { model, type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, enableControls: value.enableControls === true, series, data: calculated };
+    const calculated = model && modelInputsValid ? calculateChartModel(model, data) : undefined;
+    const activeModel = model && calculated && validChartData(type, series, calculated) ? model : undefined;
+    const modelUnavailable = value.model !== undefined && !activeModel;
+    const displayed = activeModel ? calculated! : modelUnavailable ? data.map(row => Object.fromEntries(chartFields.map(field => [field, row[field]]))) : data;
+    if (!activeModel && !validChartData(type, series, displayed)) return null;
+    return { model: activeModel, modelUnavailable, type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, enableControls: !modelUnavailable && (value.enableControls ?? !!activeModel), series, data: displayed };
   } catch { return null; }
 }
 
 function validChartData(type: ChartType, series: ChartSeries[], data: ChartSpec['data']) {
-  return series.every(item => data.some(row => row[item.dataKey] !== null)) && data.every(row => series.every(item => row[item.dataKey] === null || finiteChartNumber(row[item.dataKey]) && (!['PieChart', 'RadarChart'].includes(type) || Number(row[item.dataKey]) >= 0)))
+  return series.every(item => data.some(row => row[item.dataKey] !== null)) && data.every(row => series.every(item => row[item.dataKey] === null && !['PieChart', 'RadarChart', 'ScatterChart'].includes(type) || finiteChartNumber(row[item.dataKey]) && (!['PieChart', 'RadarChart'].includes(type) || Number(row[item.dataKey]) >= 0)))
     && (type !== 'PieChart' || data.some(row => Number(row[series[0].dataKey]) > 0));
 }
 /** Keep normal edits independent; equation outputs are read-only derived values. */
@@ -90,7 +97,8 @@ export { chartNumberLimit };
 
 /** Copyable source uses public schema fields, never internal renderer type defaults. */
 export function serializeChartSpec(spec: ChartSpec): string {
-  const value = { ...spec, series: spec.series.map(({ type, ...item }) => spec.type === 'ComposedChart' ? { ...item, type } : item),
+  const { modelUnavailable: _modelUnavailable, ...publicSpec } = spec;
+  const value = { ...publicSpec, series: spec.series.map(({ type, ...item }) => spec.type === 'ComposedChart' ? { ...item, type } : item),
     data: spec.model ? spec.data.map(row => ({ ...row, ...Object.fromEntries(spec.model!.equations.map(item => [item.dataKey, null])) })) : spec.data };
   const readable = JSON.stringify(value, null, 2);
   return readable.length <= 24000 ? readable : JSON.stringify(value);

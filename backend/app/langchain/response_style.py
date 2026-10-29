@@ -15,8 +15,8 @@ DETAIL_GUIDANCE = {
     'deep': 'Develop the reasoning with supporting examples and useful nuance within the requested topic.',
 }
 PARTICIPATION = {
-    'adaptive': '',
-    'interactive': 'While teaching, prefer a manageable explanation followed by one useful prediction, choice or short exercise. Follow the shared UI participation policy.',
+    'adaptive': 'Use participation selectively under the shared UI policy; a follow-up exercise is not a default ending.',
+    'interactive': 'Within an eligible learning exchange, favor a useful prediction, choice or short exercise only when it advances the current learning goal. Follow the shared UI participation policy; Interactive is not an obligation to append checks.',
     'mostly_explanations': 'Prefer complete explanations without unsolicited exercises or comprehension checks; still clarify consequential missing input.',
 }
 VISUALS = {

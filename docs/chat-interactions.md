@@ -268,7 +268,9 @@ chat, database, grading and learner evidence paths with deterministic model outp
 
 ## Equation-driven chart exploration
 
-Recharts keeps `enableControls` false by default. With controls enabled, users can
+Recharts enables controls for a valid equation model when `enableControls` is
+omitted. Explicit `false` always keeps it read-only; charts without a model still
+default to read-only. With controls enabled, users can
 switch between Slider (default) and Number entry; the value, selected inputs and
 mode survive entering/leaving fullscreen, and Reset restores supplied inputs.
 Without `model`, edits remain independent data edits. No mathematical dependency
@@ -295,7 +297,10 @@ notation, pi/e and a small documented set of numeric functions. It never evaluat
 JavaScript. Expressions are limited to 240 characters, 128 tokens and 32 levels;
 models have at most eight parameters, eight row-input declarations and six outputs.
 Unknown references, cycles, unused controls, unsupported syntax and invalid initial
-domains fail validation locally. Invalid edits (including intermediate overflow or
+domains disable the model locally. If supplied series values are usable, the chart
+renders those original values with a notice and no controls, including fullscreen,
+tables and downloads. No equation repair or invented values are applied. Invalid
+base data and null-only fallback series still require source fallback. Invalid edits (including intermediate overflow or
 division by zero) leave the last valid chart untouched. Finite plotted values are
 bounded at +/-1e100 and large/tiny axis values use compact scientific labels.
 
@@ -309,3 +314,16 @@ family loading and hidden-inline-plot freezing remain in place.
 this capability; its detailed schema is part of the on-demand charts reference.
 Contextual invented models are allowed when useful and labeled illustrative with
 assumptions. The model can instead choose independent editing or read-only data.
+Useful linked exploration is selected proactively; the learner does not need to
+request equations or sliders. Global parameter names cannot collide with sampled
+axis or row fields. Equation outputs must be plotted series; helper expressions
+are inlined. There is no automatic current-setting marker.
+
+Hardening verification (2026-10-29): 61 equation/model checks and 15 browser cases
+passed, covering omitted/false controls, the reported axis/parameter collision,
+unsafe expressions, initial domain failures, supplied-value fallback, fullscreen,
+Reset and downloads. Backend teaching/UI policy checks passed (15 tests). Live
+synthetic checks produced a factual chart without an exercise, a proactive linked
+model from a natural explanation request, and explicitly requested practice with
+visible teaching. Model output varies; the frontend validates every response and
+does not rely on prompt compliance for model failure isolation.
