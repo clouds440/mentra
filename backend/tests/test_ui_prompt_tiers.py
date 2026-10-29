@@ -24,6 +24,14 @@ class UiSelectionTests(unittest.IsolatedAsyncioTestCase):
         tools = create_interaction_tools('synthetic', scope, ToolBudget())
         return ToolSelection(tools, DOMAINS, scope), scope
 
+    def test_equation_guidance_is_available_only_in_the_advanced_chart_reference(self):
+        common = get_system_prompt(PromptSource.CHAT)
+        charts = get_system_prompt(PromptSource.CHAT_UI_CHARTS)
+        self.assertIn('equation-linked controls', common)
+        self.assertNotIn('model={', common)
+        for instruction in ('model={', 'illustrative', 'independent inputs', 'Slider/Number', 'No implicit multiplication'):
+            self.assertIn(instruction, charts)
+
     async def test_common_inputs_are_bound_without_binding_every_visual(self):
         selection, scope = self.selection()
         self.assertEqual(selection.active, {'present_questionnaire'})

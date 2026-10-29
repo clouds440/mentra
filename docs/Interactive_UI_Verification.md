@@ -282,3 +282,39 @@ Production frontend build passed. The reusable browser probe
 `frontend/scripts/verify-mermaid-normalization.mjs` passed actual Mermaid rendering,
 visible journey labels, fullscreen viewing, metadata ordering, break normalization
 and unsafe HTML rejection. Run against a local Vite server using `MERMAID_TEST_URL`.
+
+## Equation-driven charts and input modes — 29 October 2026
+
+Optional equation models now reuse ChartControls/RechartsFigure rather than a
+parallel chart renderer. Models declare parameters, bounded/named numeric row inputs,
+output equations and explicit established/illustrative context. Unrelated observation
+series stay read-only; independent editing still works when no model is supplied.
+Frontend arithmetic uses a bounded parser and dependency ordering, with cached
+programs, no eval/Function, no arbitrary functions/properties and no solver API calls.
+Invalid edits preserve the last valid chart. Slider/Number modes, selected inputs
+and values survive fullscreen; Reset restores original inputs. Final pointer/key/blur
+flushes preserve the last slider value without giving up frame-coalesced chart updates.
+
+Source copy uses valid public chart JSON (without internal renderer type defaults)
+and recalculable null placeholders. Data tables include auxiliary row inputs; graphs
+plot only their declared series. SVG/PNG export includes model assumptions, equations
+and current parameters. Large/tiny axes use compact scientific labels and numeric
+values are finite/bounded at +/-1e100. Detailed model instructions remain in the
+on-demand charts reference; the common guide only advertises the capability.
+
+Validation: 50 arithmetic/model checks passed, including unsafe syntax, unknown
+references/cycles, intermediate overflow, invalid domains, unused controls, dependent
+updates, preserved observations, auxiliary inputs, source round-tripping and legacy
+editing. A 200-row/two-output calculation-only sample measured p95 approximately
+0.2ms locally; this does not measure chart painting or promise identical device speeds.
+42 production browser journeys passed, including equation models in all seven chart
+families, mobile/desktop toggles, fullscreen, Reset, invalid-edit recovery and SVG
+model metadata. Ten UI discovery/schema checks passed in the production Python image
+with networking disabled. Production frontend build and UI/theme/static checks passed.
+
+The broad prompt-efficiency probe includes an older assertion expecting no final
+FinishResponse tool; that expectation does not match the current baseline protocol.
+The dedicated UI discovery tests verify the actual protocol. A mobile composer fixture
+also completed its fake answer before the POST necessarily created the turn; it now
+waits for that acknowledgement and an enabled composer before typing, retaining all
+original scroll/disclaimer assertions. No configured-provider generation was performed.

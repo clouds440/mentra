@@ -127,7 +127,7 @@ history; deleting their source conversation removes its suggestions.
 | Choices and questionnaires | Selecting a custom-answer option opens its input. Related questions submit together; server validation and durable receipts protect saved answers. |
 | Diagrams | Mermaid flows and relationships with readable labels, supported colors, source view, fullscreen viewing, and standalone SVG/PNG downloads. |
 | Charts | Recharts line, bar, area, composed, pie, radar and scatter charts from validated data-only JSON, with colors, legends, exact data tables and SVG/PNG downloads. No model-generated JavaScript executes. |
-| Exploratory chart controls | The model may set `enableControls: true` for illustrative data. Compact sliders/inputs update the chart, table and exports locally; Reset restores the supplied data. Default is read-only; factual comparisons should stay fixed. |
+| Exploratory chart controls | The model may set `enableControls: true` for illustrative data. Slider/Number modes update the chart, table and exports locally; optional equation models link inputs to derived values. Reset restores supplied inputs. Default is read-only; factual comparisons should stay fixed. |
 | Comparison bars | Explicit static meters show exact values, scales and percentages. Grouped series render side by side with stable colors; ordinary percentages remain text. |
 | Text and icons | Semantic/custom colors, callouts, disclosures, and lazy Lucide icons or supported public image URLs/SVG paths. Failed icons show a quiet placeholder. |
 | Captioned images | Direct image URLs render with their caption attached inside one container and a fullscreen viewer. |

@@ -101,13 +101,14 @@ Recharts JSON requires `type`, `title`, `xKey`, `data` and `series`. For example
 {"type":"BarChart","title":"Study time","xKey":"topic","unit":"minutes","data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],"series":[{"dataKey":"minutes","name":"Study time"}]}
 ```
 
-Optional top-level fields are `description`, `unit` and `stacked` (bar/area/composed).
+Optional top-level fields are `description`, `unit`, `colors`, `enableControls`,
+`model` and `stacked` (bar/area/composed).
 Series accept `dataKey` and optional `name`; composed series require `type` Line,
 Bar or Area. The [frontend contract](../frontend/src/lib/chartSpec.ts) bounds each
 chart to 24,000 characters, 200 rows, six series and three charts per response.
 Pie/radar allow at most 24 categories; radar requires at least three. Pie uses one
 nonnegative numeric series with a positive total. Scatter x values are numeric.
-Cartesian gaps use null; all other series values are finite numbers within ±1e12.
+Line/bar/area/composed gaps use null; all other series values are finite numbers within +/-1e100.
 Arbitrary props/resources, duplicate series keys, missing values, all-null series
 and unsupported shapes are rejected. Original data names stay in source/tables;
 only app-owned canonical field names enter Recharts shape data.
@@ -264,3 +265,47 @@ based display fallback. Correction retains prior grades and answers.
 Dummy browser scenarios capture desktop/mobile interactive questions and feedback,
 including correct, partial and incorrect examples. These fixtures exercise real
 chat, database, grading and learner evidence paths with deterministic model output.
+
+## Equation-driven chart exploration
+
+Recharts keeps `enableControls` false by default. With controls enabled, users can
+switch between Slider (default) and Number entry; the value, selected inputs and
+mode survive entering/leaving fullscreen, and Reset restores supplied inputs.
+Without `model`, edits remain independent data edits. No mathematical dependency
+is inferred from unrelated facts or supplied measurements.
+
+An optional `model` provides kind (`illustrative` or `established`), an explanatory
+`note`, global `parameters`, and output `equations`. Each parameter has key/label,
+initial value/min/max and optional step/unit. Optional `inputs` identify per-row
+numeric inputs with dataKey/label and optional min/max/unit; these can describe the
+independent axis or declare auxiliary data columns without plotting extra series.
+Outputs are existing series keys. Unrelated observation series remain read-only
+in model mode. Values are computed in dependency order; users
+edit inputs, never outputs. Derived values may be null placeholders, including
+scatter/pie/radar: validation applies to the calculated results rather than gaps.
+
+Example of an explicitly hypothetical model, not a prescribed teaching equation:
+
+```json
+{"type":"LineChart","title":"Hypothetical response","xKey":"x","enableControls":true,"data":[{"x":1,"y":null},{"x":2,"y":null}],"series":[{"dataKey":"y","name":"Response"}],"model":{"kind":"illustrative","note":"A simple assumed response curve, not measured data.","parameters":[{"key":"gain","label":"Gain","value":2,"min":0,"max":5}],"inputs":[{"dataKey":"x","label":"Input","min":0,"max":10}],"equations":[{"dataKey":"y","expression":"gain*x^2"}]}}
+```
+
+The frontend utility accepts explicit arithmetic, powers, parentheses, scientific
+notation, pi/e and a small documented set of numeric functions. It never evaluates
+JavaScript. Expressions are limited to 240 characters, 128 tokens and 32 levels;
+models have at most eight parameters, eight row-input declarations and six outputs.
+Unknown references, cycles, unused controls, unsupported syntax and invalid initial
+domains fail validation locally. Invalid edits (including intermediate overflow or
+division by zero) leave the last valid chart untouched. Finite plotted values are
+bounded at +/-1e100 and large/tiny axis values use compact scientific labels.
+
+Equation programs compile once per parsed model. Input changes are frame-coalesced
+and remain within chart state, without network/model calls, transcript edits or
+learner-evidence writes. Tables, fullscreen and SVG/PNG exports use current results;
+exports include assumptions, equations and current parameter values. Existing lazy
+family loading and hidden-inline-plot freezing remain in place.
+
+`chat_ui.py` remains the only model-facing guidance: common instructions advertise
+this capability; its detailed schema is part of the on-demand charts reference.
+Contextual invented models are allowed when useful and labeled illustrative with
+assumptions. The model can instead choose independent editing or read-only data.

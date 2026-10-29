@@ -1,3 +1,4 @@
+import { modelSummary } from '../../lib/chartModel';
 import type { ChartSpec } from '../../lib/chartSpec';
 import { plotColor } from './charts/shared';
 
@@ -51,6 +52,15 @@ export async function exportChart(container: HTMLElement, spec: ChartSpec) {
     if (context) context.font = `${bold ? '600 ' : ''}${size}px Arial`;
     let line = '';
     for (const word of value.split(/\s+/)) {
+      const measure = (text: string) => context?.measureText(text).width ?? text.length * size * .6;
+      if (measure(word) > width - 32) {
+        if (line) { text(line, 16, cursor, size, bold); cursor += size + 5; line = ''; }
+        for (const character of word) {
+          if (line && measure(line + character) > width - 32) { text(line, 16, cursor, size, bold); cursor += size + 5; line = ''; }
+          line += character;
+        }
+        continue;
+      }
       const candidate = line ? `${line} ${word}` : word;
       if (line && (context?.measureText(candidate).width ?? candidate.length * size * .6) > width - 32) { text(line, 16, cursor, size, bold); cursor += size + 5; line = word; } else line = candidate;
     }
@@ -59,6 +69,7 @@ export async function exportChart(container: HTMLElement, spec: ChartSpec) {
   wrapped(spec.title, 18, true);
   if (spec.unit) wrapped(`Values in ${spec.unit}`, 12);
   if (spec.description) wrapped(spec.description, 12);
+  if (spec.model) wrapped(modelSummary(spec.model), 12);
   const body = doc.createElementNS(namespace, 'g'); body.setAttribute('transform', `translate(0 ${cursor + 8})`);
   while (clone.firstChild) body.appendChild(doc.importNode(clone.firstChild, true)), clone.removeChild(clone.firstChild);
   root.appendChild(body); cursor += height + 22;

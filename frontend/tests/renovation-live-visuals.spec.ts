@@ -5,9 +5,15 @@ for (const width of [390, 1280]) test(`disclaimer stays visible while typing aft
   await page.setViewportSize({width, height: 800});
   const state = await workspace(page); await page.goto('/chat/polish-chat');
   const input = page.getByRole('textbox', {name:'Ask Mentra anything'});
-  await input.fill('Explain gravity simply.'); await page.getByRole('button', {name:'Send message', exact:true}).click();
+  await input.fill('Explain gravity simply.');
+  // Complete the fixture only after its POST has created the new running turn.
+  const sent = page.waitForResponse(response => response.url().endsWith('/api/v1/conversations/turns') && response.request().method() === 'POST');
+  await page.getByRole('button', {name:'Send message', exact:true}).click(); await sent;
   state.complete('Gravity pulls objects together.');
   await expect(page.getByRole('article', {name:'Mentra response'}).last()).toContainText('Gravity pulls objects together.');
+  // The answer can paint before the turn's terminal state enables the composer.
+  // pressSequentially does not wait for an enabled field, unlike fill.
+  await expect(input).toBeEnabled();
   await expect(page.getByLabel('Chat disclaimer')).toBeInViewport();
   await page.waitForTimeout(150);
   await page.getByLabel('Chat disclaimer').evaluate(el => {
@@ -29,12 +35,15 @@ for (const type of ['LineChart','BarChart','AreaChart','ComposedChart','PieChart
   const state=await richChat(page,'```recharts\n'+JSON.stringify(chart)+'\n```');await page.goto('/chat/polish-chat');
   await expect(page.getByRole('region',{name:'Chart controls'})).toBeVisible();await page.getByRole('button',{name:'View data',exact:true}).click();
   const cell=page.locator('.recharts-figure tbody tr').first().locator('td');
+  await page.getByRole('button',{name:'Number',exact:true}).click();
   await page.getByRole('spinbutton',{name:'Selected value',exact:true}).fill('12');await expect(cell).toHaveText('12');
   if(type==='ScatterChart'){await chooseOption(page.getByRole('combobox',{name:'Chart value',exact:true}),'name');await page.getByRole('spinbutton',{name:'Selected value',exact:true}).fill('5');await expect(page.locator('.recharts-figure tbody tr').first().locator('th')).toHaveText('5');await chooseOption(page.getByRole('combobox',{name:'Chart value',exact:true}),'value');}
   await page.getByRole('button',{name:'View source',exact:true}).click();await expect(page.locator('.recharts-figure pre')).toContainText('12');
   await page.getByRole('button',{name:'Show chart',exact:true}).click();
   if(type==='BarChart'){const [file]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Download SVG',exact:true}).click()]);expect(await file.failure()).toBeNull();}
+  await page.getByRole('button',{name:'Slider',exact:true}).click();
   await page.getByRole('slider',{name:'Adjust selected value'}).evaluate(el=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(el,'6');el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});await expect(cell).toHaveText('6');
+  await page.getByRole('button',{name:'Number',exact:true}).click();
   await page.getByRole('button',{name:'Reset',exact:true}).click();await expect(cell).toHaveText('2');expect(state.submissions).toHaveLength(0);
   await page.getByRole('button',{name:'Expand',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Expanded chart: Illustrative values'});
   await dialog.getByRole('spinbutton',{name:'Selected value',exact:true}).fill('8');await dialog.getByRole('button',{name:'Close',exact:true}).click();await expect(cell).toHaveText('8');
@@ -46,6 +55,7 @@ test('read-only defaults and invalid control flags stay safe',async({page})=>{
 });
 test('pie controls reject negative values and an empty total',async({page})=>{
   await richChat(page,'```recharts\n'+JSON.stringify({type:'PieChart',title:'Illustrative',enableControls:true,xKey:'name',data:[{name:'A',value:2}],series:[{dataKey:'value'}]})+'\n```');await page.goto('/chat/polish-chat');
+  await page.getByRole('button',{name:'Number',exact:true}).click();
   const input=page.getByRole('spinbutton',{name:'Selected value',exact:true});await input.fill('-1');await expect(input).toHaveAttribute('aria-invalid','true');await input.fill('0');await expect(input).toHaveAttribute('aria-invalid','true');
   await page.getByRole('button',{name:'View data',exact:true}).click();await expect(page.locator('.recharts-figure tbody td')).toHaveText('2');
   await page.getByRole('button',{name:'Reset',exact:true}).click();await expect(input).toHaveValue('2');await expect(input).toHaveAttribute('aria-invalid','false');

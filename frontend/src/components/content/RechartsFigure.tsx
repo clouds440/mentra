@@ -1,7 +1,8 @@
+import { modelSummary } from '../../lib/chartModel';
 import { Component, lazy, memo, Suspense, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
-import { parseChartSpec, editChartValue, type ChartSpec } from '../../lib/chartSpec';
+import { parseChartSpec, editChartValue, serializeChartSpec, type ChartSpec } from '../../lib/chartSpec';
 import { cacheChart, readChart, diagramCacheGeneration } from '../../lib/richContentCache';
 const ChartControls = lazy(() => import('./ChartControls').then(module => ({ default: module.ChartControls })));
 
@@ -31,7 +32,13 @@ const ChartCanvas = memo(function ChartCanvas({ spec }: { spec: ChartSpec }) {
   return <div className="chart-plot"><ChartBoundary key={spec.type}><Suspense fallback={<p role="status" className="p-4 text-sm text-muted">Preparing chart…</p>}><Renderer spec={plot} xName={spec.xKey} /></Suspense></ChartBoundary></div>;
 });
 ChartCanvas.displayName = 'ChartCanvas';
-const ChartDataTable = memo(function ChartDataTable({ spec }: { spec: ChartSpec }) { return <div className="markdown-table-scroll p-3"><table><caption className="sr-only">{spec.title} — exact data{spec.unit ? ` (${spec.unit})` : ''}</caption><thead><tr><th scope="col">{spec.xKey}</th>{spec.series.map(item => <th key={item.dataKey} scope="col">{item.name}{spec.unit ? ` (${spec.unit})` : ''}</th>)}</tr></thead><tbody>{spec.data.map((row, i) => <tr key={i}><th scope="row">{row[spec.xKey]}</th>{spec.series.map(item => <td key={item.dataKey}>{row[item.dataKey] === null ? '—' : String(row[item.dataKey])}</td>)}</tr>)}</tbody></table></div>; });
+const ChartDataTable = memo(function ChartDataTable({ spec }: { spec: ChartSpec }) {
+  const rowInputs = spec.model?.inputs ?? [];
+  const columns = [{ dataKey: spec.xKey, name: rowInputs.find(item => item.dataKey === spec.xKey)?.label ?? spec.xKey, unit: rowInputs.find(item => item.dataKey === spec.xKey)?.unit },
+    ...rowInputs.filter(item => item.dataKey !== spec.xKey && !spec.series.some(series => series.dataKey === item.dataKey)).map(item => ({ dataKey: item.dataKey, name: item.label, unit: item.unit })),
+    ...spec.series.map(item => ({ ...item, unit: rowInputs.find(input => input.dataKey === item.dataKey)?.unit ?? spec.unit }))];
+  return <div className="markdown-table-scroll p-3"><table><caption className="sr-only">{spec.title} - exact data{spec.unit ? ` (${spec.unit})` : ''}</caption><thead><tr>{columns.map(item => <th key={item.dataKey} scope="col">{item.name}{item.unit ? ` (${item.unit})` : ''}</th>)}</tr></thead><tbody>{spec.data.map((row, i) => <tr key={i}>{columns.map((item, column) => column === 0 ? <th key={item.dataKey} scope="row">{row[item.dataKey]}</th> : <td key={item.dataKey}>{row[item.dataKey] === null ? '—' : String(row[item.dataKey])}</td>)}</tr>)}</tbody></table></div>;
+});
 function RechartsFigureContent({ code }: { code: string }) {
   const titleId = useId();
   const figureRef = useRef<HTMLElement>(null); const viewerRef = useRef<HTMLDialogElement>(null);
@@ -43,6 +50,8 @@ function RechartsFigureContent({ code }: { code: string }) {
   }, [code]);
   const [edited, setEdited] = useState<{ original: ChartSpec; value: ChartSpec }>();
   const [reset, setReset] = useState(0);
+  const [controlSelection, setControlSelection] = useState<{ row: number; field?: string }>({ row: 0 });
+  const [controlMode, setControlMode] = useState<'slider' | 'number'>('slider');
   const spec = edited?.original === original ? edited.value : original;
   const current = useRef(spec); current.current = spec;
   function edit(row: number, field: string, value: number) {
@@ -52,7 +61,7 @@ function RechartsFigureContent({ code }: { code: string }) {
     if (next !== current.current) { current.current = next; setEdited({ original, value: next }); }
     return true;
   }
-  const controls = spec?.enableControls && original ? <Suspense fallback={null}><ChartControls key={`${code}:${reset}`} spec={spec} original={original} onEdit={edit} onReset={() => { current.current = original; setEdited(undefined); setReset(value => value + 1); }} /></Suspense> : null;
+  const controls = spec?.enableControls && original ? <Suspense fallback={null}><ChartControls key={`${code}:${reset}`} spec={spec} original={original} mode={controlMode} onModeChange={setControlMode} selection={controlSelection} onSelectionChange={setControlSelection} onEdit={edit} onReset={() => { current.current = original; setEdited(undefined); setControlSelection({ row: 0 }); setReset(value => value + 1); }} /></Suspense> : null;
   const [source, setSource] = useState(false); const [data, setData] = useState(false); const [expanded, setExpanded] = useState(false);
   const background = useRef(spec); if (!expanded) background.current = spec;
   async function download(format: 'svg' | 'png') {
@@ -79,11 +88,12 @@ function RechartsFigureContent({ code }: { code: string }) {
       {downloads}
     </span></figcaption>
     {(spec.description || spec.unit) && <p className="px-3 pt-3 text-sm text-muted">{spec.description}{spec.description && spec.unit ? ' ' : ''}{spec.unit ? `Values in ${spec.unit}.` : ''}</p>}
+    {spec.model && <details className="mx-3 mt-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer font-medium">{spec.model.kind === 'illustrative' ? 'Illustrative equation model' : 'Equation model'}</summary><p className="mt-2 break-words leading-5">{modelSummary(spec.model)}</p></details>}
     {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>}
-    {source ? <CodeBlock code={display !== original ? JSON.stringify(display, null, 2) : code} language="json" /> : <ChartCanvas spec={display} />}
+    {source ? <CodeBlock code={display !== original || display.model ? serializeChartSpec(display) : code} language="json" /> : <ChartCanvas spec={display} />}
     {!expanded && controls}
     {data && <ChartDataTable spec={display} />}
-    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div><ChartCanvas spec={spec} />{controls}</Dialog>}
+    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div><ChartCanvas spec={spec} />{spec.model && <details className="mx-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer">Equation and assumptions</summary><p className="mt-2 break-words">{modelSummary(spec.model)}</p></details>}{controls}</Dialog>}
   </figure>;
 }
 RechartsFigureContent.displayName = 'RechartsFigure';

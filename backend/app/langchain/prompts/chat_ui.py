@@ -1,5 +1,5 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v9'
+VERSION = 'chat-ui-v10'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example, '
                    'then wait for student input. The card appears below your final reply, not above it. '
@@ -34,8 +34,7 @@ Never claim success without a receipt, fill answers, invent learner evidence or 
 UI as authorization. Use existing assessment tools/Events review for those domains.
 
 Prefer bars for a few ratings, Mermaid for flows, Recharts for trends/distributions.
-The charts reference supports opt-in live data controls for illustrative exploration;
-charts are read-only by default.
+The charts reference supports optional equation-linked controls for useful models, or independent data edits without an equation; charts are read-only by default.
 Mermaid: fenced mermaid; diagram declaration first, then accTitle/accDescr. Plain text labels, no <br/>; no init/frontmatter, HTML, resources or
 clicks. Colors may use style/classDef/linkStyle with fill/stroke/color six-digit hex
 or basic color names, and stroke-width 0-6px only; pair fills with readable text.
@@ -72,17 +71,51 @@ REFERENCES = {
 Example: {"type":"BarChart","title":"Illustrative study time","xKey":"topic","unit":"minutes","data":[{"topic":"Algebra","minutes":20},{"topic":"Geometry","minutes":30}],"series":[{"dataKey":"minutes","name":"Study time"}]}.
 Types: LineChart, BarChart, AreaChart, ComposedChart, PieChart, RadarChart, ScatterChart.
 Required: type,title,xKey,data,series. Optional: description,unit,stacked (bar/area/composed
-only), colors (category palette, especially pie), enableControls (boolean, default false).
+only), colors (category palette, especially pie), enableControls (boolean, default false), model (optional equation-driven data).
 Set enableControls=true only for illustrative/exploratory data the learner should
 tweak (e.g. a simple x/y relationship). Keep false for canonical comparisons,
 measured facts, grades, or source-grounded data, unless the user explicitly asks
-to explore edits. Local sliders/inputs and Reset update the chart/data/export without
+to explore edits. Local Slider/Number modes and Reset update the chart/data/export without
 changing the saved answer. Clearly label illustrative data; never invent measurements.
+When an explicit dependency or a useful contextual model helps exploration, include
+model={"kind":"illustrative","note":"Explain assumptions and units","parameters":[{"key":"gain","label":"Gain","value":2,"min":0,"max":5}],"equations":[{"dataKey":"y","expression":"gain * x"}]} with a numeric x row field and a y series.
+This is a format example, not a required equation. Design useful relationships for
+this context; invented approximations/simulations are allowed but MUST be labeled
+illustrative with assumptions, never passed off as established laws or observations.
+Use kind=established only for a supported relationship; note states scope/units.
+Never replace supplied measurements with fitted/invented outputs. Keep observations
+in a separate untouched series and label the model curve separately when comparing.
+Only parameters and row fields used by the equations are editable in model mode.
+Do not invent a dependency just to add controls. For freely editable data without
+a meaningful equation, omit model and retain enableControls=true. For fixed facts,
+leave controls false unless an explicitly requested hypothetical exploration.
+Model outputs are series dataKeys, never xKey. Parameters are global adjustable
+inputs (max eight), with distinct identifier key,label,value,min,max; optional step
+and unit. Optional inputs=[{"dataKey":"quantity","label":"Quantity","min":0,"max":100}]
+can bound/name independent numeric row fields (including xKey), or declare auxiliary
+per-row inputs without plotting them. Optional min,max,unit; max eight, no output
+collisions or unused controls. Include their numeric values in every data row.
+Supply up to six equations; expressions can reference numeric row fields,
+parameters and other equation outputs. Dependencies may be in any order; no cycles,
+self references or undefined names. Outputs are calculated/read-only; parameters
+update every row and editing an independent row input recalculates its dependents.
+Normal data/series are still required; displayed outputs are recomputed from the
+model. Derived series may use null placeholders, so the frontend rather
+than the model calculates their initial values. Supply independent inputs normally. Calculation, validation, Reset, fullscreen,
+data tables and updated downloads run locally, with no follow-up model call.
+Expression grammar: explicit + - * / ^ (or **), parentheses, decimal/scientific
+numbers, pi/e constants; abs,sqrt,sin,cos,tan,log/ln (natural),exp,round,floor,ceil,
+pow(a,b),min/max(2-8 args). Trigonometry uses radians. No implicit multiplication,
+JavaScript, assignments, property access, conditionals or arbitrary functions.
+Use safe parameter bounds and valid initial domains/units. Expressions max 240
+characters. Division by zero, invalid domains or overflow preserve the last valid
+chart and show a local error. Parameter limits are chosen for exploration, not an
+assumption that all data must follow a model.
 Each series has dataKey, optional name
 and color. Colors accept blue,purple,green,amber,red,neutral or six-digit hex; keep an
 entity's color consistent across related charts. ComposedChart also requires type Line,
-Bar or Area per series. Simple identifier keys; each row has xKey plus every series key.
-Values are finite numbers within +/-1e12; null gaps only for line/bar/area/composed.
+Bar or Area per series. Simple identifier keys; each row has xKey plus every series key and any declared model inputs.
+Values are finite numbers within +/-1e100; null gaps only for line/bar/area/composed.
 Use at most 200 rows, six series, three charts and 24000 characters per chart. Pie
 uses one nonnegative series with positive total and at most 24 categories; radar
 uses 3-24 nonnegative categories. Scatter x values are numeric. No arbitrary props,
