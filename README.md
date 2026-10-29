@@ -104,6 +104,11 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
   supplied/skipped/defaulted parameter shapes and sanitized failures. Query and
   response bodies are not retained in logs.
 
+Arabic-script text uses bundled Noto Naskh Arabic alongside the existing Latin
+font. Browser glyph fallback selects fonts within mixed sentences automatically;
+Arabic, Urdu and other Arabic-script text need no model markup or per-word tags.
+Only the Arabic subset loads when needed; code and math retain their own fonts.
+
 ## Workspace pages
 
 Library (including upload/source details), Progress, Assessments and Settings share

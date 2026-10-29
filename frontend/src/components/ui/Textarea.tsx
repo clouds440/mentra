@@ -8,6 +8,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   function Textarea({ className, ...props }, ref) {
     return (
       <textarea
+        dir="auto"
         className={cn(
           'field-control min-h-28 w-full resize-y placeholder:text-subtle',
           className,

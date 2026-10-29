@@ -1,5 +1,16 @@
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/inter/wght-italic.css';
+/* noto-naskh-arabic-arabic-wght-normal */
+@font-face {
+  font-family: 'Noto Naskh Arabic Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url(../../node_modules/@fontsource-variable/noto-naskh-arabic/files/noto-naskh-arabic-arabic-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1;
+}
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -100,7 +111,7 @@
 @layer base {
   :root {
     color-scheme: light;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    font-family: Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -629,7 +640,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 
 /* Main-chat reading preferences never scale the application shell or shared pages. */
 .chat-scope { --chat-font-size: 1rem; }
-.chat-prose { font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif; font-size: var(--chat-font-size, 1rem); line-height: 1.7; }
+.chat-prose { font-family: 'Inter Variable', Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, sans-serif; font-size: var(--chat-font-size, 1rem); line-height: 1.7; }
 .chat-prose[data-chat-size='small'], .chat-scope[data-chat-size='small'] { --chat-font-size: .9375rem; }
 .chat-prose[data-chat-size='large'], .chat-scope[data-chat-size='large'] { --chat-font-size: 1.125rem; }
 .chat-prose .markdown-content { font-size: inherit; line-height: inherit; }
@@ -641,7 +652,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .chat-composer textarea { font-family: inherit; font-size: var(--chat-font-size); line-height: 1.65; }
 .chat-prose .code-block { font-family: ui-sans-serif, system-ui, sans-serif; line-height: normal; }
 .chat-prose .code-block pre, .chat-prose .code-block code { font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace; font-size: 12.5px; line-height: 1.8; }
-.chat-domain-card { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: .875rem; line-height: 1.75; }
+.chat-domain-card { font-family: Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, sans-serif; font-size: .875rem; line-height: 1.75; }
 .mermaid-svg { min-height: 5rem; max-height: 70dvh; }
 .mermaid-placeholder { min-height: 10rem; }
 .rich-icon { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.125em; flex-shrink: 0; }
@@ -714,4 +725,11 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 @layer components {
   .workspace-page .settings-grid { @apply grid items-stretch gap-6 lg:grid-cols-2; }
   .workspace-page .settings-grid > .page-section { @apply mt-0; }
+}
+
+/* Resolve direction per prose block without language guessing or DOM rewriting.
+   Explicit code/math controls retain their own bidi and font contracts. */
+.markdown-content :where(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th) {
+  unicode-bidi: plaintext;
+  text-align: start;
 }

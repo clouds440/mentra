@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+import { workspace } from './renovation-fixtures';
+
+test('mixed Latin and Arabic-script prose automatically uses both bundled fonts', async ({ page }) => {
+  const fonts: string[] = [];
+  page.on('request', request => { if (request.url().includes('noto-naskh')) fonts.push(request.url()); });
+  const fixture = await workspace(page);
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByText('Latest answer', { exact: false }).first()).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  expect(fonts).toHaveLength(0);
+  const mixed = 'English React 42 ' + '\u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0631\u062f\u0648 \u067e\u0691\u06be\u06cc\u06ba \u0641\u0627\u0631\u0633\u06cc \u067e\u069a\u062a\u0648 \u0633\u0646\u068c\u064a';
+  fixture.complete(mixed); await page.reload();
+  const paragraph = page.locator('.markdown-content p').filter({ hasText: mixed });
+  await expect(paragraph).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  expect(fonts.length).toBeGreaterThan(0);
+  await paragraph.evaluate(node => node.setAttribute('data-font-probe', 'mixed'));
+  const client = await page.context().newCDPSession(page);
+  await client.send('DOM.enable'); await client.send('CSS.enable');
+  const { root } = await client.send('DOM.getDocument');
+  const { nodeId } = await client.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-font-probe="mixed"]' });
+  const result = await client.send('CSS.getPlatformFontsForNode', { nodeId });
+  expect(result.fonts.some((font: { familyName: string; glyphCount: number }) => /Noto Naskh Arabic/i.test(font.familyName) && font.glyphCount > 0)).toBe(true);
+  expect(result.fonts.some((font: { familyName: string; glyphCount: number }) => /Inter/i.test(font.familyName) && font.glyphCount > 0)).toBe(true);
+  const composer = page.locator('.chat-composer textarea:visible');
+  await composer.fill('\u0627\u0631\u062f\u0648 English');
+  await expect(composer).toHaveAttribute('dir', 'auto');
+  expect(await paragraph.evaluate(node => getComputedStyle(node).unicodeBidi)).toBe('plaintext');
+});
