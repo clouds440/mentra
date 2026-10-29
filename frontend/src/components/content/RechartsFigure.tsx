@@ -1,5 +1,5 @@
 import { modelSummary } from '../../lib/chartModel';
-import { Component, lazy, memo, Suspense, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, lazy, memo, Suspense, useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
 import { parseChartSpec, editChartValue, serializeChartSpec, type ChartSpec } from '../../lib/chartSpec';
@@ -54,14 +54,15 @@ function RechartsFigureContent({ code }: { code: string }) {
   const [controlMode, setControlMode] = useState<'slider' | 'number'>('slider');
   const spec = edited?.original === original ? edited.value : original;
   const current = useRef(spec); current.current = spec;
-  function edit(row: number, field: string, value: number) {
+  const edit = useCallback((row: number, field: string, value: number) => {
     if (!original || !current.current) return false;
     const next = editChartValue(current.current, row, field, value);
     if (!next) return false;
     if (next !== current.current) { current.current = next; setEdited({ original, value: next }); }
     return true;
-  }
-  const controls = spec?.enableControls && original ? <Suspense fallback={null}><ChartControls key={`${code}:${reset}`} spec={spec} original={original} mode={controlMode} onModeChange={setControlMode} selection={controlSelection} onSelectionChange={setControlSelection} onEdit={edit} onReset={() => { current.current = original; setEdited(undefined); setControlSelection({ row: 0 }); setReset(value => value + 1); }} /></Suspense> : null;
+  }, [original]);
+  const resetChart = useCallback(() => { current.current = original; setEdited(undefined); setControlSelection({ row: 0 }); setReset(value => value + 1); }, [original]);
+  const controls = spec?.enableControls && original ? <Suspense fallback={null}><ChartControls key={`${code}:${reset}`} spec={spec} original={original} mode={controlMode} onModeChange={setControlMode} selection={controlSelection} onSelectionChange={setControlSelection} onEdit={edit} onReset={resetChart} /></Suspense> : null;
   const [source, setSource] = useState(false); const [data, setData] = useState(false); const [expanded, setExpanded] = useState(false);
   const background = useRef(spec); if (!expanded) background.current = spec;
   async function download(format: 'svg' | 'png') {

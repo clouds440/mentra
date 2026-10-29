@@ -120,9 +120,19 @@ Parsed charts use a 30-entry owner-scoped cache. Chart families and their shared
 Recharts dependencies load only when a valid chart approaches the viewport.
 Chart canvases have no conversation/theme subscriptions. Existing memoized message
 identity rules prevent typing/unchanged refresh/font changes from rerendering them.
-ResizeObserver handles actual plot sizing locally. Small charts animate for 250ms
-with Recharts' reduced-motion-aware `auto`; above 120 row-series pairs animation is
-disabled. Tooltip changes do not animate or delay exact values.
+ResizeObserver handles actual plot sizing locally. Small static charts animate for
+250ms; controlled charts use interruptible 100ms linear geometry transitions, with
+Recharts' reduced-motion-aware `auto`. The shared controller primes one display
+step immediately, avoiding preparatory frames that could starve animation
+during continuous slider updates. Numeric values, equations and tables update
+immediately; no debounce or input delay is added. Above 120 row-series pairs,
+animation is disabled. Tooltip changes do not animate or delay exact values.
+Control edit/reset callbacks are stable, so unrelated figure actions do not rerender
+the controls. Motion acceptance: all four geometry/input checks passed three
+consecutive runs, and all 47 existing chart/rich-content browser regressions passed.
+The rapid-drag probe verifies movement before input stops, immediate exact data,
+latest-target convergence and zero chat-message/Markdown rerenders. Reduced-motion
+and large-chart probes verify direct updates without intermediate geometry.
 
 Native inputs/bars are ordinary application components with no animation gate or
 extra model round needed merely to render accepted data. Static cards subscribe to
