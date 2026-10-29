@@ -1,3 +1,4 @@
+import { QuestionCardPreview } from './QuestionCardPreview';
 import { PageSection } from '../workspace/PageShell';
 import { AnswerContent } from '../content/AnswerContent';
 import { selectedAnswer } from './AssessmentPaper';
@@ -98,8 +99,8 @@ export function MistakesPractice() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><Link className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/assessments?assessment=${encodeURIComponent(item.assessment_id)}&attempt=${encodeURIComponent(item.attempt_id)}`}><span className="min-w-0 break-words">{item.assessment_title}</span><ArrowUpRight size={14} className="shrink-0" aria-hidden="true" /></Link><time className="text-xs text-subtle" dateTime={item.occurred_at}>{new Date(item.occurred_at).toLocaleDateString()}</time></div>
 </> : <>
       <div className="flex min-w-0 items-center justify-between gap-2"><span className="truncate text-xs text-muted">{item.resolved ? 'Corrected' : item.priority}</span><span className="shrink-0 text-xs tabular-nums text-muted">{item.score}/{item.marks}</span></div>
-      <p className="line-clamp-2 h-10 break-words text-sm font-medium leading-5 text-heading" title={item.prompt}>{item.prompt}</p>
-      <p className="line-clamp-2 h-8 break-words text-xs leading-4 text-muted" title={item.feedback}>{item.feedback}</p>
+      <QuestionCardPreview content={item.prompt} />
+      <QuestionCardPreview content={item.feedback} secondary />
       <p className="truncate text-xs text-subtle" title={item.assessment_title}>{item.assessment_title}</p>
       <Button variant="secondary" size="sm" className="mt-auto w-full" onClick={() => setReviewed(item)}>Review mistake<ArrowUpRight size={14} aria-hidden="true" /></Button>
 </>}

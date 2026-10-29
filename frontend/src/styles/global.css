@@ -733,3 +733,9 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* Card previews preserve Markdown without expanding the card or loading diagrams. */
+.question-card-preview .markdown-content { font-size: inherit; line-height: inherit; }
+.question-card-preview .markdown-content :where(p, h1, h2, h3, h4, ul, ol, pre, blockquote) { margin-block: 0; font-size: inherit; line-height: inherit; }
+.question-card-preview .markdown-content pre { white-space: pre-wrap; }
+.question-card-preview .markdown-content .katex { font-size: 1em; }

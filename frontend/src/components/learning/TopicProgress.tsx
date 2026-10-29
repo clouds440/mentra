@@ -98,9 +98,10 @@ function TopicDetail({ id, context, initialQuery, onClose }: { id: string; conte
       .catch(() => { if (!controller.signal.aborted) setError('Couldn’t load these subskills. Please retry.'); });
     return () => controller.abort();
   }, [id, context, query, page, retry]);
-  return <Dialog open onDismiss={onClose} aria-label="Topic subskills" className="max-w-2xl">
+  return <Dialog open onDismiss={onClose} aria-label="Topic subskills" className="flex max-h-[88dvh] max-w-2xl flex-col overflow-hidden p-0">
     {evidence && <ProgressEvidence concept={evidence} context={context} onClose={() => setEvidence(undefined)} />}
-    <div className="space-y-4 p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-medium text-heading">{data?.topic.name ?? 'Subskills'}</h2><p className="mt-1 text-sm text-muted">{data?.topic.scope}</p></div><Button variant="ghost" size="sm" aria-label="Close subskills" onClick={onClose}><X size={18} /></Button></div>
+    <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-5"><div><h2 className="text-lg font-medium text-heading">{data?.topic.name ?? 'Subskills'}</h2><p className="mt-1 text-sm text-muted">{data?.topic.scope}</p></div><Button variant="ghost" size="sm" aria-label="Close subskills" onClick={onClose}><X size={18} /></Button></header>
+    <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5" data-skill-scroll>
       <Input type="search" aria-label="Search subskills" placeholder="Search inside this topic…" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} />
       {data && id !== 'ungrouped' && <details className="text-xs text-muted"><summary className="ui-disclosure cursor-pointer">Rename topic</summary><form className="mt-2 flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); const name = String(new FormData(event.currentTarget).get('topic_name') ?? '').trim(); if (name) void save(signal => renameLearningTopic(id, name, data.topic.revision, signal)); }}><Input name="topic_name" aria-label="Topic name" defaultValue={data.topic.name} maxLength={200} required disabled={saving} /><Button size="sm" type="submit" disabled={saving}>Save name</Button></form></details>}
       {lastMove && <p role="status" className="text-xs text-muted">Skill moved. <Button size="sm" variant="ghost" disabled={saving} onClick={() => void save(signal => moveLearningSubskill(id, lastMove.skill, lastMove.target, 1, lastMove.operation, signal, true))}>Undo move</Button></p>}

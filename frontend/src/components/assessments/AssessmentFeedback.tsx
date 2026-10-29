@@ -1,3 +1,4 @@
+import { QuestionCardPreview } from './QuestionCardPreview';
 import type { Assessment, AssessmentAttempt } from '../../types/assessments';
 import { feedbackAppearance, QuestionFeedback, type FeedbackOutcome } from '../interactions/QuestionFeedback';
 import { questionLabel, selectedAnswer } from './AssessmentPaper';
@@ -46,9 +47,9 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
       const appearance = feedbackAppearance[item.outcome];
       return <article key={item.question.id} className="workspace-panel flex h-56 min-w-0 flex-col gap-3 overflow-hidden">
         <div className="flex min-w-0 items-center justify-between gap-2"><span className="truncate text-xs font-medium text-heading">{questionLabel(item.question, item.index)}</span>{style === 'marks' && <span className="shrink-0 text-xs tabular-nums text-muted">{item.grade.score}/{item.question.marks}</span>}</div>
-        <p className="line-clamp-2 h-10 break-words text-sm font-medium leading-5 text-heading" title={item.question.prompt}>{item.question.prompt}</p>
+        <QuestionCardPreview content={item.question.prompt} />
         <span className={`flex items-center gap-1.5 text-xs ${appearance.color}`}><appearance.Icon size={14} aria-hidden="true" />{appearance.label}</span>
-        <p className="line-clamp-2 h-8 break-words text-xs leading-4 text-muted" title={item.grade.feedback}>{item.grade.feedback}</p>
+        <QuestionCardPreview content={item.grade.feedback} secondary />
         <Button size="sm" variant="secondary" className="mt-auto w-full" onClick={() => { setSelected(position); setReviewOpen(true); }}>Review result</Button>
       </article>;
     })}</div> : results.map(item => <div key={item.question.id}>{renderFeedback(item)}</div>)}

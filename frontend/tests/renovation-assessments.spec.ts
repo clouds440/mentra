@@ -271,3 +271,22 @@ test('results remain usable while learning updates run in the background', async
   await expect(page.getByText('Feedback saved and learning progress updated.',{exact:true})).toBeVisible({timeout:15000});
   await expect(page.getByRole('dialog').getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
 });
+
+test('question card Markdown renders in both chat and the assessments page', async ({ page }) => {
+  const state = await chat(page);
+  state.value.questions[0].prompt = '**Force** is $F = ma$ with `mass`.';
+  const attempt = { id: 'flex-attempt', assessment_id: state.value.id, revision: 3, state: 'graded', attempt_number: 1,
+    answers: { q1: 'a' }, grades: [{ question_id: 'q1', score: 2, confidence: 1, feedback: '*Correct* reasoning.', concept_grades: {}, misconceptions: [], outcome: 'correct' }],
+    extraction: null, error: null, evidence_status: 'applied', created_at: created, grade_revision: 1, grade_history: [] };
+  state.setAttempt(attempt); await page.reload();
+  async function verify() {
+    const preview = page.locator('.question-card-preview').first();
+    await expect(preview.locator('strong')).toHaveText('Force');
+    await expect(preview.locator('code')).toHaveText('mass');
+    await expect(preview.locator('.katex')).toBeVisible();
+    await expect(page.locator('.question-card-preview em')).toHaveText('Correct');
+  }
+  await verify();
+  await page.route('**/api/v1/assessments/page?*', route => route.fulfill({ json: { items: [], next_offset: null, contexts: [], detail: state.value, attempts: [attempt] } }));
+  await page.goto('/assessments?assessment=flex-assessment'); await verify();
+});
