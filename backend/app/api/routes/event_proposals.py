@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Request, Depends, Response
+from fastapi import APIRouter, Request, Depends, Response, Query
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.history_management.events.proposals import ProposalDecision, EventProposal
@@ -8,8 +8,9 @@ def private_response(response: Response): response.headers['Cache-Control'] = 'n
 router = APIRouter(prefix='/event-proposals', tags=['event proposals'], dependencies=[Depends(private_response)])
 
 @router.get('', response_model=list[EventProposal])
-async def proposals(request: Request, conversation_id: UUID | None = None, identity=Depends(require_onboarded_identity)):
-    return await run_in_threadpool(request.app.state.event_proposal_service.list, identity.learner_id, str(conversation_id) if conversation_id else None)
+async def proposals(request: Request, conversation_id: UUID | None = None, resolved_only: bool = False,
+                    offset: int = Query(0, ge=0, le=100000), limit: int = Query(30, ge=1, le=50), identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.event_proposal_service.list, identity.learner_id, str(conversation_id) if conversation_id else None, resolved_only=resolved_only, offset=offset, limit=limit)
 
 @router.get('/{identifier}', response_model=EventProposal)
 async def detail(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):

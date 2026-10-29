@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
-from sqlalchemy import select, update, delete, func, or_
+from sqlalchemy import select, update, delete, func
 from app.core.exceptions import AppError
 from app.db.owner_transactions import OwnerTransactions
 from app.chat.repositories.tables import conversations, messages, turns
@@ -102,27 +102,22 @@ class EventProposalRepository:
         for identifier in expired:
             session.execute(update(p).where(p.c.id == identifier).values(state='expired', revision=p.c.revision+1, decision=None, claim_id=None, claim_until=None))
             delete_thread(session, thread_id(owner, identifier))
-        old = list(session.execute(select(p.c.id).where(p.c.learner_id == owner,
-            p.c.state.not_in(['pending', 'deciding']), p.c.created_at < self.clock()-timedelta(days=30)).limit(100)).scalars())
-        for identifier in old:
-            delete_thread(session, thread_id(owner, identifier))
-            session.execute(delete(p).where(p.c.id == identifier))
+        # Resolved decisions remain user history until their source is explicitly
+        # deleted. Expiry retires review authority, not the historical record.
 
-    def list(self, owner, conversation_id=None):
-        query = select(p).where(p.c.learner_id == owner, p.c.state.in_(['pending', 'deciding']))
+    def list(self, owner, conversation_id=None, *, resolved_only=False, offset=0, limit=30):
+        query = select(p).where(p.c.learner_id == owner)
+        query = query.where(p.c.state.not_in(['pending', 'deciding']) if resolved_only else p.c.state.in_(['pending', 'deciding']))
         if conversation_id:
             query = query.where(p.c.conversation_id == conversation_id)
         with self.sessions() as session:
-            maintenance = session.scalar(select(or_(
-                select(p.c.id).where(p.c.learner_id == owner, p.c.expires_at <= self.clock(),
-                    p.c.state.in_(['pending', 'deciding'])).exists(),
-                select(p.c.id).where(p.c.learner_id == owner, p.c.state.not_in(['pending', 'deciding']),
-                    p.c.created_at < self.clock()-timedelta(days=30)).exists())))
+            maintenance = session.scalar(select(p.c.id).where(p.c.learner_id == owner,
+                p.c.expires_at <= self.clock(), p.c.state.in_(['pending', 'deciding'])).limit(1))
             if not maintenance:
-                return [self._public(row) for row in session.execute(query.order_by(p.c.created_at.desc()).limit(30)).mappings()]
+                return [self._public(row) for row in session.execute(query.order_by(p.c.created_at.desc(), p.c.id).offset(offset).limit(limit)).mappings()]
         with self.transactions.write(owner) as tx:
             self._prune(tx._session, owner)
-            return [self._public(row) for row in tx._session.execute(query.order_by(p.c.created_at.desc()).limit(30)).mappings()]
+            return [self._public(row) for row in tx._session.execute(query.order_by(p.c.created_at.desc(), p.c.id).offset(offset).limit(limit)).mappings()]
 
     def detail(self, owner, identifier):
         with self.sessions() as session: return self._public(self._get(session, owner, identifier))

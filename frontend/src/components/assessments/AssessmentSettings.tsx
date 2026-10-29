@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { buttonStyles } from '../ui/Button';
 import { usePageRefresh } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
@@ -24,10 +25,10 @@ export function AssessmentSettings() {
     catch (reason) { setValue(previous); setError(reason instanceof ApiError ? reason.message : 'Unable to save assessment settings.'); }
     finally { setBusy(false); }
   }
-  return <section className="workspace-panel mt-6 space-y-3">
+  return <PageSection className="workspace-panel mt-6 space-y-3">
     <h2 className="text-sm font-medium text-heading">Assessments in chat</h2>
     {!value && !error ? <Skeleton variant="form" rows={1} /> : <Toggle label="Always auto add assessments" checked={value?.auto_add ?? false} disabled={!value || busy} onChange={event => void change(event.target.checked)} />}
     <p className="text-sm text-muted">Save every quiz or mock paper generated in chat to your Assessments library. With this off, practice stays in its chat until you add it or ask to evaluate your answers.</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} disabled={busy} onClick={() => { setError(''); setReload(value => value+1); }}>Refresh</button></p>}
-  </section>;
+  </PageSection>;
 }

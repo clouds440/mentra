@@ -1,7 +1,7 @@
+import { PageShell, PageSkeleton } from '../components/workspace/PageShell';
 import { buttonStyles } from '../components/ui/Button';
 import { FilePlus2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
-import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MaterialUpload } from '../components/library/MaterialUpload';
@@ -29,12 +29,12 @@ export function AddMaterialPage() {
     return () => controller.abort();
   }, [reload]);
 
-  return <div className="h-full overflow-y-auto"><section className="page-container">
+  return <PageShell>
     <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link>
     <WorkspaceHeader title="Add material" description="Give your study sources a home. Upload a file and connect it to what you’re learning." icon={FilePlus2} />
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
-    {!capabilities && !error && <Skeleton variant="form" />}
+    {!capabilities && !error && <PageSkeleton layout="form" />}
     {capabilities && <div className="workspace-panel max-w-3xl"><MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
       onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} /></div>}
-  </section></div>;
+  </PageShell>;
 }

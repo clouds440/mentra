@@ -30,7 +30,8 @@ async def preferences(request: Request, identity=Depends(require_onboarded_ident
 
 @router.get('/page')
 async def agenda_page(request: Request, after: datetime | None = None, before: datetime | None = None,
-        status: str | None = Query('scheduled', pattern='^(scheduled|completed|cancelled)$'),
+        all_dates: bool = False,
+        status: str | None = Query('all', pattern='^(all|scheduled|completed|cancelled)$'),
         kind: str | None = Query(None, pattern='^(quiz|exam|assignment|deadline|study|other)$'),
         query: str = Query('', max_length=200), cursor: str | None = Query(None, max_length=1000),
         limit: int = Query(30, ge=1, le=50), selected: UUID | None = None,
@@ -44,7 +45,7 @@ async def agenda_page(request: Request, after: datetime | None = None, before: d
         with read_sessions(source.sessions) as sessions:
             events = EventRepository(sessions, clock=source.clock, capacity=source.capacity)
             page = EventsService(events, clock=source.clock).list(identity.learner_id,
-                dict(after=after, before=before, status=status, kind=kind, query=query), cursor, limit)
+                dict(after=after, before=before, status=None if status == 'all' else status, kind=kind, query=query, all_dates=all_dates), cursor, limit)
             detail = events.detail(identity.learner_id, str(selected)) if selected else None
             proposals, proposals_error = None, False
             if cursor is None:

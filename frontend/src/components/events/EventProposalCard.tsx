@@ -14,10 +14,11 @@ export function EventProposalCard({ initial, onResolved }: { initial: EventPropo
   const [error, setError] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
+    if (!['pending', 'deciding'].includes(initial.state)) { setValue(initial); return; }
     const request = new AbortController(); controller.current = request;
     void eventProposals.detail(initial.id, request.signal).then(result => { if (!request.signal.aborted) setValue(result); }).catch(reason => { if (!request.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Proposal unavailable.'); });
     return () => controller.current?.abort();
-  }, [initial.id]);
+  }, [initial.id, initial.revision]);
   async function decide(decision: 'approve' | 'dismiss', details?: EventDraft) {
     if (busy) return;
     controller.current?.abort(); const request = new AbortController(); controller.current = request; setBusy(true); setError('');

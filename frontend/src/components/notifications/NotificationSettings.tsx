@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { buttonStyles } from '../ui/Button';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
@@ -36,11 +37,11 @@ function Preferences() {
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to save settings.'); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
-  return <section className="workspace-panel space-y-5"><h2 className="text-lg font-medium">Notifications</h2><p className="text-sm text-muted">Each event can send one reminder. Reminders missed while notifications are disabled are not sent later.</p>
+  return <PageSection className="workspace-panel space-y-5"><h2 className="text-lg font-medium">Notifications</h2><p className="text-sm text-muted">Each event can send one reminder. Reminders missed while notifications are disabled are not sent later.</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => { void load(); })}>Reload settings</button></p>}
     {!value && busy && <Skeleton variant="form" />}
     {value && <><Toggle label="Enable notifications" checked={value.enabled} disabled={busy} onChange={event => { setDirty(true); setSaved(false); setValue({ ...value, enabled: event.target.checked }); }} />
       <Toggle label="Event reminders" checked={!value.disabled_kinds.includes('event_reminder')} disabled={busy} onChange={event => { setDirty(true); setSaved(false); setValue({ ...value, disabled_kinds: event.target.checked ? value.disabled_kinds.filter(kind => kind !== 'event_reminder') : [...value.disabled_kinds, 'event_reminder'] }); }} />
-      <Button disabled={busy} loading={busy} onClick={() => void save()}>{'Save settings'}</Button>{saved && <p role="status" className="text-sm text-muted">Settings saved.</p>}</>}
-  </section>;
+      <Button disabled={busy} loading={busy} onClick={() => void save()}>{'Save settings'}</Button><p role="status" className="min-h-5 text-sm text-muted">{saved ? 'Settings saved.' : ''}</p></>}
+  </PageSection>;
 }

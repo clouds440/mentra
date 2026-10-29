@@ -154,6 +154,18 @@ class EventPersistenceTests(unittest.TestCase):
     def edit(self, event, **changes):
         return self.service.edit(self.owner, event['id'], EventEdit(expected_revision=event['revision'], client_request_id=uuid4(), **changes))['event']
 
+    def test_all_dates_retains_completed_cancelled_events_and_pages(self):
+        old = self.service.create(self.owner, create_body(title='Old completed study', local_date=date(2020, 1, 1)))['event']
+        future = self.service.create(self.owner, create_body(title='Future cancelled study', local_date=date(2030, 1, 1)))['event']
+        self.service.edit(self.owner, old['id'], EventEdit(expected_revision=old['revision'], client_request_id=uuid4(), status='completed'))
+        self.service.edit(self.owner, future['id'], EventEdit(expected_revision=future['revision'], client_request_id=uuid4(), status='cancelled'))
+        page = self.service.list(self.owner, dict(all_dates=True), limit=1)
+        self.assertEqual(page['items'][0]['id'], old['id'])
+        self.assertIsNotNone(page['next_cursor'])
+        following = self.service.list(self.owner, dict(all_dates=True), page['next_cursor'], limit=1)
+        self.assertEqual(following['items'][0]['id'], future['id'])
+        self.assertEqual(self.service.list(self.other, dict(all_dates=True))['items'], [])
+
     def test_owned_crud_receipt_replay_conflict_and_purge(self):
         body = create_body()
         first = self.service.create(self.owner, body)

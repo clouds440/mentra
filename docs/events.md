@@ -161,3 +161,17 @@ and civil dates with an exclusive next-day end for all-day events. UTF-8 lines a
 folded by octet length and text is escaped. Descriptions contain user event text,
 never source chat evidence. Exported files contain no reminder alarm and do not
 synchronize later edits; calendar applications determine import/notification behavior.
+
+## Agenda and decision history — 29 October 2026
+
+The workspace defaults to all event statuses and all dates. `GET /events/page`
+accepts `status=all` and `all_dates=true`; explicit date ranges retain the one-year
+limit. All-date reads retain owner scope, page limits, revision-bound cursors and
+SQL deadlines. Completing/cancelling does not remove an event; permanent deletion does.
+
+`GET /event-proposals?resolved_only=true&offset=0&limit=30` pages through historical
+approved/dismissed/expired suggestions. Ordinary tool/chat listing remains pending-only.
+Resolved records are no longer automatically pruned after 30 days. Source-chat deletion
+still removes its proposals and private checkpoint content. Old records already pruned
+before this change cannot be reconstructed by this UI. Historical cards reuse their
+loaded DTO rather than issuing a detail request per card.

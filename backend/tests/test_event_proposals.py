@@ -33,6 +33,18 @@ class EventProposalTests(unittest.TestCase):
 
     def proposal(self): return self.service.create(self.owner, self.body, self.scope)['proposal']
 
+    def test_dismissed_history_survives_maintenance_and_is_owner_scoped(self):
+        proposal = self.proposal()
+        result = self.service.decide(self.owner, proposal['id'], ProposalDecision(expected_revision=1, decision='dismiss'))
+        self.assertEqual(result.state, 'dismissed')
+        self.service.repository.clock = lambda: datetime.now(timezone.utc) + timedelta(days=40)
+        self.assertEqual(self.service.list(self.owner), [])
+        history = self.service.list(self.owner, resolved_only=True)
+        self.assertEqual([str(item.id) for item in history], [proposal['id']])
+        self.assertEqual(self.service.list(self.other, resolved_only=True), [])
+        self.assertEqual(self.service.list(self.owner, resolved_only=True, offset=1), [])
+        self.assertEqual(self.service.detail(self.owner, proposal['id']).state, 'dismissed')
+
     def test_approve_replay_restart_and_cleanup(self):
         proposal = self.proposal()
         from app.langchain.repositories.checkpointer import postgres_saver

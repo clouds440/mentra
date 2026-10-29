@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { buttonStyles } from '../ui/Button';
 import { CalendarDays, Plus, ArrowUpRight } from 'lucide-react';
 import { WorkspaceEmpty } from '../workspace/WorkspaceHeader';
@@ -21,9 +22,9 @@ function Agenda({ onProposals, reload = 0 }: Props) {
   const [page, setPage] = useState<EventPage | null>(null);
   const [detail, setDetail] = useState<EventRecord | null>(null);
   const [editing, setEditing] = useState<EventRecord | 'new' | null>(null);
-  const [status, setStatus] = useState<EventStatus>('scheduled');
+  const [status, setStatus] = useState<EventStatus | ''>('');
   const [query, setQuery] = useState('');
-  const [range, setRange] = useState('upcoming');
+  const [range, setRange] = useState('all');
   const [busy, setBusy] = useState(false);
   const [activeAction, setActiveAction] = useState('');
   const [error, setError] = useState('');
@@ -49,11 +50,14 @@ function Agenda({ onProposals, reload = 0 }: Props) {
     try {
       const after = new Date(); after.setHours(0, 0, 0, 0); after.setDate(after.getDate() - (range === 'past' ? 180 : 1));
       const before = new Date(); before.setHours(0, 0, 0, 0); before.setDate(before.getDate() + (range === 'past' ? 1 : 180));
-      const filter = new URLSearchParams({ status, query, after: after.toISOString(), before: before.toISOString() });
+      const filter = new URLSearchParams({ query });
+      if (status) filter.set('status', status); else filter.set('status', 'all');
+      if (range === 'all') filter.set('all_dates', 'true');
+      else { filter.set('after', after.toISOString()); filter.set('before', before.toISOString()); }
       if (cursor) filter.set('cursor', cursor);
       // Cursor binds exact range values, so retain the first page's query.
       const filterKey = `${status}:${query}:${range}`;
-      if (cursor && previousFilter.current?.key === filterKey) { filter.set('after', previousFilter.current.after); filter.set('before', previousFilter.current.before); }
+      if (range !== 'all' && cursor && previousFilter.current?.key === filterKey) { filter.set('after', previousFilter.current.after); filter.set('before', previousFilter.current.before); }
       else previousFilter.current = { key: filterKey, after: filter.get('after')!, before: filter.get('before')! };
       const result = await events.page(filter, controller.signal, selected);
       if (!controller.signal.aborted) { setPage(old => ({ ...result, items: cursor ? [...(old?.items ?? []), ...result.items] : result.items })); setDetail(result.detail); if (!cursor) onProposals?.(result.proposals_error ? null : result.proposals ?? []); }
@@ -76,9 +80,9 @@ function Agenda({ onProposals, reload = 0 }: Props) {
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to update event. Refresh before retrying.'); }
     finally { if (!controller.signal.aborted) { setBusy(false); setActiveAction(''); } }
   }
-  return <section className="workspace-panel space-y-5">
+  return <PageSection className="workspace-panel space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-medium text-heading">Your agenda</h2><Button onClick={() => setEditing('new')}><Plus size={16} aria-hidden="true" />New event</Button></div>
-    <p className="text-sm text-muted">Keep track of quizzes, deadlines and study sessions. Each event has at most one reminder.</p>
+    <p className="text-sm text-muted">Your plans and history in one place. Completed and cancelled events stay here until you delete them.</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => { void load(); })}>Refresh</button></p>}
     {editing && <EventEditor key={editing === 'new' ? 'new' : `${editing.id}:${editing.revision}`} current={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onSaved={item => { setEditing(null); setParams({ tab: 'events', event: item.id }); void load(); }} />}
     {selected && !editing && <Dialog open busy={busy} onDismiss={() => setParams({ tab: 'events' })} aria-label="Event details" className="w-[calc(100%-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">{detail ? <section className="space-y-4" aria-label="Event details">
@@ -93,10 +97,10 @@ function Agenda({ onProposals, reload = 0 }: Props) {
       <p className="text-xs text-muted">The calendar file is a snapshot. Later changes in Mentra do not update your calendar.</p>
       {deleting && <div className="space-y-2"><p>Delete this event permanently?</p><Button variant="danger" disabled={busy} loading={activeAction === 'delete'} onClick={() => void change(detail, 'delete')}>Confirm delete</Button> <Button variant="ghost" disabled={busy} onClick={() => setDeleting(false)}>Keep event</Button></div>}
     </section> : <div className="space-y-3"><p role="status" className="text-sm text-muted">{error || 'Loading event…'}</p><Button variant="ghost" onClick={() => setParams({tab: 'events'})}>Close</Button></div>}</Dialog>}
-    <form className="grid items-center gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_auto_auto_auto]" onSubmit={event => { event.preventDefault(); void load(); }}><Input aria-label="Search events" className="min-w-40 flex-1" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /><Button variant="secondary" type="submit">Search</Button><Select className="w-auto" aria-label="Event status" value={status} onChange={event => setStatus(event.target.value as EventStatus)}>{['scheduled', 'completed', 'cancelled'].map(value => <option key={value}>{value}</option>)}</Select><Select className="w-auto" aria-label="Event date range" value={range} onChange={event => setRange(event.target.value)}><option value="upcoming">Upcoming six months</option><option value="past">Past six months</option></Select></form>
+    <form className="grid items-center gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_auto_10rem_13rem]" onSubmit={event => { event.preventDefault(); setPage(null); void load(); }}><Input aria-label="Search events" className="min-w-40 flex-1" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /><Button variant="secondary" type="submit">Search</Button><Select className="w-full" aria-label="Event status" value={status} onChange={event => setStatus(event.target.value as EventStatus | '')}><option value="">All events</option><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></Select><Select className="w-full" aria-label="Event date range" value={range} onChange={event => setRange(event.target.value)}><option value="all">All dates</option><option value="upcoming">Upcoming six months</option><option value="past">Past six months</option></Select></form>
     {!page && !error && <Skeleton variant="list" />}
     {page?.items.length === 0 && <WorkspaceEmpty icon={CalendarDays} title="Room for your next plan" description="No events match this view. Add a study session, deadline or exam to get started." action={<Button variant="secondary" onClick={() => setEditing('new')}>Create an event</Button>} />}
     <ul className="grid gap-3 md:grid-cols-2">{page?.items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ tab: 'events', event: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><CalendarDays size={20} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium text-heading">{item.title}</span><span className="mt-2 block text-xs leading-5 text-muted">{item.local_date ?? new Date(item.starts_at!).toLocaleString(undefined, { timeZone: item.timezone, dateStyle:'medium', timeStyle:'short' })} · {item.timezone}</span><span className="workspace-status mt-3 capitalize">{item.kind} · {item.status}</span></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>
     {page?.next_cursor && <Button variant="secondary" onClick={() => void load(page.next_cursor!)}>Load more</Button>}
-  </section>;
+  </PageSection>;
 }

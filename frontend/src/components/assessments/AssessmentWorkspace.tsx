@@ -1,3 +1,4 @@
+import { PageShell, PageSkeleton } from '../workspace/PageShell';
 import { AssistanceSelector } from './AssistanceSelector';
 import { AnswerSheetUpload } from './AnswerSheetUpload';
 import { PrintPaperButton } from './PrintPaperButton';
@@ -5,11 +6,10 @@ import { MistakesPractice } from './MistakesPractice';
 import { AttemptBadges } from './AttemptBadges';
 import { buttonStyles } from '../ui/Button';
 import { Tabs } from '../ui/Tabs';
-import { ClipboardCheck, Plus, ArrowUpRight, Sparkles, LoaderCircle } from 'lucide-react';
+import { ClipboardCheck, ArrowUpRight, Sparkles, LoaderCircle } from 'lucide-react';
 import { WorkspaceHeader, WorkspaceEmpty } from '../workspace/WorkspaceHeader';
 import { materialWarningMessage } from '../../services/userError';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
-import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { AssessmentFeedback } from './AssessmentFeedback';
 import { AssessmentPaper, PaperHeader, PracticeNotice, questionLabel, selectedIds, selectedAnswer, showsAssessmentMarks } from './AssessmentPaper';
@@ -124,24 +124,24 @@ function Workspace({owner}: {owner:string}) {
     try { const result = await assessments.page(controller.signal, 'assessments', undefined, more); if (!controller.signal.aborted) { setItems(previous => [...previous, ...result.items]); setMore(result.next_offset); } }
     catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load more assessments.'); }
   }
-  return <div className="h-full overflow-y-auto"><div className="page-container">
-    <WorkspaceHeader title={tab === 'create' ? 'Create assessment' : 'Assessments'} description={tab === 'create' ? 'Choose a topic and the practice you want. Mentra handles the rest.' : 'Turn what you’re learning into practice. Explore your questions, continue an attempt or start something new.'} icon={ClipboardCheck} actions={tab !== 'create' && <Button disabled={busy} onClick={() => changeTab('create')}><Plus size={16} aria-hidden="true" />New assessment</Button>} />
+  return <PageShell>
+    <WorkspaceHeader title="Assessments" description="Build understanding through practice. Create questions, continue an attempt or revisit your mistakes." icon={ClipboardCheck} />
     <Tabs label="Assessment sections" value={tab} onChange={changeTab} options={(['assessments', 'mistakes', 'create'] as const).map(value => ({ value, label: value === 'create' ? 'Create new' : value === 'mistakes' ? 'Practice my mistakes' : 'Assessments', id: `assessment-tab-${value}`, panel: `assessment-panel-${value}`, disabled: busy }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => setReload(value => value + 1))}>Refresh</button></p>}
     <section role="tabpanel" id="assessment-panel-mistakes" aria-labelledby="assessment-tab-mistakes" hidden={tab !== 'mistakes'}>{tab === 'mistakes' && <MistakesPractice />}</section>
     <section role="tabpanel" id="assessment-panel-create" aria-labelledby="assessment-tab-create" hidden={tab !== 'create'}>
     {params.get('generation') && <AssessmentGenerationCard key={params.get('generation')!} id={params.get('generation')!} title="Your assessment" onComplete={result => setParams({ assessment: 'assessment' in result ? result.assessment.id : result.id })} />}
-    {loading && !error ? <Skeleton variant="form" rows={5} /> : <AssessmentCreateForm topics={contexts.map(item => item.name)} draft={draft} onChange={setDraft} busy={busy} onSubmit={() => void generate()} />}
+    {loading && !error ? <PageSkeleton layout="form" /> : <AssessmentCreateForm topics={contexts.map(item => item.name)} draft={draft} onChange={setDraft} busy={busy} onSubmit={() => void generate()} />}
     </section>
     <section role="tabpanel" id="assessment-panel-assessments" aria-labelledby="assessment-tab-assessments" hidden={tab !== 'assessments'} className="space-y-5">
-    {loading && !error && <Skeleton variant="card" />}
+    {loading && !error && <PageSkeleton />}
     {current && <section className="workspace-panel space-y-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium text-heading">{current.title}</h2><Button variant="secondary" disabled={busy} loading={busy} onClick={() => void start()}>Start new attempt</Button></div>
       {attempt ? usesInteractiveAssessment(current) && attempt.state === 'draft' ? <MCQAssessment key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <AnswerSheet key={attempt.id} assessment={current} initial={attempt} onChange={updateAttempt} /> : <><AssessmentPaper assessment={current} /><AnswerSheetUpload attempt={null} onBusyChange={setBusy} disabled={busy} onStart={async signal => { const value = await assessments.start(current.id, startOperation.current, signal); if (!signal.aborted) startOperation.current=crypto.randomUUID(); return value; }} onChange={updateAttempt} /></>}
       <h3 className="font-medium">Attempt history</h3>{attempts.length === 0 && <p className="text-sm text-muted">No attempts yet.</p>}<ul className="space-y-2">{attempts.map(value => <li key={value.id}><button type="button" aria-pressed={attempt?.id === value.id} className="w-full rounded-control border border-border px-3 py-2.5 text-left text-sm text-heading transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-active" onClick={() => setAttempt(value)}>Attempt {value.attempt_number} · {value.state} · {new Date(value.created_at).toLocaleString()}</button></li>)}</ul>
     </section>}
-    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Create an assessment around a topic you’re learning. Your attempts and feedback stay together here." action={<Button variant="secondary" onClick={() => changeTab('create')}>Create your first assessment</Button>} />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.question_count} questions{item.has_paper ? ` · ${item.part_count} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span><AttemptBadges summary={item.attempt_summary} /></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
+    <h2 className="text-lg font-medium">Your assessments</h2>{!loading && !error && items.length === 0 && <WorkspaceEmpty icon={Sparkles} title="Practice starts with a question" description="Use the Create new tab to build practice around a topic. Your attempts and feedback stay together here." />}<ul className="workspace-grid">{items.map(item => <li key={item.id}><button className="workspace-item flex h-full w-full items-start gap-3 text-left text-heading focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setParams({ assessment: item.id })}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-accent"><ClipboardCheck size={19} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block break-words font-medium">{item.title}</span><span className="mt-2 block text-xs text-muted">{item.question_count} questions{item.has_paper ? ` · ${item.part_count} parts` : ''}</span><span className="workspace-status mt-3 capitalize">{item.tags?.includes('revision assessment') ? 'Revision assessment' : item.purpose}</span><AttemptBadges summary={item.attempt_summary} /></span><ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" /></button></li>)}</ul>{more !== null && <Button variant="secondary" onClick={() => void loadMore()}>Load more</Button>}
     </section>
-  </div></div>;
+  </PageShell>;
 }
 
 export function AnswerSheet({ assessment, initial, onChange, actions }: { assessment: Assessment; initial: AssessmentAttempt; onChange: (attempt: AssessmentAttempt) => void; actions?: ReactNode }) {

@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { usePageRefresh } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
@@ -57,7 +58,7 @@ export function ConceptReview({ onReviewed, contexts, initial }: { onReviewed: (
   }
   if (loading) return <Skeleton variant="list" rows={2} />;
   if (!items.length && !error && !actionError && !busy) return null;
-  return <section aria-label="Concept suggestions" className="workspace-panel space-y-4">
+  return <PageSection aria-label="Concept suggestions" className="workspace-panel space-y-4">
     <div className="flex flex-wrap items-start justify-between gap-3"><div className="max-w-xl"><h2 className="text-lg font-medium text-heading">Topic suggestions to review</h2>
       <p className="mt-1 text-sm text-muted">Mentra noticed these topics in your learning activity. Confirm accepts the topic and adds it to its learning area when one is linked. It doesn’t mark it learned or change your score. Dismiss removes the suggestion.</p></div>
       {!!items.length && <Button size="sm" variant="secondary" aria-label="Confirm all suggestions" disabled={!!busy} loading={busy?.bulk} onClick={() => void confirmAll()}>{busy?.bulk ? `Confirming ${busy.completed} of ${busy.total}` : `Confirm all (${items.length})`}</Button>}
@@ -69,5 +70,5 @@ export function ConceptReview({ onReviewed, contexts, initial }: { onReviewed: (
       <div className="flex shrink-0 gap-2"><Button size="sm" disabled={!!busy} loading={!busy?.bulk && busy?.id === item.id && busy.decision === 'confirm'} onClick={() => void review(item,'confirm')}>Confirm</Button>
         <Button size="sm" variant="ghost" disabled={!!busy} loading={!busy?.bulk && busy?.id === item.id && busy.decision === 'discard'} onClick={() => void review(item,'discard')}>Dismiss</Button></div>
     </div>)}</div>
-  </section>;
+  </PageSection>;
 }

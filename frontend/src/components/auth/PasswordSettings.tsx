@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from './AuthProvider';
 import { changePassword } from '../../services/auth';
@@ -43,7 +44,7 @@ export function PasswordSettings() {
     }
   }
 
-  return <section className="workspace-panel mt-6" aria-labelledby="password-settings-heading">
+  return <PageSection className="workspace-panel mt-6" aria-labelledby="password-settings-heading">
     <h2 id="password-settings-heading" className="text-lg font-medium tracking-tight text-heading">Change password</h2>
     <p id="password-settings-description" className="mt-2 text-sm leading-6 text-muted">Enter your current password to choose a new one. Other sessions will be signed out.</p>
     <form onSubmit={submit} aria-describedby="password-settings-description" className="mt-5 max-w-md space-y-4" onChange={() => { setSaved(false); setError(null); }}>
@@ -60,8 +61,8 @@ export function PasswordSettings() {
         <p id="new-password-help" className="text-xs text-subtle">Use at least 12 characters.</p>
       </div>
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-      {saved && <p role="status" className="text-sm text-body">Password changed. Use your new password next time you sign in.</p>}
+      <p role="status" className="min-h-5 text-sm text-body">{saved ? 'Password changed. Use your new password next time you sign in.' : ''}</p>
       <Button type="submit" loading={busy}>Change password</Button>
     </form>
-  </section>;
+  </PageSection>;
 }

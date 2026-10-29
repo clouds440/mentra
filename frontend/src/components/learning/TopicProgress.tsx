@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, ChevronRight, X } from 'lucide-react';
@@ -53,7 +54,7 @@ export function TopicProgress({ context, reload, onTotal }: { context: string; r
     } catch { if (!controller.signal.aborted) setError('Couldn’t update this grouping. It may have changed elsewhere; refresh and retry.'); }
     finally { if (!controller.signal.aborted) { setOrganizing(false); operation.current = undefined; } }
   }
-  return <section aria-labelledby="understanding-title" className="workspace-panel space-y-4">
+  return <PageSection aria-labelledby="understanding-title" className="workspace-panel space-y-4">
     {selected && <TopicDetail key={`${context}:${selected}`} id={selected} context={context} initialQuery={selectedQuery} onClose={() => setSelected(undefined)} />}
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 id="understanding-title" className="flex items-center gap-2 text-lg font-medium text-heading"><BookOpen size={19} aria-hidden="true" />Your understanding</h2><p className="mt-1 max-w-xl text-sm text-muted">Explore broader topics, then open the specific skills inside. Checked skills describe your practice so far, not coverage of a whole syllabus.</p></div>
       <Input type="search" className="w-full sm:max-w-xs" aria-label="Search topics and subskills" placeholder="Search topics or subskills…" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} />
@@ -68,7 +69,7 @@ export function TopicProgress({ context, reload, onTotal }: { context: string; r
       <ul className="divide-y divide-border">{data.items.map(topic => <li key={topic.id} className="py-4"><button className="flex w-full items-start justify-between gap-3 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => { setSelectedQuery(topic.matching_skills?.length ? query : ''); setSelected(topic.id); }} aria-label={`Explore ${topic.name}`}><span><span className="font-medium text-heading">{topic.name}</span><span className="mt-1 block text-sm text-muted">{topic.scope}</span><span className="mt-2 block text-xs text-muted">{topic.checked_count} of {topic.subskill_count} tracked subskills checked</span>{!!topic.matching_skills?.length && <span className="mt-1 block text-xs text-accent">Matches: {topic.matching_skills.join(', ')}</span>}</span><ChevronRight size={18} className="mt-1 shrink-0 text-muted" aria-hidden="true" /></button></li>)}</ul>
       {data.total > 10 && <Pagination page={Math.floor(data.offset / data.limit) + 1} pages={Math.ceil(data.total / data.limit)} onChange={setPage} label="Learning topics" />}
     </>}
-  </section>;
+  </PageSection>;
 }
 
 function TopicDetail({ id, context, initialQuery, onClose }: { id: string; context: string; initialQuery: string; onClose: () => void }) {

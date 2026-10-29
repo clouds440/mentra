@@ -1,3 +1,4 @@
+import { PageShell } from '../components/workspace/PageShell';
 import { Tabs } from '../components/ui/Tabs';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Database, Settings2 } from 'lucide-react';
@@ -36,15 +37,13 @@ export function SettingsPage() {
     setParams(next);
   }
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="page-container">
+    <PageShell>
         <WorkspaceHeader title="Settings" description="Make Mentra feel right for you. Manage your learning profile, saved memories and reminders." icon={Settings2} />
 
         <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
-        <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'}>
+        <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'} className="settings-stack">
         <ProfileSettings />
-        <ChatAppearanceSettings />
-        <AssessmentSettings />
+        <div className="settings-grid"><ChatAppearanceSettings /><AssessmentSettings /></div>
         <PasswordSettings />
         <div className="workspace-panel mt-6 divide-y divide-border">
           {settingSections.map(({ title, description, detail, icon: Icon }) => (
@@ -69,7 +68,6 @@ export function SettingsPage() {
         <div role="tabpanel" id="settings-panel-notifications" aria-labelledby="settings-tab-notifications" hidden={tab !== 'notifications'}>
           {tab === 'notifications' && <NotificationSettings />}
         </div>
-      </div>
-    </div>
+    </PageShell>
   );
 }

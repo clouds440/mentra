@@ -25,7 +25,7 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
       const rightEdge = leftEdge + (viewport?.width ?? innerWidth) - viewportPadding * 2;
       const bottomEdge = topEdge + (viewport?.height ?? innerHeight) - viewportPadding * 2;
       if (rect.bottom < topEdge || rect.top > bottomEdge) { close.current(); return; }
-      const panelWidth = Math.min(contentWidth ? Math.max(rect.width, panel.current?.scrollWidth ?? width) : matchWidth ? rect.width : width, rightEdge - leftEdge);
+      const panelWidth = Math.min(contentWidth ? Math.max(rect.width, 220, Math.min(400, panel.current?.scrollWidth ?? width)) : matchWidth ? rect.width : width, rightEdge - leftEdge);
       const above = placement === 'above' || (bottomEdge - rect.bottom < 100 && rect.top - topEdge > bottomEdge - rect.bottom);
       const available = Math.max(64, above ? rect.top - topEdge - 6 : bottomEdge - rect.bottom - 6);
       const height = Math.min(panel.current?.scrollHeight ?? 300, available, maxHeight);
@@ -52,5 +52,5 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
   }, [open, anchor, placement, matchWidth, contentWidth, width, focusOnOpen, viewportPadding, maxHeight]);
   if (!open) return null;
   return createPortal(<div ref={panel} id={id} role={role} aria-label={label} aria-multiselectable={multiselectable || undefined} style={style}
-    className={cn('overlay-panel z-[100] overflow-y-auto overscroll-contain rounded-control p-1', className)}>{children}</div>, anchor.current?.closest('dialog[open], [data-modal-navigation]') ?? document.body);
+    className={cn('overlay-panel z-[100] overflow-x-hidden overflow-y-auto overscroll-contain rounded-control p-1', className)}>{children}</div>, anchor.current?.closest('dialog[open], [data-modal-navigation]') ?? document.body);
 }

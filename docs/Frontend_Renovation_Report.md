@@ -218,3 +218,31 @@ Removed the duplicate mistake setup panel. The only practice entry point is now 
 Dark background, card/paper, surface, input and popover tokens were slightly darkened again. Text tokens remain legible and the shared contrast checks pass. `frontend/standards.md` now documents actual grid geometry, compact previews, full-content review and the single practice entry point.
 
 Validation for this correction: all 25 affected browser cases passed against the rebuilt local frontend, including 320/390/1440px mistake grids, long-text truncation, full review dialogs, modal-only practice filters, source links, practice recovery and assessment results. Production build and theme/contrast checks passed. The local frontend container is healthy. Screenshots: [320px mistake grid](product-improvements/polish-mistakes-grid-mobile.png), [desktop mistake grid](product-improvements/polish-mistakes-grid-desktop.png), [assessment result grid](product-improvements/polish-results-grid-mobile.png).
+
+## Workspace page redesign — 29 October 2026
+
+Library (list/upload/detail), Progress (Learning/Events), Assessments (saved/create/
+mistakes) and Settings (profile/memories/notifications) now compose the existing header
+with shared PageShell, PageSection, PageToolbar and PageSkeleton components. Notifications
+also adopts the page frame. Semantic theme surfaces, consistent spacing, responsive
+cards, full-width tab tracks and restrained typography define the common design.
+Main chat layout, composer and message rendering are unchanged.
+
+Profile edits use the existing Dialog and preserve the summary underneath. The agenda
+uses stable filter widths, defaults to all dates/statuses, and exposes paginated decision
+history. Dropdown labels wrap inside the real panel width, including in dialogs.
+Assessments uses its Create new tab without a duplicate header or empty-state creation
+button. Reserved feedback space and filters above placeholders reduce avoidable shifts.
+
+Verification includes production builds, UI/theme checks, responsive fixture browser
+journeys and isolated PostgreSQL event/history/API regressions. Two legacy migration
+rollback tests encounter the existing memory-revision preservation guard in migration
+0038; no migration or protected data history was weakened to bypass that guard.
+
+Final local acceptance: production build and TypeScript passed; theme/UI checks passed;
+15 Chromium journeys passed, covering all requested tabs, Library source details,
+360/768/1440px layouts, dark mode, modal focus, dropdown bounds, unchanged chat navigation,
+and dismissed history across reload without per-card requests. 49 event temporal,
+persistence, proposal and HTTP checks passed against disposable PostgreSQL. Page
+screenshots were visually inspected. Browser APIs in layout checks are fixtures;
+the database regressions exercise actual ownership, retention and pagination.

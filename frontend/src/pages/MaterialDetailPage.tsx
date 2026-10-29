@@ -1,3 +1,6 @@
+import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
+import { FileText } from 'lucide-react';
+import { PageShell } from '../components/workspace/PageShell';
 import { invalidatePageCache } from '../services/pageCache';
 import { practiceLink } from '../services/practiceIntent';
 import { Dialog } from '../components/ui/Dialog';
@@ -69,7 +72,7 @@ export function MaterialDetailPage() {
     } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setLoadingVersions(false); }
   }
-  if (!doc || doc.id !== documentId) return <section className="p-6"><Link to="/library" className="text-accent">Back to Library</Link>{error ? <p role="alert" className="mt-4 text-danger">{error}</p> : <Skeleton variant="form" />}</section>;
+  if (!doc || doc.id !== documentId) return <PageShell><WorkspaceHeader title="Material" description="Your source, details and versions." icon={FileText} /><Link to="/library" className="text-accent">Back to Library</Link>{error ? <p role="alert" className="mt-4 text-danger">{error}</p> : <Skeleton variant="form" />}</PageShell>;
   const job = pendingJob(doc); const active = doc.generations.find(g => g.id === doc.active_generation_id);
   const versions = [...doc.versions, ...olderVersions];
   function openVersion(versionId: string) {
@@ -77,8 +80,8 @@ export function MaterialDetailPage() {
     const version = versions.find(v => v.id === versionId);
     setSource({ token: '', document_id: doc.id, version_id: versionId, generation_id: version?.generation_id ?? '', chunk_id: '', title: doc.title, heading_path: [], spans: [], excerpt: '', warnings: version?.warnings ?? [] });
   }
-  return <div className="h-full overflow-y-auto"><section className="page-container">
-    <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link><header className="workspace-header"><div className="min-w-0"><h1 className="page-title">{doc.title}</h1><p className="mt-1.5 text-sm text-muted">{doc.archived ? 'Archived' : active ? 'Ready to study' : 'Not yet indexed'}{job ? ' · Preparing material' : ''}</p></div>{active && !doc.archived && <Link to={`/?document=${doc.id}`} className={buttonStyles({ variant: 'secondary' })}>Study in chat</Link>}{active && !doc.archived && <Link to={practiceLink({ document_ids: [doc.id], context_id: contexts.find(item => doc.context_ids.includes(item.context_id) && item.status !== 'ARCHIVED')?.context_id, topic: doc.title })} className={buttonStyles({ variant: 'secondary' })}>Quiz this material</Link>}</header>
+  return <PageShell>
+    <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link><WorkspaceHeader title={doc.title} description={doc.archived ? 'Archived material' : active ? 'Ready to study - Source details and versions' : 'Preparing your study source'} icon={FileText} actions={<>{active && !doc.archived && <Link to={`/?document=${doc.id}`} className={buttonStyles({ variant: 'secondary' })}>Study in chat</Link>}{active && !doc.archived && <Link to={practiceLink({ document_ids: [doc.id], context_id: contexts.find(item => doc.context_ids.includes(item.context_id) && item.status !== 'ARCHIVED')?.context_id, topic: doc.title })} className={buttonStyles({ variant: 'secondary' })}>Quiz this material</Link>}</>} />
     {conflict && <div role="alert" className="inline-notice">Saved details changed while you were editing. Your draft is preserved. <Button size="sm" variant="secondary" onClick={reloadSaved}>Reload saved details</Button></div>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}{active?.warnings.map(w => <p key={w} className="text-sm text-muted">{materialWarningMessage(w)}</p>)}
     {doc.jobs.filter(j => j.state === 'FAILED').slice(0, 1).map(j => <div key={j.id} className="rounded-xl border border-border p-4"><p className="text-sm text-danger">This material could not be processed.</p><Button className="mt-3" variant="secondary" disabled={busy} loading={activeAction === 'retry'} onClick={() => void action('retry', () => retryJob(j.id))}>Retry processing</Button></div>)}
@@ -93,5 +96,5 @@ export function MaterialDetailPage() {
     {caps && !doc.archived && <MaterialUpload contexts={contexts} capabilities={caps} replacement={doc} onContextCreated={refresh} onAccepted={() => refresh()} />}
     {source && <SourceViewer source={source} filename={versions.find(v => v.id === source.version_id)?.filename} includeArchived={consent} onClose={() => setSource(undefined)} />}
     <Dialog busy={busy} ref={deleteDialog} aria-label="Delete material confirmation" className="max-w-md"><h2 className="font-medium">Delete {doc.title}?</h2><p className="mt-3 text-sm text-muted">This removes the material and its source versions. It stops appearing in chat immediately after the request is accepted; storage cleanup may take longer.</p><div className="mt-5 flex gap-3"><Button variant="secondary" onClick={() => deleteDialog.current?.close()}>Keep material</Button><Button variant="danger" disabled={busy} loading={activeAction === 'delete'} onClick={() => void action('delete', async () => { await deleteMaterial(doc.id); deleteDialog.current?.close(); navigate('/library?deleted=1'); })}>Confirm deletion</Button></div></Dialog>
-  </section></div>;
+  </PageShell>;
 }

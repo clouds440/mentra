@@ -1,3 +1,4 @@
+import { PageShell } from '../components/workspace/PageShell';
 import { Bell, BellRing, Check, CalendarDays, ClipboardCheck, Settings2, ArrowUpRight } from 'lucide-react';
 import { WorkspaceHeader, WorkspaceEmpty } from '../components/workspace/WorkspaceHeader';
 import { usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
@@ -44,7 +45,7 @@ function Inbox() {
     } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to update notification. Reload and try again.'); }
     finally { setActiveAction(''); if (!controller.signal.aborted) setBusy(false); }
   }
-  return <div className="h-full overflow-y-auto"><div className="page-container">
+  return <PageShell>
     <WorkspaceHeader title="Notifications" description="Your reminders and updates, together in one place." icon={Bell} actions={<Link className={buttonStyles({ variant: 'secondary', size: 'sm' })} to="/settings?tab=notifications"><Settings2 size={16} aria-hidden="true" />Preferences</Link>} />
     <div className="workspace-toolbar"><div className="flex items-center gap-3"><BellRing className="text-accent" size={18} aria-hidden="true" /><div><h2 className="font-medium text-heading">{unread ? 'Unread updates' : 'Your inbox'}</h2><p className="mt-1 text-xs text-muted">{page ? `${page.items.length} updates shown` : 'Checking for updates'}</p></div></div><div className="flex flex-wrap items-center gap-4"><Toggle label="Unread only" checked={unread} onChange={event => setUnread(event.target.checked)} /><Button variant="ghost" size="sm" disabled={busy} loading={busy && !activeAction} onClick={() => refreshPage(() => { void load(); })}>Refresh</Button></div></div>
     {error && <p role="alert" className="workspace-panel text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => refreshPage(() => { void load(); })}>Retry</button></p>}
@@ -61,5 +62,5 @@ function Inbox() {
       </div></div>
     </li>)}</ul>
     {page?.next_cursor && <div className="flex justify-center"><Button variant="secondary" disabled={busy} loading={busy} onClick={() => void load(page.next_cursor!)}>Load more</Button></div>}
-  </div></div>;
+  </PageShell>;
 }

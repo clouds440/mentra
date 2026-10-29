@@ -427,7 +427,7 @@
   .dialog-frame { @apply m-auto max-h-[88dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-panel border border-border-strong bg-popover p-5 text-foreground shadow-overlay; }
   .inline-notice { @apply rounded-control border border-border bg-surface px-3 py-2 text-sm leading-6 text-muted; }
   .select-options { width: max-content; max-width: calc(100vw - 24px); }
-  .select-options [role=option] > span { flex: none; width: max-content; max-width: calc(100vw - 96px); }
+  .select-options [role=option] > span { flex: 1 1 0%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .page-description { @apply text-sm leading-6 text-muted; }
   .overlay-backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 }
@@ -660,3 +660,58 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .rich-color strong, .rich-color em { color: inherit; }
 @media (max-width: 639px) { .chat-composer textarea { font-size: max(1rem, var(--chat-font-size)); } }
 @media (forced-colors: active) { .rich-color { color: CanvasText !important; } .value-bar [role='meter'], .value-bar [role='progressbar'] { border: 1px solid CanvasText; } .value-bar [role] > div { background: Highlight; } }
+
+/* Non-chat workspace system. A single visual rhythm across every route/tab. */
+@layer components {
+  .workspace-page { @apply h-full min-w-0 overflow-y-auto; scrollbar-gutter: stable; }
+  .workspace-page .page-container { @apply max-w-6xl space-y-6 px-4 pb-12 pt-6 sm:px-8 sm:pt-8 lg:px-10; }
+  .workspace-page .workspace-header { @apply min-h-28 items-start gap-4 border-0 pb-2; }
+  .workspace-page .workspace-header .page-title { @apply text-2xl font-semibold tracking-tight sm:text-3xl; }
+  .workspace-page .workspace-header > div:first-child > span { @apply h-11 w-11 rounded-panel border-0 bg-active; }
+  .workspace-page .workspace-header .action-row { @apply pt-1; }
+  .workspace-page .workspace-panel { @apply rounded-2xl border-border bg-card p-5 sm:p-6; }
+  .workspace-page .page-section + .page-section { @apply mt-6; }
+  .page-section-header { @apply mb-5 flex flex-wrap items-start justify-between gap-4; }
+  .page-section-header h2 { @apply text-base font-semibold tracking-tight text-heading; }
+  .page-section-header p { @apply mt-1 max-w-2xl text-sm leading-6 text-muted; }
+  .workspace-page .workspace-toolbar { @apply min-w-0 items-center gap-4 rounded-xl border-border bg-surface p-4; }
+  .workspace-page .workspace-toolbar > * { min-width: 0; }
+  .workspace-page .workspace-item { @apply h-full rounded-2xl p-5 hover:border-border-strong; }
+  .workspace-page .workspace-grid { @apply gap-4 lg:grid-cols-2; }
+  .workspace-page .workspace-empty { @apply min-h-56 justify-center rounded-2xl border-solid bg-card px-6 py-10; }
+  .workspace-page .workspace-tabs { @apply w-full rounded-xl border-0 bg-surface p-1; }
+  .workspace-page .workspace-tabs-track { @apply gap-1 p-0; }
+  .workspace-page .workspace-tabs [role=tab] { @apply min-h-10 px-4; }
+  .workspace-page [role=tabpanel] { @apply min-w-0; }
+  .workspace-page .settings-stack > * + * { @apply mt-6; }
+  .workspace-page .workspace-panel h2 { @apply tracking-tight; }
+  .workspace-page .workspace-status { @apply rounded-full px-2.5 py-1; }
+  .page-loading { @apply min-h-80; }
+  .workspace-page input, .workspace-page textarea { max-width: 100%; }
+  .workspace-page dl > div { @apply min-w-0; }
+  .workspace-page [role=alert] { @apply rounded-xl border border-danger/25 bg-danger/5 p-3; }
+  @media (max-width: 639px) {
+    .workspace-page .workspace-header { @apply min-h-0 pb-2; }
+    .workspace-page .workspace-header .action-row { @apply w-full; }
+    .workspace-page .workspace-header .action-row > * { @apply flex-1 justify-center; }
+    .workspace-page .workspace-toolbar { @apply flex-col items-stretch; }
+    .workspace-page .workspace-toolbar > div { @apply w-full; }
+    .workspace-page .workspace-toolbar [data-select-control] { @apply w-full; }
+    .workspace-page .workspace-panel { @apply p-4; }
+  }
+}
+
+@layer components {
+  .library-search { @apply flex min-w-0 flex-wrap gap-2 rounded-xl border border-border bg-card p-3; }
+  .library-search input { @apply min-w-0 flex-1; flex-basis: 12rem; }
+  .workspace-page .page-section { @apply space-y-4; }
+  .workspace-page .page-section > h2 { @apply text-base font-semibold; }
+  .workspace-page .page-section dl > div { @apply rounded-none border-0 border-b border-border bg-transparent px-0 py-3; }
+  .workspace-page .page-section dl { @apply gap-x-8 gap-y-0; }
+  .workspace-page .page-section .workspace-panel { @apply rounded-xl p-4; }
+}
+
+@layer components {
+  .workspace-page .settings-grid { @apply grid items-stretch gap-6 lg:grid-cols-2; }
+  .workspace-page .settings-grid > .page-section { @apply mt-0; }
+}

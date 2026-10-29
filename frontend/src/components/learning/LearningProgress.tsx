@@ -1,8 +1,9 @@
+import { EventHistory } from '../events/EventHistory';
+import { PageShell, PageSkeleton, PageToolbar } from '../workspace/PageShell';
 import { Tabs } from '../ui/Tabs';
 import { TrendingUp, CalendarDays } from 'lucide-react';
 import { WorkspaceHeader } from '../workspace/WorkspaceHeader';
 import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
-import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { EventAgenda } from '../events/EventAgenda';
 import { ConceptReview } from './ConceptReview';
@@ -42,19 +43,19 @@ function Progress() {
     if (tab === 'learning') { void progressPage(controller.signal, context || undefined).then(data => { if (!controller.signal.aborted) { setLearning(data.overview); setContexts(data.contexts); setBootstrap(data); } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load learning progress.'); }); }
     return () => controller.abort();
   }, [tab, context, reload]);
-  return <div className="h-full overflow-y-auto"><div className="page-container">
-    <WorkspaceHeader title={tab === 'events' ? 'Events' : 'Progress'} description={tab === 'events' ? 'Make room for your next learning milestone. Keep deadlines, practice and study sessions together.' : 'See what you’ve learned, where you’re growing, and what to explore next.'} icon={tab === 'events' ? CalendarDays : TrendingUp} />
+  return <PageShell>
+    <WorkspaceHeader title="Progress" description="Your learning, practice and plans. A clear view of what comes next." icon={tab === 'events' ? CalendarDays : TrendingUp} />
     <Tabs label="Progress sections" value={tab} onChange={value => { const next = new URLSearchParams(params); next.set('tab', value); if(value !== 'events') next.delete('event'); setParams(next); }} options={(['learning', 'events'] as const).map(value => ({ value, label: value === 'learning' ? 'Learning' : 'Events', id: `progress-${value}`, panel: `progress-panel-${value}` }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <Button variant="ghost" size="sm" onClick={() => refreshPage(() => setReload(value => value + 1))}>Retry</Button></p>}
     <section role="tabpanel" id="progress-panel-learning" aria-labelledby="progress-learning" hidden={tab !== 'learning'} className="space-y-6">
+      <PageToolbar><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={context} onChange={event => { setLearning(null); setTotalConcepts(null); setContext(event.target.value); }}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></PageToolbar>
       {tab==='learning' && bootstrap && <ConceptReview initial={bootstrap.candidates} contexts={contexts} onReviewed={() => setReload(value => value+1)} />}
-      <div className="workspace-toolbar"><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={context} onChange={event => { setLearning(null); setTotalConcepts(null); setContext(event.target.value); }}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></div>
-      {!learning && !error && <Skeleton variant="table" />}
+      {!learning && !error && <PageSkeleton layout="table" />}
       {learning && <><QuickReview learning={learning} context={context} /><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
         {tab === 'learning' && <TopicProgress key={context} context={context} reload={reload} onTotal={setTotalConcepts} />}
         <LearningSuggestions learning={learning} context={context} />
       </>}
     </section>
-    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda onProposals={receiveProposals} reload={reload} />}<section aria-label="Event suggestions" className="workspace-panel space-y-4"><div><h2 className="text-lg font-medium text-heading">For your review</h2><p className="mt-1 text-sm text-muted">Suggestions from your chats. Add as shown, edit details or dismiss.</p></div>{!proposals && !error && <Skeleton variant="card" />}{proposals?.length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}<div className="grid gap-3 lg:grid-cols-2">{proposals?.map(value => <EventProposalCard key={value.id} initial={value} onResolved={result => setProposals(current => current?.map(item => item.id === result.id ? result : item) ?? [result])} />)}</div></section></section>
-  </div></div>;
+    <section role="tabpanel" id="progress-panel-events" aria-labelledby="progress-events" hidden={tab !== 'events'} className="space-y-4">{tab === 'events' && <EventAgenda onProposals={receiveProposals} reload={reload} />}<section aria-label="Event suggestions" className="workspace-panel space-y-4"><div><h2 className="text-lg font-medium text-heading">For your review</h2><p className="mt-1 text-sm text-muted">Suggestions from your chats. Add as shown, edit details or dismiss.</p></div>{!proposals && !error && <PageSkeleton />}{proposals && proposals.filter(item => ['pending', 'deciding'].includes(item.state)).length === 0 && <p className="text-sm text-muted">No pending proposals.</p>}<div className="grid gap-3 lg:grid-cols-2">{proposals?.filter(item => ['pending', 'deciding'].includes(item.state)).map(value => <EventProposalCard key={value.id} initial={value} onResolved={result => setProposals(current => current?.map(item => item.id === result.id ? result : item) ?? [result])} />)}</div></section>{tab === 'events' && <EventHistory revision={(proposals ?? []).filter(item => !['pending', 'deciding'].includes(item.state)).map(item => `${item.id}:${item.revision}`).join(',')} />}</section>
+  </PageShell>;
 }

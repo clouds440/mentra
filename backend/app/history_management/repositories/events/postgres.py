@@ -360,8 +360,11 @@ class EventRepository:
             self._snapshot(session)
             stamp_now = self.clock()
             watermark = self._state(session, owner)['revision']
-            query = select(e.c.id, e.c.sort_at).where(e.c.learner_id == owner,
-                          e.c.sort_at >= filters['after'], e.c.sort_at < filters['before'])
+            query = select(e.c.id, e.c.sort_at).where(e.c.learner_id == owner)
+            if filters.get('after'):
+                query = query.where(e.c.sort_at >= filters['after'])
+            if filters.get('before'):
+                query = query.where(e.c.sort_at < filters['before'])
             if filters.get('status'):
                 query = query.where(e.c.status == filters['status'])
             if filters.get('kind'):

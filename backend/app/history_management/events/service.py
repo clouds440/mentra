@@ -55,6 +55,8 @@ class EventsService:
         for value in (filters.get('after'), filters.get('before')):
             if value is not None and (value.tzinfo is None or value.utcoffset() is None or not 1899 <= value.year <= 2201):
                 raise AppError('INVALID_RANGE', 'Choose aware dates between 1899 and 2201.', 422)
+        if filters.get('all_dates') and not filters.get('after') and not filters.get('before'):
+            return self.repository.list(owner, dict(filters, after=None, before=None), cursor, limit)
         start = filters.get('after') or self.clock().astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
         start = start.astimezone(timezone.utc)
         end = (filters.get('before') or start + timedelta(days=90)).astimezone(timezone.utc)

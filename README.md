@@ -104,6 +104,17 @@ the [production runbook](docs/production-readiness.md) to prepare a deployment.
   supplied/skipped/defaulted parameter shapes and sanitized failures. Query and
   response bodies are not retained in logs.
 
+## Workspace pages
+
+Library (including upload/source details), Progress, Assessments and Settings share
+one responsive page shell, section frames, header, filter bars and loading patterns.
+Tabs retain a stable page identity; profile editing opens in the existing modal.
+Assessment creation uses the Create new tab. The main chat layout remains separate.
+
+The agenda defaults to all dates and statuses, so completed/cancelled events remain
+visible until deleted. Approved, dismissed and expired suggestions have paginated
+history; deleting their source conversation removes its suggestions.
+
 ## Interactive learning and visuals
 
 | Capability | Behavior |

@@ -1,3 +1,4 @@
+import { PageSection } from '../workspace/PageShell';
 import { AnswerContent } from '../content/AnswerContent';
 import { selectedAnswer } from './AssessmentPaper';
 import { useEffect, useRef, useState } from 'react';
@@ -72,7 +73,7 @@ export function MistakesPractice() {
     ].map(field => <label key={field.name} className="space-y-1.5 text-xs font-medium text-muted"><span>{field.label}</span><Select multiple aria-label={field.aria} value={field.values} disabled={busy} onChange={event => filter(field.name, Array.from(event.target.selectedOptions, option => option.value))}>{field.options.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></label>)}</div>;
   }
   const current = loadedKey === queryKey ? page : undefined;
-  return <div className="space-y-5">
+  return <PageSection className="space-y-5">
     {practiceOpen && <Dialog open busy={busy} onDismiss={() => setPracticeOpen(false)} aria-labelledby="mistake-practice-title" className="max-w-2xl">
       <div className="mb-5 flex items-center justify-between gap-3"><h2 id="mistake-practice-title" className="text-lg font-medium text-heading">Practice my mistakes</h2><IconButton aria-label="Close practice options" disabled={busy} onClick={() => setPracticeOpen(false)}><X size={18} /></IconButton></div>
       <p className="mb-5 text-sm leading-6 text-muted">Choose what to revisit, or leave filters empty to include everything. Mentra prioritizes repeated mistakes and creates fresh variations.</p>
@@ -109,7 +110,7 @@ export function MistakesPractice() {
     </Dialog>}
     {current && <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs tabular-nums text-muted">{current.total ? `${offset + 1}–${Math.min(offset + 10, current.total)} of ${current.total}` : '0 mistakes'}</p><Pagination page={Math.floor(offset / 10) + 1} pages={Math.ceil(current.total / 10)} disabled={loading} onChange={value => setOffset((value - 1) * 10)} label="Mistake history pages" /></div>}
 
-  </div>;
+  </PageSection>;
 }
 
 function MistakeFeedback({item}: {item: MistakeItem}) {
