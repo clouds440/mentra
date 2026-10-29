@@ -22,3 +22,11 @@ topic_skill = Table('topic_skill', metadata,
     ForeignKeyConstraint(['learner_id', 'topic_id'], ['learning_topic.learner_id', 'learning_topic.id']),
     ForeignKeyConstraint(['concept_id'], ['concept.id']),
     Index('idx_topic_skill_parent', 'learner_id', 'topic_id', 'published'))
+
+skill_resolution_binding = Table('skill_resolution_binding', metadata,
+    identifier('learner_id', primary_key=True), identifier('context_id', primary_key=True),
+    Column('subject_key', Text, primary_key=True), Column('label_key', Text, primary_key=True),
+    identifier('concept_id'), identifier('topic_id'), timestamp('created_at'),
+    ForeignKeyConstraint(['learner_id','context_id'], ['learning_context.learner_id','learning_context.id'], ondelete='CASCADE'),
+    ForeignKeyConstraint(['learner_id','concept_id'], ['topic_skill.learner_id','topic_skill.concept_id'], ondelete='CASCADE'),
+    ForeignKeyConstraint(['learner_id','topic_id'], ['learning_topic.learner_id','learning_topic.id'], ondelete='CASCADE'))

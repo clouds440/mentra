@@ -36,6 +36,51 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
             client_turn_id=uuid4(), expected_revision=0, content='Give me a beginner interactive assessment'))
         return cid
 
+    async def test_valid_target_ids_do_not_spawn_paraphrased_skills(self):
+        from app.langchain.assessment_concepts import resolve_question_concepts
+        from app.assessments.schemas import GeneratedQuestion
+        learner=SimpleNamespace(resolve_generated_concept_labels=AsyncMock())
+        question=GeneratedQuestion(prompt='Distinguish the letters.',difficulty=.2,marks=1,
+            concept_ids=['known'],concept_names=['A long alternate description of letter dots'],
+            model_answer='Compare their dots.',rubric='Identify the distinguishing dot pattern.')
+        request=SimpleNamespace(concept_ids=[],context_id='context',topic='Arabic letters')
+        await resolve_question_concepts(learner,self.owner,request,[question],[dict(id='known',name='Letter dots')])
+        learner.resolve_generated_concept_labels.assert_not_awaited()
+        self.assertEqual(question.concept_ids,['known'])
+        self.assertEqual(question.concept_names,[])
+
+    async def test_new_labels_resolve_once_per_batch_without_single_label_repairs(self):
+        from app.langchain.assessment_concepts import resolve_question_concepts
+        from app.assessments.schemas import GeneratedQuestion
+        learner=SimpleNamespace(resolve_generated_concept_labels=AsyncMock(return_value={'Letter dots':'same','Dot recognition':'same'}),
+            resolve_generated_concepts=AsyncMock(side_effect=AssertionError('No single-label model fallback')))
+        question=GeneratedQuestion(prompt='Distinguish the letters.',difficulty=.2,marks=1,
+            concept_names=['Letter dots','Dot recognition'],model_answer='Compare dots.',rubric='Identify dots.')
+        request=SimpleNamespace(concept_ids=[],context_id='context',topic='Arabic letters')
+        await resolve_question_concepts(learner,self.owner,request,[question],[])
+        self.assertEqual(learner.resolve_generated_concept_labels.await_count,1)
+        learner.resolve_generated_concepts.assert_not_awaited()
+        self.assertEqual(question.concept_ids,['same'])
+
+    async def test_large_organizer_packets_fit_without_an_extra_model_call(self):
+        from app.langchain.concept_identity import ConceptIdentityResolver
+        from app.core.config import Settings
+        from app.learner.topics import TopicOrganization
+        from app.langchain.prompts import PromptSource
+        from app.langchain.token_policy import check_input
+        config=Settings(chat_context_window_tokens=8192)
+        llm=MentraLLM(SimpleNamespace(_settings=config))
+        llm.ainvoke=AsyncMock(return_value=TopicOrganization(placements=[]))
+        candidates=[dict(id=f't{i}',name='Synthetic letters',scope='Synthetic educational boundaries. '*40,
+            subskills=[dict(concept_id=f's{i}-{j}',label='الحروف العربية '*14,ability='Synthetic ability. '*100)
+                for j in range(8)]) for i in range(12)]
+        await ConceptIdentityResolver(llm).organize(['Synthetic target'],'Synthetic topic','Synthetic context',candidates,{})
+        self.assertEqual(llm.ainvoke.await_count,1)
+        payload=llm.ainvoke.call_args.args[1]
+        self.assertTrue(any(item['subskills_truncated'] for item in payload['candidates']))
+        check_input(llm.messages(PromptSource.TOPIC_ORGANIZATION,payload),PromptSource.TOPIC_ORGANIZATION,
+            tools=[TopicOrganization],config=config)
+
     async def test_private_storage_names_never_become_practice_or_mistake_labels(self):
         from app.langchain.concept_identity import ConceptIdentityResolver
         from app.assessments.schemas import GenerationRequest

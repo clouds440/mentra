@@ -42,6 +42,110 @@ class TopicTests(unittest.IsolatedAsyncioTestCase):
     def page_request(self, **extra):
         return LearningProgressRequest(learner_id=self.owner, context_ids=[self.context], **extra)
 
+    async def test_batch_bindings_keep_original_labels_after_renaming_and_reordering(self):
+        async def organize(labels, topic, context, candidates, existing):
+            self.resolver.calls+=1
+            return TopicOrganization(placements=[TopicPlacement(label=label,skill_name='Chain rule',
+                action='create_concept',topic_name='Differentiation rules',scope='Derivative composition rules.',
+                ability='Differentiate a composition.') for label in reversed(labels)])
+        self.resolver.organize=organize
+        request=self.request(['Differentiate a composite function','Chain rule for nested functions'])
+        bindings=await self.engine.resolve_generated_concept_labels(request)
+        self.assertEqual(set(bindings),set(request.labels))
+        self.assertEqual(len(set(bindings.values())),1)
+        self.assertEqual(self.resolver.calls,1)
+        repeated=await self.engine.resolve_generated_concept_labels(request)
+        self.assertEqual(repeated,bindings)
+        self.assertEqual(self.resolver.calls,1)  # No per-label or repeat model calls.
+        self.assertEqual(self.db.repository.list_evidence(self.owner,next(iter(bindings.values()))),[])
+
+    async def test_subject_binding_does_not_reuse_an_excluded_subject(self):
+        await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        # The old token-subset shortcut saw "integration" in "excludes
+        # integration" and incorrectly accepted it as the same subject.
+        known=self.db.repository.known_topic_labels(self.owner,self.context,['Chain rule'],'Integration')
+        self.assertEqual(known,{})
+
+    async def test_wider_lookup_actually_expands_children_not_only_parent_count(self):
+        labels=[f'Rule {i}' for i in range(10)]
+        await self.engine.resolve_generated_concepts(self.request(labels))
+        narrow=self.db.repository.topic_candidates(self.owner,self.context,'Differentiation',12)
+        wide=self.db.repository.topic_candidates(self.owner,self.context,'Differentiation',24)
+        self.assertEqual(len(narrow[0]['subskills']),5)
+        self.assertTrue(narrow[0]['subskills_truncated'])
+        self.assertEqual(len(wide[0]['subskills']),10)
+        self.assertFalse(wide[0]['subskills_truncated'])
+
+    async def test_compact_reuse_does_not_require_repeated_topic_descriptions(self):
+        first=await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        membership=self.engine.get_skill_topics(self.owner,[first[0].id])[first[0].id]
+        async def reuse(labels, topic, context, candidates, existing):
+            self.resolver.calls+=1
+            return TopicOrganization(placements=[TopicPlacement(label=labels[0],action='reuse',
+                skill_id=first[0].id,topic_id=membership['topic_id'])])
+        self.resolver.organize=reuse
+        translated=await self.engine.resolve_generated_concept_labels(self.request(['Composite differentiation']))
+        self.assertEqual(translated['Composite differentiation'],first[0].id)
+        after=self.engine.get_skill_topics(self.owner,[first[0].id])[first[0].id]
+        self.assertEqual(after['ability'],membership['ability'])
+        self.assertEqual(after['scope'],membership['scope'])
+
+    async def test_accepted_bindings_remain_owner_context_and_identity_scoped(self):
+        first=await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        other=self.engine.resolve_learning_context(ResolveLearningContextRequest(
+            learner_id=self.owner,name='Other subject')).context_id
+        self.assertEqual(self.db.repository.known_topic_labels(self.owner,other,['Chain rule'],'Differentiation'),{})
+        self.assertEqual(self.db.repository.known_topic_labels(learner_id('bob'),self.context,['Chain rule'],'Differentiation'),{})
+        second=await self.engine.resolve_generated_concepts(self.request(['Product rule']))
+        from app.learner.exceptions import LearnerError
+        with self.assertRaises(LearnerError):
+            with self.db.repository.transaction(learner_ids=[self.owner]) as repository:
+                repository.save_skill_resolution_bindings(self.owner,self.context,'Differentiation',{'Chain rule':second[0].id})
+        known=self.db.repository.known_topic_labels(self.owner,self.context,['Chain rule'],'Differentiation')
+        self.assertEqual(known['Chain rule'].id,first[0].id)
+
+    async def test_missing_candidate_can_request_bounded_synonym_lookup(self):
+        from unittest.mock import patch
+        first=await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        membership=self.engine.get_skill_topics(self.owner,[first[0].id])[first[0].id]
+        count=0
+        async def organize(labels, topic, context, candidates, existing):
+            nonlocal count
+            count+=1
+            if count==1:
+                return TopicOrganization(placements=[],needs_wider_lookup=True,search_terms=['chain rule'])
+            return TopicOrganization(placements=[TopicPlacement(label=labels[0],action='reuse',
+                skill_id=first[0].id,topic_id=membership['topic_id'])])
+        self.resolver.organize=organize
+        with patch.object(self.db.repository,'topic_candidates',wraps=self.db.repository.topic_candidates) as search:
+            result=await self.engine.resolve_generated_concept_labels(self.request(['Composite derivative']))
+        self.assertEqual(result['Composite derivative'],first[0].id)
+        self.assertEqual(count,2)
+        self.assertTrue(search.call_args_list[1].args[2].startswith('chain rule '))
+        self.assertEqual(search.call_args_list[1].args[3],24)
+
+    async def test_thousand_skill_topic_keeps_lookup_bounded_and_repeats_model_free(self):
+        from sqlalchemy import insert
+        from unittest.mock import patch
+        from app.learner.repositories.tables import concept
+        from app.learner.repositories.tables.topics import topic_skill
+        first=await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        parent=self.engine.get_skill_topics(self.owner,[first[0].id])[first[0].id]['topic_id']
+        with self.db.sessions.begin() as session:
+            session.execute(insert(concept),[dict(id=f'load-{i}',canonical_name=f'Load skill {i}',normalized_name=f'load skill {i}') for i in range(1000)])
+            session.execute(insert(topic_skill),[dict(learner_id=self.owner,concept_id=f'load-{i}',topic_id=parent,
+                label=f'Load skill {i}',ability='A synthetic ability.',phrases=f'\nload skill {i}\n',resolver_version='test') for i in range(1000)])
+        narrow=self.db.repository.topic_candidates(self.owner,self.context,'load skill 999',12)
+        wide=self.db.repository.topic_candidates(self.owner,self.context,'load skill 999',24)
+        self.assertEqual(len(narrow[0]['subskills']),5)
+        self.assertEqual(len(wide[0]['subskills']),12)
+        self.assertIn('load-999',{item['concept_id'] for item in narrow[0]['subskills']})
+        count=self.resolver.calls
+        with patch.object(self.db.repository,'topic_registry_version',side_effect=AssertionError('Exact reuse must not scan registry versions')):
+            repeated=await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
+        self.assertEqual(repeated[0].id,first[0].id)
+        self.assertEqual(self.resolver.calls,count)
+
     async def test_staged_topics_are_hidden_until_publication_and_reuse_is_fast(self):
         first = await self.engine.resolve_generated_concepts(self.request(['Chain rule']))
         self.assertEqual(self.engine.get_learning_topics(self.page_request()).total, 0)

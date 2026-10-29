@@ -4,5 +4,15 @@ import type { AssessmentQuestion } from '../../types/assessments';
 export function LearningTargetLabels({ question }: { question: AssessmentQuestion }) {
   const targets = question.learning_targets ?? [];
   if (!targets.length) return null;
-  return <ul aria-label="Skills practised" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">{targets.map(target => <li key={target.subskill_id}>{target.topic_name && <>{target.topic_name}<span aria-hidden="true"> › </span><span className="sr-only">, subskill: </span></>}{target.subskill_name}</li>)}</ul>;
+  const groups = new Map<string, { name?: string; skills: typeof targets }>();
+  for (const target of targets) {
+    const key = target.topic_id || target.topic_name || '';
+    const group = groups.get(key) ?? { name: target.topic_name, skills: [] };
+    if (!group.skills.some(skill => skill.subskill_id === target.subskill_id)) group.skills.push(target);
+    groups.set(key, group);
+  }
+  return <ul aria-label="Skills practised" className="space-y-1 text-xs text-muted">{Array.from(groups, ([key, group]) => <li key={key}>
+    {group.name && <div dir="auto" className="font-medium">{group.name}</div>}
+    <ul className="flex flex-wrap gap-x-3 gap-y-1">{group.skills.map(skill => <li dir="auto" key={skill.subskill_id}>{skill.subskill_name}</li>)}</ul>
+  </li>)}</ul>;
 }

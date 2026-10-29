@@ -29,7 +29,9 @@ async def resolve_question_concepts(learner, owner, request, questions, targets)
                 from uuid import UUID
                 try: UUID(value)
                 except ValueError: labels.append(value)
-        labels = [label for label in labels if label.strip()]
+        # Supplied, validated target IDs are authoritative attribution. The
+        # generator's optional prose labels must not create parallel skills.
+        labels = [] if resolved else [label for label in labels if label.strip()]
         if not resolved and not labels:
             # The generator omitted attribution; use its assessment topic, never
             # an arbitrary ID or unrelated historical weakness.
@@ -41,6 +43,11 @@ async def resolve_question_concepts(learner, owner, request, questions, targets)
     # candidate promotion, canonical identity and context membership.
     for start in range(0, len(labels), 5):
         batch = labels[start:start+5]
+        if hasattr(learner, 'resolve_generated_concept_labels'):
+            bindings = await learner.resolve_generated_concept_labels(GeneratedConceptsRequest(
+                learner_id=owner, context_id=request.context_id, topic=request.topic, labels=batch, permissive=True))
+            by_name.update({label.casefold():identifier for label,identifier in bindings.items()})
+            continue
         concepts = await learner.resolve_generated_concepts(GeneratedConceptsRequest(
             learner_id=owner, context_id=request.context_id, topic=request.topic, labels=batch, permissive=True))
         for concept in concepts:
@@ -55,4 +62,7 @@ async def resolve_question_concepts(learner, owner, request, questions, targets)
     for question in questions:
         question.concept_ids = list(dict.fromkeys([*question.concept_ids,
             *(by_name[label.casefold()] for label in pending[id(question)] if label.casefold() in by_name)]))
+        if not question.concept_ids:
+            from app.core.exceptions import AppError
+            raise AppError('ASSESSMENT_TARGETS_REQUIRED','A question needs a verified learning target. Please retry.',422)
         question.concept_names = []

@@ -1,6 +1,6 @@
 """Broad learning topics group existing canonical skills without copying evidence."""
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
@@ -12,9 +12,9 @@ class TopicPlacement(LearnerSchema):
     skill_name: str | None = Field(default=None, min_length=1, max_length=200)
     skill_id: str | None = None
     topic_id: str | None = None
-    topic_name: str = Field(min_length=1, max_length=200)
-    scope: str = Field(min_length=1, max_length=1000)
-    ability: str = Field(min_length=1, max_length=1000)
+    topic_name: str = Field(default='', max_length=200)
+    scope: str = Field(default='', max_length=1000)
+    ability: str = Field(default='', max_length=1000)
     action: Literal['reuse', 'add_subskill', 'create_concept', 'defer']
 
     @model_validator(mode='after')
@@ -25,12 +25,17 @@ class TopicPlacement(LearnerSchema):
             raise ValueError('An additional subskill needs an existing topic')
         if self.action == 'create_concept' and (self.topic_id or self.skill_id):
             raise ValueError('New topics cannot choose canonical IDs')
+        if self.action=='create_concept' and (not self.topic_name.strip() or not self.scope.strip()):
+            raise ValueError('A new topic needs a name and scope')
+        if self.action in ('create_concept','add_subskill') and not self.ability.strip():
+            raise ValueError('A new placement needs an assessable ability')
         return self
 
 
 class TopicOrganization(LearnerSchema):
     placements: list[TopicPlacement] = Field(max_length=20)
     needs_wider_lookup: bool = False
+    search_terms: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list, max_length=6)
 
 
 class LearningTopic(LearnerSchema):

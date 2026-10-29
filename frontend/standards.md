@@ -1,5 +1,7 @@
 # Frontend Engineering Standards
 
+- Assessment coverage groups subskills under one topic heading per question. Deduplicate repeated skill IDs within each group, preserve distinct identities, and keep native-script labels direction-aware. Topic membership is coverage, never an aggregate mastery claim.
+
 - Response completion follows the server's response outcome, including partial work and live background-job status. Keep useful content visible on failure. The composer retries the owned unfinished job when provided; graph completion alone must not imply task completion.
 
 - The composer has one primary response control: Send (draft), Pause (active work), Resume (paused work), Retry (failed work). Use distinct Lucide icons and semantic theme colors, plus accessible text labels. Typing switches Resume/Retry to Send; clearing restores the prior action without altering server state. Background assessment cards also expose their owned generation controls. A loading or refresh error must not silently remove the ability to pause a known running job.

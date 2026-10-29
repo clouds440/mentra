@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from .base import PostgresRepositoryBase
 from app.learner.normalization import normalize, query_terms
-from app.learner.repositories.tables.topics import learning_topic as t, topic_skill as m
+from app.learner.repositories.tables.topics import learning_topic as t, topic_skill as m, skill_resolution_binding as bindings
 from app.learner.repositories.tables import concept as c, context_concept as links, learner_concept_state as states
 from app.learner.exceptions import LearnerError
 from app.learner.repositories.tables import learner_audit
@@ -132,23 +132,58 @@ class TopicsStore(PostgresRepositoryBase):
 
     def known_topic_labels(self, owner, context_id, labels, topic=''):
         with self._session() as session:
+            subject_key = sha256(normalize(topic).encode()).hexdigest()
+            keys = {label:sha256(normalize(label).encode()).hexdigest() for label in labels}
+            accepted = session.execute(select(c, bindings.c.label_key).join(bindings, bindings.c.concept_id==c.c.id)
+                .join(m,(m.c.learner_id==bindings.c.learner_id)&(m.c.concept_id==c.c.id)&(m.c.topic_id==bindings.c.topic_id))
+                .where(bindings.c.learner_id==owner,bindings.c.context_id==context_id,
+                    bindings.c.subject_key==subject_key,bindings.c.label_key.in_(keys.values()),c.c.status=='ACTIVE')).mappings()
+            by_key={row['label_key']:self._concept_from_row(row) for row in accepted}
+            known={label:by_key[key] for label,key in keys.items() if key in by_key}
+            missing=[label for label in labels if label not in known]
+            if not missing: return known
             rows = session.execute(select(c, m.c.label, m.c.phrases, t.c.name, t.c.scope).join(m,
                 (m.c.concept_id == c.c.id) & (m.c.learner_id == owner)).join(t,
                 (t.c.id == m.c.topic_id) & (t.c.learner_id == owner)).where(
                     or_(t.c.context_id == context_id, select(links.c.concept_id).where(
                         links.c.learner_id == owner, links.c.context_id == context_id, links.c.concept_id == c.c.id).exists()),
                     c.c.status == 'ACTIVE',
-                    or_(*(m.c.phrases.contains('\n' + normalize(label) + '\n', autoescape=True) for label in labels)))) .mappings()
+                    or_(*(m.c.phrases.contains('\n' + normalize(label) + '\n', autoescape=True) for label in missing)))) .mappings()
             result, ambiguous = {}, set()
             for row in rows:
-                if not set(query_terms(topic)).issubset(set(query_terms(row['name'] + ' ' + row['scope']))):
-                    continue  # Same wording in a different subject needs semantic advice.
-                for label in labels:
+                if normalize(topic) != normalize(row['name']):
+                    # Overlapping words (even an "excludes X" boundary) cannot
+                    # establish alias identity. Other subjects need accepted
+                    # exact bindings or semantic advice once.
+                    continue
+                for label in missing:
                     if '\n' + normalize(label) + '\n' in row['phrases']:
                         if label in result and result[label].id != row['id']:
                             ambiguous.add(label)
                         result[label] = self._concept_from_row(row)
-            return {label: value for label, value in result.items() if label not in ambiguous}
+            return {**known, **{label:value for label,value in result.items() if label not in ambiguous}}
+
+    def save_skill_resolution_bindings(self, owner, context_id, subject, resolved):
+        if not resolved: return
+        memberships=self.skill_memberships(owner,list(set(resolved.values())))
+        rows={}
+        for label,identifier in resolved.items():
+            parent=memberships.get(identifier,{}).get('topic_id')
+            if not parent: continue
+            label_key=sha256(normalize(label).encode()).hexdigest()
+            if label_key in rows and rows[label_key]['concept_id']!=identifier:
+                raise LearnerError('Equivalent labels received conflicting identities')
+            rows[label_key]=dict(learner_id=owner,context_id=context_id,
+                subject_key=sha256(normalize(subject).encode()).hexdigest(),label_key=label_key,
+                concept_id=identifier,topic_id=parent)
+        if not rows: return
+        with self._session() as session:
+            stmt=insert(bindings).values(list(rows.values()))
+            accepted=set(session.scalars(stmt.on_conflict_do_update(
+                index_elements=['learner_id','context_id','subject_key','label_key'],
+                set_={'topic_id':stmt.excluded.topic_id},where=bindings.c.concept_id==stmt.excluded.concept_id)
+                .returning(bindings.c.label_key)))
+            if accepted!=set(rows): raise LearnerError('An accepted skill alias cannot silently change identity')
 
     def skill_memberships(self, owner, ids):
         with self._session() as session:
@@ -173,12 +208,17 @@ class TopicsStore(PostgresRepositoryBase):
             skill_score = sum((case((or_(func.lower(m.c.label).contains(term, autoescape=True),
                 m.c.phrases.contains(term, autoescape=True)), 1), else_=0) for term in terms), literal(0))
             children = select(m.c.concept_id, m.c.topic_id, m.c.label, m.c.ability,
+                func.count().over(partition_by=m.c.topic_id).label('total'),
                 func.row_number().over(partition_by=m.c.topic_id, order_by=(skill_score.desc(), m.c.label)).label('position')).where(
                     m.c.learner_id == owner, m.c.topic_id.in_([row['id'] for row in rows]),
                     m.c.concept_id.in_(select(c.c.id).where(c.c.status == 'ACTIVE'))).subquery()
-            skills = session.execute(select(children).where(children.c.position <= 5)).mappings().all()
+            per_topic = 12 if limit > 12 else 5
+            skills = session.execute(select(children).where(children.c.position <= per_topic)
+                .order_by(children.c.position,children.c.topic_id).limit(96)).mappings().all()
             result = [dict(row, subskills=[{key: skill[key] for key in ('concept_id', 'label', 'ability')}
-                for skill in skills if skill['topic_id'] == row['id']]) for row in rows]
+                for skill in skills if skill['topic_id'] == row['id']],
+                subskills_truncated=any(skill['total']>sum(item['topic_id']==row['id'] for item in skills)
+                    for skill in skills if skill['topic_id']==row['id'])) for row in rows]
             return result
 
     def save_topic_membership(self, owner, context_id, skill_id, placement, *, published=False):

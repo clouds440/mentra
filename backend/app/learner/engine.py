@@ -84,6 +84,24 @@ class LearnerEngine:
             return await self.topics.resolve(request)
         return await self.generated_concepts.resolve(request)
 
+    async def resolve_generated_concept_labels(self, request: GeneratedConceptsRequest) -> dict[str, str]:
+        """Preserve input-label bindings even when canonical labels are renamed/merged."""
+        if self.generated_concepts.resolver is not None and hasattr(self.generated_concepts.resolver, 'organize'):
+            self.topics.resolver = self.generated_concepts.resolver
+            values = await self.topics.resolve(request, _bindings=True)
+            return {label:value.id for label,value in values.items()}
+        # Compatibility for deployments without the topic organizer. Exact
+        # aliases are reused by the legacy domain; never infer input order.
+        values = await self.generated_concepts.resolve(request)
+        names = {value.canonical_name.casefold():value.id for value in values}
+        result = {}
+        for label in request.labels:
+            if label.casefold() not in names:
+                one = await self.generated_concepts.resolve(request.model_copy(update={'labels':[label]}))
+                if one: names[label.casefold()] = one[0].id
+            if label.casefold() in names: result[label] = names[label.casefold()]
+        return result
+
     async def resolve_encountered_concept(self, request: ConceptResolutionRequest) -> ConceptResolution:
         """A chat-mentioned skill may be organized, but never scored by mention."""
         from starlette.concurrency import run_in_threadpool

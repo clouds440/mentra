@@ -11,6 +11,8 @@ function assessment(paper = false): Assessment {
     { id:'q3', question_type:'short_answer', answer_mode:'text' as const, prompt:'Explain inertia in your own words.', options:[] },
     { id:'q4', question_type:'multiple_select', answer_mode:'multiple_choice' as const, prompt:'Select the vector quantities.', options:[{id:'a',label:'Velocity'},{id:'b',label:'Force'},{id:'c',label:'Mass'}] },
   ].map((q,i) => ({...q, concept_ids:['concept'], source_tokens:[], marks:2, difficulty:.4,
+    learning_targets: [{topic_id:'topic-arabic',topic_name:'Arabic for beginners',subskill_id:'letter-dots',subskill_name:'Letter dots'},
+      {topic_id:'topic-arabic',topic_name:'Arabic for beginners',subskill_id:'letter-shapes',subskill_name:'Letter shapes'}],
     ...(paper ? {number:i<2 ? 1 : 3, part:i===0 ? 'a.i' : i===1 ? 'a.ii' : i===2 ? 'b' : 'c', section:'Section A · Mechanics', context:'A cart moves along a level track. Use this scenario for the following parts.'} : {})}));
   return { id:'flex-assessment', context_id:'context-1', title:'Motion and reasoning', purpose:'practice', revision:1, created_at:created, sources:[], questions,
     paper: paper ? { duration_minutes:90,total_marks:8,question_count:2,instructions:'Answer all parts. Show your working.',sections:[{title:'Section A · Mechanics',question_count:2,question_type:'written',part_marks:[2,2]}] } : null };
@@ -57,6 +59,10 @@ async function chat(page: Page, paper = false, generation = false) {
 for (const width of [390,1280]) test(`mixed interactive practice keeps typed and multiple-choice answers at ${width}`, async ({page},info) => {
   await page.setViewportSize({width,height:844}); const state=await chat(page);
   const quiz=page.getByRole('region',{name:'Interactive quiz'});
+  const skills=quiz.getByRole('list',{name:'Skills practised'});
+  await expect(skills.getByText('Arabic for beginners',{exact:true})).toHaveCount(1);
+  await expect(skills.getByText('Letter dots',{exact:true})).toBeVisible();
+  await expect(skills.getByText('Letter shapes',{exact:true})).toBeVisible();
   await quiz.getByRole('radio',{name:'Mass × acceleration',exact:true}).check();
   await quiz.getByRole('button',{name:'Next',exact:true}).click();
   await expect(quiz.getByText('True or false',{exact:true})).toBeVisible();

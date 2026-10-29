@@ -44,6 +44,8 @@ class TopicService:
         for _ in range(2):
             try:
                 result = TopicOrganization.model_validate(await self.resolver.organize(labels, topic, context, candidates, existing))
+                if result.needs_wider_lookup and not result.placements:
+                    return result
                 if len(result.placements) != len(labels) or {value.label for value in result.placements} != set(labels):
                     raise ValueError('Incomplete topic organization')
                 return result
@@ -80,13 +82,12 @@ class TopicService:
             return values
         return await run_in_threadpool(save)
 
-    async def resolve(self, request, *, existing=None, published=False, preview=False, _retried=False):
+    async def resolve(self, request, *, existing=None, published=False, preview=False, _retried=False, _bindings=False):
         from starlette.concurrency import run_in_threadpool
         context = await run_in_threadpool(self.engine.contexts.require, request.learner_id, request.context_id)
         if not self.resolver or not hasattr(self.resolver, 'organize'):
             raise AppError('LEARNING_ORGANIZATION_UNAVAILABLE', 'Topic organization is unavailable. Please try again.', 503)
         labels = list(dict.fromkeys(request.labels))
-        version = await run_in_threadpool(self.repository.topic_registry_version, request.learner_id)
         known = await run_in_threadpool(self.repository.known_topic_labels, request.learner_id, request.context_id, labels, request.topic)
         if len(known) == len(labels) and not existing:
             if published:
@@ -94,10 +95,13 @@ class TopicService:
                     with self.repository.transaction(learner_ids=[request.learner_id]) as repository:
                         repository.publish_topic_skills(request.learner_id, [value.id for value in known.values()])
                 await run_in_threadpool(publish)
-            return [replace(known[label], canonical_name=label) for label in labels]
+            values = {label: replace(known[label], canonical_name=label) for label in labels}
+            return values if _bindings else list(values.values())
         if known and not existing:
-            missing = await self.resolve(request.model_copy(update={'labels': [label for label in labels if label not in known]}), published=published)
-            return [*[replace(value, canonical_name=label) for label, value in known.items()], *missing]
+            missing = await self.resolve(request.model_copy(update={'labels': [label for label in labels if label not in known]}), published=published, _bindings=True)
+            values = {label:replace(known[label],canonical_name=label) if label in known else missing[label] for label in labels}
+            return values if _bindings else list(values.values())
+        version = await run_in_threadpool(self.repository.topic_registry_version, request.learner_id)
         candidates = await run_in_threadpool(self.repository.topic_candidates, request.learner_id,
             request.context_id, request.topic + ' ' + ' '.join(labels), 12)
         # Existing skills are supplied only by owned-context migration, never LLM IDs.
@@ -106,15 +110,18 @@ class TopicService:
         if result is None:
             if preview:
                 raise AppError('LEARNING_ORGANIZATION_UNAVAILABLE', 'Grouping is temporarily unavailable. Your skills are unchanged.', 503)
-            return await self._ungrouped(request, existing, published)
+            values = await self._ungrouped(request.model_copy(update={'labels':labels}), existing, published)
+            return dict(zip(labels,values,strict=True)) if _bindings else values
         if result.needs_wider_lookup:
+            expansion=' '.join(term[:200] for term in result.search_terms)
             candidates = await run_in_threadpool(self.repository.topic_candidates, request.learner_id,
-                request.context_id, request.topic + ' ' + ' '.join(labels), 24)
+                request.context_id, expansion + ' ' + request.topic + ' ' + ' '.join(labels), 24)
             result = await self._advice(labels, request.topic, context.name, candidates, existing)
         if result is None or result.needs_wider_lookup or any(value.action == 'defer' for value in result.placements):
             if preview:
                 raise AppError('LEARNING_ORGANIZATION_UNAVAILABLE', 'These skills need clearer grouping. Your skills are unchanged.', 503)
-            return await self._ungrouped(request, existing, published)
+            values = await self._ungrouped(request.model_copy(update={'labels':labels}), existing, published)
+            return dict(zip(labels,values,strict=True)) if _bindings else values
         allowed_topics = {item['id'] for item in candidates}
         allowed_skills = {skill['concept_id']: item['id'] for item in candidates for skill in item['subskills']}
         for placement in result.placements:
@@ -139,7 +146,7 @@ class TopicService:
                     subskill_name=value.skill_name or value.label, scope=value.scope) for value in result.placements])
             return await run_in_threadpool(propose)
         def commit():
-            concepts = []
+            concepts = {}
             with self.repository.transaction(learner_ids=[request.learner_id], ontology=True) as repository:
                 if repository.topic_registry_version(request.learner_id) != version:
                     raise _OrganizationChanged()
@@ -165,14 +172,17 @@ class TopicService:
                         placement, published=published)
                     if published:
                         repository.add_context_concept(request.context_id, concept.id, learner_id=request.learner_id)
-                    concepts.append(replace(concept, canonical_name=placement.skill_name or placement.label))
+                    concepts[placement.label] = replace(concept, canonical_name=placement.skill_name or placement.label)
+                repository.save_skill_resolution_bindings(request.learner_id,request.context_id,request.topic,
+                    {label:value.id for label,value in concepts.items()})
             return concepts
         try:
-            return await run_in_threadpool(commit)
+            values = await run_in_threadpool(commit)
+            return values if _bindings else [values[label] for label in labels]
         except _OrganizationChanged:
             if _retried:
                 raise AppError('LEARNING_ORGANIZATION_CHANGED', 'Your topics changed during organization. Please retry.', 409)
-            return await self.resolve(request, existing=existing, published=published, preview=preview, _retried=True)
+            return await self.resolve(request, existing=existing, published=published, preview=preview, _retried=True, _bindings=_bindings)
 
     async def organize_existing(self, owner, context_id, *, preview=False):
         from starlette.concurrency import run_in_threadpool

@@ -1,5 +1,7 @@
 # Backend Engineering Standards
 
+- Assessment skill attribution reuses verified target IDs. New labels resolve through batch label-to-ID bindings; canonical renaming must never trigger per-label model repair. Accepted aliases are owner/context/subject scoped, cannot silently change identity, and create no mastery evidence. Topic discovery and descriptions obey bounded candidate packets; truncation must be explicit. Existing descriptions are server-owned on ID-only reuse.
+
 > **Build for the requirements we have, while leaving clean boundaries for the requirements we expect. Do not implement future features before they exist.**
 
 These standards describe the current Python and FastAPI codebase. Update them when an important backend convention changes.

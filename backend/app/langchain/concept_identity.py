@@ -28,8 +28,33 @@ class ConceptIdentityResolver:
 
     async def organize(self, labels, topic, context, candidates, existing):
         from app.learner.topics import TopicOrganization
-        return await self.llm.ainvoke(PromptSource.TOPIC_ORGANIZATION,
-            dict(labels=labels, topic=topic, context=context, existing_ungrouped=existing,
-                candidates=[{key: value for key, value in candidate.items()
-                    if key in ('id', 'name', 'scope', 'subskills')} for candidate in candidates]),
-            output_schema=TopicOrganization)
+        payload = dict(labels=labels, topic=topic, context=context, existing_ungrouped=existing,
+                candidates=[dict(id=candidate['id'],name=candidate['name'],scope=candidate['scope'][:300],
+                    scope_truncated=len(candidate['scope'])>300,
+                    subskills_truncated=candidate.get('subskills_truncated',False),
+                    subskills=[dict(concept_id=skill['concept_id'],label=skill['label'],ability=skill['ability'][:160])
+                        for skill in candidate['subskills']]) for candidate in candidates])
+        # Account for the actual provider envelope, rather than sending an
+        # entire registry or failing valid work when candidate descriptions grow.
+        if hasattr(self.llm,'messages'):
+            from .token_policy import check_input
+            from app.core.config import settings
+            from app.core.exceptions import AppError
+            config=getattr(getattr(self.llm,'model_factory',None),'_settings',settings)
+            while True:
+                try:
+                    check_input(self.llm.messages(PromptSource.TOPIC_ORGANIZATION,payload),
+                        PromptSource.TOPIC_ORGANIZATION,tools=[TopicOrganization],config=config)
+                    break
+                except AppError as error:
+                    if error.code!='AI_CONTEXT_LIMIT': raise
+                    large=[item for item in payload['candidates'] if len(item['subskills'])>1]
+                    if large:
+                        for item in large:
+                            item['subskills']=item['subskills'][:max(1,len(item['subskills'])//2)]
+                            item['subskills_truncated']=True
+                    elif len(payload['candidates'])>1:
+                        payload['candidates']=payload['candidates'][:max(1,len(payload['candidates'])//2)]
+                        payload['candidates_truncated']=True
+                    else: raise
+        return await self.llm.ainvoke(PromptSource.TOPIC_ORGANIZATION,payload,output_schema=TopicOrganization)

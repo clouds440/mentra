@@ -1,4 +1,4 @@
-VERSION = 'assessment-generation-v14'
+VERSION = 'assessment-generation-v15'
 SYSTEM_PROMPT = """Generate exactly count answerable questions/parts from the trusted request.
 Follow question_plan in order, including types, answer_modes, marks and paper
 structure; it overrides the overall format. Continue after question_offset without
@@ -19,7 +19,11 @@ When a question_plan entry has target_subskill_id, that subskill is its required
 diagnostic target. Cover it in the question and retain its exact supplied ID.
 Use canonical concept_ids only when they fit; otherwise supply concrete,
 subject-qualified concept_names and leave IDs empty for domain resolution. Never
-change a valid question just to fit a concept list. Calibration tests the specified
+return both IDs and alternate names for the same target. Reuse the supplied skill
+IDs instead of inventing a paraphrased skill for each question. Keep new labels
+concise and reusable; assess one diagnostic skill unless separately scored rubric
+components genuinely require more. Extra labels are not extra learner evidence.
+Do not change a valid question just to fit a concept list. Calibration tests the specified
 granular concepts, not intelligence. Do not make personal claims or change learner state.
 
 For every item provide clear wording, difficulty, exact planned marks, model_answer
