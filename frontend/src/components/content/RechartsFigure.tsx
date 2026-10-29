@@ -74,6 +74,7 @@ function RechartsFigureContent({ code }: { code: string }) {
       if (!container) throw new Error('Chart unavailable');
       const exported = await exportChart(container, spec);
       if (generation !== diagramCacheGeneration()) return;
+      if (current.current !== spec || !container.isConnected) throw new Error('Chart changed while exporting');
       await downloadVisual(exported, format, spec.title);
     } catch { setDownloadError(true); } finally { setDownloading(undefined); }
   }
@@ -94,7 +95,7 @@ function RechartsFigureContent({ code }: { code: string }) {
     {source ? <CodeBlock code={display !== original || display.model ? serializeChartSpec(display) : code} language="json" /> : <ChartCanvas spec={display} />}
     {!expanded && controls}
     {data && <ChartDataTable spec={display} />}
-    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div><ChartCanvas spec={spec} />{spec.modelUnavailable && <p role="status" className="px-3 text-sm text-muted">Equation controls are unavailable. Showing the supplied data.</p>}{spec.model && <details className="mx-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer">Equation and assumptions</summary><p className="mt-2 break-words">{modelSummary(spec.model)}</p></details>}{controls}</Dialog>}
+    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div>{downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>}<ChartCanvas spec={spec} />{spec.modelUnavailable && <p role="status" className="px-3 text-sm text-muted">Equation controls are unavailable. Showing the supplied data.</p>}{spec.model && <details className="mx-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer">Equation and assumptions</summary><p className="mt-2 break-words">{modelSummary(spec.model)}</p></details>}{controls}</Dialog>}
   </figure>;
 }
 RechartsFigureContent.displayName = 'RechartsFigure';

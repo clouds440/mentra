@@ -139,3 +139,51 @@ test('failed model fallback remains downloadable and visible in fullscreen', asy
   await expect(page.getByRole('dialog').locator('.recharts-wrapper')).toBeVisible();
   await expect(page.getByRole('slider')).toHaveCount(0);
 });
+
+test('helper equations are linked and copied defaults remain numeric', async ({page}) => {
+  const spec=chart(); spec.model.equations=[{dataKey:'hidden',expression:'gain*x'}, {dataKey:'y',expression:'hidden+1'}, {dataKey:'z',expression:'y*2'}];
+  await richChat(page, '```recharts\n'+JSON.stringify(spec)+'\n```'); await page.goto('/chat/polish-chat');
+  await page.getByRole('button',{name:'Number',exact:true}).click();
+  await page.getByRole('spinbutton',{name:'Selected value',exact:true}).fill('3');
+  await page.getByRole('button',{name:'View data',exact:true}).click();
+  const rows=page.locator('.recharts-figure tbody tr');
+  await expect(rows.first().locator('td').first()).toHaveText('4');
+  await expect(rows.nth(1).locator('td').nth(1)).toHaveText('14');
+  await expect(page.getByRole('columnheader',{name:'hidden',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'View source',exact:true}).click();
+  const source=JSON.parse(await page.locator('.recharts-figure code').innerText());
+  expect(source.data[0]).toEqual({x:1,y:4,z:8});
+  expect(source.model.equations).toHaveLength(3);
+});
+test('numeric line spacing follows values rather than category positions', async ({page}) => {
+  const spec={type:'LineChart', title:'Uneven samples',xKey:'x',series:[{dataKey:'y'}],data:[{x:1,y:2},{x:2,y:4},{x:10,y:20}]};
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await richChat(page,'```recharts\n'+JSON.stringify(spec)+'\n```'); await page.goto('/chat/polish-chat');
+  const dots=page.locator('.recharts-line-dot'); await expect(dots).toHaveCount(3);
+  const xs=await dots.evaluateAll(nodes=>nodes.map(node=>Number(node.getAttribute('cx'))));
+  expect((xs[1]-xs[0])/(xs[2]-xs[0])).toBeCloseTo(1/9,3);
+});
+test('editing during export cannot download stale mixed state', async ({page}) => {
+  await richChat(page,'```recharts\n'+JSON.stringify(chart())+'\n```'); await page.goto('/chat/polish-chat');
+  await page.getByRole('button',{name:'Expand',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByRole('button',{name:'Number',exact:true}).click();
+  const downloads:string[]=[]; page.on('download',download=>downloads.push(download.suggestedFilename()));
+  await dialog.getByRole('button',{name:'Download SVG',exact:true}).click();
+  await dialog.getByRole('spinbutton',{name:'Selected value',exact:true}).fill('4');
+  await expect(dialog.getByRole('status').filter({hasText:'Could not download this chart'})).toBeVisible();
+  expect(downloads).toEqual([]);
+});
+
+test('failed predictions preserve supplied observations without inventing output values', async ({page}) => {
+  const spec = { ...chart(), data: [{ x: 1, y: null, z: 7 }, { x: 2, y: null, z: 8 }] };
+  spec.model.equations = [{ dataKey: 'y', expression: 'missing' }];
+  await richChat(page, '```recharts\n' + JSON.stringify(spec) + '\n```'); await page.goto('/chat/polish-chat');
+  await expect(page.locator('.recharts-wrapper')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing the supplied data' })).toBeVisible();
+  await page.getByRole('button', { name: 'View data', exact: true }).click();
+  await expect(page.getByRole('columnheader', { name: 'Follow-on', exact: true })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Response', exact: true })).toHaveCount(0);
+  await expect(page.locator('.recharts-figure tbody tr').first().locator('td')).toHaveText('7');
+  await expect(page.getByRole('slider')).toHaveCount(0);
+});

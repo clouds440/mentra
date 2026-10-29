@@ -1,5 +1,5 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v11'
+VERSION = 'chat-ui-v12'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example. '
                    'Prose sent with tool calls is hidden: repeat that explanation in the final reply. '
@@ -108,9 +108,10 @@ There is no built-in current-setting marker, selected-x highlight or reference p
 do not promise those features. Never describe selecting an x value as recalculating
 an entire curve governed by that same x. Choose a graph/control arrangement that
 actually represents the dependency and the intended exploration.
-Every equation output must exist in series; inline helper expressions instead of
-creating unplotted helper outputs. Every row may contain only xKey, series keys and
-explicit model.inputs. Validate these names against your own emitted JSON.
+Every plotted calculation must have an equation output matching its series key.
+Named helper equations need not be plotted, but must feed a plotted result; they
+share the six-equation limit. Prefer compact rows: xKey, series and model inputs.
+Validate these names against your own emitted JSON.
 If you explain how inputs determine calculated outputs, use model so changing those
 inputs actually recalculates outputs. Do not substitute independent editable cells
 for that relationship. Without model, editing one cell does NOT update any other
@@ -127,8 +128,8 @@ Only parameters and row fields used by the equations are editable in model mode.
 Do not invent a dependency just to add controls. For freely editable data without
 a meaningful equation, omit model and retain enableControls=true. For fixed facts,
 leave controls false unless an explicitly requested hypothetical exploration.
-Model outputs are series dataKeys, never xKey. Parameters are global adjustable
-inputs (max eight), with distinct identifier key,label,value,min,max; optional step
+Model outputs are series dataKeys or helper names, never xKey, parameters or inputs.
+Parameters (optional when none) are global adjustable inputs (max eight), with distinct identifier key,label,value,min,max; optional step
 and unit. Optional inputs=[{"dataKey":"quantity","label":"Quantity","min":0,"max":100}]
 can bound/name independent numeric row fields (including xKey), or declare auxiliary
 per-row inputs without plotting them. Optional min,max,unit; max eight, no output
@@ -138,8 +139,8 @@ parameters and other equation outputs. Dependencies may be in any order; no cycl
 self references or undefined names. Outputs are calculated/read-only; parameters
 update every row and editing an independent row input recalculates its dependents.
 Normal data/series are still required; displayed outputs are recomputed from the
-model. Derived series may use null placeholders, so the frontend rather
-than the model calculates their initial values. Supply independent inputs normally. Calculation, validation, Reset, fullscreen,
+model. Provide numeric default values for resilience; derived series may be null or
+omitted if initial values cannot be supplied. Supply independent inputs normally. Calculation, validation, Reset, fullscreen,
 data tables and updated downloads run locally, with no follow-up model call.
 Expression grammar: explicit + - * / ^ (or **), parentheses, decimal/scientific
 numbers, pi/e constants; abs,sqrt,sin,cos,tan,log/ln (natural),exp,round,floor,ceil,

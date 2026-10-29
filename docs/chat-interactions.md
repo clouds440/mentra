@@ -105,11 +105,14 @@ Optional top-level fields are `description`, `unit`, `colors`, `enableControls`,
 `model` and `stacked` (bar/area/composed).
 Series accept `dataKey` and optional `name`; composed series require `type` Line,
 Bar or Area. The [frontend contract](../frontend/src/lib/chartSpec.ts) bounds each
-chart to 24,000 characters, 200 rows, six series and three charts per response.
+chart computation to 200 rows, six series and three charts per response. Generation
+guidance targets 24,000 characters; the parser accepts up to 512,000 so copied source
+can retain calculated numeric defaults and escaped labels. Parse caching remains
+bounded to 30 entries and two million source characters.
 Pie/radar allow at most 24 categories; radar requires at least three. Pie uses one
 nonnegative numeric series with a positive total. Scatter x values are numeric.
 Line/bar/area/composed gaps use null; all other series values are finite numbers within +/-1e100.
-Arbitrary props/resources, duplicate series keys, missing values, all-null series
+Arbitrary props/resources, duplicate series keys, missing non-derived values, all-null series
 and unsupported shapes are rejected. Original data names stay in source/tables;
 only app-owned canonical field names enter Recharts shape data.
 
@@ -281,9 +284,11 @@ An optional `model` provides kind (`illustrative` or `established`), an explanat
 initial value/min/max and optional step/unit. Optional `inputs` identify per-row
 numeric inputs with dataKey/label and optional min/max/unit; these can describe the
 independent axis or declare auxiliary data columns without plotting extra series.
-Outputs are existing series keys. Unrelated observation series remain read-only
+Outputs are series keys or named helpers that feed plotted outputs; helpers share
+the six-equation limit and never become extra visible series or controls. Global
+parameters may be omitted when none are needed. Unrelated observation series remain read-only
 in model mode. Values are computed in dependency order; users
-edit inputs, never outputs. Derived values may be null placeholders, including
+edit inputs, never outputs. Derived values may be omitted or null placeholders, including
 scatter/pie/radar: validation applies to the calculated results rather than gaps.
 
 Example of an explicitly hypothetical model, not a prescribed teaching equation:
@@ -316,8 +321,30 @@ Contextual invented models are allowed when useful and labeled illustrative with
 assumptions. The model can instead choose independent editing or read-only data.
 Useful linked exploration is selected proactively; the learner does not need to
 request equations or sliders. Global parameter names cannot collide with sampled
-axis or row fields. Equation outputs must be plotted series; helper expressions
-are inlined. There is no automatic current-setting marker.
+axis or row fields. Plotted calculations use matching series keys; helper expressions
+may be named when they feed plotted results. There is no automatic current-setting marker.
+
+Additional hardening: bounded scalar row metadata is ignored unless explicitly used
+as a declared input. It cannot become renderer props or equation variables. Models
+with ambiguous `e`/`pi` field references fall back rather than silently substituting
+mathematical constants. Copied source retains numeric plotted defaults and omits
+calculated helpers; valid equations recompute them when reopened. Numeric line/area
+axes use actual distances; categorical and bar axes keep their category layout.
+Exports reject edits or viewer closure during capture, so captions and geometry
+cannot come from different model states. Static fallback exports identify themselves.
+When a failed model has an all-null prediction series alongside usable observations,
+the fallback shows the usable series and omits the unavailable one. Invalid observed
+values are still rejected; neither missing predictions nor replacements are invented.
+
+Second hardening pass (2026-10-29): 74 equation/data/cache checks, 47 production-build
+browser checks and 15 backend policy checks passed. Browser coverage includes numeric
+spacing, linked helpers, observation fallback, concurrent export edits, all seven
+families, lazy loading, and zero rich-message/chart rerenders during typing or
+unchanged refresh. Three live synthetic scenarios passed (factual chart, proactive
+equation exploration, requested practice); both generated charts also passed the
+exact frontend parser with their models active where expected. No learner records
+were written. Local 200-row dependent-update p95 remained below one millisecond;
+these are local measurements, not a timing guarantee on every device.
 
 Hardening verification (2026-10-29): 61 equation/model checks and 15 browser cases
 passed, covering omitted/false controls, the reported axis/parameter collision,

@@ -11,7 +11,7 @@ const compiled = new WeakMap<ChartEquation[], { key: string; program: CompiledEq
 export function parseChartModel(raw: unknown, fields: string[], series: string[]): ChartModel | null {
   try {
     if (!record(raw) || !only(raw, ['kind', 'note', 'parameters', 'inputs', 'equations']) || !['illustrative', 'established'].includes(String(raw.kind)) || !text(raw.note, 400)) return null;
-    if (!Array.isArray(raw.parameters) || raw.parameters.length > 8 || !Array.isArray(raw.equations) || !raw.equations.length || raw.equations.length > 6) return null;
+    if (raw.parameters !== undefined && (!Array.isArray(raw.parameters) || raw.parameters.length > 8) || !Array.isArray(raw.equations) || !raw.equations.length || raw.equations.length > 6) return null;
     const inputs: ChartInput[] = [];
     if (raw.inputs !== undefined && (!Array.isArray(raw.inputs) || raw.inputs.length > 8)) return null;
     for (const item of raw.inputs as unknown[] ?? []) {
@@ -21,7 +21,7 @@ export function parseChartModel(raw: unknown, fields: string[], series: string[]
     }
     fields = [...fields, ...inputs.map(item => item.dataKey)];
     const parameters: ChartParameter[] = [];
-    for (const item of raw.parameters) {
+    for (const item of raw.parameters as unknown[] ?? []) {
       if (!record(item) || !only(item, ['key', 'label', 'value', 'min', 'max', 'step', 'unit']) || !equationIdentifier(item.key) || fields.includes(item.key) || parameters.some(parameter => parameter.key === item.key)) return null;
       if (!text(item.label, 80) || !finiteChartNumber(item.value) || !finiteChartNumber(item.min) || !finiteChartNumber(item.max) || item.min >= item.max || item.value < item.min || item.value > item.max) return null;
       if (item.step !== undefined && (!finiteChartNumber(item.step) || item.step <= 0 || item.step > item.max - item.min) || item.unit !== undefined && !text(item.unit, 32)) return null;
@@ -29,13 +29,23 @@ export function parseChartModel(raw: unknown, fields: string[], series: string[]
     }
     const equations: ChartEquation[] = [];
     for (const item of raw.equations) {
-      if (!record(item) || !only(item, ['dataKey', 'expression']) || !equationIdentifier(item.dataKey) || !series.includes(item.dataKey) || !text(item.expression, 240) || equations.some(equation => equation.dataKey === item.dataKey)) return null;
+      if (!record(item) || !only(item, ['dataKey', 'expression']) || !equationIdentifier(item.dataKey) || fields.includes(item.dataKey) && !series.includes(item.dataKey) || parameters.some(parameter => parameter.key === item.dataKey) || !text(item.expression, 240) || equations.some(equation => equation.dataKey === item.dataKey)) return null;
       equations.push({ dataKey: item.dataKey, expression: item.expression });
     }
     const outputs = new Set(equations.map(item => item.dataKey));
     if (inputs.some(input => outputs.has(input.dataKey))) return null;
     const available = new Set([...fields.filter(key => !outputs.has(key)), ...parameters.map(item => item.key)]);
     const waiting = equations.map(item => ({ key: item.dataKey, program: compileEquation(item.expression) }));
+    // An input called e/pi must not silently evaluate as a mathematical constant.
+    if (waiting.some(item => fields.some(field => item.program.constants.has(field)))) return null;
+    // Every helper must contribute to a plotted result. Otherwise a control may
+    // appear to work while only changing an invisible intermediate calculation.
+    const useful = new Set(equations.filter(item => series.includes(item.dataKey)).map(item => item.dataKey));
+    if (!useful.size) return null;
+    for (let index = 0; index < equations.length; index++) {
+      for (const item of waiting) if (useful.has(item.key)) for (const dependency of item.program.references) if (outputs.has(dependency)) useful.add(dependency);
+    }
+    if (useful.size !== equations.length) return null;
     if ([...parameters.map(item => item.key), ...inputs.map(item => item.dataKey)].some(key => !waiting.some(item => item.program.references.has(key)))) return null;
     const ordered: typeof waiting = [];
     while (waiting.length) {

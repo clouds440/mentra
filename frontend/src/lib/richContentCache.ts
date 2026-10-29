@@ -1,15 +1,17 @@
 import type { ChartSpec } from './chartSpec';
+import { chartSourceLimit } from './chartLimits';
 // Kept separate from lazy renderers so auth never loads visualization libraries.
 const diagramCache = new Map<string, string>();
 const chartCache = new Map<string, ChartSpec | null>();
 let characters = 0;
+let chartCharacters = 0;
 let generation = 0;
 let owner: string | null = null;
 const ownerCleanups = new Set<() => void>();
 export function onRichContentOwnerChange(cleanup: () => void) { ownerCleanups.add(cleanup); }
 export function setRichContentOwner(next: string | null) {
   if (next === owner) return;
-  diagramCache.clear(); chartCache.clear(); characters = 0; generation++; owner = next;
+  diagramCache.clear(); chartCache.clear(); characters = 0; chartCharacters = 0; generation++; owner = next;
   ownerCleanups.forEach(cleanup => cleanup());
 }
 export function readChart(code: string) {
@@ -18,9 +20,14 @@ export function readChart(code: string) {
   return value;
 }
 export function cacheChart(code: string, spec: ChartSpec | null) {
-  if (code.length > 24000) return;
+  if (code.length > chartSourceLimit) return;
+  if (chartCache.has(code)) chartCharacters -= code.length;
   chartCache.delete(code); chartCache.set(code, spec);
-  if (chartCache.size > 30) chartCache.delete(chartCache.keys().next().value!);
+  chartCharacters += code.length;
+  while (chartCache.size > 30 || chartCharacters > 2_000_000) {
+    const oldest = chartCache.keys().next().value!;
+    chartCharacters -= oldest.length; chartCache.delete(oldest);
+  }
 }
 export const diagramCacheGeneration = () => generation;
 export function readDiagram(key: string) {

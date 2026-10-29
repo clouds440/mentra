@@ -1,6 +1,7 @@
 import { finiteChartNumber, chartNumberLimit } from './chartEquation';
 import { parseChartModel, calculateChartModel, modelUsesInput, type ChartModel } from './chartModel';
 import { visualColor } from './visualColors';
+import { chartSourceLimit, chartRowLimit, chartSeriesLimit } from './chartLimits';
 export const chartTypes = ['LineChart', 'BarChart', 'AreaChart', 'ComposedChart', 'PieChart', 'RadarChart', 'ScatterChart'] as const;
 export type ChartType = typeof chartTypes[number];
 export type ChartSeries = { dataKey: string; name: string; type: 'Line' | 'Bar' | 'Area'; color?: string };
@@ -13,7 +14,7 @@ const number = finiteChartNumber;
 
 /** A data-only Recharts contract. No JSX, callbacks, arbitrary props or resources. */
 export function parseChartSpec(code: string): ChartSpec | null {
-  if (code.length > 24000) return null;
+  if (code.length > chartSourceLimit) return null;
   try {
     const value: unknown = JSON.parse(code);
     if (!record(value) || !only(value, ['type', 'title', 'description', 'xKey', 'unit', 'stacked', 'series', 'data', 'colors', 'enableControls', 'model'])) return null;
@@ -21,7 +22,7 @@ export function parseChartSpec(code: string): ChartSpec | null {
     if (value.colors !== undefined && (!Array.isArray(value.colors) || !value.colors.length || value.colors.length > 24 || value.colors.some(color => typeof color !== 'string' || !visualColor(color)))) return null;
     if (!chartTypes.includes(value.type as ChartType) || !text(value.title, 120) || !key(value.xKey)) return null;
     if (value.description !== undefined && !text(value.description, 500) || value.unit !== undefined && !text(value.unit, 32) || value.stacked !== undefined && typeof value.stacked !== 'boolean') return null;
-    if (!Array.isArray(value.series) || !value.series.length || value.series.length > 6 || !Array.isArray(value.data) || !value.data.length || value.data.length > 200) return null;
+    if (!Array.isArray(value.series) || !value.series.length || value.series.length > chartSeriesLimit || !Array.isArray(value.data) || !value.data.length || value.data.length > chartRowLimit) return null;
     const type = value.type as ChartType; const xKey = value.xKey;
     const series: ChartSeries[] = [];
     for (const item of value.series) {
@@ -37,22 +38,19 @@ export function parseChartSpec(code: string): ChartSpec | null {
     if (type === 'RadarChart' && value.data.length < 3) return null;
     const chartFields = [xKey, ...series.map(item => item.dataKey)];
     const model = value.model === undefined ? undefined : parseChartModel(value.model, chartFields, series.map(item => item.dataKey));
-    // A failed model must not discard otherwise usable supplied observations.
-    // Only bounded, declared model fields may extend the base row contract.
-    const rawInputs = record(value.model) && Array.isArray(value.model.inputs) && value.model.inputs.length <= 8
-      ? value.model.inputs.filter(record).map(item => item.dataKey).filter(key) : [];
-    const rawOutputs = record(value.model) && Array.isArray(value.model.equations) && value.model.equations.length <= 6
-      ? value.model.equations.filter(record).map(item => item.dataKey).filter(key) : [];
-    const fields = [...new Set([...chartFields, ...rawInputs, ...rawOutputs])];
+    // Rows may carry harmless scalar metadata. Project only plotted/declared
+    // inputs into the model so optional metadata cannot invalidate a valid graph.
+    const declaredEquations = record(value.model) && Array.isArray(value.model.equations) && value.model.equations.length <= 6 ? value.model.equations : [];
+    const derived = new Set(declaredEquations.filter(record).map(item => item.dataKey).filter(key));
     let modelInputsValid = true;
     const data: ChartSpec['data'] = [];
     for (const row of value.data) {
-      if (!record(row) || !only(row, fields)) return null;
+      if (!record(row) || Object.keys(row).length > 32 || Object.entries(row).some(([field, cell]) => !key(field) || cell !== null && typeof cell !== 'boolean' && !number(cell) && !(typeof cell === 'string' && cell.length <= 160))) return null;
       const category = row[xKey];
       if (type === 'ScatterChart' ? !number(category) : !text(category, 80) && !number(category)) return null;
       const clean: Record<string, string | number | null> = { [xKey]: category as string | number };
       for (const item of series) {
-        const cell = row[item.dataKey];
+        const cell = row[item.dataKey] === undefined && derived.has(item.dataKey) ? null : row[item.dataKey];
         if (cell !== null && !number(cell)) return null;
         clean[item.dataKey] = cell as number | null;
       }
@@ -62,9 +60,12 @@ export function parseChartSpec(code: string): ChartSpec | null {
     const calculated = model && modelInputsValid ? calculateChartModel(model, data) : undefined;
     const activeModel = model && calculated && validChartData(type, series, calculated) ? model : undefined;
     const modelUnavailable = value.model !== undefined && !activeModel;
+    // A failed prediction series with no defaults must not hide valid supplied
+    // observations beside it. Never fabricate values for the missing series.
+    const displayedSeries = modelUnavailable ? series.filter(item => data.some(row => number(row[item.dataKey]))) : series;
     const displayed = activeModel ? calculated! : modelUnavailable ? data.map(row => Object.fromEntries(chartFields.map(field => [field, row[field]]))) : data;
-    if (!activeModel && !validChartData(type, series, displayed)) return null;
-    return { model: activeModel, modelUnavailable, type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, enableControls: !modelUnavailable && (value.enableControls ?? !!activeModel), series, data: displayed };
+    if (!displayedSeries.length || !activeModel && !validChartData(type, displayedSeries, displayed)) return null;
+    return { model: activeModel, modelUnavailable, type, title: value.title.trim(), description: value.description as string | undefined, unit: value.unit as string | undefined, colors: value.colors as string[] | undefined, xKey, stacked: value.stacked === true, enableControls: !modelUnavailable && (value.enableControls ?? !!activeModel), series: displayedSeries, data: displayed };
   } catch { return null; }
 }
 
@@ -98,8 +99,10 @@ export { chartNumberLimit };
 /** Copyable source uses public schema fields, never internal renderer type defaults. */
 export function serializeChartSpec(spec: ChartSpec): string {
   const { modelUnavailable: _modelUnavailable, ...publicSpec } = spec;
+  // Keep numeric defaults: a copied model must retain a useful static fallback.
+  const fields = [...new Set([spec.xKey, ...spec.series.map(item => item.dataKey), ...(spec.model?.inputs.map(item => item.dataKey) ?? [])])];
   const value = { ...publicSpec, series: spec.series.map(({ type, ...item }) => spec.type === 'ComposedChart' ? { ...item, type } : item),
-    data: spec.model ? spec.data.map(row => ({ ...row, ...Object.fromEntries(spec.model!.equations.map(item => [item.dataKey, null])) })) : spec.data };
+    data: spec.data.map(row => Object.fromEntries(fields.map(field => [field, row[field]]))) };
   const readable = JSON.stringify(value, null, 2);
-  return readable.length <= 24000 ? readable : JSON.stringify(value);
+  return readable.length <= chartSourceLimit ? readable : JSON.stringify(value);
 }

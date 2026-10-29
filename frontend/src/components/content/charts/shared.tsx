@@ -19,8 +19,10 @@ export function ChartSize({ children }: { children: ReactElement }) {
 }
 // Return actual Recharts children so its child discovery remains intact.
 export function axes(spec: ChartSpec, scatter = false, xName?: string) {
+  const numericX = scatter || ['LineChart', 'AreaChart', 'ComposedChart'].includes(spec.type)
+    && !spec.series.some(item => item.type === 'Bar') && spec.data.every(row => typeof row[spec.xKey] === 'number');
   return [<CartesianGrid key="grid" stroke="rgb(var(--border))" strokeDasharray="3 3" vertical={false} />,
-    <XAxis key="x" dataKey={scatter ? 'x' : spec.xKey} name={xName} type={scatter ? 'number' : 'category'} tick={tick} tickFormatter={chartTick} tickLine={false} axisLine={{ stroke: 'rgb(var(--border))' }} minTickGap={20} />,
+    <XAxis key="x" dataKey={scatter ? 'x' : spec.xKey} name={xName} type={numericX ? 'number' : 'category'} domain={numericX ? ['dataMin', 'dataMax'] : undefined} tick={tick} tickFormatter={chartTick} tickLine={false} axisLine={{ stroke: 'rgb(var(--border))' }} minTickGap={20} />,
     <YAxis key="y" dataKey={scatter ? 'y' : undefined} name={scatter ? spec.series.length === 1 ? spec.series[0].name : 'Value' : undefined} tick={tick} tickFormatter={chartTick} tickLine={false} axisLine={false} width={68} domain={['LineChart', 'ScatterChart'].includes(spec.type) ? ['auto', 'auto'] : [0, 'auto']} />];
 }
 export function motion(spec: ChartSpec) {

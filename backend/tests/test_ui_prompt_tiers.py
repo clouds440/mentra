@@ -33,7 +33,7 @@ class UiSelectionTests(unittest.IsolatedAsyncioTestCase):
         for instruction in ('model={', 'illustrative', 'independent inputs', 'Slider/Number', 'No implicit multiplication'):
             self.assertIn(instruction, charts)
         for instruction in ('explicit false keeps the chart read-only', 'usable supplied data still renders',
-                            'Global parameter keys MUST differ', 'Every equation output must exist in series'):
+                            'Global parameter keys MUST differ', 'Every plotted calculation must have an equation output'):
             self.assertIn(instruction, charts)
 
     async def test_common_inputs_are_bound_without_binding_every_visual(self):

@@ -12,6 +12,7 @@ export async function exportChart(container: HTMLElement, spec: ChartSpec) {
   const started = performance.now();
   while (performance.now() - started < 4000) {
     await frame();
+    if (!container.isConnected) throw new Error('Chart viewer closed');
     svg = container.querySelector<SVGSVGElement>('.chart-plot .recharts-wrapper > svg.recharts-surface');
     if (!svg || !svg.querySelector('.recharts-layer')) continue;
     const next = svg.innerHTML;
@@ -69,6 +70,7 @@ export async function exportChart(container: HTMLElement, spec: ChartSpec) {
   wrapped(spec.title, 18, true);
   if (spec.unit) wrapped(`Values in ${spec.unit}`, 12);
   if (spec.description) wrapped(spec.description, 12);
+  if (spec.modelUnavailable) wrapped('Equation controls unavailable. Supplied data shown.', 12);
   if (spec.model) wrapped(modelSummary(spec.model), 12);
   const body = doc.createElementNS(namespace, 'g'); body.setAttribute('transform', `translate(0 ${cursor + 8})`);
   while (clone.firstChild) body.appendChild(doc.importNode(clone.firstChild, true)), clone.removeChild(clone.firstChild);

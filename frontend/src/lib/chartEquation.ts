@@ -8,7 +8,7 @@ const functions = new Map<string, { min: number; max: number; run: (...args: num
 const constants = new Map([['pi', Math.PI], ['e', Math.E]]);
 export const equationIdentifier = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,47}$/.test(value) && !['constructor', 'prototype', '__proto__'].includes(value) && !functions.has(value) && !constants.has(value);
 type Node = { kind: 'number'; value: number } | { kind: 'name'; name: string } | { kind: 'unary'; sign: string; child: Node } | { kind: 'binary'; op: string; left: Node; right: Node } | { kind: 'call'; name: string; args: Node[] };
-export type CompiledEquation = { references: Set<string>; calculate: (scope: ReadonlyMap<string, number>) => number };
+export type CompiledEquation = { references: Set<string>; constants: Set<string>; calculate: (scope: ReadonlyMap<string, number>) => number };
 export function compileEquation(source: string): CompiledEquation {
   if (!source.trim() || source.length > 240) throw new Error('Equation is too large');
   const scanner = /\s*((?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|[A-Za-z][A-Za-z0-9_]*|\*\*|[+*/^(),-])/y;
@@ -18,7 +18,7 @@ export function compileEquation(source: string): CompiledEquation {
     if (!match || tokens.length >= 128) throw new Error('Unsupported equation syntax');
     tokens.push(match[1]); at = scanner.lastIndex;
   }
-  let cursor = 0; const references = new Set<string>();
+  let cursor = 0; const references = new Set<string>(); const usedConstants = new Set<string>();
   function parse(minimum = 0, depth = 0): Node {
     if (depth > 32) throw new Error('Equation nesting is too deep');
     const token = tokens[cursor++]; let left: Node;
@@ -38,7 +38,7 @@ export function compileEquation(source: string): CompiledEquation {
         left = { kind: 'call', name: token, args };
       } else {
         if (!constants.has(token) && !equationIdentifier(token)) throw new Error('Invalid variable');
-        if (!constants.has(token)) references.add(token);
+        if (!constants.has(token)) references.add(token); else usedConstants.add(token);
         left = { kind: 'name', name: token };
       }
     } else throw new Error('Expected a number, variable or parenthesis');
@@ -59,5 +59,5 @@ export function compileEquation(source: string): CompiledEquation {
     const left = evaluate(node.left, scope), right = evaluate(node.right, scope);
     return checked(node.op === '+' ? left + right : node.op === '-' ? left - right : node.op === '*' ? left * right : node.op === '/' ? left / right : Math.pow(left, right));
   }
-  return { references, calculate: scope => { const value = evaluate(tree, scope); if (!finiteChartNumber(value)) throw new Error('Equation result is outside the supported domain'); return value; } };
+  return { references, constants: usedConstants, calculate: scope => { const value = evaluate(tree, scope); if (!finiteChartNumber(value)) throw new Error('Equation result is outside the supported domain'); return value; } };
 }

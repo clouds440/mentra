@@ -26,14 +26,14 @@ check('no model remains read-only by default', () => { const item = parseChartSp
 check('bad equation falls back to defaults without interpreting source', () => fallback({ ...base, model: { ...base.model, equations: [{ dataKey: 'y', expression: 'window.alert(1)' }] } }));
 check('initial calculation failure retains supplied values', () => fallback({ ...base, model: { ...base.model, equations: [{ dataKey: 'y', expression: 'sqrt(-gain)' }] } }));
 check('model failure cannot draw missing supplied values', () => assert.equal(parseChartSpec(JSON.stringify({ ...base, data: [{ x: 1, y: null, z: null }], model: null })), null));
-check('invalid base data is never repaired by model fallback', () => { for (const data of [[{ x: 1, y: 'bad', z: 1 }], [{ x: 1, y: 1, z: 1, unknown: 2 }]]) assert.equal(parseChartSpec(JSON.stringify({ ...base, data, model: null })), null); });
+check('invalid base data is never repaired by model fallback', () => { for (const data of [[{ x: 1, y: 'bad', z: 1 }], [{ x: 1, y: 1, z: 1, unknown: {} }]]) assert.equal(parseChartSpec(JSON.stringify({ ...base, data, model: null })), null); });
 check('derived placeholders need no model arithmetic', () => { const item = parseChartSpec(JSON.stringify({ ...base, data: [{ x: 2, y: null, z: null }] })); assert.deepEqual(item.data, [{ x: 2, y: 8, z: 9 }]); });
 check('dependency order and calculated initial values', () => assert.deepEqual(spec.data.map(row => [row.y, row.z]), [[2, 3], [8, 9]]));
-check('editable source is valid, recalculable public chart JSON', () => { const edited = editChartValue(spec, -1, 'gain', 3); const source = serializeChartSpec(edited); const restored = parseChartSpec(source); assert(restored); assert.deepEqual(restored.data, edited.data); assert.equal(JSON.parse(source).data[0].y, null); });
+check('editable source is valid, recalculable public chart JSON', () => { const edited = editChartValue(spec, -1, 'gain', 3); const source = serializeChartSpec(edited); const restored = parseChartSpec(source); assert(restored); assert.deepEqual(restored.data, edited.data); assert.equal(JSON.parse(source).data[0].y, edited.data[0].y); });
 check('parameter updates every dependent row', () => { const next = editChartValue(spec, -1, 'gain', 3); assert.deepEqual(next.data.map(row => [row.y, row.z]), [[3, 4], [12, 13]]); assert.equal(spec.model.parameters[0].value, 2); });
 check('independent row updates only that row', () => { const next = editChartValue(spec, 1, 'x', 4); assert.deepEqual(next.data.map(row => row.y), [2, 32]); assert.equal(next.data[0].y, spec.data[0].y); });
 check('derived values read-only and parameter bounds enforced', () => { assert.equal(editChartValue(spec, 0, 'y', 99), null); assert.equal(editChartValue(spec, -1, 'gain', 11), null); });
-check('unplotted helper equation still permits supplied graph', () => fallback({ ...base, data: base.data.map(row => ({ ...row, helper: 2 })), model: { ...base.model, equations: [{ dataKey: 'helper', expression: 'gain*x' }, { dataKey: 'y', expression: 'helper' }] } }));
+check('helper equations drive plotted outputs without extra series', () => { const item = parseChartSpec(JSON.stringify({ ...base, model: { ...base.model, equations: [{ dataKey: 'y', expression: 'helper + 1' }, { dataKey: 'helper', expression: 'gain*x' }] } })); assert(item.model); assert.deepEqual(item.data.map(row => row.y), [3,5]); const next = editChartValue(item, -1, 'gain', 3); assert.deepEqual(next.data.map(row => row.y), [4,7]); assert.equal(next.series.length, 2); assert(!Object.hasOwn(JSON.parse(serializeChartSpec(next)).data[0], 'helper')); assert.deepEqual(parseChartSpec(serializeChartSpec(next)).data, next.data); });
 check('reported gross profit collision renders original numbers', () => fallback({ type: 'LineChart', title: 'Gross profit', xKey: 'price', data: [{ price: 1.5, profit: 6 }, { price: 3.8, profit: 75 }], series: [{ dataKey: 'profit' }], model: { kind: 'illustrative', note: 'Fixed quantity.', parameters: [{ key: 'price', label: 'Price', value: 3.8, min: 1.3, max: 6 }], equations: [{ dataKey: 'profit', expression: '(price - 1.3) * 30' }] } }));
 check('cached parse works without recompiling', () => { for (let index = 0; index < 10; index++) spec = editChartValue(spec, -1, 'gain', index); assert.equal(spec.data[1].z, 37); });
 for (const equations of [[{ dataKey: 'y', expression: 'y + 1' }], [{ dataKey: 'y', expression: 'z' }, { dataKey: 'z', expression: 'y' }], [{ dataKey: 'y', expression: 'missing * x' }], [{ dataKey: 'x', expression: 'gain' }], [{ dataKey: 'y', expression: 'x' }, { dataKey: 'y', expression: 'x' }]]) check('invalid dependency graph', () => fallback({ ...base, model: { ...base.model, equations } }));
@@ -54,6 +54,36 @@ check('invalid auxiliary input model still draws supplied series', () => fallbac
 check('invalid initial auxiliary input still draws supplied series', () => fallback({ ...auxiliary, data: [{ product: 'A', quantity: -1, revenue: 6 }] }));
 check('pie and scatter fallback preserves non-null value requirements', () => { for (const type of ['PieChart', 'RadarChart', 'ScatterChart']) assert.equal(parseChartSpec(JSON.stringify({ ...base, type, model: null, data: [{ x: 1, y: 2, z: null }, { x: 2, y: 3, z: 1 }, { x: 3, y: 4, z: 2 }] })), null); });
 check('scatter models calculate placeholders with numeric independent axes', () => { const item = parseChartSpec(JSON.stringify({ ...base, type: 'ScatterChart', data: [{ x: 2, y: null, z: null }] })); assert(item); assert.equal(item.data[0].y, 8); });
+check('row metadata is projected without invalidating the graph', () => { const item = parseChartSpec(JSON.stringify({ ...base, model: undefined, data: base.data.map(row => ({ ...row, label: '', provenance: 'Synthetic', auxiliary: 42, isSynthetic: true })) })); assert.deepEqual(item.data, base.data); });
+check('broken oversized model does not hide valid default data', () => fallback({ ...auxiliary, data: [{ product: 'A', quantity: 2, revenue: 6 }], model: { ...auxiliary.model, inputs: Array.from({length:9}, (_,i) => ({dataKey:'extra'+i, label:'Extra'})) } }));
+check('missing parameters and derived cells need no boilerplate', () => { const item = parseChartSpec(JSON.stringify({ ...base, data: [{x:3}], model: { kind:'illustrative', note:'A square and offset.', equations: [{dataKey:'y',expression:'x^2'}, {dataKey:'z',expression:'y+1'}] } })); assert(item.model); assert.equal(item.enableControls,true); assert.deepEqual(item.data,[{x:3,y:9,z:10}]); });
+check('helper names cannot overwrite input, axis or parameter', () => { for (const dataKey of ['x','gain']) fallback({ ...base, model: { ...base.model, equations:[{ dataKey,expression:'1' },{dataKey:'y',expression:'gain*x'}] } }); });
+check('unplotted helpers must contribute to a visible output', () => fallback({ ...base, model: { ...base.model, equations:[{dataKey:'helper',expression:'gain*x'},{dataKey:'y',expression:'x'}] } }));
+check('constant collisions never silently substitute mathematical e or pi', () => { for (const xKey of ['e','pi']) fallback({ ...base, xKey, data: [{[xKey]:7,y:14,z:0}], model: {...base.model,equations:[{dataKey:'y',expression:'gain*'+xKey}]} }); });
+check('mathematical constants remain available when unambiguous', () => { const item=parseChartSpec(JSON.stringify({...base,model:{...base.model,equations:[{dataKey:'y',expression:'gain*pi'}]}})); assert(item.model); assert.equal(item.data[0].y,2*Math.PI); });
+check('copied defaults remain useful when an equation later fails', () => { const copy=JSON.parse(serializeChartSpec(parseChartSpec(JSON.stringify(base)))); copy.model.equations[0].expression='missing'; fallback(copy); });
+check('large calculated defaults roundtrip and retain fallback values', () => {
+ const series=Array.from({length:6},(_,i)=>({dataKey:'value'+i}));
+ const raw={type:'LineChart', title:'Large default values',xKey:'x',series,data:Array.from({length:200},(_,x)=>({x,...Object.fromEntries(series.map(item=>[item.dataKey,null]))})),model:{kind:'illustrative',note:'Synthetic scientific values.',parameters:[{key:'scale',label:'Scale',value:1.2345678901234567e90,min:1,max:1e95}],equations:series.map((item,i)=>({dataKey:item.dataKey,expression:'scale*(x+'+(i+1)+')'}))}};
+ const item=parseChartSpec(JSON.stringify(raw));assert(item.model);const source=serializeChartSpec(item);assert(source.length>24000);const restored=parseChartSpec(source);assert(restored.model);assert.deepEqual(restored.data,item.data);
+});
+check('unavailable predictions cannot hide usable supplied observations', () => {
+ const item=parseChartSpec(JSON.stringify({...base,data:[{x:1,z:7},{x:2,y:null,z:8}],model:{...base.model,equations:[{dataKey:'y',expression:'missing'}]}}));
+ assert(item.modelUnavailable);assert.equal(item.enableControls,false);assert.deepEqual(item.series.map(row=>row.dataKey),['z']);assert.deepEqual(item.data.map(row=>row.z),[7,8]);assert(parseChartSpec(serializeChartSpec(item)));
+});
+check('source and row/series computation budgets stay bounded', () => { assert.equal(parseChartSpec(' '.repeat(512001)),null);assert.equal(parseChartSpec(JSON.stringify({...base,data:Array.from({length:201},()=>base.data[0])})),null); });
+const {cacheChart,readChart,setRichContentOwner}=await import(await moduleUrl('richContentCache'));
+check('chart source cache has a total character budget and owner isolation', () => {
+ setRichContentOwner('test-owner'); const keys=Array.from({length:5},(_,i)=>String(i)+' '.repeat(500000));
+ for(const key of keys)cacheChart(key,null);
+ assert.equal(readChart(keys[0]),undefined);assert.equal(readChart(keys[4]),null);
+ setRichContentOwner('another-owner');assert.equal(readChart(keys[4]),undefined);
+});
+check('cache replacement and reads do not inflate its size accounting', () => {
+ const first='a'.repeat(400000);for(let i=0;i<10;i++)cacheChart(first,null);
+ const second='b'.repeat(400000);cacheChart(second,null);assert.equal(readChart(first),null);assert.equal(readChart(second),null);
+ setRichContentOwner(null);assert.equal(readChart(first),undefined);
+});
 const data = Array.from({ length: 200 }, (_, x) => ({ x, y: 0, z: 0 }));
 spec = parseChartSpec(JSON.stringify({ ...base, data }));
 const durations = [];

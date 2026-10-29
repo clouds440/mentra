@@ -82,7 +82,7 @@ const invalid: Record<string, unknown> = {
   'missing values': { ...base, data: [{ topic: 'Algebra' }] },
   'callbacks in series': { ...base, series: [{ ...base.series[0], shape: '<script />' }] },
   'duplicate series': { ...base, series: [base.series[0], base.series[0]] },
-  'nonfinite values': { ...base, data: [{ topic: 'Algebra', minutes: 1e15 }] },
+  'out-of-range values': { ...base, data: [{ topic: 'Algebra', minutes: 1e101 }] },
   'all missing series': { ...base, data: [{ topic: 'Algebra', minutes: null }] },
   'underspecified radar': { ...base, type: 'RadarChart', data: [base.data[0]] },
 };
@@ -154,6 +154,10 @@ test('visible charts do not rerender on typing, unchanged refresh or font change
   const fixture = await richChat(page, [fence(base), fence({ ...base, type: 'LineChart' }), fence({ ...base, type: 'PieChart' })].join('\n\n'));
   await page.goto('/chat/polish-chat');
   await expect(page.locator('[data-visual-kind="chart"]')).toHaveCount(3);
+  // A reader's wheel gesture stops bottom-follow. Programmatic scrolling alone
+  // races late chart sizing and intentionally does not claim reader intent.
+  await page.locator('[data-visual-kind="chart"]').last().hover();
+  await page.mouse.wheel(0, -10000);
   for (const block of await page.locator('[data-visual-kind="chart"]').all()) { await block.scrollIntoViewIfNeeded(); await expect(block.locator('.recharts-wrapper')).toBeAttached(); }
   await expect(page.locator('.recharts-figure .recharts-wrapper')).toHaveCount(3);
   const initial = await page.evaluate(() => (window as any).richRenderProfile.counts);
