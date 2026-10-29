@@ -7,7 +7,7 @@ import { Button, Dialog, IconButton } from '../ui';
 import { ViewToggle } from '../ui/ViewToggle';
 import { useQuestionNavigation } from './useQuestionNavigation';
 import { MistakePractice } from './MistakePractice';
-import { LearningTargetLabels } from './LearningTargetLabels';
+import { LearningTargetGroups, LearningTargetLabels } from './LearningTargetLabels';
 
 /** Join by immutable question ID; model response order never determines attribution. */
 export function AssessmentFeedback({ assessment, attempt }: { assessment: Assessment; attempt: AssessmentAttempt }) {
@@ -39,7 +39,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
         return <span key={outcome} className={`inline-flex items-center gap-1.5 text-xs font-medium ${style.color}`}><style.Icon aria-hidden="true" size={15} />{results.filter(item => item.outcome === outcome).length} {style.label.toLowerCase()}</span>;
       })}</div>
     </div>
-    {!!assessment.questions.some(question => question.learning_targets?.length) && <section aria-label="Topics covered" className="rounded-control border border-border p-3"><h3 className="text-sm font-medium text-heading">Skills checked in this assessment</h3><p className="mt-1 text-xs text-muted">These results apply to the listed subskills. Other skills in each topic remain untested.</p><ul className="mt-2 space-y-2">{[...new Map(assessment.questions.flatMap(question => (question.learning_targets ?? []).map(target => [target.subskill_id, target] as const))).values()].map(target => <li key={target.subskill_id} className="text-xs text-muted">{target.topic_name ? `${target.topic_name} · ` : ''}{target.subskill_name}</li>)}</ul></section>}
+    {!!assessment.questions.some(question => question.learning_targets?.length) && <section aria-label="Topics covered" className="rounded-control border border-border p-3"><h3 className="text-sm font-medium text-heading">Skills checked in this assessment</h3><p className="mt-1 text-xs text-muted">These results apply to the listed subskills. Other skills in each topic remain untested.</p><div className="mt-2"><LearningTargetGroups stacked targets={assessment.questions.flatMap(question => question.learning_targets ?? [])} /></div></section>}
     <MistakePractice key={`${attempt.id}:${attempt.grade_revision}`} assessment={assessment} attempt={attempt} />
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">All {results.length} results</p><ViewToggle label="Result view" view={view} onChange={setView} /></div>
     {view === 'grid' ? <div className="workspace-compact-grid">{results.map((item, position) => {

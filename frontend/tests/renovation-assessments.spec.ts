@@ -141,6 +141,24 @@ test('creation needs only a topic and automatically decides advanced settings', 
   expect(payload).toMatchObject({topic:'Forces',context_id:'',count:5,question_format:'auto'});
 });
 
+for (const width of [390,1280]) test(`completed assessment groups repeated topic and skill labels at ${width}`, async ({page}) => {
+  await page.setViewportSize({width,height:844});
+  const state=await chat(page);
+  const attempt: AssessmentAttempt={id:'flex-attempt',assessment_id:state.value.id,revision:3,state:'graded',attempt_number:1,
+    answers:Object.fromEntries(state.value.questions.map(q=>[q.id,q.options?.[0]?.id ?? 'My explanation'])),
+    grades:state.value.questions.map(q=>({question_id:q.id,score:2,confidence:1,feedback:'Correct.',concept_grades:{},misconceptions:[],outcome:'correct'})),
+    extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]};
+  await page.route('**/api/v1/assessments/flex-assessment/attempts',route=>route.fulfill({json:[attempt]}));
+  await page.route('**/api/v1/assessments/attempts/flex-attempt',route=>route.fulfill({json:attempt}));
+  await page.reload();
+  const coverage=page.getByRole('region',{name:'Topics covered',exact:true});
+  await expect(coverage.getByText('Arabic for beginners',{exact:true})).toHaveCount(1);
+  await expect(coverage.getByText('Letter dots',{exact:true})).toHaveCount(1);
+  await expect(coverage.getByText('Letter shapes',{exact:true})).toHaveCount(1);
+  await expect(page.getByText('Final result: 8/8',{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
 test('simple grading shows correctness and feedback without marks or letter grades', async ({page}) => {
   const state=await chat(page);
   state.value.preferences={result_style:'grade'};
