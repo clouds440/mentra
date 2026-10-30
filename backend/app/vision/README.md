@@ -53,6 +53,6 @@ General chat supplies up to three images together with the user's query to the s
 
 ## OCR verification
 
-`backend/tests/vision/test_ocr.py` checks exact commands, limits, output and failure behavior, temporary cleanup, independent concurrent requests, provider substitution, and RAG capability/fingerprint/error compatibility. `backend/testing/vision_real.py` exercises the public facade with real PNG, JPEG and scanned-PDF fixtures. Its recorded output is [vision-verification.json](../../../docs/vision-verification.json).
+`backend/tests/vision/test_ocr.py` checks exact commands, limits, output and failure behavior, temporary cleanup, independent concurrent requests, provider substitution, and RAG capability/fingerprint/error compatibility. `backend/testing/vision_real.py` exercises the public facade with real PNG, JPEG and scanned-PDF fixtures. Its recorded output is [vision-verification.json](../../../docs/vision/verification/vision-verification.json).
 
-The complete backend suite and real RAG format/runtime checks were rerun after extraction. See [RAG verification](../../../docs/rag-verification.md) for the preserved end-to-end contracts and test environment.
+The complete backend suite and real RAG format/runtime checks were rerun after extraction. See [RAG verification](../../../docs/library/rag-verification.md) for the preserved end-to-end contracts and test environment.

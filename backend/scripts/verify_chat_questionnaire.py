@@ -30,7 +30,7 @@ async def main():
         assert not scope.get('assessment_cards') and not scope.get('tool_warnings') and reply.content.strip()
         results.append(dict(question_count=len(questions), options_per_question=[len(q['options']) for q in questions],
             grouped_card_count=len(cards), domain_writes=scope['_tool_budget'].writes, question_ids=[q['id'] for q in questions]))
-    Path('docs/audits/chat-questionnaire-provider-verification.json').write_text(json.dumps(dict(
+    Path('docs/chat/verification/chat-questionnaire-provider-verification.json').write_text(json.dumps(dict(
         model=settings.ai_model, scope='Synthetic English and Urdu prompts; no student database, assessments or grading services.',
         cases=results), ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     print('Both configured-model cases preserved all five questions and all four options in one questionnaire.')

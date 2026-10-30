@@ -32,7 +32,7 @@ async def main():
     result = dict(model=settings.ai_model, scope='Synthetic provider/domain checks; no real student data.',
         natural_six_skill_group=first.model_dump(mode='json'), repeated_niche=second.model_dump(mode='json'),
         different_subject=third.model_dump(mode='json'))
-    path = Path('docs/audits/topic-organization-live-verification.json')
+    path = Path('docs/learning/verification/topic-organization-live-verification.json')
     path.write_text(json.dumps(result, indent=2), encoding='utf-8')
     print('Passed: natural six-skill grouping, paraphrase reuse, different-subject separation.')
 

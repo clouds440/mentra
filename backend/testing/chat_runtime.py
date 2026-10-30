@@ -75,7 +75,7 @@ def main():
             bundle = web.get(script); bundle.raise_for_status()
             assert '/api/v1/conversations' in bundle.text
         report['checks'].append('rebuilt Nginx image serves persistent chat routes and new API client bundle')
-        Path('docs/chat-runtime-verification.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
+        Path('docs/chat/verification/chat-runtime-verification.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
         print(json.dumps(report, indent=2))
     finally:
         client.close(); provider.shutdown(); provider.server_close()

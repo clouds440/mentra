@@ -153,7 +153,7 @@ def main():
         report['checks'].append('Browser on rebuilt Nginx image verifies manual CRUD, reload, confirmation and tool-written memory against rebuilt API via test-only URL proxy')
         report['images'] = {name:docker('inspect','--format','{{.Image}}',container) for name,container in [('mentra-backend:latest',api),('mentra-frontend:latest',web)]}
         assert any('Admission' in x for x in ToolProvider.calls)
-        Path('docs/history-runtime-verification.json').write_text(json.dumps(report,indent=2)+'\n', encoding='utf-8')
+        Path('docs/memory/verification/history-runtime-verification.json').write_text(json.dumps(report,indent=2)+'\n', encoding='utf-8')
         print(json.dumps(report,indent=2))
     finally:
         client.close(); provider.shutdown(); provider.server_close()

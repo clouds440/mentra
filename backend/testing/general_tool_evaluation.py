@@ -139,7 +139,7 @@ else:
     result['checks'] = dict(complete_cohorts=True, scripted_workflow_non_regression=all(
         row['after'][metric] <= row['before'][metric]
         for row in result['task_costs'] for metric in ('estimated_total_input','model_rounds','physical_calls')))
-    path=root/'docs/General_Tool_Optimization_Evidence_2026-10-26.json'
+    path=root/'docs/orchestration/verification/General_Tool_Optimization_Evidence_2026-10-26.json'
     path.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     if '--check' in sys.argv and not all(result['checks'].values()):
         raise SystemExit('Scripted workflow cost regression; inspect the evidence and validate any quality tradeoff.')

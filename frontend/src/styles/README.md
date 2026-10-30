@@ -34,7 +34,7 @@ Run `npm run check:theme` for theme behavior checks and `npm run build` for
 TypeScript validation and the production bundle. The behavior checks use a
 simulated browser environment; visual review still requires a browser.
 `npm run test:auth` includes real browser checks of both palettes and responsive auth
-pages, with screenshots in `test-results/`. See `docs/frontend-auth.md` at the repository
+pages, with screenshots in `test-results/`. See `docs/identity/frontend-auth.md` at the repository
 root for the PostgreSQL test setup.
 
 `npm run check:ui` checks semantic text palettes, input boundaries, primary action

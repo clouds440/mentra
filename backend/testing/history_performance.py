@@ -79,7 +79,7 @@ def main():
             p95_ms=round(sorted(timings)[18],2), selected_indexes=names,
             max_windows=3, max_expanded_messages=9, memory_recall_limit=5,
             note='Local dedicated PostgreSQL 17 fixture; latency is not a production SLO.')
-        Path('docs/history-performance-verification.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+        Path('docs/memory/verification/history-performance-verification.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
         print(json.dumps(report,indent=2))
 
 

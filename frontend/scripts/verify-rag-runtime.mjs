@@ -37,7 +37,7 @@ try {
   await expect(page.getByRole('dialog').locator('section')).toHaveCount(1);
   const sourceBounds = await page.getByRole('dialog').boundingBox();
   expect(Math.abs(sourceBounds.y + sourceBounds.height / 2 - 450)).toBeLessThan(2);
-  await page.screenshot({ path: fileURLToPath(new URL('../../docs/rag-production-browser.png', import.meta.url)), fullPage: true });
+  await page.screenshot({ path: fileURLToPath(new URL('../../docs/library/screenshots/history/rag-production-browser.png', import.meta.url)), fullPage: true });
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download original' }).click();
   const download = await pending;

@@ -1,0 +1,26 @@
+# Code and Markdown rendering
+
+Chat renders both user and assistant messages with the shared `MarkdownContent` component, using [React Markdown](https://github.com/remarkjs/react-markdown) and `remark-gfm`. Headings, inline code, tables, lists, task lists and fenced code use shared styling. Authorized assistant citations retain their existing allowlist and source-dialog focus behavior; user-written citation-like text is ordinary content.
+
+`CodeBlock` provides [Prism.js](https://prismjs.com/) highlighting, a language toolbar, line numbers, copy feedback, keyboard-focusable scrolling and an optional wrap toggle. Light and Dark syntax palettes live with the central semantic theme tokens. Line numbers are hidden when wrapping so multiline rows do not display incorrect numbers. Unknown languages and very large blocks retain the same readable surface and full code text without syntax coloring. Copy uses the underlying source string, independent of highlighted HTML and line numbers. Clipboard failures receive visible feedback.
+
+Prism runs in a module worker. Grammar assets are bundled locally and loaded on demand using Prism's dependency metadata and language aliases, including TS/TSX/JS/JSX/Python. Uploaded code never executes. Only Prism-generated, escaped markup enters the highlighting HTML boundary; React Markdown retains its default safe handling of raw HTML and URLs. No CDN receives document text. Requests time out after 12 seconds and fall back to plain code; the worker is terminated on timeout/error. Coloring is bounded to 80,000 characters per block, while rendering/copying preserves all displayed text. The initial application bundle grows by approximately 10 KiB gzip from the preceding baseline; grammar chunks remain separate.
+
+The Library source viewer uses the same renderer, with extracted/original controls and authenticated downloads. Source filenames, media types and optional per-span languages come from the backend. HTML native prose and OCR remain readable prose; extracted script/style blocks use JavaScript/CSS highlighting. Markdown uploads render rich content. Adjacent chunks from the same source block are joined only when offsets, location, method, language and headings agree, keeping code continuous without merging unrelated passages. Exact originals remain available separately, including their original line endings. Original preview and download reuse one authenticated fetch. Text original previews stop at 256 KiB with an explicit notice and a complete-file download; PDF/image originals use native previews, and Office originals remain downloadable.
+
+Chunker identity is now `block-token-v2` because new chunks retain language metadata. Existing published generations and citations remain usable; filename metadata provides highlighting for old coding-file chunks. Jobs captured under the old configuration require a new reindex generation. No database migration is required because spans already use JSON storage.
+
+Assessment question/answer fields use the same Markdown/Prism renderer; generation
+prompts require fenced code blocks when they contain code. Code blocks allow
+scrolling to continue into chat when their own vertical range is exhausted.
+Assistant answers reveal from top to bottom after rich rendering, rather than
+flashing raw Markdown first. The response-level copy action produces plain text;
+the code toolbar continues to copy exact source.
+
+## Verification (original renderer rollout)
+
+The full backend suite passed 231 tests; workflow checks verify source filename/media and language metadata. Processing checks retain exact content, offsets and languages across chunk splits. The complete Chromium suite passed 30 checks against production-built assets, including auth/profile regressions, RAG workflows and code rendering. Code tests exercise user/assistant TSX/Python, mobile long lines, unknown-language safety, clipboard copy, original-fetch reuse, HTML JavaScript/CSS, Markdown documents and continuous split code. Theme checks and TypeScript/Vite production builds passed. Docker backend/frontend images were rebuilt; application services were not restarted.
+
+Screenshots: [Light chat](screenshots/history/code-chat-light.png), [Dark chat](screenshots/history/code-chat-dark.png), [Light source](screenshots/history/code-source-light.png), [Dark source](screenshots/history/code-source-dark.png), [Mobile source](screenshots/history/code-source-mobile-dark.png), [Mobile chat](screenshots/history/code-chat-mobile-dark.png).
+
+Reproduce production browser checks by building with `VITE_API_URL=http://127.0.0.1:18003`, then running `npm run test:e2e` with `FRONTEND_PREVIEW=1` and the dedicated `TEST_DATABASE_URL`. This serves compiled assets via Vite preview; it does not use the application database.

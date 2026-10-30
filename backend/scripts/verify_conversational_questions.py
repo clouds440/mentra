@@ -60,7 +60,7 @@ async def verify():
         assert bool(generated) == assessment_requested and result['nonempty_reply'], result
         if not assessment_requested:
             assert not scope.get('assessment_cards') and not scope.get('_assessment_attempted'), result
-    Path('docs/audits/conversational-questions-live-verification.json').write_text(
+    Path('docs/chat/verification/conversational-questions-live-verification.json').write_text(
         json.dumps(dict(model=settings.ai_model, scope='Synthetic prompts and in-memory assessment stub only; no student records.',
             cases=results), ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     print(f'Passed {len(results)} configured-model conversation/assessment checks.')

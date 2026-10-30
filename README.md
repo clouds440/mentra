@@ -1,17 +1,173 @@
-# Mentra
+<div align="center">
+  <img src="frontend/src/assets/mentra-logo.png" alt="Mentra" width="76" />
+  <h1>Mentra</h1>
+  <p><strong>A learning workspace for understanding, practice and progress.</strong></p>
+  <p>Bring your questions and study material. Explore ideas visually, practise in chat or on paper, and turn feedback into a clearer next step.</p>
+  <p><a href="#product-tour">Product tour</a> · <a href="#full-feature-catalog">All features</a> · <a href="#coming-soon--document-writing">Coming soon</a> · <a href="#quick-start">Run locally</a> · <a href="docs/README.md">Documentation</a></p>
+</div>
 
-Mentra is an adaptive learning workspace built with FastAPI, React + TypeScript,
-PostgreSQL, LangChain/LangGraph, local CPU embeddings, and Qdrant retrieval.
-PostgreSQL owns canonical conversations, attachment metadata, assessments, learner
-evidence, events, notifications, settings and durable jobs. Private original files
-live in Cloudinary; Qdrant holds derived retrieval vectors. Browser caches
-accelerate navigation and synchronize with authoritative server records.
+![Mentra’s live learning workspace with a model-generated interactive chart](docs/chat/screenshots/showcase/interactive-chart.png)
 
-Start with [setup](docs/SETUP.md) to run Mentra, the
-[backend atlas](docs/Mentra_Backend_Map.md) to understand its implementation, or
-the [production runbook](docs/production-readiness.md) to prepare a deployment.
+**One connected learning loop:** ask → explore → practise → review → plan what comes next.
 
-## Current features
+The tour below was captured in Chromium against the running local app on **30 October 2026**, using a separate account and synthetic study material. Explanations, charts, generated practice and grading came through the configured application workflows. These are actual UI captures, not design mockups or a claim about learning accuracy. Screenshots and animations are kept with their owning module; [capture details](docs/product/README.md).
+
+## Product tour
+
+### Understand an idea, then explore it
+
+Mentra answers with Markdown, equations, code, diagrams and source references when they help. Conversations are saved, searchable and recoverable; long histories can be found again without replacing the original messages. Pause/resume and retry controls keep unfinished responses recoverable.
+
+| In the learning conversation | What you can do |
+| --- | --- |
+| Worked explanations | Choose examples-first, step-by-step, conceptual or adaptive teaching |
+| Rich content | Read equations, syntax-highlighted code, Mermaid diagrams, charts, comparison bars and captioned images |
+| Native inputs | Answer choices, custom-text options, forms or a grouped questionnaire |
+| Your sources | Select Library material with the composer source picker and inspect cited passages |
+| Voice and files | Dictate into an editable draft, attach images/documents or reuse an earlier upload |
+| History | Search saved exchanges, recover original messages and carry relevant admitted memories between chats |
+
+<details>
+<summary><strong>See a grouped conversation questionnaire</strong></summary>
+
+![A model-generated study-routine questionnaire with native answer choices](docs/chat/screenshots/showcase/conversation-questions.png)
+
+Questions submit together through native controls. These conversational activities remain separate from graded assessments.
+
+</details>
+
+<details>
+<summary>Worked explanation and diagram</summary>
+
+![A saved learning conversation with a worked example and Mermaid diagram](docs/chat/screenshots/showcase/learning-conversation.png)
+
+</details>
+
+[Chat contracts](docs/chat/persistent-chat.md) · [Interactive UI design plan](docs/chat/Interactive_UI_Implementation_Plan.md) · [Native input and visual contracts](docs/chat/chat-interactions.md)
+
+### Change an input. See the relationship change.
+
+Explore illustrative relationships with local chart controls. Inspect exact data, expand a visual, or export a standalone SVG/PNG. Charts use validated data and supported equations; the model does not execute arbitrary JavaScript in your browser. Factual comparisons can remain fixed and read-only.
+
+![Changing mass in a live chart updates the acceleration curve](docs/chat/screenshots/showcase/chart-exploration.gif)
+
+*An actual browser interaction: changing the mass of an illustrative cart recomputes acceleration locally. This animation is assembled from the captured UI frames.*
+
+<details>
+<summary>Full workspace chart screenshot</summary>
+
+![Interactive acceleration chart with local controls and export actions](docs/chat/screenshots/showcase/interactive-chart.png)
+
+</details>
+
+[Visual formats and limits](docs/chat/chat-interactions.md) · [Rich-content rendering](docs/chat/code-rendering.md) · [UI implementation and verification](docs/chat/Interactive_UI_Verification.md)
+
+### Turn your material into a study workspace
+
+Keep notes and documents in a private Library. Search titles and filenames, manage context and source versions, open exact cited passages, and prepare source-grounded practice. Native readers and OCR feed multilingual E5 retrieval; an optional local multilingual reranker refines authorized results.
+
+![Mentra Library with private study notes and source actions](docs/library/screenshots/showcase/source-library.png)
+
+Originals are stored privately and served through current ownership checks. Chat-to-Library and chat-to-assessment reuse the original asset; the app does not need another upload of the same file.
+
+[Library and RAG](docs/library/rag.md) · [RAG design plan](docs/library/Mentra_RAG_System_Implementation_Plan.md) · [Private file lifecycle](backend/app/files/README.md) · [Reranker setup](docs/getting-started/SETUP.md#optional-local-multilingual-reranker)
+
+### Practise, get feedback and revisit mistakes
+
+Create interactive MCQs, select-all/true-false questions, written work, mixed practice or a structured mock paper. Use a topic, chosen subskills or selected materials. Continue an existing attempt, review saved feedback and prepare follow-up practice from mistakes.
+
+![Assessment creation with topic, question and source controls](docs/assessments/screenshots/showcase/create-assessment.png)
+
+![Saved grading feedback on a real synthetic practice attempt](docs/assessments/screenshots/showcase/graded-feedback.png)
+
+| During practice | After submission |
+| --- | --- |
+| Resumable attempts and editable drafts | Saved question-level outcomes and feedback |
+| Chat practice or the Assessments workspace | Results publish before background learning finishes |
+| Source-grounded or topic-led questions | Evidence status remains explicit while learning updates |
+| Paper download and answer-sheet upload | Select mistakes or generate revision practice |
+| Revisions that preserve originals | Root question/exposure lineage keeps repeated practice honest |
+
+<details>
+<summary><strong>See the saved mistake-review workspace</strong></summary>
+
+![Saved mistake history and revision-practice controls](docs/assessments/screenshots/showcase/mistake-review.png)
+
+</details>
+
+[Assessment engine](docs/assessments/Assessment_Engine.md) · [Recovery decisions](docs/assessments/Assessment_Recovery.md) · [Mistake and revision practice](docs/assessments/mistake-practice.md)
+
+### Prefer solving on paper? Keep the same learning loop.
+
+Download an answer-free question PDF, solve offline, and upload a PDF, TXT or PNG/JPEG answer sheet. Review and correct the extracted answers, explicitly confirm them, and submit through the same grading pipeline as on-screen answers.
+
+![Extracted answer sheet awaiting review and explicit confirmation](docs/assessments/screenshots/showcase/answer-sheet-review.png)
+
+Incomplete extraction preserves saved draft work. Valid option letters/text normalize to the same immutable choices used by the interactive quiz. Uploading an original is preparation, not grading or proof of understanding.
+
+[Answer-sheet and PDF contracts](docs/assessments/Assessment_Engine.md#answer-sheets-and-question-paper-downloads) · [Chat assessment decisions](docs/assessments/chat-assessments.md)
+
+### See what your learning evidence supports
+
+Progress brings together broader topics, independently tracked subskills, practice recommendations and supported review suggestions. Evidence details explain uncertainty, difficulty coverage and accepted practice. Grouping or renaming a topic does not move mastery between skills.
+
+![Independently tracked subskills with evidence and practice actions](docs/learning/screenshots/showcase/topic-subskills.png)
+
+*This new showcase account has three tracked skills, still shown honestly as “not grouped yet.” Its existing evidence stays attached to each skill.*
+
+<details>
+<summary>Learning overview and recommendations</summary>
+
+![Learning Progress in the synthetic showcase account](docs/learning/screenshots/showcase/learning-progress.png)
+
+</details>
+
+Progress starts with evidence. Accepting a topic, reading a response or confirming a transcription does not, on its own, establish mastery. Broad teaching preferences and profile estimates remain separate from concept-level learning state.
+
+[Learning Progress](docs/learning/learning-progress.md) · [Learner design plan](docs/learning/Mentra_Learner_Model_Implementation_Plan.md) · [Learner decisions and audits](docs/learning/README.md)
+
+### Keep the next step in view
+
+Plan study sessions, assessments and deadlines in the agenda. Review suggestions from conversations, edit details in place, receive reminders in the independent Notifications inbox, or download a calendar snapshot. Date-only plans and timezone-aware events retain their intended meaning.
+
+![Study sessions, quiz and assignment dates in Mentra’s agenda](docs/events/screenshots/showcase/study-agenda.png)
+
+<details>
+<summary>Reminder delivery in the Notifications inbox</summary>
+
+![An actual reminder delivered to the showcase account](docs/notifications/screenshots/showcase/reminder-inbox.png)
+
+</details>
+
+[Events and temporal decisions](docs/events/events.md) · [Events implementation plan](docs/events/Mentra_Events_Implementation_Plan.md) · [Notifications](docs/notifications/notifications.md)
+
+### Make the teaching fit you
+
+Save your background, goals, preferred name, teaching approach, participation style, explanation depth and visual preference. Current requests take precedence over saved defaults. Manage admitted memories separately, and switch among Light, Dark and System themes.
+
+![User-owned profile and teaching controls in the profile editor](docs/profile/screenshots/showcase/edit-teaching-preferences.png)
+
+<details>
+<summary><strong>See the same learning conversation on mobile</strong></summary>
+
+<img src="docs/chat/screenshots/showcase/learning-mobile.png" width="330" alt="Mentra conversation, equation and diagram on a mobile viewport" />
+
+</details>
+
+### A workspace that feels right in Dark mode
+
+Choose Light, Dark or System appearance. The same learning tools, charts and controls adapt to your theme.
+
+![The same local learning workspace and exploratory chart in Dark theme](docs/chat/screenshots/showcase/learning-dark.png)
+
+[Teaching preference decisions](docs/profile/Teaching_Preferences.md) · [Profile and calibration](docs/profile/student-profile.md) · [Memory and summary boundaries](docs/memory/memory-summaries.md)
+
+## Full feature catalog
+
+<details>
+<summary><strong>Browse the complete current capability list</strong></summary>
+
+### Product capabilities
 
 - **Persistent chat:** account-owned conversations, rename/delete, durable response
   pause/resume and retry controls, incremental cross-tab/device synchronization,
@@ -109,7 +265,7 @@ font. Browser glyph fallback selects fonts within mixed sentences automatically;
 Arabic, Urdu and other Arabic-script text need no model markup or per-word tags.
 Only the Arabic subset loads when needed; code and math retain their own fonts.
 
-## Workspace pages
+### Workspace pages
 
 Library (including upload/source details), Progress, Assessments and Settings share
 one responsive page shell, section frames, header, filter bars and loading patterns.
@@ -120,7 +276,7 @@ The agenda defaults to all dates and statuses, so completed/cancelled events rem
 visible until deleted. Approved, dismissed and expired suggestions have paginated
 history; deleting their source conversation removes its suggestions.
 
-## Interactive learning and visuals
+### Interactive learning and visuals
 
 | Capability | Behavior |
 | --- | --- |
@@ -138,12 +294,34 @@ compact visual guidance are always available. Detailed chart, multi-bar, custom-
 and disclosure references load through `enable_workflow_tools` when useful, rather
 than being included in every turn. Discovery can require an additional tool/model
 round; it adds no separate classifier or mandatory review call. See
-[interaction contracts](docs/chat-interactions.md) for formats and limits.
+[interaction contracts](docs/chat/chat-interactions.md) for formats and limits.
 
 Renderers reuse existing message metadata and shared controls. Completed message
 content is memoized; expensive visual libraries load near the viewport, and response
 icons load individually. Chart edits stay within their own component. These measures
 limit unrelated rerenders and startup cost; complex visuals still cost more than text.
+
+</details>
+
+## Coming soon · Document writing
+
+**Planned — not available yet.** Mentra will add document-writing workflows for **PDF, Word/DOCX, plain text/TXT and other formats**. The goal is to move from a request or outline to a structured, editable or shareable document.
+
+Today’s document reading, source ingestion and question-paper PDF download are already available; general-purpose document writing is a separate upcoming capability. Editing, revisions, source grounding and export fidelity still need their implementation design. See the [document-writing plan](docs/documents/Document_Writing_Plan.md).
+
+## Design decisions and documentation
+
+| Decision | Where to read more |
+| --- | --- |
+| Keep concepts, evidence, source provenance and domain ownership explicit | [Backend atlas and product decisions](docs/architecture/Mentra_Backend_Map.md#product-design-decisions) |
+| Publish assessment results independently from background learning | [Assessment engine](docs/assessments/Assessment_Engine.md) |
+| Treat typed, interactive and reviewed paper answers as one grading pipeline | [Assessment and recovery docs](docs/assessments/README.md) |
+| Preserve original messages and evidence; use summaries only as derived context | [History and memory](docs/memory/history-management.md), [summary design plan](docs/memory/Persistent_Memory_Summary_Plan.md) |
+| Use bounded typed tools and data-only visuals | [Interaction contracts](docs/chat/chat-interactions.md), [orchestration plans and research](docs/orchestration/README.md) |
+| Keep private originals, bindings, reads and deletion in one lifecycle | [Files migration plan](docs/files/Unified_Cloudinary_File_Migration_Plan.md), [current Files contract](backend/app/files/README.md) |
+| Preserve a familiar responsive workspace with shared UI primitives | [Frontend design/renovation](docs/frontend/README.md) |
+
+The [documentation index](docs/README.md) groups **current contracts, design plans, screenshots, audits and verification evidence by module**. Plans are not a current feature checklist; dated reports record their own run and scope. The screenshots above show a local synthetic account, not a production deployment or a learning-quality benchmark.
 
 ## Quick start
 
@@ -168,7 +346,7 @@ Fill the required values before starting; keep `.env` private and out of Git.
 
 Models and parser tools are provisioned during backend image build; runtime local
 inference does not download weights. Building requires network access and enough
-disk space for dependencies and model assets. See [setup](docs/SETUP.md) for the
+disk space for dependencies and model assets. See [setup](docs/getting-started/SETUP.md) for the
 full setting reference and native-development prerequisites.
 
 ```sh
@@ -189,7 +367,7 @@ blocks API startup, and an advisory lock serializes concurrent migration runners
 Image builds need no live database. There is no migration deployment GitHub Action;
 backend regression CI remains. Compare the image's Alembic head with the database
 revision using the update checks below rather than relying on a hardcoded version.
-Read the [production runbook](docs/production-readiness.md) before migrating an existing installation;
+Read the [production runbook](docs/deployment/production-readiness.md) before migrating an existing installation;
 the storage migration refuses to discard legacy file data.
 
 | Address | Purpose |
@@ -223,7 +401,7 @@ retrieval ranking and reports fallback diagnostics.
 The current `.env.example` includes the optional reranker configuration. Keep its
 model and path empty to disable it. Enabling/changing it requires rebuilding the
 backend and recreating consuming services; it does **not** require resetting E5
-vectors. See [reranker setup](docs/SETUP.md#optional-local-multilingual-reranker).
+vectors. See [reranker setup](docs/getting-started/SETUP.md#optional-local-multilingual-reranker).
 Actual model image support, generation quality and provider availability require
 their own checks; readiness validates configuration without generating a response.
 
@@ -264,7 +442,7 @@ private configuration and compatible application/model images.
 ## API overview
 
 All feature routes mount under `/api/v1`; authentication and ownership apply to
-personal records. The [backend atlas](docs/Mentra_Backend_Map.md#module-reference)
+personal records. The [backend atlas](docs/architecture/Mentra_Backend_Map.md#module-reference)
 lists every operation, and running `/docs` or `/openapi.json` describes exact
 request/response schemas.
 
@@ -316,7 +494,7 @@ providers, original-file delivery or background jobs work end to end.
 
 ## Production deployment
 
-Use the [production runbook](docs/production-readiness.md),
+Use the [production runbook](docs/deployment/production-readiness.md),
 [private configuration template](.env.production.example),
 [production Compose override](docker-compose.production.yml) and optional
 [TLS proxy template](deploy/nginx.production.conf.template). Replace template
@@ -373,24 +551,24 @@ the backend atlas.
 
 | Documentation | Scope |
 | --- | --- |
-| [Backend atlas](docs/Mentra_Backend_Map.md) | Module and file guide, feature dependencies, APIs, storage, and worker flows |
-| [Setup](docs/SETUP.md), [identity/PostgreSQL](docs/identity-and-postgresql.md) | Environment, migrations, native development and identity |
-| [Production runbook](docs/production-readiness.md), [dated release verification](docs/production-readiness-2026-10-25.md) | Deployment configuration, preservation, recovery and the scope of recorded checks |
+| [Backend atlas](docs/architecture/Mentra_Backend_Map.md) | Module and file guide, feature dependencies, APIs, storage, and worker flows |
+| [Setup](docs/getting-started/SETUP.md), [identity/PostgreSQL](docs/identity/identity-and-postgresql.md) | Environment, migrations, native development and identity |
+| [Production runbook](docs/deployment/production-readiness.md), [dated release verification](docs/deployment/production-readiness-2026-10-25.md) | Deployment configuration, preservation, recovery and the scope of recorded checks |
 | [Private files](backend/app/files/README.md) | Cloudinary originals, upload receipts, bindings, authenticated delivery and cleanup |
-| [Persistent chat](docs/persistent-chat.md), [context summaries](backend/app/chat/SUMMARIES.md) | Storage, synchronization, attachments and model context |
-| [Saved-chat search](docs/saved-chat-search.md), [rich content](docs/code-rendering.md) | Original exchange recovery, code and equation rendering |
-| [Interactive UI](docs/chat-interactions.md), [visual verification](docs/Interactive_UI_Verification.md) | Native inputs, diagrams/charts, colors/icons, exports, rendering limits and recorded acceptance |
-| [Teaching preferences](docs/Teaching_Preferences.md), [student profile](docs/student-profile.md) | Actionable teaching defaults, onboarding, calibration and compatibility |
+| [Persistent chat](docs/chat/persistent-chat.md), [context summaries](backend/app/chat/SUMMARIES.md) | Storage, synchronization, attachments and model context |
+| [Saved-chat search](docs/chat/saved-chat-search.md), [rich content](docs/chat/code-rendering.md) | Original exchange recovery, code and equation rendering |
+| [Interactive UI](docs/chat/chat-interactions.md), [visual verification](docs/chat/Interactive_UI_Verification.md) | Native inputs, diagrams/charts, colors/icons, exports, rendering limits and recorded acceptance |
+| [Teaching preferences](docs/profile/Teaching_Preferences.md), [student profile](docs/profile/student-profile.md) | Actionable teaching defaults, onboarding, calibration and compatibility |
 | [Learner engine](backend/app/learner/README.md) | Topic/subskill organization, evidence boundaries, mastery and retention |
-| [History and memory](docs/history-management.md), [memory summaries](docs/memory-summaries.md) | Exact history recovery, durable user memories and supported background compaction |
-| [Assessment engine](docs/Assessment_Engine.md), [recovery](docs/Assessment_Recovery.md), [mistake practice](docs/mistake-practice.md) | Papers/parts, answer-sheet review, question PDFs, grading/evidence, revision lineage and retries |
-| [Chat assessments](docs/chat-assessments.md), [interactions](docs/chat-interactions.md) | Generation, local answers, submission and grading |
-| [Learning Progress](docs/learning-progress.md), [Events](docs/events.md), [Notifications](docs/notifications.md) | Understanding, agenda, capture and reminder delivery |
-| [Web search/research](docs/web-search.md), [voice](docs/voice-input.md) | Provider tools and CPU transcription |
-| [RAG](docs/rag.md), [Documents](backend/app/documents/README.md), [Vision](backend/app/vision/README.md) | Source processing and retrieval |
-| [LangChain](backend/app/langchain/README.md), [logging](docs/backend-logging.md) | Model/tool orchestration and diagnostics |
-| [Prompt efficiency](docs/prompt-efficiency.md) | Prompt sizes, provider caching and validation evidence |
-| [Tool cache](docs/Tool_Cache_Policy.md), [response feedback/style](docs/Chat_Feedback_and_Response_Style.md) | Freshness/authorization boundaries and teaching-response preferences |
+| [History and memory](docs/memory/history-management.md), [memory summaries](docs/memory/memory-summaries.md) | Exact history recovery, durable user memories and supported background compaction |
+| [Assessment engine](docs/assessments/Assessment_Engine.md), [recovery](docs/assessments/Assessment_Recovery.md), [mistake practice](docs/assessments/mistake-practice.md) | Papers/parts, answer-sheet review, question PDFs, grading/evidence, revision lineage and retries |
+| [Chat assessments](docs/assessments/chat-assessments.md), [interactions](docs/chat/chat-interactions.md) | Generation, local answers, submission and grading |
+| [Learning Progress](docs/learning/learning-progress.md), [Events](docs/events/events.md), [Notifications](docs/notifications/notifications.md) | Understanding, agenda, capture and reminder delivery |
+| [Web search/research](docs/web-search/web-search.md), [voice](docs/speech/voice-input.md) | Provider tools and CPU transcription |
+| [RAG](docs/library/rag.md), [Documents](backend/app/documents/README.md), [Vision](backend/app/vision/README.md) | Source processing and retrieval |
+| [LangChain](backend/app/langchain/README.md), [logging](docs/observability/backend-logging.md) | Model/tool orchestration and diagnostics |
+| [Prompt efficiency](docs/orchestration/prompt-efficiency.md) | Prompt sizes, provider caching and validation evidence |
+| [Tool cache](docs/orchestration/Tool_Cache_Policy.md), [response feedback/style](docs/chat/Chat_Feedback_and_Response_Style.md) | Freshness/authorization boundaries and teaching-response preferences |
 | [Backend standards](backend/standards.md), [frontend standards](frontend/standards.md) | Contributor conventions |
 
 Implementation plans and dated verification reports preserve design/rollout
@@ -427,7 +605,7 @@ Choose the appropriate Playwright mock or real-API configuration and its require
 fixtures before browser tests. Backend suites live in `backend/tests/`; real
 model/provider probes in `backend/testing/` and `backend/scripts/` are opt-in and
 may require additional infrastructure or provider credits. See the
-[atlas test/script index](docs/Mentra_Backend_Map.md#support-files).
+[atlas test/script index](docs/architecture/Mentra_Backend_Map.md#support-files).
 
 Combined service logs are available with:
 

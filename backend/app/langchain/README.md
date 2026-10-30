@@ -18,8 +18,8 @@ Persistent clients use `/api/v1/conversations/turns`; the older `/api/v1/chat`
 endpoint is deprecated and stateless. Canonical transcripts and durable attempts
 belong to `app.chat`. On-demand history/memory tools use `app.history_management`
 with server-bound ownership and shared execution budgets; they do not replace the
-stored transcript. See [persistent chat](../../../docs/persistent-chat.md) and
-[history management](../../../docs/history-management.md).
+stored transcript. See [persistent chat](../../../docs/chat/persistent-chat.md) and
+[history management](../../../docs/memory/history-management.md).
 
 The bounded LangGraph coordinator selects domain tools, shares a parent model
 deadline, and uses `ToolExecutor` for public activity updates and recovery. Event
@@ -29,7 +29,7 @@ Assessment generation repairs malformed target/question output once before savin
 under the existing shared budget. Learner semantic advice is optional: adapter
 failures become `ConceptAssistanceUnavailable`, allowing deterministic identity
 resolution to continue. Neither invalid advice nor a missing exact concept match
-requires another student turn. See [assessment workflow](../../../docs/chat-assessments.md).
+requires another student turn. See [assessment workflow](../../../docs/assessments/chat-assessments.md).
 
 Preparation validates explicit source ownership and eligibility without speculative
 embedding/search calls. Only an agent-requested `search_study_material` call delivers
@@ -57,7 +57,7 @@ window. Graph checkpoints and canonical domain operation IDs remain authoritativ
 Completed visible assessment handoffs are resolved in one bounded query returning
 only IDs, title and question count. Follow-ups use those identities without searching
 for the assessment again or prefetching its full questions. See the
-[semantic migration and latency plan](../../../docs/Mentra_Semantic_Tool_Orchestration_Migration_Plan_2026-10-28.md).
+[semantic migration and latency plan](../../../docs/orchestration/Mentra_Semantic_Tool_Orchestration_Migration_Plan_2026-10-28.md).
 
 Ordinary practice defaults to native interactive delivery. Explicit written and
 printable delivery remain available independently of question type. Compact schemas
@@ -73,7 +73,7 @@ bounded result packet. Web calls never retry automatically. Cached results retai
 their retrieval time and receive a fresh current clock. Historical W markers are
 renamed only in prompt projections. `web_search` is a versioned prompt fragment.
 Validated website origins supply activity badges and optional favicons. See
-[web search](../../../docs/web-search.md).
+[web search](../../../docs/web-search/web-search.md).
 
 Authenticated `web_research` is a separate bounded tool enabled by the backend's
 `YOU_WEB_SEARCH_API_KEY`; ordinary search keeps its keyless free MCP transport.
@@ -83,7 +83,7 @@ the Events facade before answering; it does not authorize unsolicited practice.
 
 Model/tool calls participate in correlated metadata-only traces. Logs record
 timing, parameter presence/types/counts and sanitized outcomes, not query or
-response bodies. See [logging](../../../docs/backend-logging.md).
+response bodies. See [logging](../../../docs/observability/backend-logging.md).
 
 ## Prompt size and provider caching
 
@@ -91,7 +91,7 @@ Visible artifact edits load the conditional `response_edit` contract and retain 
 complete target during budgeting. Compatible assessment revisions reuse accepted
 structure/items; explicit `question_numbers` limit generation to changed questions.
 Private keys remain service-owned, originals/attempts remain immutable, and new or
-changed content retains validation. See [follow-up edit optimization](../../../docs/Followup_Edit_Optimization_2026-10-27.md).
+changed content retains validation. See [follow-up edit optimization](../../../docs/orchestration/Followup_Edit_Optimization_2026-10-27.md).
 
 The universal chat contract stays in `prompts/chat.py`. Detailed assessment routing
 uses `chat_assessment`, activated with bound/discovered assessment tools or existing
@@ -112,5 +112,5 @@ was unavailable. Neither should be confused with actual provider usage. Docker
 bakes its vocabulary; native runs can set `TIKTOKEN_CACHE_DIR` to the existing
 `backend/.cache/tokenizers` folder when available. No request-time download occurs.
 
-See [prompt efficiency and verification](../../../docs/prompt-efficiency.md) for
+See [prompt efficiency and verification](../../../docs/orchestration/prompt-efficiency.md) for
 measurements, live synthetic comparisons, caching semantics and limitations.

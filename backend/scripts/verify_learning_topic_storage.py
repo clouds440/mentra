@@ -69,7 +69,7 @@ def main():
             grouped_search_ms=timings, median_ms=statistics.median(timings), max_ms=max(timings),
             topic_payload_bytes=len(page.model_dump_json().encode()), detail_page_items=len(children.items),
             candidate_topics=len(candidates), max_candidate_subskills=max(len(row['subskills']) for row in candidates))
-        Path('docs/audits/topic-storage-verification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+        Path('docs/learning/verification/topic-storage-verification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
         print(json.dumps(report, indent=2))
 
 

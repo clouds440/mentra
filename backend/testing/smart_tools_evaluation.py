@@ -102,7 +102,7 @@ async def live_probes(limit):
 
 
 async def main(args):
-    baseline = json.loads(Path('docs/Tool_Discovery_Research_Evidence_2026-10-26.json').read_text(encoding='utf-8'))
+    baseline = json.loads(Path('docs/orchestration/verification/Tool_Discovery_Research_Evidence_2026-10-26.json').read_text(encoding='utf-8'))
     comparisons=[]
     for index, old in enumerate(baseline['baseline']):
         new=await snapshot(old['query'], first=index==len(baseline['baseline'])-1)
@@ -134,5 +134,5 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--live',action='store_true')
     parser.add_argument('--max-calls',type=int,choices=range(1,5),default=4)
-    parser.add_argument('--output',default='docs/Tool_Optimization_Implementation_Evidence_2026-10-26.json')
+    parser.add_argument('--output',default='docs/orchestration/verification/Tool_Optimization_Implementation_Evidence_2026-10-26.json')
     asyncio.run(main(parser.parse_args()))

@@ -54,7 +54,7 @@ async def main():
     assert after['generated_questions']==1 and after['model_calls']<before['model_calls']
     assert after['estimated_input_tokens']<before['estimated_input_tokens'] and after['estimated_output_tokens']<before['estimated_output_tokens']
     report=dict(method='Synthetic same-source controlled workflow comparison. Local tokenizer estimates include prompts, payloads and output schema. No paid calls or database persistence. Excludes chat routing and network/persistence latency.',before=before,after=after)
-    path=Path('docs/Followup_Edit_Optimization_Evidence_2026-10-27.json')
+    path=Path('docs/orchestration/verification/Followup_Edit_Optimization_Evidence_2026-10-27.json')
     path.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(report))
 

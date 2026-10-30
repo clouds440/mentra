@@ -244,7 +244,7 @@ Relevance is a scope preference applied once in ranking. Unknown recall has neut
 uncertainty rather than maximum forgetting risk. Recommendations select the strongest
 need within each topic before taking a bounded topic shortlist.
 
-See `docs/audits/Learner_Implementation_Report_2026-10-27.md` from the repository root
+See `docs/learning/audits/Learner_Implementation_Report_2026-10-27.md` from the repository root
 for implementation checks, migration/deployment limits and deferred work.
 
 ## Lifecycle, audit, and evaluation
@@ -273,7 +273,7 @@ $env:PYTHONPATH = 'backend'
 # Set TEST_DATABASE_URL to a dedicated PostgreSQL test database first.
 .\.venv\Scripts\python.exe -m unittest discover -s backend/tests/learner -v
 .\.venv\Scripts\python.exe -m unittest discover -s backend/tests -v
-.\.venv\Scripts\python.exe backend/scripts/verify_learner.py --output docs/learner-synthetic-evaluation.json
+.\.venv\Scripts\python.exe backend/scripts/verify_learner.py --output docs/learning/verification/learner-synthetic-evaluation.json
 ```
 
 The learner suite covers identity/candidates, context lifecycle/isolation, retention,
@@ -281,4 +281,4 @@ hints/confidence/contradictions, OCR gating, replay/version changes, migration u
 corrections, concurrent writers/retries, merge/split behavior, bounded retrieval,
 LangChain tools, compact chat context, assessment/calibration, RAG filtering, and metrics.
 
-Persistence and identity setup: [PostgreSQL and authentication foundation](../../../../docs/identity-and-postgresql.md).
+Persistence and identity setup: [PostgreSQL and authentication foundation](../../../docs/identity/identity-and-postgresql.md).

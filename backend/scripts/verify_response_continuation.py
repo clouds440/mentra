@@ -21,7 +21,7 @@ async def main():
         actual = await is_continuation(llm, original, message)
         results.append(dict(message=message, expected=expected, actual=actual))
         assert actual == expected, results[-1]
-    Path('docs/audits/response-continuation-live-verification.json').write_text(
+    Path('docs/chat/verification/response-continuation-live-verification.json').write_text(
         json.dumps(dict(model=settings.ai_model, scope='Synthetic messages only; no student records.', cases=results),
                    ensure_ascii=False, indent=2), encoding='utf-8')
     print('Passed seven continuation/new-request checks, including multilingual changes and new learner statements.')
