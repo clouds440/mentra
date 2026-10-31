@@ -89,6 +89,11 @@ class FinalizationTests(unittest.IsolatedAsyncioTestCase):
         partial = partial_response(self.scope, 'AI_WORKFLOW_BUDGET')
         self.assertEqual(partial['web_sources'][0]['token'], 'W1')
         self.assertEqual(partial['response_outcome']['state'], 'partial')
+        from app.web_search.schemas import WebImage
+        from app.langchain.final_response import limited_response
+        source.images = [WebImage(url='https://example.com/drawing.png',caption='Drawing outline')]
+        fallback = limited_response(self.scope)
+        self.assertIn('![Drawing outline](<https://example.com/drawing.png>)',fallback.content)
 
     async def test_exhausted_model_budget_returns_partial_cards(self):
         llm = SimpleNamespace(ainvoke_messages=AsyncMock(side_effect=AppError('AI_WORKFLOW_BUDGET','budget',422)))

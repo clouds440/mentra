@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from .urls import normalize_host, normalize_query
+from .urls import normalize_host, normalize_query, public_url
 
 WEB_SOURCE_LIMIT = 60  # At most five distinct sources per admitted physical call.
 WEB_SEARCH_LIMIT = 12
@@ -12,6 +12,7 @@ class SearchInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
     query: str = Field(min_length=1, max_length=400)
     website: str | None = Field(default=None, max_length=2048)
+    include_images: bool = Field(default=False, description='Find and verify embeddable images when the user requests pictures or visual references. Broad search by default; use website only if requested.')
 
     @field_validator('query')
     @classmethod
@@ -28,6 +29,20 @@ class SearchInput(BaseModel):
         return self
 
 
+class WebImage(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    url: str = Field(max_length=2000)
+    caption: str = Field(max_length=200)
+
+    @field_validator('url')
+    @classmethod
+    def public_image(cls, value):
+        url, _ = public_url(value)
+        if not url.startswith('https://'):
+            raise ValueError('Image URLs require HTTPS.')
+        return url
+
+
 class WebSource(BaseModel):
     model_config = ConfigDict(extra='forbid')
     token: str = Field(default='', pattern=r'^(W[1-9]\d?)?$')
@@ -36,6 +51,7 @@ class WebSource(BaseModel):
     favicon_url: str = Field(max_length=2048)
     title: str = Field(max_length=200)
     excerpt: str = Field(max_length=1200)
+    images: list[WebImage] = Field(default_factory=list, max_length=2, exclude_if=lambda value: not value)
     searched_at: datetime
     published_date: date | None = None
     published_at: datetime | None = None

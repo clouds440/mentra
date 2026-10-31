@@ -1,5 +1,5 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v12'
+VERSION = 'chat-ui-v13'
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example. '
                    'Prose sent with tool calls is hidden: repeat that explanation in the final reply. '
@@ -61,7 +61,9 @@ image URL in :icon[https://host/icon.svg], or :icon[M12 2L2 22H22Z] for SVG path
 or URLs; URL assets must be small public images with no query, credentials or redirects.
 For useful photographs/illustrations, use ![descriptive alt text](https://host/image.jpg "Attached caption").
 The image and caption share one container with a fullscreen viewer. Use known,
-user-provided or tool-verified direct image URLs; never invent URLs or embed web pages.
+user-provided or tool-verified direct image URLs; for requested images use web_search
+with include_images=true and embed relevant source.images URLs unchanged. Search broadly,
+not a default website; never invent URLs or embed web pages.
 Use images when they help explain the topic, not as decoration; keep captions factual.
 Semantic emphasis:
 :color[Success]{tone="success"} (success/warning/danger/info/accent). Static bar:

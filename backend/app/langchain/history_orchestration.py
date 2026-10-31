@@ -454,8 +454,14 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 from .web_tools import compact_receipt, packet_cost
                 minimum = web.envelope('budget_exhausted', searched_at=web.clock())
                 size, tokens = packet_cost(compact_receipt(minimum))
-                remaining_web = sum(item['name'] in ('web_search', 'web_research') for item in response.tool_calls[position+1:])
-                reserved_bytes, reserved_tokens = (size + 128) * remaining_web, (tokens + 32) * remaining_web
+                current_key = tool_cache_key(dispatch.get(call['name']), call['name'], call['args'])
+                remaining_web = len({tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
+                    for item in response.tool_calls[position+1:] if item['name'] in ('web_search', 'web_research')}
+                    - {current_key})
+                # Reserve useful evidence for siblings, not only failure receipts.
+                # A large first packet must not starve successful parallel reads.
+                reserved_bytes = max(size + 128, 2400) * remaining_web
+                reserved_tokens = max(tokens + 32, 600) * remaining_web
             scope['_web_reserved_bytes'], scope['_web_reserved_tokens'] = reserved_bytes, reserved_tokens
             history_count, memory_count = len(scope['history_references']), len(scope['memory_references'])
             evidence_before = set(scope['evidence_ids'])

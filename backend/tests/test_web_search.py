@@ -133,6 +133,41 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(event.websites and event.status == 'running' for event in self.trace.events))
         self.assertTrue(any(event.websites and event.status == 'completed' for event in self.trace.events))
 
+    async def test_image_resolution_is_opt_in_and_cached_with_search_evidence(self):
+        self.setup_service()
+        from types import SimpleNamespace
+        from app.web_search.schemas import WebImage
+        enriched=normalize_results(PAYLOAD,None,NOW)[0]
+        enriched[0].images=[WebImage(url='https://www.python.org/diagram.png',caption='A fixture image')]
+        self.service.image_resolver=SimpleNamespace(enrich=AsyncMock(return_value=enriched))
+        owner=str(uuid4())
+        await self.service.search(SearchInput(query='ordinary facts'),owner=owner,attempt_id='plain',deadline=monotonic()+20)
+        self.service.image_resolver.enrich.assert_not_awaited()
+        request=SearchInput(query='show a diagram',include_images=True)
+        first=await self.service.search(request,owner=owner,attempt_id='images',deadline=monotonic()+20)
+        reused=await self.service.search(request,owner=owner,attempt_id='later',deadline=monotonic()+20)
+        self.assertEqual(first.sources[0].images[0].url,'https://www.python.org/diagram.png')
+        self.assertEqual(reused.sources[0].images[0].url,first.sources[0].images[0].url)
+        self.assertTrue(reused.cache_hit)
+        self.service.image_resolver.enrich.assert_awaited_once()
+
+    async def test_parallel_successful_searches_both_retain_evidence(self):
+        self.setup_service()
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        self.provider.search.return_value={'results':{'web':[dict(url=f'https://python.org/{index}',title='A source',description='Relevant information '*100) for index in range(5)]}}
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[],visible_ids=[],evidence_ids=set())
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                receipts=[json.loads(item.content) for item in messages if isinstance(item,ToolMessage)]
+                if not receipts:
+                    return AIMessage(content='',tool_calls=[dict(name='web_search',args={'query':f'evidence {index}'},id=f'search-{index}') for index in range(2)])
+                assert len(receipts)==2
+                assert all(item.get('sources') for item in receipts),[(item.get('outcome'),len(item.get('sources',[]))) for item in receipts]
+                return AIMessage(content='The returned sources support this answer [[W1]].')
+        await tool_reply(Script(),[HumanMessage(content='Compare the evidence.')],None,str(uuid4()),state,(),{})
+        self.assertEqual(self.provider.search.await_count,2)
+
     async def test_invalid_input_and_timeout_are_dated_without_retry(self):
         self.setup_service()
         executor = ToolExecutor(self.budget, self.scope, self.publisher)

@@ -86,7 +86,7 @@ The same MarkdownContent renderer serves chat and Library. No raw HTML is enable
 | Optional static bar | `::bar{label="Difficulty" value="3" max="5" unit="points"}` | Explicit bounded meter. Prefer `present_visuals` so bars need no response markup. `::progress` is also accepted. |
 | Callout | Container directive `:::callout{title="Key idea" tone="info"}` with body and closing `:::` | Quiet semantic Card styling. |
 | Disclosure | Container directive `:::details{title="Show a hint"}` with body and closing `:::` | Native accessible disclosure. Never include unreleased assessment answers in hidden content. |
-| Captioned images | `![Description](https://example.org/image.png "Caption")` | Background-free figure and attached caption/source. Adjacent images automatically form responsive scrolling reels; one viewer navigates every Markdown image in that response, across text breaks. Direct and reference-style Markdown images/links are supported. |
+| Captioned images | `![Description](https://example.org/image.png "Caption")` | Background-free figure and attached caption/source. For image requests, `web_search(include_images=true)` returns checked direct assets in `source.images`; embed returned URLs without inventing file paths. Adjacent images automatically form responsive scrolling reels; one viewer navigates every Markdown image in that response, across text breaks. Direct and reference-style Markdown images/links are supported. |
 
 Interactive presentation reuses the current answer contracts and domain actions.
 Shared transparent surfaces, outlined choice rows, quieter disclosure/callout styling

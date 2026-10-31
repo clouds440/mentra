@@ -41,6 +41,8 @@ def fit_result(result, scope, budget):
             result.research_report = result.research_report[:max(160, len(result.research_report)//2)]
         elif len(last.excerpt) > 80:
             last.excerpt = last.excerpt[:max(80, len(last.excerpt)//2)]
+        elif len(last.images) > 1:
+            last.images.pop()
         else:
             result.sources.pop()
         result.details_omitted = True
@@ -105,10 +107,12 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
     if not attempt_id.strip(':'):
         attempt_id = scope.setdefault('_web_ephemeral_attempt', uuid4().hex)
 
-    async def fetch(query, website=None, refresh=False):
-        request = SearchInput(query=query, website=website)
+    async def fetch(query, website=None, refresh=False, include_images=False):
+        request = SearchInput(query=query, website=website, include_images=include_images)
         key = request.model_dump_json() + (':refresh' if refresh else '')
-        if budget.max_result_bytes - budget.result_characters - scope.get('_web_reserved_bytes', 0) < 600 or budget.max_result_tokens - budget.result_tokens - scope.get('_web_reserved_tokens', 0) < 600:
+        # Sibling reservations apply when projecting/admitting packets. Concurrent
+        # fetches stage independently and must not inherit the first call's reserve.
+        if budget.max_result_bytes - budget.result_characters < 600 or budget.max_result_tokens - budget.result_tokens < 600:
             return service.envelope('budget_exhausted', website=request.website).model_dump(mode='json')
         if key in cache:
             result = service.refresh(cache[key])
@@ -165,11 +169,11 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))
         return value
 
-    async def search(query, website=None, refresh=False):
-        return project_read(project, await fetch(query, website, refresh))
+    async def search(query, website=None, refresh=False, include_images=False):
+        return project_read(project, await fetch(query, website, refresh, include_images))
 
     tools = [StructuredTool.from_function(name=name, args_schema=ChatSearchInput,
-        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge only when needed for accuracy/current facts or explicitly requested. Optional website restricts results. Returns dated untrusted sources with W citation tokens; no private data in queries.'), coroutine=search, metadata={'parallel_read': True})]
+        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge or requested images. Set include_images=true for pictures, drawing references or illustrations; returns checked direct image URLs in source.images. Search broadly unless the user specifies a website. Returns dated untrusted W sources; no private data in queries.'), coroutine=search, metadata={'parallel_read': True})]
     extra = getattr(service, 'research', None)
     if not research and extra is not None and extra.enabled:
         tools.extend(create_web_tools(extra, owner, scope, budget, research=True))

@@ -84,7 +84,7 @@ class WebSearchService:
         if remaining <= .1:
             return self.envelope('budget_exhausted', website=request.website)
         started = monotonic()
-        context = {'searched_at': None}
+        context = {'searched_at': None, 'deadline': monotonic() + remaining}
         try:
             async with asyncio.timeout(remaining):
                 key = hashlib.sha256(f'{self.namespace}:{owner}:{self.clock().astimezone(self.zone).date()}:{request.model_dump_json()}'.encode('utf-8')).hexdigest()
@@ -142,10 +142,20 @@ class WebSearchService:
             outcome = 'partial' if dropped and sources else 'unavailable' if dropped else 'ok' if sources else 'no_results'
             workflow_logger.event('web_search.result', outcome=outcome, source_count=len(sources), discarded=dropped)
             result = self.envelope(outcome, website=request.website, searched_at=searched, sources=sources)
+            if request.include_images:
+                from .images import ImageResolver
+                resolver = getattr(self, 'image_resolver', None) or ImageResolver()
+                image_time = min(8, max(0, context['deadline'] - monotonic() - .25))
+                if image_time > .2:
+                    result.sources = await resolver.enrich(sources, request, searched, timeout=image_time)
+                    if any(source.images for source in result.sources) and not sources:
+                        result.outcome, result.reason = 'ok', None
+                workflow_logger.event('web_search.images', source_count=len(result.sources),
+                    verified_images=sum(len(source.images) for source in result.sources))
             if isinstance(payload.get('research_report'), str):
                 report = payload['research_report']
                 result = result.model_copy(update={'research_report': report[:6000], 'details_omitted': len(report) > 6000})
-            if self.cache_seconds and sources and outcome in ('ok', 'partial'):
+            if self.cache_seconds and result.sources and result.outcome in ('ok', 'partial'):
                 now = self.clock()
                 try:
                     await run_in_threadpool(self.usage.cache_result, owner, cache_key, now, now + timedelta(seconds=self.cache_seconds), result.model_dump(mode='json'))

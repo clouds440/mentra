@@ -34,7 +34,7 @@ def parse_final(response, validate):
 
 
 def limited_response(scope):
-    links = []
+    links, images, seen_images = [], [], set()
     for source in scope.get('web_sources', [])[:5]:
         # Only domain-validated public evidence becomes a fallback link.
         from app.web_search import WebSource
@@ -45,9 +45,18 @@ def limited_response(scope):
         label = item.title.replace('\\', '\\\\').replace('[', '\\[').replace(']', '\\]').replace('\n', ' ')
         url = quote(item.url, safe=':/?#[]@!$&\'()*+,;=%-._~')
         links.append(f'- [{label}](<{url}>)')
+        for asset in item.images:
+            if asset.url in seen_images or len(images) >= 4:
+                continue
+            seen_images.add(asset.url)
+            caption = asset.caption.replace('\\', '\\\\').replace('[', '\\[').replace(']', '\\]').replace('\n', ' ')
+            image_url = quote(asset.url, safe=':/?#[]@!$&\'()*+,;=%-._~')
+            images.append(f'![{caption}](<{image_url}>)')
     content = 'I couldn’t finish the full response.'
     if links:
-        content += ' Here are the sources I found:\n\n' + '\n'.join(links)
+        if images:
+            content += ' These images were retrieved successfully:\n\n' + '\n\n'.join(images)
+        content += '\n\nHere are the sources I found:\n\n' + '\n'.join(links)
     elif any(scope.get(key) for key in ('interactions', 'assessment_cards', 'event_proposals')):
         content += ' The available items are shown below.'
     content += '\n\nYou can retry the unfinished part.'
