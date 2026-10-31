@@ -87,7 +87,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
     <PracticeNotice assessment={assessment} />
     <div className="flex flex-wrap items-start justify-between gap-3"><AnswerSheetUpload attempt={attempt} onStart={onStart} draftAnswers={answers} assistance={assistance} onBusyChange={setUploading} disabled={disabled || busy} onChange={result => { setAttempt(result); assessmentSession.observe(owner, result); onChange(result); }} /><PrintPaperButton assessment={assessment} /></div>
     <QuestionProgress answered={assessment.questions.map(q => !!answers[q.id]?.trim())} index={index} disabled={blocked} onNavigate={setIndex} aside={<span className="flex items-center gap-1 text-[11px] font-medium text-accent"><Sparkles size={12} aria-hidden="true" />Practice at your pace</span>} />
-    <div key={question.id} data-navigation={direction} className="question-transition quiz-question space-y-4 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
+    <div key={question.id} data-navigation={direction} className="question-transition quiz-question interaction-question space-y-4">
     <div className="flex items-center justify-between gap-2 text-[11px]"><span className="font-medium uppercase tracking-wider text-accent">{questionKind(question)}</span>{showsAssessmentMarks(assessment) && <span className="tabular-nums text-muted">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>}</div>
     <LearningTargetLabels question={question} /><MarkdownContent content={question.prompt} />
     {question.context && <div className="border-l-2 border-accent/30 pl-3 text-sm text-muted"><MarkdownContent content={question.context} /></div>}

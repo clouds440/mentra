@@ -128,8 +128,8 @@ export function MermaidDiagram({ code }: { code: string }) {
     catch { setDownloadError(true); } finally { setDownloading(undefined); }
   }
   const figure = (content = svg) => content ? <div className="mermaid-svg overflow-x-auto p-3" tabIndex={0} role="region" aria-label="Diagram" dangerouslySetInnerHTML={{ __html: content }} /> : <p role="status" className="p-4 text-sm text-muted">{errorKey === key ? 'This diagram could not be displayed. View its source below.' : 'Preparing diagram…'}</p>;
-  return <figure className="mermaid-figure my-4 overflow-hidden rounded-panel border border-border bg-card">
-    <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted"><span>Diagram</span><span className="flex flex-wrap gap-1">
+  return <figure className="mermaid-figure interactive-surface my-5 overflow-hidden">
+    <figcaption className="interactive-toolbar flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><span>Diagram</span><span className="flex flex-wrap gap-1">
       <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show diagram' : 'View source'}</Button>
       <Button size="sm" variant="ghost" disabled={!svg} onClick={() => setExpanded(true)}>Expand</Button>
       <Button size="sm" variant="ghost" disabled={!svg || !!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button>

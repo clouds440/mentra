@@ -14,11 +14,16 @@ import { InlineIcon } from './InlineIcon';
 import { DeferredVisual } from './DeferredVisual';
 import { ProgressBar } from '../ui/ProgressBar';
 import { CaptionedImage } from './CaptionedImage';
+import { ImageGallery, ImageReel, type GalleryImage } from './ImageGallery';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram').then(module => ({ default: module.MermaidDiagram })));
 const RechartsFigure = lazy(() => import('./RechartsFigure').then(module => ({ default: module.RechartsFigure })));
 type RichProps = { node?: HastElement; children?: ReactNode };
 type MarkdownProps = { preview?: boolean; content: string; linkComponent?: Components['a']; plugins?: Options['remarkPlugins'] };
+function MarkdownGallery({ node, children }: RichProps) {
+  const images = useMemo(() => JSON.parse(String(node?.properties.images ?? '[]')) as GalleryImage[], [node]);
+  return <ImageGallery images={images}>{children}</ImageGallery>;
+}
 const noPlugins: NonNullable<Options['remarkPlugins']> = [];
 
 function MarkdownCode({ children }: { children?: ReactNode }) {
@@ -43,15 +48,19 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins, preview
     pre: preview ? ({ children }) => <pre>{children}</pre> : MarkdownCode,
     a: preview ? ({ children }) => <span>{children}</span> : linkComponent ?? (({ children, href }) => <a href={href} rel="noopener noreferrer">{children}</a>),
     table: ({ children }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
-    'mentra-image': ({ node }: RichProps) => <CaptionedImage src={String(node?.properties.src ?? '')} alt={String(node?.properties.alt ?? '')} label={String(node?.properties.label ?? '')} source={node?.properties.source ? String(node.properties.source) : undefined} />,
+    'mentra-image-gallery': MarkdownGallery,
+    'mentra-image-reel': ({ children }: RichProps) => <ImageReel>{children}</ImageReel>,
+    'mentra-image': ({ node }: RichProps) => <CaptionedImage index={Number(node?.properties.index ?? 0)} src={String(node?.properties.src ?? '')} alt={String(node?.properties.alt ?? '')} label={String(node?.properties.label ?? '')} source={node?.properties.source ? String(node.properties.source) : undefined} />,
     'mentra-icon': ({ node }: RichProps) => <InlineIcon name={String(node?.properties.name ?? '')} viewBox={String(node?.properties.viewBox ?? node?.properties.viewbox ?? '0 0 24 24')} variant={node?.properties.variant ? String(node.properties.variant) : undefined} />,
     'mentra-color': ({ node, children }: RichProps) => <ColorText tone={String(node?.properties.tone ?? '')} hex={node?.properties.hex ? String(node.properties.hex) : undefined}>{children}</ColorText>,
     'mentra-bar': ({ node }: RichProps) => <div className="my-4"><ProgressBar mode="meter" label={String(node?.properties.label ?? '')} value={Number(node?.properties.value)} max={Number(node?.properties.max)} unit={String(node?.properties.unit ?? '')} /></div>,
-    'mentra-details': ({ node, children }: RichProps) => <details className="my-4 rounded-panel border border-border px-4 py-3"><summary className="ui-disclosure cursor-pointer font-medium text-heading">{String(node?.properties.title ?? 'Explanation')}</summary><div className="mt-2">{children}</div></details>,
-    'mentra-callout': ({ node, children }: RichProps) => <aside className="rich-callout my-4 rounded-panel border border-border bg-surface p-4"><div className="font-medium"><ColorText tone={String(node?.properties.tone ?? 'info')}>{String(node?.properties.title ?? '')}</ColorText></div>{children}</aside>,
+    'mentra-details': ({ node, children }: RichProps) => <details className="rich-details my-4"><summary className="ui-disclosure cursor-pointer font-medium text-heading">{String(node?.properties.title ?? 'Explanation')}</summary><div className="mt-2">{children}</div></details>,
+    'mentra-callout': ({ node, children }: RichProps) => <aside className="rich-callout my-4"><div className="font-medium"><ColorText tone={String(node?.properties.tone ?? 'info')}>{String(node?.properties.title ?? '')}</ColorText></div>{children}</aside>,
     ...(preview ? {
       img: ({ alt }: { alt?: string }) => <span>{alt}</span>,
       'mentra-image': ({ node }: RichProps) => <span>{String(node?.properties.alt ?? '')}</span>,
+      'mentra-image-gallery': ({ children }: RichProps) => <>{children}</>,
+      'mentra-image-reel': ({ children }: RichProps) => <>{children}</>,
       'mentra-details': ({ children }: RichProps) => <div>{children}</div>,
     } : {}),
   }), [linkComponent, preview]);

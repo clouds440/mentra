@@ -20,7 +20,7 @@ export const ChartControls = memo(function ChartControls({ spec, original, onEdi
   const field = fields.some(item => item.dataKey === selection.field) ? selection.field! : defaultField;
   const parameter = spec.model?.parameters.find(item => item.key === field);
   if (!fields.length) return null;
-  return <section aria-label="Chart controls" className="space-y-3 border-t border-border p-3">
+  return <section aria-label="Chart controls" className="chart-controls space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">Explore locally</p><div className="flex items-center gap-2"><ViewToggle label="Chart input mode" view={mode} onChange={onModeChange} showLabels options={[{ value: 'slider', label: 'Slider', Icon: SlidersHorizontal }, { value: 'number', label: 'Number', Icon: Hash }]} /><Button size="sm" variant="ghost" onClick={onReset}>Reset</Button></div></div>
     {!!fields.length && <><div className="grid grid-cols-2 gap-3">
       <Select aria-label="Data point" disabled={!!parameter} value={parameter ? -1 : row} onChange={event => onSelectionChange({ row: Number(event.target.value), field })}>{parameter && <option value={-1}>All data points</option>}{spec.data.map((item, index) => <option key={index} value={index}>{String(item[spec.xKey])} (#{index + 1})</option>)}</Select>
@@ -60,7 +60,7 @@ function ValueEditor({ spec, original, row, field, onEdit, mode }: { mode: 'slid
     }
   }
   return <div className="space-y-1"><div className="flex min-h-10 items-center gap-3">
-    {mode === 'slider' && <><input aria-label="Adjust selected value" type="range" className="min-w-0 flex-1 accent-accent" min={min} max={limit} step={parameter?.step ?? 'any'} aria-invalid={invalid} value={Math.max(min, Math.min(limit, Number(text) || 0))} onChange={event => update(event.target.value, true)} onPointerUp={flush} onKeyUp={flush} onBlur={flush} /><output aria-live="off" className="min-w-20 text-right text-sm tabular-nums" aria-label="Current value">{text}</output></>}
+    {mode === 'slider' && <><input aria-label="Adjust selected value" type="range" className="chart-slider min-w-0 flex-1" min={min} max={limit} step={parameter?.step ?? 'any'} aria-invalid={invalid} value={Math.max(min, Math.min(limit, Number(text) || 0))} onChange={event => update(event.target.value, true)} onPointerUp={flush} onKeyUp={flush} onBlur={flush} /><output aria-live="off" className="min-w-20 text-right text-sm tabular-nums" aria-label="Current value">{text}</output></>}
     {mode === 'number' && <Input aria-label="Selected value" type="number" step={parameter?.step ?? 'any'} min={parameter?.min ?? rowInput?.min ?? (nonnegative ? 0 : -chartNumberLimit)} max={parameter?.max ?? rowInput?.max ?? chartNumberLimit} value={text} aria-invalid={invalid} className="w-28 shrink-0" onChange={event => update(event.target.value)} />}
   </div>{invalid && <p role="status" className="text-xs text-danger">This value is outside the chart or equation domain. The last valid graph is preserved.</p>}</div>;
 }

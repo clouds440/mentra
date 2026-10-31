@@ -81,10 +81,10 @@ export function ConversationalQuestionnaire({ cards, messageId, conversationId }
     await chatStore.send(conversationId, 'My answers to these questions.', chatStore.conversation(conversationId)?.selection ?? { mode: 'STANDARD' }, false, [],
       { ...first, message_id: messageId, ...(additional.length ? { additional_responses: additional } : {}) });
   }
-  return <section aria-label="Conversation questions" className="chat-interaction my-4 space-y-4 rounded-panel border border-border p-4">
+  return <section aria-label="Conversation questions" className="chat-interaction interactive-surface my-5 space-y-5">
     <h3 className="font-medium text-heading">{cards.length === 1 ? cards[0].question : 'A few questions for you'}</h3>
     <QuestionProgress answered={answered} index={activeIndex} disabled={blocked} onNavigate={setIndex} label="Conversation" />
-    <div key={current.key} data-navigation={direction} className="question-transition space-y-3 rounded-lg border border-border-strong bg-surface p-3 sm:p-4">
+    <div key={current.key} data-navigation={direction} className="question-transition interaction-question space-y-4">
       {current.options ? <ChoiceOptions kind={current.multiple ? 'multiple_choice' : 'single_choice'} question={current.question} options={current.options} selected={currentValue.selected} disabled={blocked || currentDone}
         onChange={selected => update({ ...currentValue, selected })} renderAfter={option => {
           const field = fields.find(item => item.id === option.id);

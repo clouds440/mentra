@@ -88,7 +88,7 @@ export function ChatAssessmentCard({ initial, hydrated = false }: { initial: Cha
     {!card.deleted && (!attempt && !isMCQ || attempt?.state === 'graded') && <Button size="sm" variant="secondary" disabled={!ready || busy} loading={busy && answerAction} onClick={() => void save(true)}>{attempt ? 'Start new attempt' : card.assessment_id ? 'Answer in UI' : 'Add & answer'}</Button>}
     {!card.deleted && !attempt && card.conversation_id && <details className="text-xs text-muted"><summary className="cursor-pointer rounded-control px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">Practice options</summary><div className="mt-1 flex flex-wrap gap-2"><Button variant="secondary" size="sm" disabled={!ready || busy || chat.busy} onClick={() => adjust('easier')}>Make easier</Button><Button variant="secondary" size="sm" disabled={!ready || busy || chat.busy} onClick={() => adjust('harder')}>Make harder</Button></div></details>}
   </>;
-  return <section aria-label="Chat assessment" className="my-4 space-y-4 rounded-xl border border-border p-4">
+  return <section aria-label="Chat assessment" className="interactive-surface my-5 space-y-5">
     <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:gap-3" aria-label="Assessment header">
       <h2 className="min-w-0 flex-1 break-words font-medium text-heading">{card.assessment.title}</h2>
       {card.assessment_id && !card.deleted && <Button className="shrink-0" size="sm" variant="secondary" disabled={!ready} onClick={() => navigate(`/assessments?assessment=${card.assessment_id}`)}>View in assessments</Button>}

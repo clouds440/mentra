@@ -86,6 +86,22 @@ The same MarkdownContent renderer serves chat and Library. No raw HTML is enable
 | Optional static bar | `::bar{label="Difficulty" value="3" max="5" unit="points"}` | Explicit bounded meter. Prefer `present_visuals` so bars need no response markup. `::progress` is also accepted. |
 | Callout | Container directive `:::callout{title="Key idea" tone="info"}` with body and closing `:::` | Quiet semantic Card styling. |
 | Disclosure | Container directive `:::details{title="Show a hint"}` with body and closing `:::` | Native accessible disclosure. Never include unreleased assessment answers in hidden content. |
+| Captioned images | `![Description](https://example.org/image.png "Caption")` | Background-free figure and attached caption/source. Adjacent images automatically form responsive scrolling reels; one viewer navigates every Markdown image in that response, across text breaks. Direct and reference-style Markdown images/links are supported. |
+
+Interactive presentation reuses the current answer contracts and domain actions.
+Shared transparent surfaces, outlined choice rows, quieter disclosure/callout styling
+and slim native sliders replace nested filled panels. Selected answers and grading
+outcomes retain their native state, semantic color, keyboard focus and validation.
+No new LLM instructions, response syntax, discovery calls or UI dependencies are needed.
+
+Image grouping is an AST presentation transform, not a text-regex rewrite. Real text
+separates reels; whitespace and blank lines do not. Reels scroll natively and expose
+small left/right controls only as an affordance, with partial tiles allowed. The
+response-scoped image catalogue keeps caption/source order and supports a shared
+fullscreen Dialog with Previous/Next, arrow keys, Home/End, touch swipes and focus
+return. Lazy inline loads and local failures retain the existing HTTPS URL guard.
+Viewer/scroll changes stay local; no conversation subscription or Markdown reparse
+is added. Plain-text copy omits layout wrappers while preserving captions and links.
 
 The allowlisted AST transform shares parsing with markdownPlainText. Copy removes
 valid presentation syntax, retains text/counts, and preserves malformed directives

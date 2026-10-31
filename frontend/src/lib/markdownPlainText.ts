@@ -7,13 +7,18 @@ import remarkDirective from 'remark-directive';
 import { remarkRichContent } from './richMarkdown';
 import { valueText } from '../components/ui/ProgressBar';
 
-interface Node { type: string; value?: string; url?: string; alt?: string; children?: Node[]; ordered?: boolean; start?: number; name?: string; attributes?: Record<string, string> }
-const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkMathCurrency).use(remarkDirective).use(remarkRichContent);
+interface Node { type: string; value?: string; url?: string; alt?: string; children?: Node[]; ordered?: boolean; start?: number; name?: string; attributes?: Record<string, string>; data?: { hName?: string; hProperties?: Record<string, unknown> } }
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkMathCurrency).use(remarkDirective).use(remarkRichContent, { imageLayout: false });
 
 // Parse Markdown rather than stripping punctuation: code, escaped characters,
 // nested formatting, tables and link labels retain their actual content.
 export function markdownPlainText(markdown: string): string {
   function text(node: Node): string {
+    if (node.data?.hName === 'mentra-image') {
+      const label = String(node.data.hProperties?.label ?? node.alt ?? '');
+      const source = node.data.hProperties?.source;
+      return source ? `${label} (${source})` : label;
+    }
     const children = node.children ?? [];
     switch (node.type) {
       case 'root': return children.map(text).join('\n\n');
@@ -25,7 +30,7 @@ export function markdownPlainText(markdown: string): string {
       case 'leafDirective': return `${node.attributes?.label}: ${valueText(Number(node.attributes?.value), Number(node.attributes?.max), node.attributes?.unit)}`;
       case 'containerDirective': return `${node.attributes?.title}\n${children.map(text).join('\n\n')}`;
       case 'html': return '';
-      case 'image': return node.alt ?? '';
+      case 'image': case 'imageReference': return node.alt ?? '';
       case 'link': return children.map(text).join('') + (node.url && !node.url.startsWith('#') ? ` (${node.url})` : '');
       case 'list': return children.map((child, index) => `${node.ordered ? `${(node.start ?? 1) + index}.` : '•'} ${text(child)}`).join('\n');
       case 'listItem': case 'blockquote': return children.map(text).join('\n');

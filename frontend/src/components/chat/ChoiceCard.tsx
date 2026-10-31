@@ -11,7 +11,7 @@ import { ConversationalQuestionnaire } from './ConversationalQuestionnaire';
 export const ChoiceCard = memo(function ChoiceCard({ card: stored, messageId, conversationId }: { card: InteractionCardData; messageId: string; conversationId: string }) {
   if (stored.kind === 'questionnaire') return <ConversationalQuestionnaire cards={[stored]} messageId={messageId} conversationId={conversationId} />;
   if (!['single_choice', 'multiple_choice', 'text_input', 'form', 'value_bars'].includes(stored.kind)) return <p className="my-4 text-sm text-muted">This interactive item is not supported by this version. You can reply in the chat instead.</p>;
-  if (stored.kind === 'value_bars') return <section className="my-4 space-y-4 rounded-panel border border-border p-4" aria-label={stored.question}>
+  if (stored.kind === 'value_bars') return <section className="interactive-surface my-5 space-y-5" aria-label={stored.question}>
     <h3 className="font-medium text-heading">{stored.question}</h3>
     <ValueBars bars={stored.bars} />
   </section>;
@@ -55,7 +55,7 @@ function AnswerCard({ stored, messageId, conversationId }: { stored: Exclude<Int
     await chatStore.send(conversationId, content, chatStore.conversation(conversationId)?.selection ?? { mode: 'STANDARD', context_ids: [], document_ids: [] }, false, [],
       { message_id: messageId, interaction_id: stored.id, ...(isChoice(stored) ? { selected, option_inputs: active } : { values: active }) });
   }
-  return <section className="chat-interaction my-4 space-y-3 rounded-panel border border-border p-4" aria-label={isChoice(stored) ? 'Interactive question' : 'Interactive form'}>
+  return <section className="chat-interaction interactive-surface my-5 space-y-4" aria-label={isChoice(stored) ? 'Interactive question' : 'Interactive form'}>
     <form className="space-y-3" onSubmit={event => { event.preventDefault(); void submit(); }}>
       {isChoice(stored) ? <ChoiceOptions kind={stored.kind} question={stored.question} options={stored.options} selected={selected} disabled={disabled}
         onChange={next => { setFocus(next.find(id => !selected.includes(id)) ?? ''); update({ ...draft, selected: next }); }}

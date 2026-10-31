@@ -2,6 +2,27 @@
 
 14 October 2026. Companion to `docs/frontend/Mentra_Frontend_Renovation_Plan.md`.
 
+## Interactive content polish and image reels
+
+Shared interaction surfaces are transparent, with consistent spacing, quiet borders,
+outlined choices and restrained selected states. Forms, conversational question sets,
+assessment feedback, event proposals, diagrams and chart controls reuse these styles.
+Native sliders, validation, saved drafts, retries and all domain actions are preserved.
+
+Captioned Markdown images have no container/caption background. Adjacent images form
+responsive native scrolling reels with partial tiles and subtle directional controls.
+One response-scoped fullscreen viewer navigates all Markdown images across text breaks,
+with buttons, keyboard and touch navigation, labels/sources and opener focus return.
+Image loads remain lazy and guarded; failures stay local. Copy uses a presentation-free
+AST path. Viewer and reel state do not reparse or rerender completed Markdown.
+
+Verification: 108 distinct browser cases passed across the image/interactive-content,
+rich chat, live visuals, chart, equation, motion and render-performance suites. One
+clipboard assertion was normalized for Windows CRLF and passed twice; the mobile
+portrait-fit check also passed. Production build, UI/theme checks and 74 chart/model
+checks passed. Desktop/mobile light/dark reels, forms, chart controls and the image
+viewer were inspected in screenshots. Test fixtures created no learner records.
+
 ## Implemented scope
 
 The existing route set uses the compact visual system: authentication,

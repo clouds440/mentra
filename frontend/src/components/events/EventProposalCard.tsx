@@ -34,7 +34,7 @@ export function EventProposalCard({ initial, onResolved }: { initial: EventPropo
     } finally { if (!request.signal.aborted) setBusy(false); }
   }
   const pending = value.state === 'pending' || value.state === 'deciding';
-  return <section aria-label="Event proposal" className="my-4 space-y-3 rounded-xl border border-border bg-surface p-4">
+  return <section aria-label="Event proposal" className="interactive-surface my-5 space-y-4">
     <h3 className="font-medium text-heading">{value.candidate?.title ?? `Update event: ${value.status}`}</h3>
     <p className="text-sm text-muted">{value.candidate?.local_date ?? value.candidate?.starts_at ?? 'Date needs review'} · {value.candidate?.timezone ?? 'Timezone needs review'}</p>
     <p className="text-sm text-muted">{value.uncertainty}</p><blockquote className="border-l border-border pl-3 text-sm">{value.quote}</blockquote>

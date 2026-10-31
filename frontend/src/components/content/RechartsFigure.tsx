@@ -82,8 +82,8 @@ function RechartsFigureContent({ code }: { code: string }) {
   if (!spec) return <div className="my-4"><p role="status" className="text-sm text-muted">This chart has unsupported or invalid data. Its source is available below.</p><CodeBlock code={code} language="json" /></div>;
   const display = expanded && background.current ? background.current : spec;
   const downloads = <><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'png'} onClick={() => void download('png')}>Download PNG</Button></>;
-  return <figure ref={figureRef} className="recharts-figure my-4 min-w-0 overflow-hidden rounded-panel border border-border bg-card" aria-labelledby={titleId}>
-    <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2"><span id={titleId} className="text-sm font-medium text-heading">{spec.title}</span><span className="flex flex-wrap gap-1">
+  return <figure ref={figureRef} className="recharts-figure interactive-surface my-5 min-w-0 overflow-hidden" aria-labelledby={titleId}>
+    <figcaption className="interactive-toolbar flex flex-wrap items-center justify-between gap-2"><span id={titleId} className="text-sm font-medium text-heading">{spec.title}</span><span className="flex flex-wrap gap-1">
       <Button size="sm" variant="ghost" aria-pressed={data} onClick={() => setData(value => !value)}>{data ? 'Hide data' : 'View data'}</Button>
       <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show chart' : 'View source'}</Button>
       <Button size="sm" variant="ghost" onClick={() => setExpanded(true)}>Expand</Button>
