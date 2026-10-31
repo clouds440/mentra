@@ -1,4 +1,4 @@
-"""Durable paper generation, independent of the 150-second chat-turn deadline."""
+"""Durable paper generation, independent of the interactive chat-turn deadline."""
 import asyncio
 from time import monotonic
 from starlette.concurrency import run_in_threadpool

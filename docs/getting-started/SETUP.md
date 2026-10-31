@@ -47,7 +47,8 @@ The supported settings in `.env.example` are:
 | `AI_BASE_URL` | *(required)* | OpenAI-compatible chat API base URL |
 | `AI_API_KEY` | *(required)* | Secret for the configured chat endpoint |
 | `AI_TEMPERATURE` | `0.2` | Chat model temperature |
-| `AI_TIMEOUT` | `30` | Chat request timeout in seconds |
+| `AI_TIMEOUT` | `60` | Provider transport timeout per attempt in seconds; retries share the turn deadline |
+| `CHAT_TURN_TIMEOUT_SECONDS` | `180` | Whole chat turn deadline (60–300 seconds); durable turn lease includes a further 30 seconds for completion |
 | `AI_MAX_RETRIES` | `2` | Chat request retry limit |
 | `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Local model baked into the backend image |
 | `EMBEDDING_DEVICE` | `cpu` | Local embedding inference device |

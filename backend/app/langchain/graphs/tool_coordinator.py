@@ -28,9 +28,10 @@ async def coordinate(model_round, dispatch_round, *, checkpoint=None, capture=No
     builder.add_conditional_edges('model', lambda state: 'answer' if state.get('done') else 'tools',
                                   {'answer': END, 'tools': 'tools'})
     builder.add_edge('tools', 'model')
-    # Five model rounds plus four dispatch rounds. Domain subworkflows do not
+    # Model rounds adapt within the shared workflow budget; reserve a final repair.
+    # Domain subworkflows do not
     # receive this mutable state or reset the shared call/write budgets.
-    saver, config = None, {'recursion_limit': 12}
+    saver, config = None, {'recursion_limit': 26}
     if checkpoint:
         from app.langchain.repositories.response_checkpoints import ResponseSaver, response_config
         engine, owner, job = checkpoint

@@ -2,6 +2,7 @@ from .interactions import InteractionCard
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from app.web_search import WebSource, SearchResult
+from app.web_search.schemas import WEB_SOURCE_LIMIT, WEB_SEARCH_LIMIT
 from app.rag.schemas import SourceReference, ChatSelection
 
 
@@ -29,9 +30,9 @@ class ChatResponse(BaseModel):
     interactions: list[InteractionCard] = Field(default_factory=list, max_length=20)
     assessment_cards: list[dict] = Field(default_factory=list)
     tool_warnings: list[dict] = Field(default_factory=list, max_length=16)
-    web_sources: list[WebSource] = Field(default_factory=list, max_length=10)
-    web_citations: list[str] = Field(default_factory=list, max_length=10)
-    web_searches: list[SearchResult] = Field(default_factory=list, max_length=6)
+    web_sources: list[WebSource] = Field(default_factory=list, max_length=WEB_SOURCE_LIMIT)
+    web_citations: list[str] = Field(default_factory=list, max_length=WEB_SOURCE_LIMIT)
+    web_searches: list[SearchResult] = Field(default_factory=list, max_length=WEB_SEARCH_LIMIT)
 
     @model_validator(mode='after')
     def validate_web_registry(self):

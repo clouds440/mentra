@@ -4,6 +4,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .urls import normalize_host, normalize_query
 
+WEB_SOURCE_LIMIT = 60  # At most five distinct sources per admitted physical call.
+WEB_SEARCH_LIMIT = 12
+
 
 class SearchInput(BaseModel):
     model_config = ConfigDict(extra='forbid')

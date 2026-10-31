@@ -53,4 +53,4 @@ class ResponseSaver(BaseCheckpointSaver):
 
 def response_config(owner, job, namespace):
     return {'configurable': {'thread_id': response_thread(owner, job['turn_id']) + ':' + namespace,
-                            'checkpoint_ns': ''}, 'recursion_limit': 16}
+                            'checkpoint_ns': ''}, 'recursion_limit': 26}

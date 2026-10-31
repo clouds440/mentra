@@ -5,6 +5,7 @@ import json
 from uuid import uuid4, UUID
 from sqlalchemy import select, update, delete, and_, or_, text, func, cast, Text
 from app.core.exceptions import AppError
+from app.core.config import settings
 from .tables import conversations as c, messages as m, turns as t, sync_state as ss, changes as ch
 from app.chat.titles import NewChatReply, provisional_title
 from pydantic import ValidationError
@@ -196,7 +197,7 @@ class ChatRepository:
                 if conversation['message_count'] not in (existing['user_sequence'], existing['assistant_sequence']):
                     raise conflict()
                 attempt = existing['attempt'] + 1
-                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, response_outcome=None, attempt=attempt, lease_until=now() + timedelta(minutes=3),resume_until=None,log_context=log_context))
+                session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None, response_outcome=None, attempt=attempt, lease_until=now() + timedelta(seconds=settings.chat_turn_timeout_seconds + 30),resume_until=None,log_context=log_context))
                 session.execute(update(c).where(c.c.id == conversation_id).values(revision=conversation['revision']+1, updated_at=now()))
                 self._change(session, owner, conversation_id, state)
                 return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=attempt, selection=selection, attachment_ids=attachment_ids, user_sequence=existing['user_sequence'], resume_instruction=existing['resume_instruction'], title_revision=conversation['revision']+1, recovery_state=existing.get('recovery_state'))
@@ -237,7 +238,7 @@ class ChatRepository:
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
                 role='user', content=content, metadata={**interaction_metadata, **({'timezone':request.timezone} if request.timezone else {}), **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
-                user_sequence=sequence, state='RUNNING', orchestration_policy='semantic-v3', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(minutes=3), created_at=now(),log_context=log_context))
+                user_sequence=sequence, state='RUNNING', orchestration_policy='semantic-v3', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(seconds=settings.chat_turn_timeout_seconds + 30), created_at=now(),log_context=log_context))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))
             self._change(session, owner, conversation_id, state)
             return dict(run=True, turn_id=turn_id, conversation_id=conversation_id, attempt=1, selection=selection, attachment_ids=attachment_ids, user_sequence=sequence, title_revision=conversation['revision']+1)
@@ -441,7 +442,7 @@ class ChatRepository:
                     outcome['tasks'] = [dict(task,state='in_progress') if task.get('job_kind')=='generation' else task for task in outcome['tasks']]
                     background_response['response_outcome'] = outcome
             session.execute(update(t).where(t.c.id == turn_id).values(state='RUNNING', error=None,
-                response_outcome=None, attempt=attempt+1, lease_until=now()+timedelta(minutes=3), resume_until=None, resume_instruction=amendments))
+                response_outcome=None, attempt=attempt+1, lease_until=now()+timedelta(seconds=settings.chat_turn_timeout_seconds + 30), resume_until=None, resume_instruction=amendments))
             if operation:
                 session.execute(update(t).where(t.c.id == turn_id).values(resume_operation_id=operation, resume_request_hash=fingerprint))
             session.execute(update(c).where(c.c.id == conversation_id).values(revision=row['revision']+1, updated_at=now()))

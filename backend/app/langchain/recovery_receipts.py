@@ -6,14 +6,19 @@ def partial_response(scope, reason_code):
     """Publish validated native output after synthesis fails, without another call."""
     cards = {key:deepcopy(scope[key]) for key in (
         'assessment_cards','interactions','event_proposals','event_references') if scope.get(key)}
-    if not cards:
+    web_sources = scope.get('web_sources', [])
+    if not cards and not web_sources:
         return None
     from app.chat.response import ChatResponse
     from .decision_schemas import ResponseOutcome
     outcome = ResponseOutcome(state='partial',retryable=True,reason_code=reason_code,
         tasks=[*scope.get('_task_receipts',{}).values(),
             dict(id='response_synthesis',state='failed',required=True,declared=True,retryable=True)])
-    response = ChatResponse(content='I couldn’t finish the response. You can use the available results here and retry the unfinished part.',
+    content = 'I couldn’t finish the response. You can use the available results here and retry the unfinished part.'
+    if web_sources:
+        from .final_response import limited_response
+        content = limited_response(scope).content
+    response = ChatResponse(content=content, web_sources=web_sources,
         response_outcome=outcome.model_dump(mode='json'),**cards)
     return response.model_dump(mode='json')
 

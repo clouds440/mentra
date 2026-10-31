@@ -10,7 +10,7 @@ PRIVATE = ('_tool_execution_state', '_assessment_receipt', '_captured_events', '
            '_memory_summary_fence', 'tool_warnings', 'retrieval_status', 'retrieval_warnings',
            'retrieval_context_ids', 'visible_ids', 'history_references', 'memory_references',
            '_domain_tool_used', 'direct_rejected', '_task_receipts', '_selected_operations', '_committed_tool_results', 'response_outcome',
-           '_web_cache', '_research_cache', '_web_physical_calls', '_research_physical_calls')
+           '_web_cache', '_research_cache', '_web_physical_calls', '_research_physical_calls', '_last_round_tool_progress')
 
 
 class ResponseRuntime:
@@ -60,7 +60,7 @@ class ResponseRuntime:
         return dict(policy_version=POLICY_VERSION, attempt=self.scope.get('attempt',1), conversation=messages_to_dict(self.conversation), scope=payload,
             active=sorted(self.selection.active), pending=sorted(self.selection.pending), explicit=sorted(getattr(self.selection,'explicit',())),
             budget={key:getattr(self.budget, key) for key in
-                ('calls', 'writes', 'presentations', 'result_characters', 'result_tokens', 'delivered')})
+                ('calls', 'writes', 'presentations', 'result_characters', 'result_tokens', 'delivered', 'max_calls', 'max_result_tokens', 'max_result_bytes')})
 
     def restore(self, value):
         previous = value['scope'].get('_memory_summary_fence')

@@ -188,12 +188,49 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(len(content.encode()), 4800)
         self.assertLessEqual(count_messages([HumanMessage(content=content)]), 1200)
         self.assertEqual(self.scope.get('web_sources', []), [])  # Staged only until admitted.
-        self.scope['_web_physical_calls'] = 2
+        self.scope['_web_physical_calls'] = self.budget.max_calls
         limited = await self.tool.ainvoke(dict(query='other query'))
         self.assertEqual(limited['outcome'], 'budget_exhausted')
         overdue = await self.service.search(SearchInput(query='release'), owner=str(uuid4()), attempt_id='overdue', deadline=monotonic()-1)
         self.assertEqual(overdue.outcome, 'budget_exhausted')
         self.provider.search.assert_awaited_once()
+
+    async def test_productive_search_continues_past_two_calls_and_five_rounds(self):
+        self.setup_service()
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        state = self.scope | dict(context_rows=[], current_user_message_id=str(uuid4()),
+            history_references=[], memory_references=[], visible_ids=[], evidence_ids=set())
+        rounds = []
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                count = len([item for item in messages if isinstance(item, ToolMessage)])
+                rounds.append(count)
+                if count < 7:
+                    return AIMessage(content='', tool_calls=[dict(name='web_search', args={'query':f'evidence detail {count}'}, id=f'lookup-{count}')])
+                return AIMessage(content='Supported answer [[W1]].')
+        with model_budget():
+            reply = await tool_reply(Script(), [HumanMessage(content='Find sufficient evidence for the comparison.')], None, str(uuid4()), state, (), {})
+        self.assertEqual(rounds, list(range(8)))
+        self.assertEqual(self.provider.search.await_count, 7)
+        self.assertIn('Supported answer', reply.content)
+        self.assertEqual(state['_tool_budget'].max_calls, 9)
+
+    async def test_reused_sources_never_collide_with_new_tokens_and_registry_exceeds_ten(self):
+        self.setup_service()
+        self.budget.max_result_tokens = 20000
+        self.budget.max_result_bytes = 80000
+        batches = [[0,1], [2,0,3], [4], [5,6,7,8,9], [10,11]]
+        for index, batch in enumerate(batches):
+            self.provider.search.return_value = {'results':{'web':[
+                dict(url=f'https://python.org/source-{number}', title=f'Source {number}', description='Evidence') for number in batch]}}
+            result = await self.tool.ainvoke(dict(query=f'query {index}'))
+            commit_web_result(self.scope, result)
+        sources = self.scope['web_sources']
+        self.assertEqual(len(sources), 12)
+        self.assertEqual(len({source.token for source in sources}), 12)
+        self.assertEqual({source.url:source.token for source in sources}['https://python.org/source-0'], 'W1')
+        ChatResponse(content='Grounded comparison.', web_sources=sources)
 
     async def test_cancellation_keeps_sent_reservation_charged_and_releases_capacity(self):
         self.setup_service()

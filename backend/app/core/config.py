@@ -51,7 +51,8 @@ class Settings(BaseSettings):
     ai_base_url: str = ""
     ai_api_key: str = Field(default='', repr=False)
     ai_temperature: float = Field(default=0.2, ge=0, le=2)
-    ai_timeout: float = Field(default=30, gt=0)
+    ai_timeout: float = Field(default=60, gt=0)
+    chat_turn_timeout_seconds: float = Field(default=180, ge=60, le=300)
     ai_max_retries: int = Field(default=2, ge=0)
     tool_read_timeout_seconds: float = Field(default=10, gt=0, le=60)
     tool_read_max_attempts: int = Field(default=3, ge=1, le=3)

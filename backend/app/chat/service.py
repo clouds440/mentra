@@ -163,7 +163,8 @@ class ConversationService:
 
     async def _generate(self, owner, job, generate, with_scope=False):
         from time import monotonic
-        deadline = monotonic() + 150
+        from app.core.config import settings
+        deadline = monotonic() + settings.chat_turn_timeout_seconds
         activity_sink = None
         scope = None
         try:

@@ -4,11 +4,12 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from time import monotonic
 from app.core.exceptions import AppError
+from app.core.config import settings
 
 
 @dataclass
 class ModelBudget:
-    deadline: float = field(default_factory=lambda: monotonic()+150)
+    deadline: float = field(default_factory=lambda: monotonic()+settings.chat_turn_timeout_seconds)
     rounds: int = 0
     input_tokens: int = 0
     output_reserved: int = 0

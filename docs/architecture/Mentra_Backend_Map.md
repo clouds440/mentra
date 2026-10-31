@@ -634,7 +634,7 @@ All production Python files are indexed once below, including package markers. A
 | [`backend/app/assessments/chat.py`](../../backend/app/assessments/chat.py) | Re-exports the chat assessment persistence adapter for compatibility. |
 | [`backend/app/assessments/choice_answers.py`](../../backend/app/assessments/choice_answers.py) | Canonical option mapping shared by validation, grading and handwritten review. |
 | [`backend/app/assessments/evidence_worker.py`](../../backend/app/assessments/evidence_worker.py) | Learning updates never delay publication of assessment results. |
-| [`backend/app/assessments/generation_worker.py`](../../backend/app/assessments/generation_worker.py) | Durable paper generation, independent of the 150-second chat-turn deadline. |
+| [`backend/app/assessments/generation_worker.py`](../../backend/app/assessments/generation_worker.py) | Durable paper generation, independent of the configurable interactive chat-turn deadline. |
 | [`backend/app/assessments/question_paper.py`](../../backend/app/assessments/question_paper.py) | Renders public assessment fields as a numbered, answer-free A4 PDF with marks/options/instructions and page footers. |
 | [`backend/app/assessments/grade_alignment.py`](../../backend/app/assessments/grade_alignment.py) | Aligns model grades to immutable question identities, canonical concepts, and server-owned mark limits. |
 | [`backend/app/assessments/grading_progress.py`](../../backend/app/assessments/grading_progress.py) | Bind private grading checkpoints to an exact immutable assessment/answer revision. |

@@ -172,6 +172,21 @@ class PersistenceTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls): cls.db.close()
 
+    def test_turn_lease_tracks_configured_generation_timeout_with_commit_margin(self):
+        from datetime import datetime, timezone
+        from sqlalchemy import select
+        from app.core.config import settings
+        from app.chat.repositories.postgres import ChatRepository
+        from app.chat.repositories.tables import turns
+        from app.chat.schemas import SendTurn
+        request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='A synthetic lease check.')
+        with patch.object(settings, 'chat_turn_timeout_seconds', 240):
+            job = ChatRepository(self.db.sessions).begin_turn(learner_id('alice'), request)
+        with self.db.sessions() as session:
+            until = session.scalar(select(turns.c.lease_until).where(turns.c.id == job['turn_id']))
+        self.assertGreater((until - datetime.now(timezone.utc)).total_seconds(), 265)
+        self.assertLessEqual((until - datetime.now(timezone.utc)).total_seconds(), 270)
+
     def test_completed_graph_with_failed_task_remains_retryable_and_reruns(self):
         from app.chat.repositories.postgres import ChatRepository
         from app.chat.schemas import SendTurn

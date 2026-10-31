@@ -6,6 +6,7 @@ from uuid import uuid4
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import StructuredTool
 from app.web_search import SearchInput, SearchResult
+from app.web_search.schemas import WEB_SOURCE_LIMIT, WEB_SEARCH_LIMIT
 from app.web_search.urls import favicon_url
 from .token_policy import count_messages
 from .workflow_budget import current_budget
@@ -76,7 +77,7 @@ def validated_web_searches(records):
         except ValidationError:
             continue
         valid.append(result.model_dump(mode='json', exclude={'sources', 'research_report'}, exclude_none=True))
-        if len(valid) == 6:
+        if len(valid) == WEB_SEARCH_LIMIT:
             break
     return valid
 
@@ -111,7 +112,7 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             return service.envelope('budget_exhausted', website=request.website).model_dump(mode='json')
         if key in cache:
             result = service.refresh(cache[key])
-        elif scope.get(calls_name, 0) >= (1 if research else 2):
+        elif scope.get(calls_name, 0) >= (1 if research else budget.max_calls):
             result = service.envelope('budget_exhausted', website=request.website)
         else:
             scope[calls_name] = scope.get(calls_name, 0) + 1
@@ -140,18 +141,28 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
         result = service.refresh(payload, within_turn=payload.get('reused_within_turn', False))
         existing = [source.model_copy(deep=True) for source in scope.get('web_sources', [])]
         by_url = {source.url: source.token for source in existing}
+        next_number = max((int(source.token[1:]) for source in existing), default=0) + 1
         staged = []
         for source in result.sources:
             value = source.model_copy(deep=True)
-            value.token = by_url.get(value.url) or f'W{len(existing) + len(staged) + 1}'
+            value.token = by_url.get(value.url)
+            if not value.token:
+                if len(by_url) >= WEB_SOURCE_LIMIT or next_number > 99:
+                    result.details_omitted = True
+                    continue
+                value.token = f'W{next_number}'
+                next_number += 1
+                by_url[value.url] = value.token
             staged.append(value)
         result = result.model_copy(update={'sources': staged})
+        if result.details_omitted and not staged and result.outcome == 'ok':
+            result = result.model_copy(update={'outcome': 'budget_exhausted', 'reason': 'The citation registry is full. Use the sources already returned.'})
         value = fit_result(result, scope, budget)
         if value.get('sources'):
             for source in SearchResult.model_validate(value).sources:
                 existing = [item for item in existing if item.url != source.url]
                 existing.append(source)
-            scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))[:10]
+            scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))
         return value
 
     async def search(query, website=None, refresh=False):
