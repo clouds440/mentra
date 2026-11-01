@@ -50,7 +50,7 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins, preview
     table: ({ children }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
     'mentra-image-gallery': MarkdownGallery,
     'mentra-image-reel': ({ children }: RichProps) => <ImageReel>{children}</ImageReel>,
-    'mentra-image': ({ node }: RichProps) => <CaptionedImage index={Number(node?.properties.index ?? 0)} src={String(node?.properties.src ?? '')} alt={String(node?.properties.alt ?? '')} label={String(node?.properties.label ?? '')} source={node?.properties.source ? String(node.properties.source) : undefined} />,
+    'mentra-image': ({ node, children }: RichProps) => <CaptionedImage index={Number(node?.properties.index ?? 0)} src={String(node?.properties.src ?? '')} alt={String(node?.properties.alt ?? '')} label={String(node?.properties.label ?? '')} source={node?.properties.source ? String(node.properties.source) : undefined}>{children}</CaptionedImage>,
     'mentra-icon': ({ node }: RichProps) => <InlineIcon name={String(node?.properties.name ?? '')} viewBox={String(node?.properties.viewBox ?? node?.properties.viewbox ?? '0 0 24 24')} variant={node?.properties.variant ? String(node.properties.variant) : undefined} />,
     'mentra-color': ({ node, children }: RichProps) => <ColorText tone={String(node?.properties.tone ?? '')} hex={node?.properties.hex ? String(node.properties.hex) : undefined}>{children}</ColorText>,
     'mentra-bar': ({ node }: RichProps) => <div className="my-4"><ProgressBar mode="meter" label={String(node?.properties.label ?? '')} value={Number(node?.properties.value)} max={Number(node?.properties.max)} unit={String(node?.properties.unit ?? '')} /></div>,
@@ -58,7 +58,7 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins, preview
     'mentra-callout': ({ node, children }: RichProps) => <aside className="rich-callout my-4"><div className="font-medium"><ColorText tone={String(node?.properties.tone ?? 'info')}>{String(node?.properties.title ?? '')}</ColorText></div>{children}</aside>,
     ...(preview ? {
       img: ({ alt }: { alt?: string }) => <span>{alt}</span>,
-      'mentra-image': ({ node }: RichProps) => <span>{String(node?.properties.alt ?? '')}</span>,
+      'mentra-image': ({ node, children }: RichProps) => <span>{String(node?.properties.alt ?? '')}{children}</span>,
       'mentra-image-gallery': ({ children }: RichProps) => <>{children}</>,
       'mentra-image-reel': ({ children }: RichProps) => <>{children}</>,
       'mentra-details': ({ children }: RichProps) => <div>{children}</div>,
@@ -68,7 +68,7 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins, preview
   const directives = usesRichDirectives(content);
   const diagrams = /(?:```|~~~)\s*(?:mermaid|recharts)/i.test(content);
   const images = /!\[/.test(content);
-  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(directives || diagrams || images ? [remarkRichContent] : []), ...(plugins ?? noPlugins)], [directives, diagrams, images, plugins]);
+  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(plugins ?? noPlugins), ...(directives || diagrams || images ? [remarkRichContent] : [])], [directives, diagrams, images, plugins]);
   return <div className="markdown-content"><ReactMarkdown remarkPlugins={remarkPlugins}
     rehypePlugins={[[rehypeKatex, { trust: false, maxExpand: 500, maxSize: 20, throwOnError: false }]]} components={components}>{markdown}</ReactMarkdown></div>;
 }

@@ -5,6 +5,46 @@ const image = (name: string) => `![${name}](https://images.example.org/${name}.s
 async function images(page: Page) {
   await page.route('https://images.example.org/**', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600"><circle cx="450" cy="300" r="180" fill="#62b6a1"/><circle cx="390" cy="250" r="85" fill="#f6cb75"/><path d="M160 450L740 150" stroke="#628ac2" stroke-width="26" stroke-linecap="round"/></svg>' }));
 }
+for (const width of [390, 1280]) test(`image citations and source anchors stay in the reel at ${width}px`, async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.setViewportSize({ width, height: 900 }); await images(page);
+  await page.route('https://example.org/favicon.ico', route => route.abort());
+  const fixture = await richChat(page, `${image('First')} [[W1]]\n\n${image('Second')}\n\n[[W2]]\n\n[Image source](https://example.org/second)\n\n${image('Third')} [[W3]]\n\nThis explanation separates the next image and keeps its own citation [[W2]].\n\n${image('Fourth')} [[W4]]`);
+  Object.assign(fixture.items[1], {
+    web_citations: ['W1', 'W2', 'W3', 'W4'],
+    web_sources: [1, 2, 3, 4].map(index => ({ token: `W${index}`, title: `Source ${index}`, url: `https://example.org/source/${index}`, domain: 'example.org', favicon_url: 'https://example.org/favicon.ico', excerpt: 'Fixture evidence', searched_at: '2026-11-01T00:00:00Z' })),
+  });
+  await page.goto('/chat/polish-chat');
+  const reel = page.locator('.image-reel');
+  await expect(reel).toHaveCount(1);
+  await expect(reel.locator('figure')).toHaveCount(3);
+  await expect(page.locator('figure.markdown-image')).toHaveCount(4);
+  const captions = reel.locator('figcaption');
+  for (const [index, token] of ['W1', 'W2', 'W3'].entries()) {
+    await expect(captions.nth(index).getByRole('link', { name: new RegExp(`Open web source ${token}:`) })).toHaveAttribute('href', `https://example.org/source/${index + 1}`);
+  }
+  await expect(captions.nth(1).getByRole('link', { name: 'Image source', exact: true })).toHaveAttribute('href', 'https://example.org/second');
+  await expect(page.locator('p').filter({ hasText: 'This explanation separates' }).getByRole('link')).toHaveCount(1);
+  await expect(page.locator('.image-open a, .image-open button')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Expand image: Second caption' }).click();
+  await expect(page.getByRole('dialog').getByRole('status')).toHaveText('Image 2 of 4');
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Source', exact: true })).toHaveAttribute('href', 'https://example.org/second');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Copy response', exact: true }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('[[W1]]'); expect(copied).toContain('Image source (https://example.org/second)');
+  expect(copied).toContain('This explanation separates');
+});
+
+test('reference source anchors bridge images while code and actual prose stay separate', async ({ page }) => {
+  await images(page);
+  await richChat(page, `${image('First')} [[W1]](https://example.org/first)\n\n${image('Second')} [Source][origin]\n\n\`[[W1]]\` is code, not an image reference.\n\n${image('Third')}\n\n${image('Fourth')}\n\n[origin]: https://example.org/second`);
+  await page.goto('/chat/polish-chat');
+  await expect(page.locator('.image-reel')).toHaveCount(2);
+  await expect(page.locator('.image-reel').first().locator('figcaption').first().getByRole('link')).toHaveAttribute('href', 'https://example.org/first');
+  await expect(page.locator('.image-reel').first().getByRole('link', { name: 'Source', exact: true })).toHaveAttribute('href', 'https://example.org/second');
+  await expect(page.locator('p').filter({ hasText: 'is code, not an image reference' }).locator('code')).toHaveText('[[W1]]');
+});
 for (const width of [390, 1280]) for (const theme of ['light', 'dark']) test(`background-free responsive image reel at ${width}px in ${theme}`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(theme => localStorage.setItem('mentra-theme', theme), theme);

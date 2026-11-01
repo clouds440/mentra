@@ -17,7 +17,19 @@ function imageLeaves(node: RootContent): RootContent[] | null {
   }
   return result.length ? result : null;
 }
-function groupImages(children: RootContent[]) {
+function annotationLeaves(node: RootContent): RootContent[] | null {
+  if (node.type === 'link' || node.type === 'linkReference' || node.type === 'footnoteReference') return [node];
+  if (whitespace(node) || node.type === 'text' && /^[\s·|,;:.()[\]–—-]*$/.test(node.value)) return [node];
+  if (node.type !== 'paragraph') return null;
+  const annotations: RootContent[] = [];
+  for (const child of node.children) {
+    const leaves = annotationLeaves(child);
+    if (!leaves) return null;
+    annotations.push(...leaves);
+  }
+  return annotations.some(child => child.type === 'link' || child.type === 'linkReference' || child.type === 'footnoteReference') ? annotations : null;
+}
+function groupImages(children: RootContent[], catalogue: { source?: string }[]) {
   const result: RootContent[] = []; let run: RootContent[] = []; let images: RootContent[] = [];
   const flush = () => {
     if (images.length > 1) result.push({ type: 'blockquote', data: { hName: 'mentra-image-reel' }, children: images } as RootContent);
@@ -28,7 +40,17 @@ function groupImages(children: RootContent[]) {
     // Definitions have no visible content and must remain available to other links.
     if (child.type === 'definition') { result.push(child); continue; }
     const pictures = imageLeaves(child);
+    const annotations = pictures || !images.length ? null : annotationLeaves(child);
     if (pictures) { run.push(child); images.push(...pictures); }
+    else if (annotations) {
+      const last = images[images.length - 1] as DirectiveNode;
+      (last.children ??= []).push(...annotations);
+      // The inline caption retains the original links/citation components. The
+      // shared viewer also gets an external source, without duplicating labels.
+      const source = annotations.find(item => item.type === 'link' && /^https:\/\//i.test(item.url));
+      const entry = catalogue[Number(last.data?.hProperties?.index)];
+      if (entry && !entry.source && source?.type === 'link') entry.source = source.url;
+    }
     else if (run.length && whitespace(child)) run.push(child);
     else { flush(); result.push(child); }
   }
@@ -69,7 +91,10 @@ export function remarkRichContent(options: { imageLayout?: boolean } = {}) {
           node.children = []; return child;
         }
         const image = imageData(child);
-        if (image) { const index = images.push(image) - 1; child.data = { hName: 'mentra-image', hProperties: { ...image, index } }; return child; }
+        if (image) {
+          const index = images.push(image) - 1;
+          return { type: 'paragraph', data: { hName: 'mentra-image', hProperties: { ...image, index } }, children: [] } as RootContent;
+        }
         if (child.type === 'code' && child.lang?.toLowerCase() === 'mermaid' && ++diagrams > 3) child.lang = 'text';
         if (child.type === 'code' && child.lang?.toLowerCase() === 'recharts' && ++charts > 3) child.lang = 'text';
         if (!['textDirective', 'leafDirective', 'containerDirective'].includes(node.type)) { if ('children' in child) visit(child); return child; }
@@ -99,7 +124,7 @@ export function remarkRichContent(options: { imageLayout?: boolean } = {}) {
         // Preserve malformed/unknown syntax instead of silently deleting it.
         return { type: 'text', value: typeof start === 'number' && typeof end === 'number' ? String(file.value).slice(start, end) : node.children?.map(item => 'value' in item ? item.value : '').join('') ?? '' } as RootContent;
       });
-      if (images.length && options.imageLayout !== false && parent.children) parent.children = groupImages(parent.children);
+      if (images.length && options.imageLayout !== false && parent.children) parent.children = groupImages(parent.children, images);
     }
     visit(tree);
     if (images.length && options.imageLayout !== false) tree.children = [{ type: 'blockquote', data: { hName: 'mentra-image-gallery', hProperties: { images: JSON.stringify(images) } }, children: tree.children } as RootContent];

@@ -95,7 +95,7 @@ outcomes retain their native state, semantic color, keyboard focus and validatio
 No new LLM instructions, response syntax, discovery calls or UI dependencies are needed.
 
 Image grouping is an AST presentation transform, not a text-regex rewrite. Real text
-separates reels; whitespace and blank lines do not. Reels scroll natively and expose
+separates reels; whitespace and blank lines do not. Citation/link-only annotations stay attached to the preceding image caption and keep the reel continuous; source links remain clickable. This is handled in the frontend without extra model instructions or calls. Reels scroll natively and expose
 small left/right controls only as an affordance, with partial tiles allowed. The
 response-scoped image catalogue keeps caption/source order and supports a shared
 fullscreen Dialog with Previous/Next, arrow keys, Home/End, touch swipes and focus

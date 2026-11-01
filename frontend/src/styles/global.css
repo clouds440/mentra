@@ -707,7 +707,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .image-reel-track .image-open { width: 100%; }
 .markdown-content .image-reel-track img { width: 100%; height: clamp(11rem, 24vw, 15rem); max-height: none; object-fit: contain; }
 .image-reel-track .image-unavailable { height: clamp(11rem, 24vw, 15rem); }
-.image-reel-track figcaption { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.image-reel-track .image-caption-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .image-reel-navigation { display: flex; justify-content: end; gap: .125rem; margin-top: .125rem; }
 .image-reel-navigation .ui-button { opacity: .65; }
 .image-reel-navigation .ui-button:hover, .image-reel-navigation .ui-button:focus-visible { opacity: 1; }
