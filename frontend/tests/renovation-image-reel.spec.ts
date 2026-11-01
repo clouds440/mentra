@@ -91,6 +91,52 @@ test('one viewer navigates across text breaks, keeps labels and restores the ori
   await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
 });
 
+test('text selection skips image highlighting and navigation never selects or drags images', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await images(page);
+  await richChat(page, `Text before the pictures.\n\n${image('First')} ${image('Second')}\n\nText after the pictures.`);
+  await page.goto('/chat/polish-chat');
+  const photo = page.locator('.markdown-image img').first();
+  await expect.poll(() => photo.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBe(900);
+  await photo.scrollIntoViewIfNeeded();
+  const original = await photo.screenshot();
+  // Select across the reel as a reader would, keeping ordinary prose selectable.
+  const before = (await page.getByText('Text before the pictures.', { exact: true }).boundingBox())!;
+  const after = (await page.getByText('Text after the pictures.', { exact: true }).boundingBox())!;
+  await page.mouse.move(before.x, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(after.x + after.width, after.y + after.height / 2, { steps: 12 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => getSelection()?.toString())).toContain('Text after the pictures.');
+  expect(await photo.screenshot()).toEqual(original);
+  await page.evaluate(() => getSelection()?.removeAllRanges());
+  await page.evaluate(() => {
+    (window as any).imageDragStarts = 0;
+    document.addEventListener('dragstart', () => (window as any).imageDragStarts++);
+  });
+  const box = (await photo.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2 + 20, { steps: 8 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => (window as any).imageDragStarts)).toBe(0);
+  const opener = page.getByRole('button', { name: 'Expand image: First caption' });
+  if (await page.getByRole('dialog').count() === 0) await opener.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('img').dblclick();
+  await dialog.getByRole('button', { name: 'Next image', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Previous image', exact: true }).click();
+  await expect(dialog.getByRole('img')).toHaveAttribute('alt', 'First');
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe('');
+  const expanded = dialog.getByRole('img');
+  const preview = await expanded.screenshot();
+  await expanded.dblclick();
+  expect(await expanded.screenshot()).toEqual(preview);
+  await dialog.locator('.image-viewer-caption').dblclick();
+  expect(await page.evaluate(() => getSelection()?.toString())).toContain('caption');
+});
+
 test('reference and linked images group automatically, unsafe URLs stay blocked, failed images remain navigable', async ({ page }) => {
   await images(page);
   await page.route('https://images.example.org/broken.svg', route => route.abort());

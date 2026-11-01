@@ -693,6 +693,8 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .question-feedback { background: transparent; }
 
 /* Background-free images. Adjacent Markdown images share a native scrolling reel. */
+.markdown-image img, .image-viewer-stage img { -webkit-user-drag: none; }
+.image-open, .markdown-image img, .image-reel-navigation, .image-viewer-toolbar, .image-viewer-stage { -webkit-user-select: none; user-select: none; }
 .markdown-image { min-width: 0; margin: 1.25rem 0; padding: 0; border: 0; background: transparent; }
 .image-open { display: block; max-width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; border-radius: 10px; }
 .image-open:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 4px; }

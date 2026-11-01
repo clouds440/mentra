@@ -12,7 +12,7 @@ export const ImageAsset = memo(function ImageAsset({ image, expanded = false }: 
   const url = publicImageUrl(image.src, true);
   const [failedFor, setFailedFor] = useState<string>();
   return url && failedFor !== url
-    ? <img src={url} alt={image.alt || imageCaption(image)} loading={expanded ? 'eager' : 'lazy'} decoding="async" referrerPolicy="no-referrer" onError={() => setFailedFor(url)} />
+    ? <img src={url} alt={image.alt || imageCaption(image)} draggable={false} loading={expanded ? 'eager' : 'lazy'} decoding="async" referrerPolicy="no-referrer" onError={() => setFailedFor(url)} />
     : <span role="status" className="image-unavailable"><ImageOff size={22} aria-hidden="true" /><span>Image unavailable</span></span>;
 });
 
