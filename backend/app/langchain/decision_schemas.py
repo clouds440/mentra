@@ -10,7 +10,7 @@ class RequestedTask(BaseModel):
     id: str = Field(min_length=1, max_length=80)
     state: OutcomeState = 'completed'
     receipt_ids: list[str] = Field(default_factory=list, max_length=20)
-    required: bool = True
+    required: bool = Field(default=True, description='True only for a deliverable actually requested by the user. Optional enrichment and extra examples are not required tasks.')
     operation: str | None = Field(default=None, max_length=80,
         description='Exact tool name for a requested operation; omit for direct teaching/text tasks. Completed operations require matching receipts.')
     grounding: Literal['none','study_material','web'] = Field(default='none',

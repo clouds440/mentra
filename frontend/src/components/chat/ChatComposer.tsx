@@ -22,6 +22,7 @@ interface ChatComposerProps {
   canResume?: boolean;
   onResume?: () => void;
   canRetry?: boolean;
+  retryPartial?: boolean;
   onRetry?: () => void;
   onFiles: (files: File[]) => void;
   hasAttachments?: boolean;
@@ -36,7 +37,7 @@ export function ChatComposer({
   onChange,
   onSubmit,
   isThinking,
-  canStop, stopping, onStop, canResume, onResume, canRetry, onRetry,
+  canStop, stopping, onStop, canResume, onResume, canRetry, onRetry, retryPartial,
   onFiles,
   hasAttachments,
   attachments,
@@ -237,8 +238,8 @@ export function ChatComposer({
           <Button
             data-response-action={pause ? 'pause' : resume ? 'resume' : retry ? 'retry' : 'send'}
             aria-label={pause ? 'Pause response' : resume ? 'Resume response' : retry ? 'Retry response' : 'Send message'}
-            title={pause ? 'Pause this response' : resume ? 'Resume paused response' : retry ? 'Retry the failed step' : 'Send message'}
-            className={`composer-send icon-control h-8 min-h-8 w-8 rounded-control p-0 ${pause ? 'bg-warning/15 text-warning hover:bg-warning/25' : resume ? 'bg-success/15 text-success hover:bg-success/25' : retry ? 'bg-danger/15 text-danger hover:bg-danger/25' : ''}`}
+            title={pause ? 'Pause this response' : resume ? 'Resume paused response' : retry ? retryPartial ? 'Finish the missing part' : 'Retry the failed step' : 'Send message'}
+            className={`composer-send icon-control h-8 min-h-8 w-8 rounded-control p-0 ${pause || retry && retryPartial ? 'bg-warning/15 text-warning hover:bg-warning/25' : resume ? 'bg-success/15 text-success hover:bg-success/25' : retry ? 'bg-danger/15 text-danger hover:bg-danger/25' : ''}`}
             disabled={pause ? stopping : (!resume && !retry && !value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
             type={pause ? 'button' : 'submit'}

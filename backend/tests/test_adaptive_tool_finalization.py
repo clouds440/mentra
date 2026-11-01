@@ -16,7 +16,7 @@ from app.langchain.workflow_budget import ModelBudget
 
 class BudgetTests(unittest.TestCase):
     def test_context_headroom_expands_results_and_reads_without_expanding_writes(self):
-        budget = ToolBudget()
+        budget = ToolBudget(max_result_tokens=3200,max_result_bytes=12800)
         budget.calls = budget.max_calls
         budget.result_tokens = 3100
         budget.result_characters = 12400
@@ -31,10 +31,17 @@ class BudgetTests(unittest.TestCase):
 
     def test_deadline_and_context_exhaustion_do_not_expand_results(self):
         for used, envelope in [(13824, ModelBudget()), (1000, ModelBudget(deadline=monotonic()+10))]:
-            budget = ToolBudget()
+            budget = ToolBudget(max_result_tokens=3200,max_result_bytes=12800)
             budget.result_tokens = 3100
             rebalance_tools(budget, used_tokens=used, input_limit=12288, recovery_limit=13824, envelope=envelope)
             self.assertEqual(budget.max_result_tokens, 3200)
+
+    def test_slim_continuation_can_use_headroom_without_double_reserving_protocol(self):
+        budget = ToolBudget(result_tokens=3100,max_result_tokens=3200,max_result_bytes=12800)
+        rebalance_tools(budget, used_tokens=12600, input_limit=13824, recovery_limit=13824, envelope=ModelBudget())
+        self.assertEqual(budget.max_result_tokens,3200)
+        rebalance_tools(budget, used_tokens=12600, input_limit=13824, recovery_limit=13824, envelope=ModelBudget(),protocol_reserve=512)
+        self.assertEqual(budget.max_result_tokens-budget.result_tokens,712)
 
     def test_physical_calls_stay_bounded(self):
         budget = ToolBudget(max_calls=12, calls=12)
@@ -50,6 +57,23 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(config.chat_turn_timeout_seconds, 180)
         self.assertGreater(ModelBudget().remaining, 179)
 
+    def test_larger_working_input_still_respects_a_smaller_configured_context(self):
+        from unittest.mock import patch
+        from langchain_core.messages import HumanMessage
+        from app.langchain.prompts import PromptSource
+        from app.langchain.token_policy import check_input
+        config=Settings(_env_file=None,chat_context_window_tokens=8192)
+        with patch('app.langchain.token_policy.count_messages',return_value=6000),self.assertRaises(AppError):
+            check_input([HumanMessage(content='Synthetic context fixture')],PromptSource.CHAT,config=config)
+
+    def test_cumulative_budget_supports_admitted_context_across_rounds(self):
+        budget=ModelBudget()
+        for _ in range(12):
+            budget.reserve(18000,2048)
+        self.assertEqual(budget.rounds,12)
+        with self.assertRaises(AppError):
+            budget.reserve(18000,2048)
+
 
 class FinalizationTests(unittest.IsolatedAsyncioTestCase):
     async def finish(self, llm, response, scope=None):
@@ -62,6 +86,12 @@ class FinalizationTests(unittest.IsolatedAsyncioTestCase):
         result = await self.finish(llm, AIMessage(content='Supported answer.'))
         self.assertEqual(result.content, 'Supported answer.')
         llm.ainvoke_messages.assert_not_awaited()
+
+    async def test_provider_truncation_is_repaired_instead_of_published_as_complete(self):
+        llm = SimpleNamespace(ainvoke_messages=AsyncMock(return_value=AIMessage(content='A complete supported answer.')))
+        result = await self.finish(llm,AIMessage(content='An unfinished sentence because',response_metadata={'finish_reason':'length'}))
+        self.assertEqual(result.content,'A complete supported answer.')
+        self.assertEqual(llm.ainvoke_messages.await_count,1)
 
     async def test_pending_search_is_repaired_without_executing_it(self):
         pending = AIMessage(content='', tool_calls=[dict(name='web_search', args={'query':'more evidence'}, id='pending')])

@@ -254,6 +254,25 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         from .adaptive_tool_budget import rebalance_tools
         input_limit = rebalance_tools(budget, used_tokens=round_cost + count_tokens_approximately(conversation),
             input_limit=input_limit, recovery_limit=recovery_limit, envelope=envelope)
+        # An exhausted packet allowance is not an exhausted model context. Reclaim
+        # unused schemas before closing tools, retaining the active operation and
+        # its evidence. Discovery can return next turn; no permission is expanded.
+        transcript_cost = count_tokens_approximately(conversation)
+        if budget.calls and (budget.max_result_tokens - budget.result_tokens < 600 or budget.max_result_bytes - budget.result_characters < 2400):
+            ongoing = set(scope.get('_selected_operations', [])) | selection.explicit
+            for keep in (ongoing | {'enable_workflow_tools'}, ongoing):
+                candidate = [tool for tool in available_tools if getattr(tool, 'name', '') in keep or tool is answer_schema]
+                if len(candidate) == len(available_tools) or not any(getattr(tool, 'name', '') in ongoing for tool in candidate):
+                    continue
+                available_tools = candidate
+                selection.active &= keep
+                sources = prompt_sources(available_tools)
+                round_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *sources))
+                round_cost = count_tokens_approximately([SystemMessage(content=round_instructions + runtime_context)]) + schema_tokens(available_tools)
+                input_limit = rebalance_tools(budget, used_tokens=round_cost + transcript_cost,
+                    input_limit=input_limit, recovery_limit=recovery_limit, envelope=envelope, protocol_reserve=512)
+                if budget.max_result_tokens - budget.result_tokens >= 600 and budget.max_result_bytes - budget.result_characters >= 2400:
+                    break
         scope['_chat_input_limit'] = input_limit
         results_full = budget.result_tokens > budget.max_result_tokens - 600 or budget.result_characters > budget.max_result_bytes - 1800
         final_reasons = [name for name, condition in (
@@ -319,7 +338,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 fallback_context += '\nFunction calling is unavailable. Instead return a JSON object matching this schema: ' + json.dumps(answer_schema.model_json_schema())
             response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
                 additional_sources=sources, system_context=fallback_context)
-        if final:
+        if final or getattr(response, 'response_metadata', {}).get('finish_reason') in ('length', 'max_tokens'):
             from .final_response import finish_only
             decision = await finish_only(llm, response, conversation=conversation, scope=scope, sources=sources,
                 context=runtime_context, validate=validate_output)

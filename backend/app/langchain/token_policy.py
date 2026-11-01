@@ -86,7 +86,8 @@ def check_input(messages, source, *, tools=None, config=settings):
     # High-detail images cost more than the library's low-resolution default.
     # Bound dimensions in the extractor and reserve a conservative per-page cost.
     tokens = count_messages(messages) + schema_tokens(tools)
-    limit = (max(config.chat_input_tokens, config.chat_recovery_input_tokens) if source.value == 'chat' else
+    limit = (min(max(config.chat_input_tokens, config.chat_recovery_input_tokens),
+                 config.chat_context_window_tokens - output_budget(source, config) - 256) if source.value == 'chat' else
              min(7000, config.chat_context_window_tokens - output_budget(source, config) - 256) if source.value == 'chat_summary' else min(config.memory_summary_input_tokens,
                   config.chat_context_window_tokens - output_budget(source, config) - 256) if source.value in ('memory_summary', 'memory_capture')
              else config.chat_context_window_tokens - output_budget(source, config) - 256)

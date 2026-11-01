@@ -253,7 +253,7 @@ class ChatStore {
       invalidatePageCache(['learning', 'assessments', 'memories', 'events', 'event-proposals', 'documents', 'learning-contexts'], true);
     }
     this.setView(id, { messages, loading: false, busy: page.turn?.state === 'RUNNING',
-      error: unresolvedSend ? view.error ?? 'The previous send could not be confirmed. Retry the original message.' : page.turn?.state === 'FAILED' && page.turn.error !== 'Response stopped.' ? chatErrorMessage(page.turn.error) : null, turn,
+      error: unresolvedSend ? view.error ?? 'The previous send could not be confirmed. Retry the original message.' : turn?.state === 'FAILED' && turn.error !== 'Response stopped.' && (!turn.response_outcome || ['partial','failed'].includes(turn.response_outcome.state)) ? chatErrorMessage(turn.error, turn.response_outcome) : null, turn,
       before: messages[0]?.sequence > 1 ? messages[0].sequence : null,
       olderWindow: older && items.length > 200 || (older || page.incremental) && view.olderWindow,
       revision: page.conversation.revision });

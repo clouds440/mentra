@@ -20,6 +20,8 @@ FINAL_INSTRUCTION = ('Tool execution is closed. No more searches, discovery or a
 def parse_final(response, validate):
     if response is None or getattr(response, 'invalid_tool_calls', None):
         raise ValueError('invalid_final_protocol')
+    if getattr(response, 'response_metadata', {}).get('finish_reason') in ('length', 'max_tokens'):
+        raise ValueError('truncated_final_response')
     calls = getattr(response, 'tool_calls', [])
     if calls:
         if len(calls) != 1 or calls[0]['name'] not in ('FinishResponse', 'NewChatReply', 'DirectAnswer', 'DirectNewChatReply'):

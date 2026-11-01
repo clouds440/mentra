@@ -150,7 +150,7 @@ and [profile contracts](../profile/student-profile.md) for testing and supported
 
 ## Chat and optional capability settings
 
-- Chat input: `CHAT_INPUT_TOKENS=8192`, `CHAT_RECOVERY_INPUT_TOKENS=12288`, `CHAT_HISTORY_TOKEN_BUDGET=1800`, `CHAT_OUTPUT_TOKEN_RESERVE=2048`. Assessment workflows retain their separate 16k context. `CHAT_SUMMARY_ENABLED=true` enables incremental database-backed summaries; see [context compaction](../../backend/app/chat/SUMMARIES.md).
+- Chat input: `CHAT_INPUT_TOKENS=16384`, `CHAT_RECOVERY_INPUT_TOKENS=28672`, `CHAT_CONTEXT_WINDOW_TOKENS=32768`, `CHAT_HISTORY_TOKEN_BUDGET=1800`, `CHAT_OUTPUT_TOKEN_RESERVE=2048`. These are ceilings, not padding targets. Match the context ceiling to the configured provider; output space remains reserved. Assessment workflows retain separate generation/grading budgets. `CHAT_SUMMARY_ENABLED=true` enables incremental database-backed summaries; see [context compaction](../../backend/app/chat/SUMMARIES.md).
 - Vision requires a model/endpoint that accepts images. Chat sends up to three images with the question; CPU OCR provides fallback extraction. CPU voice settings and image-baked weights are described in [voice input](../speech/voice-input.md).
 - Enable keyless search with `WEB_SEARCH_ENABLED=true`. `YOU_WEB_SEARCH_API_KEY` separately enables authenticated research, which can consume credits; it never authenticates ordinary free MCP search. See [web tools](../web-search/web-search.md).
 - `LOG_PARAMETER_DETAILS=true` records bounded parameter shapes, presence and timing, not payload values. Daily files live in `logs/backend`; see [logging](../observability/backend-logging.md).

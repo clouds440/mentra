@@ -59,15 +59,15 @@ class Settings(BaseSettings):
     web_search_enabled: bool = False
     web_search_timezone: str = 'UTC'
     web_search_daily_limit: int = Field(default=90, ge=1, le=100)
-    web_search_user_daily_limit: int = Field(default=10, ge=1, le=100)
-    web_search_user_minute_limit: int = Field(default=3, ge=1, le=10)
+    web_search_user_daily_limit: int = Field(default=30, ge=1, le=100)
+    web_search_user_minute_limit: int = Field(default=10, ge=1, le=10)
     web_search_cache_seconds: int = Field(default=120, ge=0, le=300)
     you_web_search_api_key: str = Field(default='', repr=False)
     web_research_daily_limit: int = Field(default=20, ge=1, le=100)
     web_research_user_daily_limit: int = Field(default=5, ge=1, le=100)
     chat_history_token_budget: int = Field(default=1800, ge=256, le=100000)
-    chat_input_tokens: int = Field(default=12288, ge=4096, le=16384)
-    chat_recovery_input_tokens: int = Field(default=13824, ge=4096, le=16384)
+    chat_input_tokens: int = Field(default=16384, ge=4096, le=131072)
+    chat_recovery_input_tokens: int = Field(default=28672, ge=4096, le=131072)
     chat_summary_enabled: bool = True
     chat_summary_max_tokens: int = Field(default=600, ge=128, le=2000)
     chat_summary_max_characters: int = Field(default=2400, ge=256, le=8000)
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     memory_capture_enabled: bool = True
     memory_semantic_enabled: bool = True
     summarizer_concurrency: int = Field(default=2, ge=1, le=4)
-    chat_context_window_tokens: int = Field(default=16384, ge=1024)
+    chat_context_window_tokens: int = Field(default=32768, ge=1024)
     chat_output_token_reserve: int = Field(default=2048, ge=128)
     assessment_generation_output_tokens: int = Field(default=8192, ge=512, le=32768)
     assessment_grading_output_tokens: int = Field(default=8192, ge=512, le=32768)

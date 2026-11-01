@@ -29,8 +29,9 @@ class ToolProtocolTests(unittest.IsolatedAsyncioTestCase):
         service = SimpleNamespace(events=None, search_summaries=AsyncMock(return_value={'summaries': []}))
         await tool_reply(Model(), [HumanMessage(id='current', content='Find past project discussions.')],
             service, 'owner', scope, (), {'padding': 'x'*12000})
-        self.assertLessEqual(rounds[0]['limit'], 13824)
-        self.assertLessEqual(rounds[1]['limit'], 13824)
+        from app.core.config import settings
+        self.assertLessEqual(rounds[0]['limit'], settings.chat_recovery_input_tokens)
+        self.assertLessEqual(rounds[1]['limit'], settings.chat_recovery_input_tokens)
         # Smaller policies may fit without expanding to the recovery ceiling.
         # The invariant is that discovery leaves space to execute the lookup.
         self.assertIn('conversation_summary_search', rounds[1]['tools'])

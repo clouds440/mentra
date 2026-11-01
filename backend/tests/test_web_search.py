@@ -168,6 +168,35 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         await tool_reply(Script(),[HumanMessage(content='Compare the evidence.')],None,str(uuid4()),state,(),{})
         self.assertEqual(self.provider.search.await_count,2)
 
+    async def test_unused_schemas_do_not_force_final_with_context_headroom_remaining(self):
+        self.setup_service()
+        from unittest.mock import patch
+        from app.langchain.history_orchestration import tool_reply
+        from app.langchain.token_policy import count_messages
+        from app.core.config import settings
+        from langchain_core.messages import HumanMessage, SystemMessage
+        rounds=[]
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[],visible_ids=[],evidence_ids=set())
+        state['_tool_budget']=ToolBudget(max_result_tokens=1300,max_result_bytes=5200)
+        self.provider.search.return_value={'results':{'web':[dict(url=f'https://python.org/{index}',title='A source',description='Relevant information '*100) for index in range(5)]}}
+        def constrained_context(messages):
+            return sum(9800 if isinstance(message,SystemMessage) else count_messages([message]) for message in messages)
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                count=len([item for item in messages if isinstance(item,ToolMessage)])
+                rounds.append(count)
+                if count<3:
+                    assert kwargs.get('tool_choice') != 'FinishResponse', f'Coordinator closed tools: receipts={count}, budget={state["_tool_budget"].max_result_tokens}/{state["_tool_budget"].result_tokens}, transcript={count_messages(messages)}, selected={state.get("_selected_operations")}'
+                    calls=range(2) if count==0 else [2]
+                    return AIMessage(content='',tool_calls=[dict(name='web_search',args={'query':f'needed evidence {index}'},id=f'lookup-{index}') for index in calls])
+                return AIMessage(content='Completed from the three returned searches [[W1]].')
+        with patch('app.langchain.history_orchestration.count_tokens_approximately',side_effect=constrained_context), \
+             patch.object(settings,'chat_input_tokens',12288), patch.object(settings,'chat_recovery_input_tokens',13824), \
+             patch.object(settings,'chat_context_window_tokens',16384):
+            await tool_reply(Script(),[HumanMessage(content='Explain the topic with historical pictures.')],None,str(uuid4()),state,(),{})
+        self.assertEqual(rounds,[0,2,3])
+        self.assertEqual(self.provider.search.await_count,3)
+
     async def test_invalid_input_and_timeout_are_dated_without_retry(self):
         self.setup_service()
         executor = ToolExecutor(self.budget, self.scope, self.publisher)

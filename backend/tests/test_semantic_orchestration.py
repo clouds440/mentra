@@ -172,6 +172,22 @@ class PersistenceTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls): cls.db.close()
 
+    def test_partial_and_failed_turns_have_distinct_messages_and_keep_saved_output(self):
+        from app.chat.repositories.postgres import ChatRepository
+        from app.chat.schemas import SendTurn
+        repository=ChatRepository(self.db.sessions)
+        outcomes={}
+        for state in ('partial','failed'):
+            request=SendTurn(conversation_id=uuid4(),client_turn_id=uuid4(),expected_revision=0,content='A synthetic multi-part request.')
+            job=repository.begin_turn(learner_id('alice'),request)
+            repository.finish(learner_id('alice'),job,dict(content='Retained results.',response_outcome=ResponseOutcome(state=state,retryable=True).model_dump(mode='json')))
+            page=repository.status(learner_id('alice'),job['conversation_id'])
+            outcomes[state]=page['turn']['error']
+            self.assertEqual(page['turn']['response_outcome']['state'],state)
+            self.assertEqual(page['items'][-1]['content'],'Retained results.')
+        self.assertIn('Completed results are saved',outcomes['partial'])
+        self.assertNotEqual(outcomes['partial'],outcomes['failed'])
+
     def test_turn_lease_tracks_configured_generation_timeout_with_commit_margin(self):
         from datetime import datetime, timezone
         from sqlalchemy import select

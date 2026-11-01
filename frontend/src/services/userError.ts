@@ -2,7 +2,10 @@ export const responseError = 'Mentra couldn’t finish this response. Please try
 
 // Persisted errors arrive in successful responses and bypass ApiError. Only
 // explicitly approved text may render; unknown/legacy diagnostics stay private.
-export function chatErrorMessage(message?: string | null): string {
+export function chatErrorMessage(message?: string | null, outcome?: { state: string; retryable: boolean }): string {
+  if (outcome?.state === 'partial') return outcome.retryable
+    ? 'Part of this response is unfinished. Your completed results are saved. Retry to finish the missing part.'
+    : 'Part of this response is unfinished. Your available results are saved; see the response for what is missing.';
   if (message === 'The requested document could not be found. Select another document.') return message;
   if (message === 'Generation interrupted. Retry this message.') return 'This response was interrupted. Please try again.';
   return responseError;

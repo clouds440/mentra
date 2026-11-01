@@ -2,7 +2,7 @@
 from app.core.logging import workflow_logger
 
 
-def rebalance_tools(budget, *, used_tokens, input_limit, recovery_limit, envelope):
+def rebalance_tools(budget, *, used_tokens, input_limit, recovery_limit, envelope, protocol_reserve=1024):
     tokens_left = budget.max_result_tokens - budget.result_tokens
     bytes_left = budget.max_result_bytes - budget.result_characters
     needs_results = tokens_left < 1200 or bytes_left < 4800
@@ -10,9 +10,9 @@ def rebalance_tools(budget, *, used_tokens, input_limit, recovery_limit, envelop
     if needs_results and time_available:
         # Transcript/tool schemas are counted together. Keep protocol/final-answer
         # input space; the configured output reserve is already excluded upstream.
-        if input_limit - used_tokens - 1024 < 1200:
+        if input_limit - used_tokens - protocol_reserve < 1200:
             input_limit = max(input_limit, recovery_limit)
-        room = max(0, input_limit - used_tokens - 1024)
+        room = max(0, input_limit - used_tokens - protocol_reserve)
         if room >= 600:
             previous = budget.max_result_tokens
             budget.max_result_tokens = max(previous, budget.result_tokens + room)

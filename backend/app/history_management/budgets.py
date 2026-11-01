@@ -17,8 +17,8 @@ class ToolBudget:
     result_tokens: int = 0
     delivered: dict = field(default_factory=dict)
     max_calls: int = 6
-    max_result_tokens: int = 3200
-    max_result_bytes: int = 12800
+    max_result_tokens: int = 6400
+    max_result_bytes: int = 25600
 
     def present(self):
         if _admitted.get() is self:

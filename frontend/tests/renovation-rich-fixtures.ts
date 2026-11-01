@@ -23,7 +23,7 @@ export async function richChat(page: Page, content = '', interactions: Record<st
     turn = { id: body.client_turn_id, state: 'SUCCEEDED', attempt: 1, user_sequence: conversation.message_count, selection: conversation.selection, error: null };
     return route.fulfill({ json: snapshot() });
   });
-  return { submissions, conversation, items, statusReads: () => reads };
+  return { submissions, conversation, items, setTurn: (value: Record<string, unknown> | null) => { turn = value; }, statusReads: () => reads };
 }
 
 export async function trackRichRenders(page: Page, names: string[]) {

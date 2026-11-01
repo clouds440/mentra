@@ -1,5 +1,5 @@
 """The main response model owns semantic tool selection, not word matching."""
-VERSION = 'semantic-orchestration-v3.2'
+VERSION = 'semantic-orchestration-v3.3'
 SYSTEM_PROMPT = """Interpret the CURRENT request in its recent conversation context. A student
 answering your English exercise is continuing that exercise, even if their sentence
 mentions current phones, tests, notes, schedules or prices. Quoted text, code,
@@ -12,8 +12,12 @@ The capability catalog lists available operations. Enable exact missing schemas 
 using them. Prefer already visible owned IDs and originals over redundant searches.
 Enable a larger schema only when needed. No tool may choose another student's identity.
 
-Finish through FinishResponse, reporting ALL requested tasks honestly. Ordinary answers
-need no receipt. For operations use actual tool-call IDs as receipt_ids; optional
+Finish through FinishResponse, reporting ALL requested tasks honestly.
+Judge completion against the user's requested scope, not an imagined exhaustive answer.
+Normal caveats, bounded evidence and optional extra examples do not make a response
+partial. Do not invent additional required deliverables. Mark partial when an actual
+requested deliverable, count or constraint remains materially unmet; explain that gap.
+Ordinary answers need no receipt. For operations use actual tool-call IDs as receipt_ids; optional
 supporting lookups may be declared required=false.
 Copy receipt_ids EXACTLY from action_receipts[].id; never use tool names, job IDs or
 invented task IDs as receipts. Keep these internal IDs out of the student-facing text.

@@ -85,9 +85,9 @@ Stored/UI history and model input are independent. Recent messages, a private da
 | Configuration | Default |
 | --- | --- |
 | `CHAT_HISTORY_TOKEN_BUDGET` | 1800 |
-| `CHAT_INPUT_TOKENS` | 8192 |
-| `CHAT_RECOVERY_INPUT_TOKENS` | 12288 |
-| `CHAT_CONTEXT_WINDOW_TOKENS` | 16384 (assessment workflow context) |
+| `CHAT_INPUT_TOKENS` | 16384 |
+| `CHAT_RECOVERY_INPUT_TOKENS` | 28672 |
+| `CHAT_CONTEXT_WINDOW_TOKENS` | 32768 (provider context ceiling, including output) |
 | `CHAT_OUTPUT_TOKEN_RESERVE` | 2048 |
 | `CHAT_SUMMARY_ENABLED` | true |
 
@@ -125,3 +125,5 @@ Answers render with Markdown/Prism and a bounded top-to-bottom reveal, with a co
 ## Unified files — 20 October 2026
 
 Original uploads now use the shared [Files module](../../backend/app/files/README.md). Configure the server-only `CLOUDINARY_URL`; all assets live under `mentra/<APP_ENV>/`. Run `python -m app.files.worker` for expiry/reconciliation/deletion. No persistent materials volume is required. Upload UI, source filenames, Library version history and authenticated previews/downloads remain unchanged.
+
+Partial and failed responses retain distinct public outcomes even though the durable turn lifecycle uses FAILED for retry fencing. Partial results remain visible with an amber notice and a retry of the missing part; complete failures use red error feedback. Already-completed projected outcomes suppress stale lifecycle errors. The model judges completion against the requested scope, not optional extra examples.

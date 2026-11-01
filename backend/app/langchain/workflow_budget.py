@@ -7,6 +7,13 @@ from app.core.exceptions import AppError
 from app.core.config import settings
 
 
+def input_envelope():
+    # A long but admitted context must be usable across the permitted rounds,
+    # rather than hitting an unrelated smaller cumulative ceiling mid-answer.
+    return max(131072, min(settings.chat_recovery_input_tokens,
+        settings.chat_context_window_tokens-settings.chat_output_token_reserve-256)*12)
+
+
 @dataclass
 class ModelBudget:
     deadline: float = field(default_factory=lambda: monotonic()+settings.chat_turn_timeout_seconds)
@@ -15,8 +22,8 @@ class ModelBudget:
     output_reserved: int = 0
     answer_reserve: float = 20
     max_rounds: int = 12
-    max_input_tokens: int = 65536
-    max_total_tokens: int = 98304
+    max_input_tokens: int = field(default_factory=input_envelope)
+    max_total_tokens: int = field(default_factory=lambda: max(196608,input_envelope()+settings.chat_output_token_reserve*12))
 
     @property
     def remaining(self):

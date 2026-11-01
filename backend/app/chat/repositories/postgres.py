@@ -262,7 +262,8 @@ class ChatRepository:
             outcome = ResponseOutcome.model_validate((response or {}).get('response_outcome') or dict(
                 state='failed' if error else 'completed', retryable=bool(error),reason_code=job.get('_failure_code')))
             incomplete = error is not None or outcome.state in ('partial','failed')
-            public_error = error or ('This response is incomplete. Retry the unfinished part.' if incomplete else None)
+            public_error = error or ('Part of this response is unfinished. Completed results are saved.' if outcome.state == 'partial'
+                else 'This response could not be completed. Please retry.' if incomplete else None)
             values = dict(state='FAILED' if incomplete else 'SUCCEEDED', error=public_error, lease_until=None,
                 response_outcome=outcome.model_dump(mode='json'), orchestration_policy='semantic-v3',
                 recovery_state=(job.get('_recovery_state') or turn.get('recovery_state')) if incomplete else None,
