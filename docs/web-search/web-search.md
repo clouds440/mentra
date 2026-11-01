@@ -7,7 +7,11 @@ Mentra exposes two optional LLM tools. Authenticated `web_research` is described
 The main model chooses effort within its existing answer/tool round; no separate routing
 LLM call is added. Stable explanations can be answered directly. Ordinary questions,
 including detailed educational overviews with optional pictures, normally use one targeted
-lookup or a small batch. This is guidance, not a new hard call cap. Further lookups should
+lookup or a small batch. The coordinator now enforces a **quick phase of two normal
+lookup calls**, retiring its schema when spent. An empty/failed initial batch may recover
+automatically up to four calls; in-flight calls cannot masquerade as empty results to
+launch an oversized batch. Quota/rate-limit receipts close further normal dispatches.
+Further lookups should
 name a material unresolved fact, conflict or explicitly required asset in the optional
 `evidence_gap` argument. This rationale stays out of provider queries and cache identities;
 old calls without it still work. Source count is not a measure of answer quality.
@@ -24,7 +28,11 @@ Genuinely deep investigations, conflicting evidence and thorough multi-source re
 the discoverable `web_research` tool when configured. A detailed overview alone is not deep
 research. Missing research availability never authorizes claiming it ran or repeatedly
 retrying a failed paid request; targeted ordinary lookups may still address actual gaps.
-Flexible context/call allowances and quota fences remain unchanged. Logs record whether a
+The existing discovery tool accepts `web_effort={reason:...}` for a deliberate effort
+choice. It enables research when configured; otherwise it admits extended ordinary
+search under the existing flexible allowances. Re-enabling `web_search` alone never
+resets a spent quick phase. No additional routing invocation is introduced. The wider
+context/call allowances and quota fences remain unchanged. Logs record whether a
 follow-up declared a gap, without storing the gap text or search query.
 
 Packet compaction shortens excerpts across all sources before discarding later sources or
@@ -36,6 +44,8 @@ Manual configured-model routing check (no real web calls or learner-data writes)
 `python -m testing.web_effort_probe --turn-id <public-history-turn-UUID>`. This replays
 the saved turn's first five public sources with real model invocations and synthetic
 search/research transports. Its latency excludes real search/image retrieval and persistence.
+For a completely authored follow-up fixture with no database reads, use
+`python -m testing.web_effort_probe --synthetic --case followup`.
 
 ## Requested images
 

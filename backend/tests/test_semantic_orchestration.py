@@ -61,6 +61,47 @@ class OutcomeTests(unittest.TestCase):
         finalize(value, FinishResponse(content='The verification failed.', outcome='completed'))
         self.assertEqual(value['response_outcome']['state'], 'failed')
 
+    def test_optional_image_gap_cannot_override_completed_required_answer(self):
+        value = scope()
+        record_receipt(value, dict(id='answer',name='web_search',args={}), dict(outcome='ok'))
+        record_receipt(value, dict(id='extra',name='web_search',args={}), dict(outcome='quota_exhausted'))
+        finalize(value, FinishResponse(content='The requested explanation is complete.', outcome='partial', tasks=[
+            dict(id='explain', required=True, state='completed', receipt_ids=['answer']),
+            dict(id='optional-artwork', required=False, state='partial', receipt_ids=['extra'])]))
+        self.assertEqual(value['response_outcome']['state'], 'completed')
+        self.assertFalse(value['response_outcome']['retryable'])
+
+    def test_saved_optional_only_failures_are_corrected_without_rewriting_history(self):
+        from app.chat.repositories.response_outcomes import project_outcomes, turn_outcome
+        original = dict(state='partial', retryable=True, reason_code='REQUEST_OUTCOME_INCOMPLETE', tasks=[
+            dict(id='read', state='completed', required=True),
+            dict(id='answer', state='completed', required=True, declared=True),
+            dict(id='image', state='partial', required=False, declared=True)])
+        projected = project_outcomes(None, 'synthetic', [dict(response_outcome=original)])[0]
+        turn = turn_outcome(dict(state='FAILED', response_outcome=original), [])
+        self.assertEqual(projected['response_outcome']['state'], 'completed')
+        self.assertEqual(turn['state'], 'completed')
+        self.assertFalse(turn['retryable'])
+        self.assertEqual(original['state'], 'partial')
+        original['reason_code'] = 'AI_PROVIDER_ERROR'
+        self.assertEqual(project_outcomes(None, 'synthetic', [dict(response_outcome=original)])[0]['response_outcome']['state'], 'partial')
+
+    def test_actual_required_gap_remains_partial(self):
+        value = scope()
+        finalize(value, FinishResponse(content='One requested part is missing.', outcome='partial', tasks=[
+            dict(id='first', state='completed'), dict(id='second', state='partial'),
+            dict(id='optional', required=False, state='partial')]))
+        self.assertEqual(value['response_outcome']['state'], 'partial')
+
+    def test_optional_declaration_cannot_remove_a_required_failed_receipt(self):
+        value = scope()
+        record_receipt(value, dict(id='r',name='web_search',args={}), dict(outcome='timeout',retryable=True))
+        finalize(value, FinishResponse(content='Verification is missing.', outcome='partial', tasks=[
+            dict(id='required', state='partial', receipt_ids=['r']),
+            dict(id='extra', required=False, state='partial', receipt_ids=['r'])]))
+        self.assertTrue(value['response_outcome']['tasks'][0]['required'])
+        self.assertEqual(value['response_outcome']['state'], 'partial')
+
     def test_committed_result_survives_a_second_failed_task(self):
         value = scope()
         record_receipt(value, dict(id='saved',name='event_manage',args={}), dict(outcome='saved'))

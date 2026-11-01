@@ -653,7 +653,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .chat-prose .code-block { font-family: ui-sans-serif, system-ui, sans-serif; line-height: normal; }
 .chat-prose .code-block pre, .chat-prose .code-block code { font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace; font-size: 12.5px; line-height: 1.8; }
 .chat-domain-card { font-family: Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, sans-serif; font-size: .875rem; line-height: 1.75; }
-.mermaid-svg { min-height: 5rem; max-height: 70dvh; }
+.mermaid-svg { min-height: 5rem; max-height: 70dvh; padding: 1.25rem; scrollbar-width: thin; scrollbar-color: rgb(var(--scrollbar)) transparent; }
 .mermaid-placeholder { min-height: 10rem; }
 .rich-icon { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.125em; flex-shrink: 0; }
 .rich-icon svg { display: block; width: 100%; height: 100%; }

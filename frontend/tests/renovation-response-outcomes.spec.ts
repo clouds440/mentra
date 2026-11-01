@@ -13,14 +13,13 @@ for (const state of ['partial', 'failed', 'completed'] as const) test(`persisted
   await expect(page.getByText('Private provider diagnostic must never render')).toHaveCount(0);
   if (state === 'partial') {
     await expect(composer.getByRole('alert')).toHaveCount(0);
-    await expect(composer.getByRole('status')).toContainText('Response partly complete');
-    await expect(composer.getByRole('status')).toContainText('Your completed results are saved');
-    await expect(composer.getByRole('status')).toHaveClass(/text-warning/);
+    await expect(composer.getByRole('status')).toHaveCount(0);
+    await expect(page.getByText('This response is partly complete.', { exact: false })).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'Retry response' })).toHaveAttribute('title', 'Finish the missing part');
     await expect(page.getByRole('button', { name: 'Retry response' })).toHaveClass(/text-warning/);
   } else if (state === 'failed') {
-    await expect(composer.getByRole('alert')).toContainText('Mentra couldn’t finish this response');
-    await expect(composer.getByRole('alert')).toHaveClass(/text-danger/);
+    await expect(composer.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByText('This response failed.', { exact: false })).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'Retry response' })).toHaveAttribute('title', 'Retry the failed step');
   } else {
     await expect(composer.getByRole('alert')).toHaveCount(0);
@@ -37,6 +36,18 @@ test('nonretryable partial preserves its results without suggesting unsafe retri
     selection: fixture.conversation.selection, error: 'An action could not be verified.',
     response_outcome: outcome, can_retry: false, can_resume: false });
   await page.goto('/chat/polish-chat');
-  await expect(page.locator('.chat-composer-region').getByRole('status')).toContainText('Your available results are saved');
+  await expect(page.locator('.chat-composer-region').getByRole('status')).toHaveCount(0);
+  await expect(page.getByText('This response is partly complete.', { exact: false })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Retry response' })).toHaveCount(0);
+});
+
+test('a failure without a visible response still has useful composer feedback', async ({ page }) => {
+  const fixture = await richChat(page);
+  fixture.items.pop();
+  fixture.setTurn({ id: 'failed-no-response', state: 'FAILED', attempt: 1, user_sequence: 1,
+    selection: fixture.conversation.selection, error: 'Private provider diagnostic',
+    response_outcome: { version: 3, state: 'failed', retryable: true, tasks: [] }, can_retry: true, can_resume: false });
+  await page.goto('/chat/polish-chat');
+  await expect(page.locator('.chat-composer-region').getByRole('alert')).toContainText('Mentra couldn’t finish this response');
+  await expect(page.getByText('Private provider diagnostic')).toHaveCount(0);
 });

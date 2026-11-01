@@ -61,6 +61,12 @@ export function ChatPage() {
   const sending = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const latestMessage = view.messages[view.messages.length - 1];
+  const responseNoticeInChat = !validation && !view.unsent && view.turn
+    && ['partial', 'failed'].includes(view.turn.response_outcome?.state ?? '')
+    && view.error === chatErrorMessage(view.turn.error, view.turn.response_outcome)
+    && latestMessage?.role === 'assistant' && latestMessage.sequence > view.turn.user_sequence
+    && latestMessage.response_outcome?.state === view.turn.response_outcome?.state;
   const partialResponse = !validation && !view.unsent && view.turn?.response_outcome?.state === 'partial'
     && view.error === chatErrorMessage(view.turn.error, view.turn.response_outcome);
   const uploadController = useRef(new AbortController());
@@ -206,8 +212,7 @@ export function ChatPage() {
           else scroll.scrollToBottom();
         }}><ArrowDown size={16} aria-hidden="true" /></IconButton></div>}
         <div className="mx-auto w-full max-w-[52rem]">
-          {(validation || view.error || view.unsent) && <div className={`mb-3 rounded-xl border px-3.5 py-2.5 text-sm ${partialResponse ? 'border-warning/20 bg-warning/[0.06] text-warning' : 'border-danger/20 bg-danger/[0.06] text-danger'}`} role={partialResponse ? 'status' : 'alert'}>
-            {partialResponse && <p className="font-medium">Response partly complete</p>}
+          {!responseNoticeInChat && (validation || view.error || view.unsent) && <div className={`mb-3 rounded-xl border px-3.5 py-2.5 text-sm ${partialResponse ? 'border-warning/20 bg-warning/[0.06] text-warning' : 'border-danger/20 bg-danger/[0.06] text-danger'}`} role={partialResponse ? 'status' : 'alert'}>
             <p>{validation || view.error || 'Your question was not sent.'}</p>
             {view.unsent && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
             {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}

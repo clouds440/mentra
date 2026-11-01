@@ -12,6 +12,7 @@ from .token_policy import count_messages
 from .workflow_budget import current_budget
 from .activity import current_publisher, current_tool_call
 from .concurrent_reads import project_read
+from .web_effort import search_phase
 
 
 class ChatSearchInput(SearchInput):
@@ -137,6 +138,9 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             return service.envelope('budget_exhausted', website=request.website).model_dump(mode='json')
         if key in cache:
             result = service.refresh(cache[key])
+        elif not research and search_phase(scope)['closed']:
+            result = service.envelope('budget_exhausted', website=request.website).model_copy(update={
+                'reason': 'The quick lookup phase is complete. Answer with the evidence already returned; use the research capability only if the actual request needs deeper investigation.'})
         elif scope.get(calls_name, 0) >= (1 if research else budget.max_calls):
             result = service.envelope('budget_exhausted', website=request.website)
         else:

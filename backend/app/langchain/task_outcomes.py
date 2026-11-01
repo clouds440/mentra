@@ -74,6 +74,8 @@ def finalize(scope, decision):
             raise AppError('CHAT_INVALID_RECEIPT', 'The requested action has no matching successful receipt.', 502)
     optional = {receipts[ref]['id'] for task in decision.tasks if not task.required for ref in task.receipt_ids
                 if receipts[ref].get('effect_certainty') == 'read_only'}
+    required_refs = {receipts[ref]['id'] for task in decision.tasks if task.required for ref in task.receipt_ids}
+    optional -= required_refs
     tasks = [dict(task, required=task['id'] not in optional) for task in canonical.values() if not task.get('superseded_by')]
     declared = [task.model_dump(mode='json') for task in decision.tasks]
     failed = [task for task in tasks if task['required'] and task['state'] in ('failed','partial')]
@@ -81,6 +83,13 @@ def finalize(scope, decision):
     cards = scope.get('assessment_cards', [])
     usable = any(task['state'] in ('completed','in_progress','awaiting_input') for task in tasks) or bool(cards)
     state = decision.outcome
+    required_tasks = [task for task in decision.tasks if task.required]
+    if state in ('partial', 'failed') and required_tasks and all(task.state == 'completed' for task in required_tasks) and not failed and any(
+            not task.required and task.state in ('partial', 'failed') for task in decision.tasks):
+        # A failed optional illustration/extra lookup cannot contradict the
+        # verified completion of every required deliverable. Unaccounted failures
+        # and writes still use the canonical required-receipt checks below.
+        state = decision.outcome = 'completed'
     if failed or explicit_failed:
         state = 'partial' if usable or decision.outcome == 'partial' else 'failed'
     elif state not in ('failed','partial','paused') and any(task['state'] == 'in_progress' for task in tasks):
@@ -103,10 +112,21 @@ def finalize(scope, decision):
     return decision
 
 
+def normalize_optional_outcome(outcome):
+    """Correct old optional-only failures in read projections, without rewriting history."""
+    tasks = outcome.get('tasks', [])
+    if (outcome.get('state') in ('partial', 'failed') and outcome.get('reason_code') == 'REQUEST_OUTCOME_INCOMPLETE'
+            and any(task.get('declared') and task.get('required', True) for task in tasks)
+            and all(task.get('state') == 'completed' for task in tasks if task.get('required', True))
+            and any(not task.get('required', True) and task.get('state') in ('partial', 'failed') for task in tasks)):
+        return dict(outcome, state='completed', retryable=False, reason_code=None, control_action=None)
+    return outcome
+
+
 def legacy_outcome(turn, metadata=None):
     saved = turn.get('response_outcome') or (metadata or {}).get('response_outcome')
     if saved:
-        return ResponseOutcome.model_validate(saved).model_dump(mode='json')
+        return normalize_optional_outcome(ResponseOutcome.model_validate(saved).model_dump(mode='json'))
     warnings = (metadata or {}).get('tool_warnings', [])
     incomplete = any(item.get('code') == 'REQUEST_OUTCOME_INCOMPLETE' for item in warnings)
     state = 'paused' if turn.get('error') == 'Response stopped.' else 'failed' if incomplete or turn.get('state') == 'FAILED' else 'in_progress' if turn.get('state') == 'RUNNING' else 'completed'

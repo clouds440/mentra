@@ -6,6 +6,7 @@ import { CodeBlock } from './CodeBlock';
 import { useResolvedTheme } from '../theme/resolvedTheme';
 import { cacheDiagram, diagramCacheGeneration, readDiagram } from '../../lib/richContentCache';
 import { readableColor } from './ColorText';
+import { mermaidTheme } from '../../lib/mermaidTheme';
 
 let queue: Promise<unknown> = Promise.resolve();
 let serial = 0;
@@ -81,7 +82,7 @@ export function MermaidDiagram({ code }: { code: string }) {
   const [rendered, setRendered] = useState<{ key: string; svg: string }>();
   const [errorKey, setErrorKey] = useState(''); const [source, setSource] = useState(false); const [expanded, setExpanded] = useState(false);
   const [downloading, setDownloading] = useState<'svg' | 'png'>(); const [downloadError, setDownloadError] = useState(false);
-  const key = `${theme}:${code}`;
+  const key = `mentra-theme-v1:${theme}:${code}`;
   useEffect(() => {
     let active = true;
     const generation = diagramCacheGeneration();
@@ -102,12 +103,11 @@ export function MermaidDiagram({ code }: { code: string }) {
           const { default: mermaid } = await import('mermaid');
           if (!current()) return;
           const styles = getComputedStyle(document.documentElement);
-          const color = (name: string) => `rgb(${styles.getPropertyValue(`--${name}`).trim().split(/\s+/).join(',')})`;
-          mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: theme === 'dark' ? 'dark' : 'default', suppressErrorRendering: true,
+          mermaid.initialize({ ...mermaidTheme(styles, theme === 'dark'), startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true,
             // Current renderers read the global flag; the flowchart flag alone
             // leaves labels in foreignObject, which our SVG sanitizer removes.
-            maxTextSize: 12000, maxEdges: 120, htmlLabels: false, flowchart: { htmlLabels: false },
-            themeVariables: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', primaryTextColor: color('foreground'), lineColor: color('muted') } });
+            maxTextSize: 12000, maxEdges: 120, htmlLabels: false,
+            flowchart: { htmlLabels: false, padding: 18, nodeSpacing: 36, rankSpacing: 42, curve: 'basis' } });
           raw = (await mermaid.render(`mentraDiagram${++serial}`, styledSource(normalized, theme === 'dark'))).svg;
           if (!current()) return;
         }

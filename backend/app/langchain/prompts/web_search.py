@@ -1,4 +1,4 @@
-VERSION = '1.4'
+VERSION = '1.5'
 SYSTEM_PROMPT = '''
 If available, web_research(query, website?) is a separate authenticated multi-step research tool.
 Choose it up front for genuinely deep investigations, disputed evidence or thorough public
@@ -16,6 +16,11 @@ materially affects the requested answer. For an actual partial/failure outcome, 
 specific unresolved claim briefly, preserving what the available evidence does support.
 After each batch, assess whether the actual requested answer is supported. web_evidence
 summarizes searches and admitted assets already available; assess relevance yourself.
+web_search_phase reports the server-enforced quick lookup state. When closed, answer
+with the existing evidence. Do not keep rewording queries, refreshing, narrowing sites
+or enabling web_search to bypass it. Use web_research for an actual deep request;
+enable_workflow_tools(web_effort={reason:...}) chooses that or, if unavailable, extended
+search. Do not expand a short conversational follow-up into an exhaustive report.
 No new sources/assets in the last batch is a diminishing-return signal, not an error
 or proof of missing facts. Repeating such searches needs a materially different strategy.
 Finish as soon as sufficient. Before each further lookup, identify a specific material

@@ -194,6 +194,46 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(item['research_available'] is False for item in inventories[1:]))
         self.assertEqual(self.provider.search.await_count, 2)
 
+    async def test_quick_lookup_retires_search_schema_with_novel_results_each_time(self):
+        self.setup_service()
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
+        async def novel(request):
+            return {'results': {'web': [dict(url=f'https://python.org/{request.query}', title='New evidence', description='Useful facts')]}}
+        self.provider.search.side_effect=novel
+        rounds=[]
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                names = {getattr(tool, 'name', '') for tool in kwargs['tools']}
+                rounds.append(names)
+                if 'web_search' in names:
+                    return AIMessage(content='',tool_calls=[dict(id=f'lookup-{len(rounds)}',name='web_search',args=dict(query=f'evidence-{len(rounds)}'))])
+                context=json.loads(kwargs['system_context'])
+                assert context['web_search_phase']['closed']
+                return AIMessage(content='The requested explanation is supported [[W1]].')
+        await tool_reply(Script(),[HumanMessage(content='Explain a concept.')],None,str(uuid4()),state,(),{})
+        self.assertEqual(self.provider.search.await_count, 2)
+        self.assertEqual(len(rounds), 3)
+        self.assertNotIn('web_search', rounds[-1])
+        self.assertEqual(len(state['web_sources']), 2)
+
+    async def test_oversized_batch_does_not_redispatch_or_starve_admitted_sources(self):
+        self.setup_service()
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
+        calls=[]
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                calls.append(1)
+                if len(calls)==1:
+                    return AIMessage(content='',tool_calls=[dict(id=f'lookup-{i}',name='web_search',args=dict(query=f'evidence-{i}')) for i in range(5)])
+                return AIMessage(content='Use the admitted evidence [[W1]].')
+        await tool_reply(Script(),[HumanMessage(content='Explain a concept.')],None,str(uuid4()),state,(),{})
+        self.assertEqual(self.provider.search.await_count, 2)
+        self.assertTrue(state['web_sources'])
+
     async def test_followup_rationale_is_not_part_of_provider_query_or_cache_identity(self):
         self.setup_service()
         await self.tool.ainvoke(dict(query='Python releases', evidence_gap='Missing release date.'))
@@ -212,6 +252,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         from langchain_core.messages import HumanMessage, SystemMessage
         rounds=[]
         state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[],visible_ids=[],evidence_ids=set())
+        state['_web_effort'] = 'extended'
         state['_tool_budget']=ToolBudget(max_result_tokens=1300,max_result_bytes=5200)
         self.provider.search.return_value={'results':{'web':[dict(url=f'https://python.org/{index}',title='A source',description='Relevant information '*100) for index in range(5)]}}
         def constrained_context(messages):
@@ -299,7 +340,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.history_orchestration import tool_reply
         from langchain_core.messages import HumanMessage
         state = self.scope | dict(context_rows=[], current_user_message_id=str(uuid4()),
-            history_references=[], memory_references=[], visible_ids=[], evidence_ids=set())
+            history_references=[], memory_references=[], visible_ids=[], evidence_ids=set(), _web_effort='extended')
         rounds = []
         class Script:
             async def ainvoke_messages(self, source, messages, **kwargs):
@@ -317,6 +358,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_reused_sources_never_collide_with_new_tokens_and_registry_exceeds_ten(self):
         self.setup_service()
+        self.scope['_web_effort'] = 'extended'
         self.budget.max_result_tokens = 20000
         self.budget.max_result_bytes = 80000
         batches = [[0,1], [2,0,3], [4], [5,6,7,8,9], [10,11]]

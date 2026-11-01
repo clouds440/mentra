@@ -1,7 +1,7 @@
 """Bounded, owner-scoped live task projection shared by history and status."""
 from copy import deepcopy
 from sqlalchemy import select
-from app.langchain.task_outcomes import legacy_outcome
+from app.langchain.task_outcomes import legacy_outcome, normalize_optional_outcome
 
 
 def project_outcomes(session, owner, messages):
@@ -59,6 +59,7 @@ def project_outcomes(session, owner, messages):
                 outcome['control_action'] = dict(kind='generation_retry', id=retry['job_id'], revision=retry['job_revision'])
             elif (retry := next((task for task in live if task.get('retryable') and task.get('job_kind')=='grading'), None)):
                 outcome['control_action'] = dict(kind='grading_retry', id=retry['job_id'], revision=retry['job_revision'])
+        item['response_outcome'] = normalize_optional_outcome(outcome)
         result.append(item)
     return result
 

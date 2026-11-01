@@ -48,7 +48,7 @@ def saved_evidence(turn_id):
     return [WebSource.model_validate(source) for source in metadata['web_sources'][:5]]
 
 
-async def evaluate(name, query, sources, *, empty_first=False, research=True):
+async def evaluate(name, query, sources, *, empty_first=False, research=True, conversation=None):
     search = ReplaySearch(sources, empty_first=empty_first)
     if research:
         search.research = ReplaySearch(sources, namespace='research')
@@ -65,7 +65,7 @@ async def evaluate(name, query, sources, *, empty_first=False, research=True):
             return result
     started = perf_counter()
     with model_budget(), patch('app.langchain.workflow_tools.create_workflow_tools', return_value=[]):
-        result = await tool_reply(Model(), [HumanMessage(content=query)], None, 'synthetic-effort-check', scope, (), {})
+        result = await tool_reply(Model(), conversation or [HumanMessage(content=query)], None, 'synthetic-effort-check', scope, (), {})
     research_calls = len(search.research.calls) if research else 0
     if name == 'stable':
         passed = not search.calls and not research_calls
@@ -80,7 +80,7 @@ async def evaluate(name, query, sources, *, empty_first=False, research=True):
     # its missing evidence is acceptable; routing must not retry the paid tool.
     passed = passed and scope.get('response_outcome', {}).get('state') in (
         ('completed', 'partial') if name == 'deep' else ('completed',))
-    if name == 'overview':
+    if name == 'overview' and any(source.images for source in sources):
         passed = passed and '![' in result.content
     return dict(case=name, passed=passed, seconds=round(perf_counter()-started, 2),
         search_calls=len(search.calls), research_calls=research_calls, model_rounds=len(rounds), rounds=rounds,
@@ -92,10 +92,34 @@ async def evaluate(name, query, sources, *, empty_first=False, research=True):
 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--turn-id', type=UUID, required=True)
-    parser.add_argument('--case', choices=('stable', 'overview', 'deep', 'missing'))
+    parser.add_argument('--turn-id', type=UUID)
+    parser.add_argument('--synthetic', action='store_true', help='Use only authored fixture data; never read the database.')
+    parser.add_argument('--case', choices=('stable', 'overview', 'deep', 'missing', 'followup'))
     args = parser.parse_args()
-    sources = saved_evidence(args.turn_id)
+    if args.synthetic:
+        if args.case != 'followup':
+            parser.error('The authored synthetic fixture supports --case followup; other cases require selected public source evidence via --turn-id.')
+        from datetime import datetime, timezone
+        sources = [WebSource(url=f'https://example.org/fixture/{index}', domain='example.org', favicon_url='https://example.org/favicon.ico',
+            title=f'Synthetic history evidence {index}', searched_at=datetime.now(timezone.utc),
+            excerpt='Ankara, 1402: Timur defeated Bayezid I. Exhaustion and water shortages weakened the Ottoman army; defections of Anatolian contingents and Timur\'s mobile cavalry undermined it. Bayezid was captured. The Ottoman interregnum ended in 1413.') for index in (1, 2)]
+    elif args.turn_id:
+        sources = saved_evidence(args.turn_id)
+    else:
+        parser.error('Choose --synthetic or --turn-id for public evidence')
+    if args.case == 'followup' and args.synthetic:
+        from langchain_core.messages import AIMessage
+        query = 'Quickly verify how Timur defeated the Ottoman army at Ankara.'
+        conversation = [HumanMessage(content='Give an overview of medieval empires, with optional pictures if available.'),
+            AIMessage(content='A broad overview: ' + 'Empires used changing institutions, alliances and military systems. ' * 120),
+            HumanMessage(content=query)]
+        result = await evaluate('followup', query, sources, conversation=conversation)
+        print(json.dumps(result), flush=True)
+        if not result['passed']:
+            raise SystemExit(1)
+        return
+    if args.case == 'followup':
+        parser.error('Follow-up checks use --synthetic only, never saved conversations')
     cases = [
         ('stable', 'Briefly explain how an empire differs from a nation-state. No web lookup needed.', {}),
         ('overview', 'Can you provide a detailed history of the Ottoman Empire, including its rise to power, major rulers, key events, cultural and political developments, and eventual decline? Please include any notable historical images or illustrations if available.', {}),

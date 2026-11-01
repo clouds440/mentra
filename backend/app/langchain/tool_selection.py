@@ -6,6 +6,12 @@ from .tool_policy import catalog
 from .prompts.chat_ui import UI_TOPICS
 
 
+class ExtendedWebEffort(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    reason: str = Field(min_length=16, max_length=240,
+        description='Why the actual user request requires deeper investigation than a quick lookup. Optional enrichment is not a reason.')
+
+
 class EnableModules(BaseModel):
     model_config = ConfigDict(extra='forbid')
     modules: list[Literal['history', 'memory', 'learner', 'events', 'rag', 'assessment', 'chat', 'web']] = Field(default_factory=list, max_length=3)
@@ -13,6 +19,8 @@ class EnableModules(BaseModel):
     catalog_only: bool = False
     all_tools: bool = False
     ui: list[Literal['charts', 'disclosures', 'color', 'bars']] = Field(default_factory=list, max_length=4)
+    web_effort: ExtendedWebEffort | None = Field(default=None,
+        description='Deliberately choose deeper public investigation. Enables web_research when configured; otherwise permits extended ordinary searches under the shared budgets. No extra routing call.')
 
 
 class ToolSelection:
@@ -45,10 +53,22 @@ class ToolSelection:
         self.pending.discard(name)
 
     def discovery(self):
-        async def enable(modules=None, tool_names=None, catalog_only=False, all_tools=False, ui=None):
+        async def enable(modules=None, tool_names=None, catalog_only=False, all_tools=False, ui=None, web_effort=None):
             if catalog_only:
                 return dict(outcome='catalog', capabilities=self.catalog, ui_references=list(UI_TOPICS))
             wanted = set(tool_names or [])
+            effort = None
+            if web_effort:
+                if 'web_research' in self.by_name:
+                    wanted.add('web_research')
+                    effort = 'research'
+                elif 'web_search' in self.by_name:
+                    wanted.add('web_search')
+                    effort = 'extended'
+            from .web_effort import search_phase
+            lookup_closed = 'web_search' in wanted and search_phase(self.scope)['closed'] and effort != 'extended'
+            if lookup_closed:
+                wanted.discard('web_search')
             requested_topics = set(ui or [])
             if 'bars' in requested_topics:
                 wanted.add('present_visuals')
@@ -93,10 +113,14 @@ class ToolSelection:
             newly = sorted(wanted - self.active)
             self.active = proposed
             self.pending.update(wanted)
+            if effort:
+                self.scope['_web_effort'] = effort
             if all_tools:
                 self.full_requested = True
             return dict(outcome='enabled' if wanted or requested_topics else 'unavailable', newly_enabled=newly,
                         already_enabled=already, unavailable=unavailable, rejected=rejected, tools=sorted(proposed),
-                        ui_references=list(self.scope['_ui_topics']), reference_delivery='Selected UI reference instructions are included in the next model round.')
+                        ui_references=list(self.scope['_ui_topics']), web_effort=effort,
+                        **({'web_search_status': 'Quick lookup complete; answer from existing evidence or deliberately request web_effort for a genuinely deeper investigation.'} if lookup_closed else {}),
+                        reference_delivery='Selected UI reference instructions are included in the next model round.')
         return StructuredTool.from_function(name='enable_workflow_tools', args_schema=EnableModules,
             description='Enable missing tool_names/modules or load advanced UI references via ui (charts,disclosures,color,bars). catalog_only lists all capabilities/references. No actions or permission granted. Prefer exact names/topics; all_tools is a bounded last resort.', coroutine=enable)

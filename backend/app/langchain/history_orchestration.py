@@ -85,11 +85,13 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     discovery = selection.discovery()
     tools.append(discovery)
     def tool_enabled(name):
-        return name == 'enable_workflow_tools' or name in selection.active
+        from .web_effort import search_phase
+        return (name == 'enable_workflow_tools' or name in selection.active) and not (name == 'web_search' and search_phase(scope)['closed'])
     def selected():
         # Research already has a one-dispatch policy. Reflect the exhausted
         # allowance in the bound schemas instead of inviting a futile new query.
         return [*[tool for tool in selection.selected() if domains.get(tool.name) not in executor.outages
+            and tool_enabled(tool.name)
             and not (tool.name == 'web_research' and scope.get('_research_physical_calls', 0) >= 1)], discovery]
     dispatch = {tool.name: tool for tool in tools}
     additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY, PromptSource.SEMANTIC_ORCHESTRATION)))
@@ -251,6 +253,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         evidence = web_evidence_context(scope, research_available='web_research' in dispatch)
         if evidence is not None:
             context['web_evidence'] = evidence
+            from .web_effort import search_phase
+            context['web_search_phase'] = search_phase(scope)
         if scope.get('attempt',1)>1:
             context['recovery'] = dict(attempt=scope['attempt'],kind='resume' if scope.get('resume') else 'retry',
                 prior_outcome=scope.get('response_outcome'))
@@ -476,6 +480,22 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         # citations and result budgets; writes/discovery form ordering barriers.
         pending = {}
         materialized = {}
+        from .web_effort import search_phase
+        phase = search_phase(scope)
+        search_slots = phase['calls_remaining'] if phase['calls_remaining'] is not None else budget.max_calls
+        research_slots = max(0, 1-scope.get('_research_physical_calls', 0))
+        admitted_web = set()
+        for planned in response.tool_calls:
+            name = planned['name']
+            if name not in ('web_search', 'web_research'):
+                continue
+            key = tool_cache_key(dispatch.get(name), name, planned['args'])
+            if key in admitted_web:
+                continue
+            if name == 'web_search' and search_slots > 0:
+                admitted_web.add(key); search_slots -= 1
+            elif name == 'web_research' and research_slots > 0:
+                admitted_web.add(key); research_slots -= 1
         for position, call in enumerate(response.tool_calls):
             reserved_bytes = reserved_tokens = 0
             if web is not None and web.enabled:
@@ -483,9 +503,9 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
                 minimum = web.envelope('budget_exhausted', searched_at=web.clock())
                 size, tokens = packet_cost(compact_receipt(minimum))
                 current_key = tool_cache_key(dispatch.get(call['name']), call['name'], call['args'])
-                remaining_web = len({tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
+                remaining_web = len(({tool_cache_key(dispatch.get(item['name']), item['name'], item['args'])
                     for item in response.tool_calls[position+1:] if item['name'] in ('web_search', 'web_research')}
-                    - {current_key})
+                    - {current_key}) & admitted_web)
                 # Reserve useful evidence for siblings, not only failure receipts.
                 # A large first packet must not starve successful parallel reads.
                 reserved_bytes = max(size + 128, 2400) * remaining_web
