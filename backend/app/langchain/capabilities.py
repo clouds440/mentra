@@ -27,7 +27,7 @@ CAPABILITIES = (
                ('assessment_generate', 'assessment_generate_advanced', 'assessment_revise', 'assessment_answer')),
     Capability('chat', 'Collect needed answers using clickable choices, custom text or compact forms; explain or draft directly.',
                ('present_questionnaire', 'present_choices', 'request_input', 'present_visuals')),
-    Capability('web', 'Verify current external facts or research public sources.', ('web_search', 'web_research')),
+    Capability('web', 'Quick public lookups with web_search; deep investigations and thorough sourced synthesis with web_research when listed. Detailed explanations alone need no deep research.', ('web_search', 'web_research')),
 )
 DOMAINS = {tool: capability.domain for capability in CAPABILITIES for tool in capability.tools}
 DOMAINS['memory_summary_context'] = 'memory'

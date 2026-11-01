@@ -10,7 +10,7 @@ PRIVATE = ('_tool_execution_state', '_assessment_receipt', '_captured_events', '
            '_memory_summary_fence', 'tool_warnings', 'retrieval_status', 'retrieval_warnings',
            'retrieval_context_ids', 'visible_ids', 'history_references', 'memory_references',
            '_domain_tool_used', 'direct_rejected', '_task_receipts', '_selected_operations', '_committed_tool_results', 'response_outcome',
-           '_web_cache', '_research_cache', '_web_physical_calls', '_research_physical_calls', '_last_round_tool_progress')
+           '_web_cache', '_research_cache', '_web_physical_calls', '_research_physical_calls', '_web_last_batch', '_last_round_tool_progress')
 
 
 class ResponseRuntime:

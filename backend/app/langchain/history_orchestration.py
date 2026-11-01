@@ -87,7 +87,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     def tool_enabled(name):
         return name == 'enable_workflow_tools' or name in selection.active
     def selected():
-        return [*[tool for tool in selection.selected() if domains.get(tool.name) not in executor.outages], discovery]
+        # Research already has a one-dispatch policy. Reflect the exhausted
+        # allowance in the bound schemas instead of inviting a futile new query.
+        return [*[tool for tool in selection.selected() if domains.get(tool.name) not in executor.outages
+            and not (tool.name == 'web_research' and scope.get('_research_physical_calls', 0) >= 1)], discovery]
     dispatch = {tool.name: tool for tool in tools}
     additional_sources = tuple(dict.fromkeys((*additional_sources, PromptSource.TOOL_RECOVERY, PromptSource.SEMANTIC_ORCHESTRATION)))
     def prompt_sources(available_tools):
@@ -244,6 +247,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             context['missing_context'] = scope['tool_warnings']
         context['action_receipts'] = [{key:task[key] for key in ('id','operation','state','job_id','job_kind') if key in task}
             for task in scope.get('_task_receipts',{}).values() if not task.get('superseded_by')]
+        from .web_tools import web_evidence_context
+        evidence = web_evidence_context(scope, research_available='web_research' in dispatch)
+        if evidence is not None:
+            context['web_evidence'] = evidence
         if scope.get('attempt',1)>1:
             context['recovery'] = dict(attempt=scope['attempt'],kind='resume' if scope.get('resume') else 'retry',
                 prior_outcome=scope.get('response_outcome'))
@@ -390,6 +397,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
     async def dispatch_round(state):
         nonlocal repairs
         previous_work = (budget.calls, budget.presentations)
+        previous_sources = {source.url for source in scope.get('web_sources', [])}
+        previous_images = {image.url for source in scope.get('web_sources', []) for image in source.images}
         response = state['response']
         if response is None:
             return {}  # A single bounded protocol repair uses the next model round.
@@ -614,6 +623,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             record_receipt(scope, call, result if isinstance(result, dict) else json.loads(content))
             conversation.append(ToolMessage(content=content, tool_call_id=call['id'], name=call['name']))
         scope['_last_round_tool_progress'] = (budget.calls, budget.presentations) != previous_work
+        if any(call['name'] in ('web_search', 'web_research') for call in response.tool_calls):
+            scope['_web_last_batch'] = dict(
+                last_batch_new_sources=len({source.url for source in scope.get('web_sources', [])} - previous_sources),
+                last_batch_new_images=len({image.url for source in scope.get('web_sources', []) for image in source.images} - previous_images))
         return dict(iteration=state['iteration']+1)
 
     from .graphs.tool_coordinator import coordinate

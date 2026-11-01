@@ -10,6 +10,18 @@ from tests.test_web_search import Usage, NOW, PAYLOAD
 
 
 class ResearchTests(unittest.IsolatedAsyncioTestCase):
+    async def test_evidence_inventory_deduplicates_admitted_images_and_reports_research(self):
+        from app.langchain.web_tools import web_evidence_context
+        from app.web_search.schemas import WebSource, WebImage
+        self.assertIsNone(web_evidence_context({}))
+        image = WebImage(url='https://www.python.org/diagram.png', caption='An illustration')
+        sources = [WebSource(token=f'W{i}', url=f'https://www.python.org/{i}', domain='www.python.org', favicon_url='https://www.python.org/favicon.ico',
+            title='Evidence', excerpt='Verified fact', searched_at=NOW, images=[image]) for i in (1, 2)]
+        scope = dict(web_sources=sources, _web_physical_calls=3, _research_physical_calls=1)
+        self.assertEqual(web_evidence_context(scope, research_available=True), dict(
+            search_calls=3, research_calls=1, source_count=2, checked_image_count=1, research_available=True, research_dispatches_left=0))
+        self.assertEqual(web_evidence_context(dict(web_searches=[{'outcome': 'no_results'}]))['source_count'], 0)
+
     async def test_http_pool_is_reused_and_closed_by_provider_lifecycle(self):
         provider = YouResearchProvider('test-key', transport=httpx.MockTransport(lambda request:
             httpx.Response(200, json={'output': {'content': 'Report', 'sources': []}})))
@@ -70,6 +82,32 @@ class ResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(paid.search.await_count, 1)
         self.assertEqual(usage.admissions, 2)
 
+    async def test_research_schema_is_retired_after_its_existing_single_dispatch(self):
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import AIMessage, HumanMessage
+        from uuid import uuid4
+        normal = AsyncMock(); normal.search.return_value = PAYLOAD
+        paid = AsyncMock(); paid.namespace = 'research'; paid.timeout = 45
+        paid.search.return_value = dict(PAYLOAD, research_report='A researched answer.')
+        service = WebSearchService(normal, Usage(), enabled=True, clock=lambda: NOW)
+        service.research = WebSearchService(paid, Usage(), enabled=True, clock=lambda: NOW, namespace='research')
+        scope = dict(web_search_service=service, context_rows=[], current_user_message_id=str(uuid4()),
+            history_references=[], memory_references=[])
+        bindings = []
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                bindings.append({getattr(tool, 'name', '') for tool in kwargs['tools']})
+                if len(bindings) == 1:
+                    return AIMessage(content='',tool_calls=[dict(id='enable',name='enable_workflow_tools',args=dict(tool_names=['web_research']))])
+                if len(bindings) == 2:
+                    return AIMessage(content='',tool_calls=[dict(id='research',name='web_research',args=dict(query='Research releases'))])
+                return AIMessage(content='The report supports this answer [[W1]].')
+        await tool_reply(Script(), [HumanMessage(content='Research releases')], None, str(uuid4()), scope, (), {})
+        self.assertNotIn('web_research', bindings[0])
+        self.assertIn('web_research', bindings[1])
+        self.assertNotIn('web_research', bindings[2])
+        self.assertEqual(paid.search.await_count, 1)
+
     async def test_routine_compaction_keeps_success_and_research_sources(self):
         from app.web_search.normalization import normalize_results
         service = WebSearchService(AsyncMock(), Usage(), enabled=True, clock=lambda: NOW)
@@ -80,3 +118,24 @@ class ResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(packet['outcome'], 'ok')
         self.assertTrue(packet['details_omitted'])
         self.assertEqual(len(packet['sources']), 1)
+
+    async def test_compaction_shrinks_all_excerpts_before_dropping_later_assets(self):
+        from app.web_search.normalization import normalize_results
+        from app.web_search.schemas import WebImage
+        from app.langchain.web_tools import packet_cost
+        payload = {'results': {'web': [dict(url=f'https://www.python.org/{i}', title=f'Source {i}',
+            description='Historical evidence. ' * 80) for i in range(5)]}}
+        sources, _ = normalize_results(payload, None, NOW)
+        for index, source in enumerate(sources):
+            source.images = [WebImage(url=f'https://www.python.org/{index}-illustration.png', caption=f'Historical picture {index}')]
+            source.token = f'W{index+1}'
+        service = WebSearchService(AsyncMock(), Usage(), enabled=True, clock=lambda: NOW)
+        original = service.envelope('ok', sources=sources)
+        packet = fit_result(original, {}, ToolBudget())
+        self.assertTrue(packet['details_omitted'])
+        self.assertEqual(len(packet['sources']), 5)
+        self.assertTrue(all(source['images'] for source in packet['sources']))
+        size, tokens = packet_cost(packet)
+        self.assertLessEqual(size, 4800)
+        self.assertLessEqual(tokens, 1200)
+        self.assertEqual(len(original.sources[-1].excerpt), 1200)

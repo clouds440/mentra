@@ -2,6 +2,41 @@
 
 Mentra exposes two optional LLM tools. Authenticated `web_research` is described below; ordinary search is `web_search(query, website?, include_images=false)`. The backend connects directly to [You.com's hosted free MCP](https://you.com/docs/agents/mcp-server) at `https://api.you.com/mcp?profile=free&tools=you-search`. No You.com account, API key, OAuth or payment method is needed for this free profile. There is no paid fallback. The provider advertised 100 queries per day at the dated 2026-10-11 review; its quota identity/reset semantics are not guaranteed by Mentra.
 
+## Choosing the amount of research
+
+The main model chooses effort within its existing answer/tool round; no separate routing
+LLM call is added. Stable explanations can be answered directly. Ordinary questions,
+including detailed educational overviews with optional pictures, normally use one targeted
+lookup or a small batch. This is guidance, not a new hard call cap. Further lookups should
+name a material unresolved fact, conflict or explicitly required asset in the optional
+`evidence_gap` argument. This rationale stays out of provider queries and cache identities;
+old calls without it still work. Source count is not a measure of answer quality.
+
+Before every subsequent model round, `web_evidence` gives counts of physical search/research
+calls and admitted sources/distinct checked image URLs, plus actual research availability.
+It also reports new sources/images in the last batch and the remaining research dispatch.
+It makes accumulated evidence visible without another lookup or copying the source registry.
+The model assesses relevance: a returned image count alone cannot prove the request is met.
+Optional illustration categories and more citations do not justify continuing once supported.
+An unspecified picture request has no artificial minimum number of images.
+
+Genuinely deep investigations, conflicting evidence and thorough multi-source reports use
+the discoverable `web_research` tool when configured. A detailed overview alone is not deep
+research. Missing research availability never authorizes claiming it ran or repeatedly
+retrying a failed paid request; targeted ordinary lookups may still address actual gaps.
+Flexible context/call allowances and quota fences remain unchanged. Logs record whether a
+follow-up declared a gap, without storing the gap text or search query.
+
+Packet compaction shortens excerpts across all sources before discarding later sources or
+their illustrations. This preserves useful coverage within the same packet byte/token limits.
+After the existing single research dispatch is spent, its schema is removed from subsequent
+model bindings; the result remains in the transcript. This avoids futile repeat research calls.
+
+Manual configured-model routing check (no real web calls or learner-data writes):
+`python -m testing.web_effort_probe --turn-id <public-history-turn-UUID>`. This replays
+the saved turn's first five public sources with real model invocations and synthetic
+search/research transports. Its latency excludes real search/image retrieval and persistence.
+
 ## Requested images
 
 For requested pictures, illustrations or drawing references the model enables `include_images`. Ordinary searches do no image I/O. The existing search service, owner quotas, turn/result budgets, source registry and short-lived evidence cache are reused. Search-result pages are inspected for real image links (metadata, original-file links and content images); the anonymous Openverse image index supplements the results across providers. A website restriction applies only when requested, and is checked against source pages while allowing their public CDN assets.
@@ -53,7 +88,7 @@ Completed source-bearing searches are cached across turns and workers in Postgre
 
 Cache hits spend no provider quota, refresh the current clock and keep original `searched_at`/source dates. `cache_hit`/`cache_expires_at` are returned to the model and cached-result use appears in activity and the source UI. In-turn identical results are also reused, including bounded failure receipts, without redispatch; `reused_within_turn` distinguishes this from cross-turn caching. Owner-scoped caching avoids exposing one account's query/result context to another.
 
-Rolling PostgreSQL limits default to 90 deployment calls/24h, 10 owner calls/24h and 3 owner calls/minute. Admission acquires the existing chat owner lock, then a provider guard. Reservations, sent calls and unknown outcomes remain charged; only a proven unsent reservation can be released. Deterministic attempt/query operation IDs prevent an ambiguous retry from redispatching the same operation. This is conservative admission, not an exactly-once remote guarantee. Owner deletion anonymizes charged usage without refunding global allowance; owned cached results are deleted. Cache eviction never refunds usage.
+Rolling PostgreSQL limits default to 90 deployment calls/24h, 30 owner calls/24h and 10 owner calls/minute. Admission acquires the existing chat owner lock, then a provider guard. Reservations, sent calls and unknown outcomes remain charged; only a proven unsent reservation can be released. Deterministic attempt/query operation IDs prevent an ambiguous retry from redispatching the same operation. This is conservative admission, not an exactly-once remote guarantee. Owner deletion anonymizes charged usage without refunding global allowance; owned cached results are deleted. Cache eviction never refunds usage.
 
 SQL never spans provider/model I/O. Admission/query waits are bounded, cancellation reconciles pending threadpool reservations, and old operational rows are cleaned lazily in bounded batches. Two local search requests can run concurrently; queue wait is at most one second. Each call has a 20-second deadline within the shared workflow deadline, preserves final-answer time, and never refreshes the parent clock (180 seconds by default). Search uses the shared tool allowance: six calls initially, expanded in increments of three up to twelve when time and context permit; the two-write fence stays fixed. Search packets remain capped at 1200 tokens/4800 bytes. The initial shared 6400-token/25600-byte result allowance expands from measured transcript/schema headroom within configured input and recovery limits. Unused common/discovery schemas are reclaimed before declaring the context exhausted, retaining the ongoing operation where it fits. Working input may grow from 16384 to 28672 tokens within a 32768-token context ceiling; cumulative model allowances are derived from the configured per-call ceiling and twelve permitted rounds (344064 input / 368640 total tokens with these defaults). These ceilings do not pad ordinary requests. Only complete JSON packets are admitted; Unicode is counted with the existing conservative offline-tokenizer policy. Account quotas remain authoritative.
 

@@ -16,6 +16,23 @@ from .concurrent_reads import project_read
 
 class ChatSearchInput(SearchInput):
     refresh: bool = Field(default=False, description='True when the user requests a new search or fresh verification instead of cached evidence.')
+    evidence_gap: str | None = Field(default=None, max_length=240,
+        description='For a follow-up lookup, name the material missing fact, conflict or explicitly required asset this call resolves. Omit for the initial lookup. More citations or optional pictures alone are not a gap.')
+
+
+def web_evidence_context(scope, *, research_available=False):
+    """Small measured inventory, not a semantic claim that enough evidence exists."""
+    sources = scope.get('web_sources', [])
+    searches = scope.get('web_searches', [])
+    if not (sources or searches or scope.get('_web_physical_calls') or scope.get('_research_physical_calls')):
+        return None
+    return dict(search_calls=scope.get('_web_physical_calls', 0),
+        research_calls=scope.get('_research_physical_calls', 0),
+        source_count=len(sources),
+        checked_image_count=len({image.url for source in sources for image in source.images}),
+        research_available=research_available,
+        research_dispatches_left=max(0, 1-scope.get('_research_physical_calls', 0)) if research_available else 0,
+        **scope.get('_web_last_batch', {}))
 
 
 def compact_receipt(result):
@@ -36,13 +53,17 @@ def fit_result(result, scope, budget):
     value = result.model_dump(mode='json', exclude_none=True)
     size, tokens = packet_cost(value)
     while result.sources and (size > byte_limit or tokens > token_limit):
-        last = result.sources[-1]
-        if result.research_report and len(result.research_report) > 160:
+        # Reclaim verbose excerpts across the whole packet before discarding
+        # later sources/assets. Trimming only the final source repeatedly hid
+        # useful pictures behind the first source's oversized excerpt/images.
+        longest = max(result.sources, key=lambda source: len(source.excerpt))
+        extras = next((source for source in reversed(result.sources) if len(source.images) > 1), None)
+        if len(longest.excerpt) > 80:
+            longest.excerpt = longest.excerpt[:max(80, len(longest.excerpt)//2)]
+        elif result.research_report and len(result.research_report) > 160:
             result.research_report = result.research_report[:max(160, len(result.research_report)//2)]
-        elif len(last.excerpt) > 80:
-            last.excerpt = last.excerpt[:max(80, len(last.excerpt)//2)]
-        elif len(last.images) > 1:
-            last.images.pop()
+        elif extras is not None:
+            extras.images.pop()
         else:
             result.sources.pop()
         result.details_omitted = True
@@ -169,11 +190,15 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
             scope['_web_pending'] = sorted(existing, key=lambda item: int(item.token[1:]))
         return value
 
-    async def search(query, website=None, refresh=False, include_images=False):
+    async def search(query, website=None, refresh=False, include_images=False, evidence_gap=None):
+        from app.core.logging import workflow_logger
+        workflow_logger.event('web_search.intent', tool_name=name,
+            follow_up=bool(scope.get('_web_physical_calls') or scope.get('_research_physical_calls')),
+            material_gap_declared=bool(evidence_gap and evidence_gap.strip()))
         return project_read(project, await fetch(query, website, refresh, include_images))
 
     tools = [StructuredTool.from_function(name=name, args_schema=ChatSearchInput,
-        description=('Research a complex public question using authenticated You.com multi-step research. One call per turn; optional website restricts sources. Returns untrusted research synthesis and dated W sources; never send private data.' if research else 'Search external knowledge or requested images. Set include_images=true for pictures, drawing references or illustrations; returns checked direct image URLs in source.images. Search broadly unless the user specifies a website. Returns dated untrusted W sources; no private data in queries.'), coroutine=search, metadata={'parallel_read': True})]
+        description=('Investigate a genuinely deep public question using authenticated You.com multi-step research. Prefer this to a long chain of normal searches for thorough sourced reports, disputed evidence or multi-source synthesis. Ordinary detailed explanations do not need it. One call per turn; optional website restricts sources. Returns untrusted synthesis and dated W sources; never send private data.' if research else 'Quick lookup of needed external facts or requested images; ordinary questions usually need one lookup or a small batch. Further calls must close a material evidence_gap; finish when supported. For deep investigations enable web_research instead. Set include_images=true only when seeking pictures; returns checked direct URLs in source.images. Search broadly unless the user specifies a website. Returns untrusted W sources; no private data.'), coroutine=search, metadata={'parallel_read': True})]
     extra = getattr(service, 'research', None)
     if not research and extra is not None and extra.enabled:
         tools.extend(create_web_tools(extra, owner, scope, budget, research=True))

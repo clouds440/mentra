@@ -168,6 +168,41 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         await tool_reply(Script(),[HumanMessage(content='Compare the evidence.')],None,str(uuid4()),state,(),{})
         self.assertEqual(self.provider.search.await_count,2)
 
+    async def test_evidence_inventory_reaches_next_round_without_blocking_real_followups(self):
+        self.setup_service()
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        inventories = []
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                context = json.loads(kwargs['system_context'])
+                inventories.append(context.get('web_evidence'))
+                count = len(inventories)
+                if count < 3:
+                    args = dict(query='initial evidence' if count == 1 else 'missing date')
+                    if count == 2:
+                        args['evidence_gap'] = 'The required publication date is absent.'
+                    return AIMessage(content='',tool_calls=[dict(name='web_search',args=args,id=f'lookup-{count}')])
+                return AIMessage(content='The requested fact is supported [[W1]].')
+        await tool_reply(Script(),[HumanMessage(content='Verify a date.')],None,str(uuid4()),state,(),{})
+        self.assertIsNone(inventories[0])
+        self.assertEqual([item['search_calls'] for item in inventories[1:]], [1, 2])
+        self.assertEqual([item['last_batch_new_sources'] for item in inventories[1:]], [1, 0])
+        self.assertTrue(all(item['source_count'] == 1 for item in inventories[1:]))
+        self.assertTrue(all(item['checked_image_count'] == 0 for item in inventories[1:]))
+        self.assertTrue(all(item['research_available'] is False for item in inventories[1:]))
+        self.assertEqual(self.provider.search.await_count, 2)
+
+    async def test_followup_rationale_is_not_part_of_provider_query_or_cache_identity(self):
+        self.setup_service()
+        await self.tool.ainvoke(dict(query='Python releases', evidence_gap='Missing release date.'))
+        await self.tool.ainvoke(dict(query='Python releases', evidence_gap='Verify the date again.'))
+        self.assertEqual(self.provider.search.await_count, 1)
+        request = self.provider.search.call_args.args[0]
+        self.assertEqual(request.query, 'Python releases')
+        self.assertNotIn('evidence_gap', request.model_dump())
+
     async def test_unused_schemas_do_not_force_final_with_context_headroom_remaining(self):
         self.setup_service()
         from unittest.mock import patch
