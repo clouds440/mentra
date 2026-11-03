@@ -83,9 +83,10 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class ConversationSummaries:
-    def __init__(self, chats, llm):
+    def __init__(self, chats, llm, admission=None):
         self.chats, self.llm = chats, llm
         self.repository = SummaryRepository(chats)
+        self.admission = admission
 
     async def load(self, owner, chat):
         if not settings.chat_summary_enabled:
@@ -169,7 +170,7 @@ class ConversationSummaries:
             if enough and not candidates:
                 raise ValueError('A displaced exchange could not fit the compaction packet')
             from app.langchain.prompts import PromptSource
-            async with generation():
+            async with generation(self.admission,owner):
                 response = await self.llm.ainvoke(PromptSource.CHAT_SUMMARY,
                     dict(previous_summary=claim['content'], messages=candidates,
                          limits=dict(max_tokens=settings.chat_summary_max_tokens, max_characters=settings.chat_summary_max_characters)))
@@ -184,6 +185,8 @@ class ConversationSummaries:
             return published
         except asyncio.CancelledError:
             failed = True
+            raise
+        except SummaryDeferred:
             raise
         except Exception as error:
             failed = True
@@ -200,10 +203,10 @@ class ConversationSummaries:
 
 class ChatSummaryConsumer:
     """Durable adapter; the chat domain keeps compaction and publication rules."""
-    def __init__(self, chats, llm):
+    def __init__(self, chats, llm, admission=None):
         from .repositories.summary_jobs import ChatSummaryJobs
         self.jobs = ChatSummaryJobs(chats.sessions)
-        self.summaries = ConversationSummaries(chats, llm)
+        self.summaries = ConversationSummaries(chats, llm,admission)
 
     async def run_once(self):
         if not settings.chat_summary_enabled:

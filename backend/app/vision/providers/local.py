@@ -21,6 +21,10 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class TesseractImageOCR:
+    def __init__(self):
+        from app.core.inference_device import select_device
+        self.device = select_device('cpu-only')
+
     def available(self) -> bool:
         return bool(shutil.which('tesseract'))
 

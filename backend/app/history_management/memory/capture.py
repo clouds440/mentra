@@ -15,7 +15,8 @@ from ..repositories.memory_capture import MemoryCaptureRepository
 
 
 class AutomaticMemories:
-    def __init__(self, sessions, llm, semantic=None):
+    def __init__(self, sessions, llm, semantic=None, admission=None):
+        self.admission = admission
         self.jobs = MemoryCaptureRepository(sessions)
         self.memories = MemoryRepository(sessions, settings.memory_active_limit, settings.memory_pending_limit)
         self.llm = llm
@@ -66,7 +67,7 @@ class AutomaticMemories:
                 packet.update(next_offset=claim['content_offset']+len(text),
                     complete=claim['content_offset']+len(text) >= len(message['content']))
                 # One combined extraction/admission call; no per-candidate calls.
-                async with generation():
+                async with generation(self.admission,claim['learner_id']):
                     result = await self.llm.ainvoke(PromptSource.MEMORY_CAPTURE, payload, output_schema=MemoryCapture)
                 from ..repositories.memory_reconciliation import MemoryReconciler
                 # Validate IDs against exactly the packet that reached the model,

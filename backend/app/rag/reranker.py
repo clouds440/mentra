@@ -11,7 +11,7 @@ from app.core.logging import workflow_logger
 
 
 def _rerank_worker(connection, path):
-    engine = LocalReranker(path, 5)
+    engine = LocalReranker(path['path'],5,device=path['device']) if isinstance(path,dict) else LocalReranker(path,5)
     try:
         while True:
             message = connection.recv()
@@ -20,7 +20,8 @@ def _rerank_worker(connection, path):
             try:
                 scores = engine._rank(*message)
                 connection.send({'scores': scores, 'truncated_passages': engine.truncated_passages,
-                    'winning_spans': engine.winning_spans, 'window_pairs': engine.window_pairs})
+                    'winning_spans': engine.winning_spans, 'window_pairs': engine.window_pairs,
+                    'inference_device':engine._runtime.choice.device})
             except Exception as error:
                 reason = ('query_budget' if 'Query exceeds' in str(error) else
                           'pair_budget' if 'window coverage' in str(error) else
@@ -33,7 +34,7 @@ def _rerank_worker(connection, path):
 
 @workflow_logger.connect_module(default_outcome='success')
 class LocalReranker:
-    def __init__(self, path, timeout, *, worker_target=_rerank_worker, cooldown_seconds=5, cold_timeout=30, expected_revision=''):
+    def __init__(self, path, timeout, *, worker_target=_rerank_worker, cooldown_seconds=5, cold_timeout=30, expected_revision='', device=None):
         self.path, self.timeout = Path(path), timeout
         self._model = None
         self._process = self._connection = None
@@ -41,6 +42,11 @@ class LocalReranker:
         self._lock = Lock()
         self._closed = False
         self._request_state = local()
+        self._device = None
+        if device is None:
+            from app.core.config import settings
+            device = settings.local_inference_device
+        self.device_preference = device
         self.cooldown_seconds, self.cold_timeout = cooldown_seconds, cold_timeout
         self._retry_after = 0
         self.last_reason = None
@@ -75,8 +81,11 @@ class LocalReranker:
             if not metadata.get('model_name') or not metadata.get('model_version'):
                 raise ValueError('Reranker metadata is missing its resolved identity.')
             from sentence_transformers import CrossEncoder
-            self._model = CrossEncoder(str(self.path), device='cpu', local_files_only=True,
-                                       trust_remote_code=False, max_length=512)
+            from app.core.inference_device import LocalModel
+            self._runtime = LocalModel(lambda choice: CrossEncoder(str(self.path), device=choice.device,
+                local_files_only=True, trust_remote_code=False, max_length=512), 'torch', self.device_preference,
+                on_fallback=lambda:setattr(self,'_model',None))
+            self._model = self._runtime.get()
         tokenizer = self._model.tokenizer
         if len(tokenizer.encode(query, truncation=False)) > 240:
             raise ValueError('Query exceeds reranker pair budget.')
@@ -99,7 +108,10 @@ class LocalReranker:
                 spans.append([start,start+len(window)])
                 start+=len(window)
         self.window_pairs=len(pairs)
-        scores = [float(s) for s in self._model.predict(pairs, batch_size=8)]
+        predict = lambda model: [float(s) for s in model.predict(pairs, batch_size=8)]
+        scores = self._runtime.run(predict) if hasattr(self, '_runtime') else predict(self._model)
+        if hasattr(self, '_runtime'):
+            self._model = self._runtime.model
         if len(scores) != len(pairs) or any(not math.isfinite(score) for score in scores):
             raise ValueError('Reranker returned invalid scores.')
         merged = [float('-inf')] * len(passages)
@@ -143,22 +155,28 @@ class LocalReranker:
                         self.last_reason = 'missing_or_invalid_assets'
                         self._retry_after = time.monotonic() + self.cooldown_seconds
                         return None
-                self._stop()
-                context = mp.get_context('spawn')
-                self._connection, child = context.Pipe()
-                self._process = context.Process(target=self._target, args=(child, str(self.path)), daemon=True)
-                self._process.start()
-                child.close()
+                self._spawn()
             from app.rag.process_ipc import exchange
+            from app.core.inference_device import retry_worker_on_cpu
+            deadline=started+(self.cold_timeout if cold else self.timeout)
             try:
-                scores = exchange(self._connection,(query,passages),
-                    (self.cold_timeout if cold else self.timeout)-(time.monotonic()-started),self._stop)
+                for attempt in range(2):
+                    try:
+                        scores=exchange(self._connection,(query,passages),deadline-time.monotonic(),self._stop)
+                        break
+                    except (EOFError,BrokenPipeError,OSError):
+                        self._stop()
+                        if not retry_worker_on_cpu(self.device_preference,self._device,deadline-time.monotonic(),attempt): raise
+                        self.device_preference=self._device='cpu'
+                        self._spawn()
             except TimeoutError:
                 self.last_reason = 'cold_timeout' if cold else 'inference_timeout'
                 self._retry_after = time.monotonic() + self.cooldown_seconds
                 workflow_logger.set_outcome('degraded', code='RERANKER_UNAVAILABLE')
                 return None
             if isinstance(scores, dict):
+                self._device=scores.get('inference_device',self._device)
+                if self._device=='cpu': self.device_preference='cpu'
                 if 'error' in scores:
                     self.last_reason = scores['error']
                     if self.last_reason not in ('query_budget','pair_budget'):
@@ -187,6 +205,15 @@ class LocalReranker:
     def warmup(self):
         """Bounded optional local warmup; failure leaves retrieval fallback intact."""
         return self.rank('local model readiness', ['local inference readiness']) is not None
+
+    def _spawn(self):
+        self._stop()
+        context=mp.get_context('spawn')
+        self._connection,child=context.Pipe()
+        argument=dict(path=str(self.path),device=self.device_preference)
+        self._process=context.Process(target=self._target,args=(child,argument),daemon=True)
+        self._process.start()
+        child.close()
 
     def _stop(self, graceful=False):
         if self._process is not None:

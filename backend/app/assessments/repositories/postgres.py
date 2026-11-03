@@ -5,11 +5,17 @@ from app.core.exceptions import AppError
 from app.db.owner_transactions import OwnerTransactions
 from app.history_management.repositories.events.postgres import request_hash
 from app.assessments.schemas import Assessment, Attempt, AttemptSummary, PublicQuestion, PracticeSource
-from .tables import assessments as a, attempts as t, generation_claims as g
+from .tables import assessments as a, attempts as t, generation_claims as g, source_jobs as sj
 
 # Upload bytes are only needed when explicitly reading the original artifact.
 # Polling, claiming and corrections must not download them from PostgreSQL.
 ATTEMPT_COLUMNS = [column for column in t.c if column.name != 'grading_progress']
+_source_match = (sj.c.learner_id == t.c.learner_id, sj.c.attempt_id == t.c.id,
+    sj.c.expected_revision == t.c.revision)
+ATTEMPT_COLUMNS += [select(sj.c.id).where(*_source_match, or_(sj.c.state.in_(['queued','running']),
+    and_(sj.c.state=='failed',sj.c.retry_at.is_not(None)))).correlate(t).exists().label('source_pending'),
+    select(sj.c.error).where(*_source_match,sj.c.state=='failed',sj.c.retry_at.is_(None))
+        .order_by(sj.c.created_at.desc(),sj.c.id.desc()).limit(1).correlate(t).scalar_subquery().label('source_error')]
 
 
 from app.core.logging import workflow_logger
@@ -48,7 +54,7 @@ class AssessmentRepository:
             questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id','correct_option_ids','concept_names')}) for question in row['questions']])
 
     def attempt_public(self, row):
-        return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3))
+        return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3),source_pending=bool(row.get('source_pending')),source_error=row.get('source_error'))
 
     def claim_generation(self, owner, request):
         with self.transactions.write(owner) as tx:
@@ -292,8 +298,15 @@ class AssessmentRepository:
             delete_thread(session, f'assessment-transcription-v1:{owner}:{identifier}')
             return self.attempt_public(dict(row, **values))
 
-    def store_extraction(self, owner, identifier, expected_revision, extraction, file_id, filename, *, reuse=False):
+    def store_extraction(self, owner, identifier, expected_revision, extraction, file_id, filename, *, reuse=False, source_job=None):
         with self.transactions.write(owner) as tx:
+            if source_job:
+                from .tables import source_jobs
+                if not tx._session.scalar(select(source_jobs.c.id).where(source_jobs.c.id==source_job['id'],
+                    source_jobs.c.learner_id==owner,source_jobs.c.attempt_id==identifier,
+                    source_jobs.c.file_id==file_id,source_jobs.c.claim_id==source_job['claim_id'],
+                    source_jobs.c.state=='running',source_jobs.c.claim_until>self.clock()).with_for_update()):
+                    raise AppError('ASSESSMENT_SOURCE_EXPIRED','Extraction ownership changed.',409)
             row = self._attempt(tx._session, owner, identifier)
             if row['source_file_id']==file_id and row['state']=='pending_transcription':
                 return self.attempt_public(row)
@@ -312,6 +325,10 @@ class AssessmentRepository:
                     try: answers[question['id']] = normalized_choice(question, answer)
                     except AppError: pass
             values = dict(extraction=extraction, source_file_id=file_id, filename=filename, state='pending_transcription', revision=row['revision']+1)
+            # Only draft/transcription sources may be replaced here. Submitted
+            # and graded attempts retain their immutable original provenance.
+            if row['source_file_id'] and row['source_file_id'] != file_id:
+                self.files.release(tx._session, owner, assessment_attempt_id=identifier)
             self.files.bind(tx._session,owner,file_id,'assessment',dict(assessment_attempt_id=identifier),reuse=reuse)
             tx._session.execute(update(t).where(t.c.id == identifier).values(**values))
             return self.attempt_public(dict(row, **values))
@@ -431,12 +448,13 @@ class AssessmentRepository:
                 tx._session.execute(insert(evidence_jobs).values(attempt_id=job['id'], learner_id=job['owner'],
                     grade_revision=row['grade_revision'], state='queued', created_at=self.clock()).on_conflict_do_nothing())
 
-    def fail(self, job, *, retry=True, error=None):
+    def fail(self, job, *, retry=True, error=None, deferred=False):
         with self.transactions.write(job['owner']) as tx:
             row = self._attempt(tx._session, job['owner'], job['id'])
             if row['claim_id'] != job['claim_id']: return
             tx._session.execute(update(t).where(t.c.id == job['id']).values(state='failed', error=error or 'Grading is temporarily unavailable.',
-                retry_at=self.clock()+timedelta(seconds=5*2**row['worker_attempts']) if retry and row['worker_attempts'] < 3 else None, claim_id=None, claim_until=None, revision=row['revision']+1))
+                worker_attempts=max(0,row['worker_attempts']-1) if deferred else row['worker_attempts'],
+                retry_at=self.clock()+timedelta(seconds=5 if deferred else 5*2**row['worker_attempts']) if deferred or retry and row['worker_attempts'] < 3 else None, claim_id=None, claim_until=None, revision=row['revision']+1))
         workflow_logger.event('job.retry_scheduled' if retry and row['worker_attempts'] < 3 else 'job.failed', job_id=job['id'], attempt=row['worker_attempts'])
 
     def remove(self, owner, identifier):

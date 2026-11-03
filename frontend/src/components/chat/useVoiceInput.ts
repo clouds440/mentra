@@ -5,6 +5,7 @@ import { apiRequest } from '../../services/api';
 type Phase = 'idle' | 'permission' | 'recording' | 'processing';
 const MAX_SECONDS = 30;
 const MAX_BYTES = 4 * 1024 * 1024;
+const speechOperations = new WeakMap<Blob, string>();
 
 export function useVoiceInput(onText: (text: string) => void, disabled: boolean) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -44,10 +45,11 @@ export function useVoiceInput(onText: (text: string) => void, disabled: boolean)
     const request = new AbortController(); resources.current.request = request;
     const timeout = setTimeout(() => request.abort(), 120_000);
     try {
-      const { uploadFile } = await import('../../services/files');
-      const stored = await uploadFile(blob, 'recording', 'speech', request.signal);
-      const result = await apiRequest<{ text: string; language: string }>('/api/v1/speech/transcriptions', {
-        method: 'POST', body: JSON.stringify({ file_id: stored.id }), signal: request.signal,
+      let operation = speechOperations.get(blob);
+      if (!operation) { operation = crypto.randomUUID(); speechOperations.set(blob, operation); }
+      const body = new FormData(); body.append('file', blob, 'recording'); body.append('operation_id', operation);
+      const result = await apiRequest<{ text: string; language: string }>('/api/v1/speech/transcriptions/direct', {
+        method: 'POST', body, signal: request.signal,
       });
       if (generation !== resources.current.generation) return;
       if (!result.text.trim()) throw new Error('No speech was detected. Please record again.');

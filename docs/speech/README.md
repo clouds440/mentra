@@ -8,7 +8,8 @@ Local multilingual voice input and transcription.
 
 | Document | Scope |
 | --- | --- |
-| [Voice input](voice-input.md) | Feature contracts or implementation reference. |
+| [Transcription runtime](transcription-runtime.md) | Current direct intake, replay, device fallback, limits and evidence. |
+| [Voice input](voice-input.md) | Preserved earlier implementation and measurements; transport/device portions superseded by the runtime supplement. |
 
 ## Assets and evidence
 

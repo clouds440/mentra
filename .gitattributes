@@ -2,3 +2,5 @@
 # Evidence manifests hash exact bytes; retain them across checkout platforms.
 docs/library/verification/embedding-* -text -whitespace
 docs/library/history/* -text -whitespace
+docs/system/verification/* -text -whitespace
+docs/system/history/* -text -whitespace

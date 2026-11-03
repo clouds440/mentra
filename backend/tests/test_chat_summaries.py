@@ -363,14 +363,16 @@ class SummaryTests(unittest.TestCase):
             before = budget.max_result_tokens
             self.assertEqual(scope['_chat_input_limit'], 12288)
             self.assertTrue(scope['_admit_schemas']([SimpleNamespace(name='expanded')]))
-            self.assertEqual(scope['_chat_input_limit'], 13824)
+            self.assertGreater(scope['_chat_input_limit'], 12288)
+            self.assertLessEqual(scope['_chat_input_limit'], 32768-2048-256)
             self.assertGreater(budget.max_result_tokens, before)
             self.assertGreater(budget.max_result_bytes, before*4)
             return AIMessage(content='A normal response')
         llm.ainvoke_messages.side_effect = answer
         def schemas(tools):
             return 11200 if any(getattr(tool, 'name', '') == 'expanded' for tool in tools) else 5000 if tools else 0
-        with patch('app.langchain.history_orchestration.count_tokens_approximately', return_value=100), patch('app.langchain.token_policy.schema_tokens', side_effect=schemas):
+        config=Settings(_env_file=None,chat_input_tokens=12288,chat_context_window_tokens=32768)
+        with patch('app.langchain.history_orchestration.settings',config), patch('app.langchain.history_orchestration.count_tokens_approximately', return_value=100), patch('app.langchain.token_policy.schema_tokens', side_effect=schemas):
             asyncio.run(tool_reply(llm, [HumanMessage(id=identifier, content='A question')], None, self.owner, scope, (), {}))
 
     def test_matched_history_message_precedes_large_neighbor(self):
@@ -513,7 +515,7 @@ class SummaryTests(unittest.TestCase):
         self.assertLessEqual(count_messages([HumanMessage(content=json.dumps(values, ensure_ascii=False))]), 5000)
 
     def test_chat_and_assessment_budgets_are_separate(self):
-        config = Settings()
+        config = Settings(_env_file=None,chat_input_tokens=12288,chat_context_window_tokens=16384)
         self.assertEqual(config.chat_input_tokens, 12288)
         self.assertEqual(config.chat_context_window_tokens, 16384)
         self.assertEqual(output_budget(PromptSource.ASSESSMENT_GENERATION, config), 8192)

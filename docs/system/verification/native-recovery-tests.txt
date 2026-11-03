@@ -1,0 +1,60 @@
+test_backend_probes_are_independent (tests.test_inference_device.DeviceTests.test_backend_probes_are_independent) ... ok
+test_cpu_choice_never_probes_accelerators (tests.test_inference_device.DeviceTests.test_cpu_choice_never_probes_accelerators) ... ok
+test_device_loss_reloads_once_and_stays_on_cpu (tests.test_inference_device.DeviceTests.test_device_loss_reloads_once_and_stays_on_cpu) ... ok
+test_failed_cpu_recovery_is_not_a_retry_loop (tests.test_inference_device.DeviceTests.test_failed_cpu_recovery_is_not_a_retry_loop) ... ok
+test_initialization_device_loss_recovers (tests.test_inference_device.DeviceTests.test_initialization_device_loss_recovers) ... ok
+test_input_and_asset_errors_are_not_retried (tests.test_inference_device.DeviceTests.test_input_and_asset_errors_are_not_retried) ... ok
+test_lazy_failure_does_not_publish_partial_results (tests.test_inference_device.DeviceTests.test_lazy_failure_does_not_publish_partial_results) ... ok
+test_missing_accelerator_falls_back (tests.test_inference_device.DeviceTests.test_missing_accelerator_falls_back) ... ok
+test_native_embedding_exit_recovers_without_changing_identity (tests.test_inference_device.DeviceTests.test_native_embedding_exit_recovers_without_changing_identity) ... ok
+test_native_reranker_exit_recovers_within_same_request (tests.test_inference_device.DeviceTests.test_native_reranker_exit_recovers_within_same_request) ... ok
+test_native_speech_exit_recovers_in_a_cpu_process (tests.test_inference_device.DeviceTests.test_native_speech_exit_recovers_in_a_cpu_process) ... ok
+test_speech_lazy_generator_recovers_without_duplicating_prefix (tests.test_inference_device.DeviceTests.test_speech_lazy_generator_recovers_without_duplicating_prefix) ... ok
+test_auto_detection_preserves_every_detected_language (tests.test_speech.SpeechTests.test_auto_detection_preserves_every_detected_language) ... ok
+test_chunked_transport_size_limit (tests.test_speech.SpeechTests.test_chunked_transport_size_limit) ... ok
+test_engine_preserves_scripts_and_uses_transcription (tests.test_speech.SpeechTests.test_engine_preserves_scripts_and_uses_transcription) ... ok
+test_http_auth_origin_and_json_file_reference (tests.test_speech.SpeechTests.test_http_auth_origin_and_json_file_reference) ... ok
+test_paused_languages_are_preserved_in_order (tests.test_speech.SpeechTests.test_paused_languages_are_preserved_in_order) ... ok
+test_real_browser_container_decoding (tests.test_speech.SpeechTests.test_real_browser_container_decoding) ... ok
+test_real_decoder_bounds_and_invalid_content (tests.test_speech.SpeechTests.test_real_decoder_bounds_and_invalid_content) ... ok
+test_silence_does_not_load_model (tests.test_speech.SpeechTests.test_silence_does_not_load_model) ... ok
+test_worker_reuse_busy_timeout_and_recovery (tests.test_speech.SpeechTests.test_worker_reuse_busy_timeout_and_recovery) ... ok
+test_deadline_covers_pipe_submission_to_nonreading_worker (tests.test_embedding_process.EmbeddingProcessTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_long_inputs_use_bounded_token_batches_in_original_order (tests.test_embedding_process.EmbeddingProcessTests.test_long_inputs_use_bounded_token_batches_in_original_order) ... ok
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ERROR
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (tests.rag.test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (tests.rag.test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_busy_caller_cannot_overwrite_another_threads_diagnostics (tests.rag.test_reranker.RerankerTests.test_busy_caller_cannot_overwrite_another_threads_diagnostics) ... ok
+test_deadline_covers_pipe_submission_to_nonreading_worker (tests.rag.test_reranker.RerankerTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_late_support_is_scored_and_window_overflow_is_explicit (tests.rag.test_reranker.RerankerTests.test_late_support_is_scored_and_window_overflow_is_explicit) ... ok
+test_long_passages_still_obey_exact_pair_budget (tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_missing_assets_use_cooldown_without_starting_worker (tests.rag.test_reranker.RerankerTests.test_missing_assets_use_cooldown_without_starting_worker) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (tests.rag.test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_revision_mismatch_falls_back_without_loading_model (tests.rag.test_reranker.RerankerTests.test_revision_mismatch_falls_back_without_loading_model) ... ok
+test_warmup_reuses_worker_for_first_real_request (tests.rag.test_reranker.RerankerTests.test_warmup_reuses_worker_for_first_real_request) ... ok
+
+======================================================================
+ERROR: test_native_timeout_is_killed_and_worker_restarts_with_same_identity (tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embedding_process.py", line 66, in test_native_timeout_is_killed_and_worker_restarts_with_same_identity
+    self.assertEqual(service.embed_query('query'), [1., 0., 0.])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embedding_process.py", line 191, in embed_query
+    return self._request('embed_query', text)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embedding_process.py", line 137, in _request
+    if self._process is None or not self._process.is_alive(): self._start(timeout=deadline-monotonic())
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embedding_process.py", line 85, in _start
+    raise EmbeddingModelError('Embedding initialization timed out.')
+app.rag.embeddings.EmbeddingModelError: Embedding initialization timed out.
+
+----------------------------------------------------------------------
+Ran 38 tests in 14.640s
+
+FAILED (errors=1)

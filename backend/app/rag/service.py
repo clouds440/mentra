@@ -42,7 +42,7 @@ class RAGService:
         if settings.rag_reranker_path:
             from app.rag.reranker import LocalReranker
             self.reranker = LocalReranker(settings.rag_reranker_path, settings.rag_reranker_timeout,
-                                         expected_revision=settings.rag_reranker_model_revision)
+                                         expected_revision=settings.rag_reranker_model_revision,device=settings.local_inference_device)
             if settings.rag_reranker_warm_on_startup:
                 self.reranker.warmup()
 

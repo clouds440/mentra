@@ -1,0 +1,26 @@
+Executing <Task finished name='Task-7' coro=<AssessmentWorkflows.generate.<locals>.generate_batch() done, defined at /app/app/langchain/assessment_workflows.py:163> result=(GeneratedAsse...e_tokens=[])]), [{'answer_mode': 'text', 'question_type': 'written'}, {'answer_mode': 'text', 'question_type': 'written'}]) created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.160 seconds
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Executing <Task finished name='Task-311' coro=<EvaluationBatchTests.test_context_overflow_never_spawns_more_batches_or_trims_answers() done, defined at /app/tests/test_assessment_evaluation_latency.py:104> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 1.008 seconds
+Assessment grading failed (KeyError)
+======================================================================
+FAIL: test_timeout_stops_automatic_retries_without_resetting_answers (tests.test_assessment_evaluation_latency.EvaluationBatchTests.test_timeout_stops_automatic_retries_without_resetting_answers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_assessment_evaluation_latency.py", line 130, in test_timeout_stops_automatic_retries_without_resetting_answers
+    self.assertFalse(failed[0]['retry'])
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 82 tests in 43.283s
+
+FAILED (failures=1)

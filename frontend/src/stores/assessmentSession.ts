@@ -9,7 +9,7 @@ export interface QuizDraft {
   attempt: AssessmentAttempt | null;
 }
 const evaluating = (attempt: AssessmentAttempt) => ['submitted', 'grading'].includes(attempt.state) || attempt.state === 'failed' && !!attempt.retry_pending;
-const needsRefresh = (attempt: AssessmentAttempt) => evaluating(attempt) || attempt.state === 'graded' && attempt.evidence_status === 'pending';
+const needsRefresh = (attempt: AssessmentAttempt) => attempt.source_pending || evaluating(attempt) || attempt.state === 'graded' && attempt.evidence_status === 'pending';
 
 class AssessmentSession {
   private owner: string | null = null;
@@ -24,7 +24,7 @@ class AssessmentSession {
   snapshot = () => this.status;
   attempt = (id: string) => this.attempts.get(id);
   latest(assessment: string) {
-    return [...this.attempts.values()].filter(value => value.assessment_id === assessment && (value.state !== 'draft' || Object.keys(value.answers).length > 0)).sort((a,b) => b.attempt_number - a.attempt_number)[0];
+    return [...this.attempts.values()].filter(value => value.assessment_id === assessment && (value.source_pending || value.source_error || value.state !== 'draft' || Object.keys(value.answers).length > 0)).sort((a,b) => b.attempt_number - a.attempt_number)[0];
   }
   private publish() {
     const next = { evaluating: [...this.attempts.values()].filter(evaluating).length, submitting: this.submitting.size };

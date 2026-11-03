@@ -54,7 +54,8 @@ class FilesTests(unittest.TestCase):
         with self.assertRaisesRegex(
             RuntimeError, "Original bytes cannot be reconstructed"
         ):
-            with self.db.engine.begin() as connection:
+            # Concurrent index migrations own their autocommit boundary.
+            with self.db.engine.connect() as connection:
                 command.downgrade(migration_config(connection), "20261017_0027")
         self.assertEqual(self.files.read(self.owner, original["id"]), b"original text")
 

@@ -8,16 +8,18 @@ class UploadTooLarge(Exception):
 
 
 class FileUploadLimit:
-    def __init__(self, app, maximum):
+    def __init__(self, app, maximum, speech_maximum=4*1024*1024):
         self.app, self.maximum = app, maximum + 64 * 1024
+        self.speech_maximum = speech_maximum + 64 * 1024
 
     async def __call__(self, scope, receive, send):
         if (
             scope["type"] != "http"
-            or scope.get("path") != "/api/v1/files/uploads"
+            or scope.get("path") not in ("/api/v1/files/uploads", "/api/v1/speech/transcriptions/direct")
             or scope.get("method") != "POST"
         ):
             return await self.app(scope, receive, send)
+        maximum = self.speech_maximum if scope['path'].endswith('/direct') else self.maximum
         response = JSONResponse(
             {
                 "error": {
@@ -31,7 +33,7 @@ class FileUploadLimit:
             length = int(dict(scope["headers"]).get(b"content-length", b"0"))
         except ValueError:
             length = -1
-        if length < 0 or length > self.maximum:
+        if length < 0 or length > maximum:
             return await response(scope, receive, send)
         size, exceeded = 0, False
 
@@ -39,7 +41,7 @@ class FileUploadLimit:
             nonlocal size, exceeded
             message = await receive()
             size += len(message.get("body", b""))
-            if size > self.maximum:
+            if size > maximum:
                 exceeded = True
                 raise UploadTooLarge()
             return message

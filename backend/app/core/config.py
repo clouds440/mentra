@@ -91,7 +91,8 @@ class Settings(BaseSettings):
     memory_preference_days: int = Field(default=365, ge=1, le=3650)
     embedding_model: str = "intfloat/multilingual-e5-small"
     embedding_model_revision: str = ''
-    embedding_device: str = "cpu"
+    local_inference_device: Literal['auto', 'cpu', 'cuda'] = 'auto'
+    embedding_device: Literal['auto', 'cpu', 'cuda'] = 'auto'
     embedding_worker_timeout: float = Field(default=10, gt=0, le=60)
     embedding_initialization_timeout: float = Field(default=45, gt=0, le=120)
     qdrant_url: str = ""

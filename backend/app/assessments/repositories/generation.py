@@ -132,6 +132,12 @@ class GenerationJobs:
                 jobs.c.learner_id == job['learner_id'], jobs.c.state == 'running',
                 jobs.c.claim_id == job['claim_id'], jobs.c.claim_until > self.repository.clock())))
 
+    def defer(self, job):
+        with self.repository.sessions.begin() as session:
+            session.execute(update(jobs).where(jobs.c.id==job['id'],jobs.c.claim_id==job['claim_id'],
+                jobs.c.state=='running',jobs.c.claim_until>self.repository.clock()).values(state='queued',
+                    attempts=max(0,job['attempts']-1),claim_id=None,claim_until=None,error=None))
+
     def expire_stopped(self, owner=None):
         now = self.repository.clock()
         with self.repository.sessions.begin() as session:

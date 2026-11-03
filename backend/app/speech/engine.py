@@ -63,20 +63,23 @@ class FasterWhisperEngine:
     def __init__(self, config: dict):
         self.config = config
         self.model = None
+        self._runtime = None
 
     def warm(self):
         if self.model is None:
             from faster_whisper import WhisperModel
-            self.model = WhisperModel(
-                self.config['model_path'] or self.config['model'], device='cpu', compute_type='int8',
-                cpu_threads=self.config['threads'], num_workers=1, local_files_only=True,
-            )
+            from app.core.inference_device import LocalModel
+            self._runtime = LocalModel(lambda choice: WhisperModel(
+                self.config['model_path'] or self.config['model'], device=choice.device, compute_type=choice.compute_type,
+                cpu_threads=self.config['threads'], num_workers=1, local_files_only=True),
+                'ctranslate2', self.config.get('device', 'auto'),on_fallback=lambda:setattr(self,'model',None))
+            self.model = self._runtime.get()
 
     def transcribe(self, data: bytes, language: str | None) -> dict:
         from time import perf_counter
         started = perf_counter()
         audio = decode_audio(data, self.config['max_seconds'])
-        regions = speech_regions(audio)
+        regions = speech_regions(audio,self.config.get('device','auto'))
         if not regions:
             raise AppError('SPEECH_NO_SPEECH', 'No speech was detected. Please record again.', 422)
         self.warm()
@@ -89,22 +92,27 @@ class FasterWhisperEngine:
                     duration_seconds=len(audio) / 16000, processing_seconds=perf_counter() - started)
 
     def _transcribe_region(self, audio, language):
-        segments, info = self.model.transcribe(
-            audio, task='transcribe', language=language, beam_size=self.config['beam_size'],
-            temperature=0, condition_on_previous_text=False, vad_filter=False,
-        )
-        probability = info.language_probability
-        text = ''.join(segment.text for segment in segments).strip()
-        return dict(text=text, language=info.language, language_probability=probability)
+        def infer(model):
+            segments, info = model.transcribe(
+                audio, task='transcribe', language=language, beam_size=self.config['beam_size'],
+                temperature=0, condition_on_previous_text=False, vad_filter=False)
+            return dict(text=''.join(segment.text for segment in segments).strip(),
+                        language=info.language, language_probability=info.language_probability)
+        result = self._runtime.run(infer) if self._runtime else infer(self.model)
+        if self._runtime:
+            self.model = self._runtime.model
+        return result
 
 
-def speech_regions(audio):
+def speech_regions(audio,device='auto'):
     """Detect at pauses so a language change does not suppress an entire utterance.
 
     Bound detection/decoding passes to four; merge short spans to avoid fragile
     sub-second language detection. This does not solve code-switching inside a sentence.
     """
     from faster_whisper.vad import get_speech_timestamps, VadOptions
+    from .vad_device import configure_vad
+    configure_vad(device)
     spans = get_speech_timestamps(audio, VadOptions(min_silence_duration_ms=500, speech_pad_ms=200))
     regions = []
     for span in spans:

@@ -30,7 +30,7 @@ async function fixture(page: Page, written = false, failFirst = false) {
     if (path.endsWith('/conversations/polish-chat/status')) body=snapshot();
     else if (path.endsWith('/conversations/turns')) {
       const request=route.request().postDataJSON(); expect(request.attachment_ids).toEqual(['sheet-attachment']); turnId=request.client_turn_id; userSequence=3;
-      begin(); extract();
+      begin(); attempt={...attempt,source_pending:true};
       messages.push({id:'upload-message',conversation_id:'polish-chat',sequence:3,role:'user',content:request.content,created_at:value.created_at}, {id:'upload-answer',conversation_id:'polish-chat',sequence:4,role:'assistant',content:'Review your extracted answers.',created_at:value.created_at,assessment_cards:[{...card,attempt_id:'sheet-attempt'}]}); body=snapshot();
     } else if (path.endsWith('/files/uploads')) { uploads++; body={id:'sheet-file',filename:'answers.txt',size_bytes:100,media_type:'text/plain',state:'STAGED',purpose:'assessment'}; }
     else if (path.endsWith('/chat-attachments') && method==='POST') body={id:'sheet-attachment',filename:'answers.txt',size_bytes:100};
@@ -43,7 +43,9 @@ async function fixture(page: Page, written = false, failFirst = false) {
     else if (path.endsWith('/sheet-attempt/source')) {
       sourceReads++;
       if (failFirst && sourceReads===1) return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Retry'}}});
-      extract(); body=attempt;
+      body={id:'sheet-source',state:'queued',retry_pending:false,attempt:null};
+    } else if (path.endsWith('/source-jobs/sheet-source')) {
+      extract(); body={id:'sheet-source',state:'completed',retry_pending:false,attempt};
     } else if (path.endsWith('/sheet-attempt/submission')) {
       const request=route.request().postDataJSON(); bodies.push(request);
       expect(request.transcription_confirmed).toBe(true); expect(request.answers).toMatchObject({q1:written ? 'Mass times acceleration':'a',q2:'Inertia resists changes in motion.'});
@@ -55,7 +57,9 @@ async function fixture(page: Page, written = false, failFirst = false) {
     else return route.fallback();
     return route.fulfill({json:body});
   });
-  return {bodies,starts:()=>starts,uploads:()=>uploads};
+  return {bodies,starts:()=>starts,uploads:()=>uploads,
+    finishSource:()=>{extract(); attempt={...attempt,source_pending:false};},
+    failSource:()=>{attempt={...attempt,source_pending:false,source_error:'Answer-sheet extraction could not finish. Your existing answers are saved.'};}};
 }
 
 for (const [kind,mime] of [['pdf','application/pdf'],['txt','text/plain'],['png','image/png']]) test(`interactive ${kind} answer sheet enters review and canonical grading`, async ({page}) => {
@@ -88,13 +92,17 @@ test('written assigned assessment can upload directly and downloads a question-p
 });
 
 test('regular chat attachment updates the existing interactive card and the new review card', async ({page}) => {
-  await fixture(page);
+  const state=await fixture(page);
   await page.goto('/chat/polish-chat');
   await expect(page.getByRole('region',{name:'Interactive quiz'})).toBeVisible();
   await page.getByLabel('Upload chat files').setInputFiles({name:'answers.txt',mimeType:'text/plain',buffer:Buffer.from('1. A\n2. Inertia resists changes in motion.')});
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Evaluate my answers for this assessment.');
   await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByText('Reading your answer sheet. You can leave this page; your assessment is saved.',{exact:true})).toHaveCount(2);
+  await expect(page.getByRole('button',{name:'Submit answers',exact:true})).toHaveCount(0);
+  state.finishSource();
   await expect(page.getByRole('region',{name:'Assessment answer sheet'})).toHaveCount(2);
+  await expect(page.getByRole('switch',{name:'I reviewed and corrected all extracted answers'})).toHaveCount(2);
   await expect(page.getByRole('region',{name:'Interactive quiz'})).toHaveCount(0);
   const first=page.getByRole('region',{name:'Assessment answer sheet'}).first();
   await first.getByRole('switch',{name:'I reviewed and corrected all extracted answers'}).check();
@@ -109,6 +117,19 @@ test('failed upload retries the same attempt and upload receipt', async ({page})
   await page.getByRole('button',{name:'Retry upload',exact:true}).click();
   await expect(page.getByRole('region',{name:'Assessment answer sheet'})).toBeVisible();
   expect(state.starts()).toBe(1); expect(state.uploads()).toBe(1);
+});
+
+test('queued chat extraction failure at the same attempt revision restores editing', async ({page}) => {
+  const state=await fixture(page);
+  await page.goto('/chat/polish-chat');
+  await page.getByLabel('Upload chat files').setInputFiles({name:'answers.txt',mimeType:'text/plain',buffer:Buffer.from('1. A')});
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Read this answer sheet.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByText('Reading your answer sheet. You can leave this page; your assessment is saved.',{exact:true})).toHaveCount(2);
+  state.failSource();
+  await expect(page.getByRole('alert').filter({hasText:'Your existing answers are saved.'})).toHaveCount(2);
+  await expect(page.getByLabel('Answer 2',{exact:true})).toHaveCount(2);
+  await expect(page.getByRole('button',{name:'Upload answersheet',exact:true})).toHaveCount(2);
 });
 
 test('self-reported AI use shows the adjusted total with original correctness', async ({page},info) => {
