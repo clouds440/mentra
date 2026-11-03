@@ -53,7 +53,20 @@ class SourceSpan(RAGSchema):
     start: int
     end: int
     method: str = 'native'
+    visual_keys: list[str] = Field(default_factory=list,max_length=32)
     language: str | None = None
+
+
+class SourceVisual(RAGSchema):
+    id: str
+    document_id: str
+    version_id: str
+    generation_id: str
+    media_type: str
+    width: int
+    height: int
+    caption: str
+    locations: list[dict] = Field(default_factory=list)
 
 
 class SourceReference(RAGSchema):
@@ -70,6 +83,7 @@ class SourceReference(RAGSchema):
     excerpt: str
     warnings: list[str] = Field(default_factory=list)
     include_archived: bool = False
+    visuals: list[SourceVisual] = Field(default_factory=list)
 
 
 class RetrievedChunk(RAGSchema):

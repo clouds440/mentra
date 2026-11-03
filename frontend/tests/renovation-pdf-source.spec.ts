@@ -1,12 +1,16 @@
 import { test, expect, type Page } from '@playwright/test';
 import { workspace } from './renovation-fixtures';
 
-async function sourceFixture(page: Page, state: 'processing' | 'ready' | 'failed' = 'processing', chunkError = false, metadataOnly = false) {
+async function sourceFixture(page: Page, state: 'processing' | 'ready' | 'failed' = 'processing', chunkError = false, metadataOnly = false, diagram = false) {
   await workspace(page);
-  const current = { state, chunkReads: 0, empty: false, chunkError, extractionError: null as string | null };
+  const current = { state, chunkReads: 0, visualReads: 0, empty: false, chunkError, extractionError: null as string | null };
   const warnings = Array.from({length:42},(_,i)=>`Page ${i+1} was read with OCR; verify equations and handwriting.`);
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname;
+    if (diagram && path.endsWith('/rag/visuals/diagram-1/source')) {
+      current.visualReads++;
+      return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ZkAAAAASUVORK5CYII=','base64')});
+    }
     if (path.endsWith('/documents/pdf-source')) {
       const ready = current.state === 'ready', failed = current.state === 'failed';
       return route.fulfill({ json: {
@@ -20,7 +24,7 @@ async function sourceFixture(page: Page, state: 'processing' | 'ready' | 'failed
     if (path.endsWith('/versions/pdf-version/chunks')) {
       current.chunkReads++;
       if (current.chunkError) return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Source passages are temporarily unavailable.'}}});
-      return route.fulfill({json:current.state === 'ready' && !current.empty ? [{id:'chunk-1',content:'Scanned body alpha was recovered with OCR.',heading_path:[],spans:[{block:0,start:0,end:45,page:1,method:'ocr'}]}] : []});
+      return route.fulfill({json:current.state === 'ready' && !current.empty ? [{id:'chunk-1',content:'Scanned body alpha was recovered with OCR.',heading_path:[],spans:[{block:0,start:0,end:45,page:diagram ? null : 1,slide:diagram ? 8 : null,method:'ocr'}],visuals:diagram ? [{id:'diagram-1',caption:'Exception hierarchy',width:1,height:1,media_type:'image/png'}] : []}] : []});
     }
     if (path.endsWith('/files/uploads')) return route.fulfill({json:{id:'upload-file',filename:'scan.pdf',size_bytes:1000,purpose:'library',state:'STAGED'}});
     if (path.endsWith('/documents/pdf-source/versions') && route.request().method()==='POST') return route.fulfill({json:{document_id:'pdf-source',job_id:'upload-job',generation_id:'upload-generation',duplicate:false}});
@@ -112,4 +116,14 @@ test('one OCR notice appears only for the selected upload and disappears after a
   await page.getByRole('button',{name:'Open source version',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Source: Scanned lecture'})).toContainText('Scanned body alpha');
   await expect(page.getByText(/Extraction notes|may be inaccurate or missing/)).toHaveCount(0);
+});
+
+test('source diagrams load through authenticated delivery beside their passage without extraction warnings', async ({page}) => {
+  const state=await sourceFixture(page,'ready',false,false,true);
+  const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  await expect(viewer.getByRole('img',{name:'Exception hierarchy'})).toBeVisible();
+  await expect.poll(() => viewer.getByRole('img',{name:'Exception hierarchy'}).evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect(state.visualReads).toBe(1);
+  await expect(viewer).toContainText('Slide 8');
+  await expect(page.getByText(/was read with OCR|Extraction notes/)).toHaveCount(0);
 });

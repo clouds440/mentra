@@ -121,11 +121,16 @@ class MentraLLM:
         except Exception as error:
             from .image_fallback import chat_image_fallback, has_images, recoverable_image_failure
             fallback = chat_image_fallback.get()
-            if fallback is None or not has_images(prepared) or not recoverable_image_failure(error):
+            if not has_images(prepared) or not recoverable_image_failure(error):
+                raise
+            from .source_visuals import fallback_images
+            source_recovered = fallback_images(prepared)
+            if fallback is None and not source_recovered:
                 raise
             if on_delta is not None:
                 await on_delta(None)
-            await fallback(prepared)
+            if fallback is not None:
+                await fallback(prepared)
             cost = check_input(prepared, source, tools=[*(tools or []), *([output_schema] if output_schema else [])],
                                **({'config': config} if config else {}))
             reserve_workflow(source, cost, **({'config': config} if config else {}))

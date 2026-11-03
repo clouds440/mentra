@@ -1,0 +1,52 @@
+[WebServer] (node:3768) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:18988) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\renovation-pdf-source.spec.ts:34:1 › a source opened before OCR completes refreshes passages without reopening or permanent warnings (17.7s)
+  ok  2 tests\renovation-pdf-source.spec.ts:43:1 › an unpublished source shows processing rather than claiming no content (5.9s)
+  ok  3 tests\renovation-pdf-source.spec.ts:50:1 › OCR failure remains actionable inside the source viewer (6.9s)
+  ok  4 tests\renovation-pdf-source.spec.ts:57:1 › a historical failure is visible from version metadata without recent jobs (6.3s)
+  ok  5 tests\renovation-pdf-source.spec.ts:62:1 › a passage read error never also claims that extraction produced no content (6.8s)
+  ok  6 tests\renovation-pdf-source.spec.ts:73:1 › failure of a newer reindex does not hide previously published content (13.3s)
+  ok  7 tests\renovation-pdf-source.spec.ts:81:1 › an indexed source with missing passages reports a load inconsistency (11.0s)
+  ok  8 tests\renovation-pdf-source.spec.ts:92:1 › unsaved title edits cannot freeze source processing progress (9.9s)
+  ok  9 tests\renovation-pdf-source.spec.ts:103:1 › one OCR notice appears only for the selected upload and disappears after acceptance (7.3s)
+  x  10 tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings (7.1s)
+
+
+  1) tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      124 |   const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+      125 |   await expect(viewer.getByRole('img',{name:'Exception hierarchy'})).toBeVisible();
+    > 126 |   expect(reads).toBe(1);
+          |                 ^
+      127 |   await expect(viewer).toContainText('Slide 8');
+      128 |   await expect(page.getByText(/was read with OCR|Extraction notes/)).toHaveCount(0);
+      129 | });
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:126:17
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings 
+  9 passed (1.6m)

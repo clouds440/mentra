@@ -14,7 +14,7 @@ from testing.legacy_keyword_policy import plan_request, general_query
 from app.langchain.tool_execution import ToolExecutor
 from app.langchain.tool_selection import ToolSelection
 from app.langchain.history_orchestration import tool_reply
-from app.langchain.tool_policy import DirectAnswer, DirectNewChatReply
+from app.langchain.tool_policy import DirectAnswer
 from app.langchain.workflow_budget import model_budget
 
 
@@ -180,7 +180,7 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
         action = AsyncMock()
         async def invoke(): return await action()
         with model_budget() as envelope:
-            envelope.answer_reserve = 151
+            envelope.answer_reserve = envelope.remaining + 1
             receipt = await execute.execute(tool('read', invoke), {})
         self.assertEqual(receipt['code'], 'TOOL_BUDGET')
         action.assert_not_awaited()
@@ -464,7 +464,8 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         service.summary_context.assert_called_once_with('owner')
         self.assertEqual(chat.reply.call_args.kwargs['profile_context']['details']['preferred_name'], 'Ayesha')
         self.assertEqual(chat.reply.call_args.kwargs['memories_summary']['state'], 'unavailable')
-        self.assertEqual(scope['_tool_budget'].calls, 2)
+        # Profile and summary are preparation, not planner tool calls.
+        self.assertEqual(scope.get('_tool_budget', ToolBudget()).calls, 0)
 
     async def test_required_document_failure_reaches_limited_answer(self):
         from app.langchain.orchestration_service import OrchestrationService

@@ -1,0 +1,112 @@
+[
+  {
+    "file": "baseline.txt",
+    "sha256": "10ca6bb08f44f643a1c622f7f8a292ce8e2eb5f2e88829483421fd3f2ad492b4",
+    "bytes": 5014
+  },
+  {
+    "file": "calibrated-cold-baseline.txt",
+    "sha256": "782dda660e2fa47415cd141b1427f26d4d014a6f5c5af36ac543372acecf5801",
+    "bytes": 1624
+  },
+  {
+    "file": "core-fixed-2.txt",
+    "sha256": "595abeb82d3ccbce35868256369471bc962afe5f4eca9b41bf591bb15c421cf4",
+    "bytes": 373
+  },
+  {
+    "file": "core-fixed.txt",
+    "sha256": "802beae84efae6f3d90b2443a13bf4270ad6776315fd416ff00ade884c9c4c15",
+    "bytes": 1627
+  },
+  {
+    "file": "final-inference-planner.txt",
+    "sha256": "9b9064e509f547a3ef0e745b54e62f48311201de46ff7b18e5e26ac01644c070",
+    "bytes": 15042
+  },
+  {
+    "file": "final-targeted.txt",
+    "sha256": "2383304b936841cc226afd17152b2c3a1943f16da3ad862b6c2ae38e18eb7dd4",
+    "bytes": 2955
+  },
+  {
+    "file": "frontend-1.txt",
+    "sha256": "cf33266b313976286805bb6629c5dba9e80f9f9b66e170781df925d383a3c3ec",
+    "bytes": 4787
+  },
+  {
+    "file": "frontend-2.txt",
+    "sha256": "65c6c582a3539fa1a2155c0ff257d68b62a0582a946319245d53fd1d505527b3",
+    "bytes": 4202
+  },
+  {
+    "file": "frontend-build.txt",
+    "sha256": "f43e73be2369ed35ff9c2f2f6a6c89c00449603f4cd607f27abacd29ad7ec758",
+    "bytes": 224655
+  },
+  {
+    "file": "frontend-diagram-3.txt",
+    "sha256": "cd2c4cd444d445903bd439b4598bd1a54d802b06fc60c29d61959445563e110f",
+    "bytes": 575
+  },
+  {
+    "file": "frontend-final.txt",
+    "sha256": "107852d42cfeb7d4d7f178a12760403288e3271a404d5635ff7c5183b8f74da7",
+    "bytes": 1785
+  },
+  {
+    "file": "local-comparison-1.txt",
+    "sha256": "8131b195ba8e6647ea16dadde9ce2761d86059ab20a0164393439bd822d4da20",
+    "bytes": 300
+  },
+  {
+    "file": "local-comparison-2.txt",
+    "sha256": "315b843d1a4ab8c0aad6151c731c0395066cae9c70f48d0d7fb0f0ad138877c8",
+    "bytes": 1952
+  },
+  {
+    "file": "local-comparison-3.txt",
+    "sha256": "4226fdaf45f39bd4b194934bb3d0dabc9e15ebf005070259a252b6bb354706bb",
+    "bytes": 2041
+  },
+  {
+    "file": "planner-1.txt",
+    "sha256": "43b895dcf09d04600a8733cee957bb10f534f5a19c5874d18ba9f67a8ffbae86",
+    "bytes": 6274
+  },
+  {
+    "file": "README.md",
+    "sha256": "8b06160b2779fcece2d22830ba085a70518defe3f17f4dfcf4cb1f4c18f3e41e",
+    "bytes": 3149
+  },
+  {
+    "file": "regression-1.txt",
+    "sha256": "20ee15439a3df27aea27fb23f11edc360765e3c54954ef1d5d8b166844034932",
+    "bytes": 16092
+  },
+  {
+    "file": "regression-2.txt",
+    "sha256": "6da9841c2f904364d6d3745ace23dcd62d50d31c612565a70bba34b01e1d560b",
+    "bytes": 22940
+  },
+  {
+    "file": "regression-3.txt",
+    "sha256": "b5fb3f6d4712a067fa8879b7da53d520c0ceff838ca96ace89ab29c8f208c6ec",
+    "bytes": 1587
+  },
+  {
+    "file": "security-workflows.txt",
+    "sha256": "e6b84c37e5db40367782da97dc16c86b42d88abac7e709a650b86d20b8920fae",
+    "bytes": 14675
+  },
+  {
+    "file": "static-final.txt",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "bytes": 19
+  },
+  {
+    "file": "targeted-1.txt",
+    "sha256": "9df5a6caad826a8c167843817d96b067900c1574c06a857e8060dd93f8fbe38a",
+    "bytes": 5597
+  }
+]

@@ -70,6 +70,18 @@ class ProcessEmbeddingService:
         with self._lock:
             self._start()
 
+    def prepare(self):
+        """Bounded readiness check before the caller starts its query budget."""
+        if not self._lock.acquire(timeout=self.wait):
+            raise EmbeddingModelError('Embedding capacity is busy.')
+        try:
+            if self._closed:
+                raise EmbeddingModelError('Embedding worker is closed.')
+            if self._process is None or not self._process.is_alive():
+                self._start()
+        finally:
+            self._lock.release()
+
     def _start(self, timeout=None):
         from time import monotonic
         started=monotonic()

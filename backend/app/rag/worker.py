@@ -54,7 +54,7 @@ class IngestionWorker:
                     self.stage(job, 'resuming')
                 else:
                     parsed = version.get('extracted_content')
-                    if parsed is None:
+                    if parsed is None or parsed.get('visual_manifest') or str(parsed.get('reader_revision','')).startswith('documents-native-vision-v3'):
                         try:
                             with self.service.files.materialize(job['learner_id'],version['file_id']) as path:
                                 parsed = self.service.parser.parse(path, version['media_type'],
@@ -66,6 +66,13 @@ class IngestionWorker:
                                 raise ExtractionError('Original file is missing and retained text cannot be reconstructed safely.')
                     else:
                         self.stage(job, 'reusing_extraction')
+                    if parsed.get('visuals'):
+                        self.stage(job,'saving_visuals')
+                        from .visuals import Visuals
+                        Visuals(self.repository,self.service.files,self.service.settings).persist(job,version,parsed)
+                        for visual in parsed['visuals']:
+                            for index in visual['block_refs']:
+                                parsed['blocks'][index].setdefault('visual_keys',[]).append(visual['sha256'])
                     self.stage(job, 'chunking')
                     if hasattr(self.service.embedding, 'chunk_blocks'):
                         items = self.service.embedding.chunk_blocks(parsed['blocks'], job['learner_id'], job['document_id'],

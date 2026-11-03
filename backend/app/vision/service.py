@@ -25,10 +25,12 @@ class VisionService:
     def extract_image_text(self, path: Path) -> str:
         return self._image_ocr.extract_text(path)
 
-    def extract_pdf_page_text(self, path: Path, page: int) -> str:
+    def extract_pdf_page_text(self, path: Path, page: int, *, capture=None) -> str:
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise VisionError('PDF page must be a positive integer.')
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder) / 'page'
             self._pdf_rasterizer.render_page(path, page, output)
+            if capture is not None:
+                capture(output.with_suffix('.png').read_bytes())
             return self.extract_image_text(output.with_suffix('.png'))

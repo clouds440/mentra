@@ -7,6 +7,7 @@ POLICY_VERSION = 'semantic-v3'
 PUBLIC = ('history_references', 'memory_references', 'event_references', 'event_proposals',
           'assessment_cards', 'interactions', 'web_sources', 'web_searches')
 PRIVATE = ('_tool_execution_state', '_assessment_receipt', '_captured_events', '_ui_topics',
+           '_source_visual_ids',
            '_memory_summary_fence', 'tool_warnings', 'retrieval_status', 'retrieval_warnings',
            'retrieval_context_ids', 'visible_ids', 'history_references', 'memory_references',
            '_domain_tool_used', 'direct_rejected', '_task_receipts', '_selected_operations', '_committed_tool_results', 'response_outcome',

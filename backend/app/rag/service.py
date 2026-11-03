@@ -1,14 +1,14 @@
 """Source workflows and scoped retrieval, independent of FastAPI and LangChain."""
 import hashlib
 import json
-from threading import BoundedSemaphore
+from threading import BoundedSemaphore, Lock
 from collections import OrderedDict
 import time
 from contextlib import contextmanager
 from uuid import uuid4
 from app.core.exceptions import AppError
 from app.core.read_cache import ReadCache, normalized_query
-from app.learner.schemas import LearnerContextRequest, ConceptResolutionRequest
+from app.learner.schemas import ConceptResolutionRequest
 from app.learner.exceptions import LearningContextNotFoundError
 from app.learner.services import LearnerService
 from app.core.config import Settings
@@ -16,7 +16,7 @@ from app.rag.errors import ExtractionError, not_found
 from app.rag.parsers import NativeDocumentParser
 from app.rag.ports import DocumentParser
 from app.rag.processing import CHUNKER_VERSION, reciprocal_rank_fusion
-from app.rag.schemas import RetrievalResult, RetrievedChunk, SourceReference, RetrievalDiagnostics, SearchRequest, AssessmentGroundingRequest
+from app.rag.schemas import RetrievalResult, RetrievedChunk, SourceReference, SourceVisual, RetrievalDiagnostics, SearchRequest, AssessmentGroundingRequest
 from app.rag.vector_store import VectorStoreError, VectorStore
 from app.rag.embeddings import EmbeddingModelError, EmbeddingService
 
@@ -36,6 +36,7 @@ class RAGService:
         self.parser = parser or NativeDocumentParser()
         self.admission = admission
         self._inference = BoundedSemaphore(1)
+        self._preparation_lock = Lock()
         self._query_cache = OrderedDict()
         self._candidate_cache = ReadCache(capacity=128, ttl=120)
         self.reranker = None
@@ -49,6 +50,21 @@ class RAGService:
     def close(self):
         if self.reranker:
             self.reranker.close()
+
+    def prepare_inference(self):
+        """Initialize local inference without retrieving any source evidence."""
+        started = time.monotonic()
+        if not self._preparation_lock.acquire(timeout=self.settings.rag_inference_wait_seconds):
+            raise EmbeddingModelError('Local inference preparation is busy.')
+        try:
+            prepare = getattr(self.embedding, 'prepare', None)
+            if prepare:
+                prepare()
+            if self.reranker:
+                self.reranker.warmup()
+        finally:
+            self._preparation_lock.release()
+        return dict(initialization_ms=round((time.monotonic()-started)*1000,2))
 
     def _canonical_tags(self, identifiers):
         identifiers = list(dict.fromkeys(identifiers))
@@ -139,6 +155,8 @@ class RAGService:
 
     def _publish_extracted(self, owner, filename, title, contexts, key, extracted, blob):
         blob['extracted_content'] = {name: extracted[name] for name in ('blocks', 'warnings', 'reader_revision')}
+        if extracted.get('visual_manifest'):
+            blob['extracted_content']['visual_manifest']=extracted['visual_manifest']
         fingerprint = hashlib.sha256(json.dumps(dict(hash=blob['file_hash'], contexts=contexts,
             title=title, extraction=blob['extracted_content']), sort_keys=True).encode()).hexdigest()
         return self.repository.accept(owner, title=title[:200], filename=filename[:200], context_ids=contexts,
@@ -205,14 +223,30 @@ class RAGService:
     def source_chunks(self, owner, document_id, version_id, include_archived=False, offset=0, generation_id=None):
         doc, version = self.repository.source(owner, document_id, version_id)
         self._source_policy(owner, doc, include_archived)
-        return [dict(row, filename=version['filename'], media_type=version['media_type']) for row in
-                self.repository.source_chunks(owner, document_id, version_id, offset=offset, generation_id=generation_id)]
+        rows=self.repository.source_chunks(owner, document_id, version_id, offset=offset, generation_id=generation_id)
+        from .visuals import Visuals
+        media=Visuals(self.repository,self.files,self.settings).for_chunks(owner,rows)
+        return [dict(row, filename=version['filename'], media_type=version['media_type'],visuals=media.get(row['id'],[])) for row in rows]
 
     def get_chunk(self, owner, chunk_id, include_archived=False):
         row = self.repository.get_chunk(owner, chunk_id)
         doc = self.repository.document_metadata(owner, [row['document_id']])[0]
         self._source_policy(owner, doc, include_archived)
+        from .visuals import Visuals
+        row['visuals']=Visuals(self.repository,self.files,self.settings).for_chunks(owner,[row]).get(chunk_id,[])
         return row
+
+    def visual_source(self,owner,identifier,include_archived=False):
+        from .visuals import Visuals
+        row=Visuals(self.repository,self.files,self.settings).get(owner,identifier)
+        self.source(owner,row['document_id'],row['version_id'],include_archived)
+        binding=self.files.binding(owner,row['file_id'],'library',dict(document_version_id=row['version_id']))
+        return row['file_id'],binding
+
+    def visual_content(self,owner,identifier,include_archived=False):
+        file_id,_=self.visual_source(owner,identifier,include_archived)
+        from app.vision.chat_images import prepare_chat_image
+        return prepare_chat_image(self.files.read(owner,file_id))
 
     def _eligible(self, owner, request, *, candidate_documents=None):
         if request.context_ids == [] or request.document_ids == []:
@@ -232,8 +266,9 @@ class RAGService:
             ids = sorted({c for doc in selected for c in doc['context_ids']})
             contexts = self.context_summaries(owner, ids)
         else:
-            packet = self.learner.get_relevant_context(LearnerContextRequest(learner_id=owner, query=request.query))
-            contexts = self.context_summaries(owner, packet.context_ids)
+            # Unknown material must not disappear behind learner-topic heuristics.
+            # The planner supplies query/scope; this layer checks owned contexts.
+            contexts = self.context_summaries(owner)
         ids = [c.context_id for c in contexts if request.include_archived or c.status != 'ARCHIVED']
         if not ids:
             return [], []
@@ -451,6 +486,11 @@ class RAGService:
         current_generations = {d['active_generation_id'] for d in current}
         diagnostics.selection_rejections['reauthorization'] = sum(r.source.generation_id not in current_generations for r in result)
         result = [r for r in result if r.source.generation_id in current_generations]
+        from .visuals import Visuals
+        visual_map=Visuals(self.repository,self.files,self.settings).for_chunks(owner,
+            [dict(id=r.source.chunk_id,spans=[s.model_dump() for s in r.source.spans]) for r in result])
+        for chunk in result:
+            chunk.source.visuals=[SourceVisual.model_validate(v) for v in visual_map.get(chunk.source.chunk_id,[])]
         current_by_generation = {d['active_generation_id']: d for d in current}
         for chunk in result:
             chunk.context_ids = current_by_generation[chunk.source.generation_id]['context_ids']

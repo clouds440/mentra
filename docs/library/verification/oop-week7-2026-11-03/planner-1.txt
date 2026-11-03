@@ -1,0 +1,44 @@
+........................Executing <Task pending name='Task-28' coro=<SelectionTests.test_enabled_tool_does_not_require_execution_even_for_trigger_words() running at /app/tests/test_semantic_orchestration.py:182> wait_for=<Task pending name='Task-29' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.737 seconds
+........Executing <Task pending name='Task-154' coro=<PreparationTests.test_latest_profile_affects_next_model_call_in_the_same_chat() running at /app/tests/test_smart_tools.py:234> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.126 seconds
+Executing <Task pending name='Task-154' coro=<PreparationTests.test_latest_profile_affects_next_model_call_in_the_same_chat() running at /app/tests/test_smart_tools.py:234> wait_for=<Task pending name='Task-159' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <2 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.200 seconds
+Executing <Task pending name='Task-154' coro=<PreparationTests.test_latest_profile_affects_next_model_call_in_the_same_chat() running at /app/tests/test_smart_tools.py:234> wait_for=<Task pending name='Task-169' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <2 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.155 seconds
+......Executing <Task pending name='Task-202' coro=<SmallWorkflowTests.test_three_model_stages_become_one_without_dropping_validation() running at /app/tests/test_smart_tools.py:194> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.160 seconds
+Executing <Task pending name='Task-202' coro=<SmallWorkflowTests.test_three_model_stages_become_one_without_dropping_validation() running at /app/tests/test_smart_tools.py:195> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.142 seconds
+..............F..........Activity publication unavailable (RuntimeError)
+.Activity publication unavailable (RuntimeError)
+..Executing <Task pending name='Task-488' coro=<PreparationTests.test_distinct_attachments_do_not_share_a_prefetch_cache_entry() running at /app/tests/test_tool_recovery.py:490> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.106 seconds
+.E....Executing <Task pending name='Task-530' coro=<ProviderTests.test_real_sdk_retry_is_observed_without_duplicate_retry_owner() running at /app/tests/test_tool_recovery.py:511> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.604 seconds
+.......................................
+======================================================================
+ERROR: test_general_query_skips_all_unrelated_reads (tests.test_tool_recovery.PreparationTests.test_general_query_skips_all_unrelated_reads)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_tool_recovery.py", line 467, in test_general_query_skips_all_unrelated_reads
+    self.assertEqual(scope['_tool_budget'].calls, 2)
+                     ~~~~~^^^^^^^^^^^^^^^^
+KeyError: '_tool_budget'
+
+======================================================================
+FAIL: test_answer_reserve_stops_optional_work (tests.test_tool_recovery.ExecutionTests.test_answer_reserve_stops_optional_work)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_tool_recovery.py", line 185, in test_answer_reserve_stops_optional_work
+    self.assertEqual(receipt['code'], 'TOOL_BUDGET')
+AssertionError: <MagicMock name='mock().__getitem__()' id='138846745251616'> != 'TOOL_BUDGET'
+
+----------------------------------------------------------------------
+Ran 111 tests in 48.377s
+
+FAILED (failures=1, errors=1)

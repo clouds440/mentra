@@ -75,6 +75,8 @@ class RAGRepository:
                     return dict(document_id=duplicate, generation_id=old['generation_id'], job_id=old['id'], duplicate=True)
             used = session.execute(select(func.coalesce(func.sum(versions.c.size_bytes), 0)).join(documents,
                 versions.c.document_id == documents.c.id).where(versions.c.learner_id == owner, documents.c.purged_at.is_(None))).scalar_one()
+            from app.rag.visuals import visual_bytes_used
+            used += visual_bytes_used(session,owner)
             if used + blob['size_bytes'] > quota:
                 raise AppError('RAG_QUOTA_EXCEEDED', 'Your material storage quota is full.', 413)
             pending = session.execute(select(jobs.c.id).where(jobs.c.learner_id == owner, jobs.c.operation == 'INGEST',
@@ -477,6 +479,8 @@ class RAGRepository:
     def complete_delete(self, job):
         with self.sessions.begin() as session:
             self._lease(session, job)
+            from .tables import visuals
+            session.execute(delete(visuals).where(visuals.c.learner_id==job['learner_id'],visuals.c.document_id==job['document_id']))
             for identifier in session.scalars(select(versions.c.id).where(versions.c.learner_id==job['learner_id'],versions.c.document_id==job['document_id'])):
                 self.files.release(session,job['learner_id'],document_version_id=identifier)
             session.execute(delete(chunks).where(chunks.c.learner_id == job['learner_id'], chunks.c.document_id == job['document_id']))

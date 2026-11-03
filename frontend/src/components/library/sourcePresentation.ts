@@ -18,7 +18,8 @@ export function groupPassages(chunks: SourceChunk[]): SourceChunk[] {
     if (before && after && before.block === after.block && before.end === after.start
       && before.page === after.page && before.slide === after.slide && before.language === after.language
       && before.method === after.method && previous.heading_path.join('\0') === chunk.heading_path.join('\0')) {
-      passages[passages.length - 1] = { ...previous, content: previous.content + chunk.content, spans: [...previous.spans, ...chunk.spans] };
+      const visuals = [...new Map([...(previous.visuals ?? []), ...(chunk.visuals ?? [])].map(visual => [visual.id, visual])).values()];
+      passages[passages.length - 1] = { ...previous, content: previous.content + chunk.content, spans: [...previous.spans, ...chunk.spans], visuals };
     } else passages.push({ ...chunk });
   }
   return passages;

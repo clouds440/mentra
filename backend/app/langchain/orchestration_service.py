@@ -181,7 +181,7 @@ class OrchestrationService:
                         'Image input was unavailable. OCR fallback provides text only; visual details cannot be verified.\n' + json.dumps(context, ensure_ascii=False))
                 for message in prepared:
                     if isinstance(message.content, list):
-                        message.content = [replacements[block['image_url']['url']] if isinstance(block, dict)
+                        message.content = [replacements.get(block['image_url']['url'], block) if isinstance(block, dict)
                             and block.get('type') == 'image_url' else block for block in message.content]
                 workflow_logger.set_outcome('degraded', code='CHAT_VISION_OCR_FALLBACK')
             token = chat_image_fallback.set(fallback if images else None)

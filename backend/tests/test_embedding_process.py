@@ -55,6 +55,17 @@ class EmbeddingProcessTests(unittest.TestCase):
             service.embed_query('x' * 2_000_000)
         self.assertLess(time.monotonic()-start,8)
         self.assertIsNone(service._process)
+    def test_prepare_recovers_a_dead_worker_before_query_budget(self):
+        service=ProcessEmbeddingService(Settings(_env_file=None),worker_target=fake_worker)
+        self.addCleanup(service.close)
+        previous=service._process.pid
+        with service._lock: service._stop()
+        service.prepare()
+        self.assertNotEqual(service._process.pid,previous)
+        self.assertEqual(service.embed_query('query'),[1.,0.,0.])
+        service.close()
+        with self.assertRaises(EmbeddingModelError): service.prepare()
+
     def test_native_timeout_is_killed_and_worker_restarts_with_same_identity(self):
         settings = Settings(_env_file=None, embedding_worker_timeout=.05)
         service = ProcessEmbeddingService(settings, worker_target=fake_worker)

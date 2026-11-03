@@ -1,0 +1,19 @@
+[WebServer] (node:19884) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:20256) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\renovation-pdf-source.spec.ts:38:1 › a source opened before OCR completes refreshes passages without reopening or permanent warnings (16.2s)
+  ok  2 tests\renovation-pdf-source.spec.ts:47:1 › an unpublished source shows processing rather than claiming no content (7.0s)
+  ok  3 tests\renovation-pdf-source.spec.ts:54:1 › OCR failure remains actionable inside the source viewer (7.1s)
+  ok  4 tests\renovation-pdf-source.spec.ts:61:1 › a historical failure is visible from version metadata without recent jobs (6.7s)
+  ok  5 tests\renovation-pdf-source.spec.ts:66:1 › a passage read error never also claims that extraction produced no content (6.5s)
+  ok  6 tests\renovation-pdf-source.spec.ts:77:1 › failure of a newer reindex does not hide previously published content (8.9s)
+  ok  7 tests\renovation-pdf-source.spec.ts:85:1 › an indexed source with missing passages reports a load inconsistency (8.7s)
+  ok  8 tests\renovation-pdf-source.spec.ts:96:1 › unsaved title edits cannot freeze source processing progress (8.2s)
+  ok  9 tests\renovation-pdf-source.spec.ts:107:1 › one OCR notice appears only for the selected upload and disappears after acceptance (4.4s)
+  ok 10 tests\renovation-pdf-source.spec.ts:121:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings (3.9s)
+
+  10 passed (1.4m)

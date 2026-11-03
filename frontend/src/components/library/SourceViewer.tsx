@@ -1,4 +1,5 @@
 import { Dialog } from '../ui/Dialog';
+import { SourceDiagrams } from './SourceDiagrams';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -120,7 +121,7 @@ export function SourceViewer({ source, filename, includeArchived = false, status
         {passages.map(chunk => {
           const language = passageLanguage(chunk, displayFilename);
           const cited = chunk.id === source.chunk_id || chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
-          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}</section>;
+          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}<SourceDiagrams visuals={chunk.visuals} archived={includeArchived} /></section>;
         })}
         {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{citedChunk && !chunks.length ? 'Read full source' : 'Load more passages'}</Button>}
       </> : <>

@@ -18,7 +18,7 @@ CAPABILITIES = (
                ('get_active_learning_contexts', 'get_relevant_learner_context', 'get_study_recommendations',
                 'get_verification_candidates', 'resolve_student_concept'), ('resolve_student_concept',)),
     Capability('rag', 'Study selected Library material using cited passages.',
-               ('search_study_material', 'get_study_source_chunk')),
+               ('search_study_material', 'get_study_source_chunk', 'find_study_material', 'read_study_material', 'read_study_visual')),
     Capability('events', 'Read the agenda or prepare authorized schedule changes.',
                ('event_lookup', 'event_manage'), ('event_manage',)),
     Capability('assessment', 'Test understanding with native interactive practice; read, revise, answer or review assessments. Written papers when requested.',

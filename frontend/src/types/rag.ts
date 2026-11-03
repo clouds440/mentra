@@ -10,9 +10,11 @@ export interface MaterialList { items: MaterialDocument[]; total: number; offset
 export interface UploadResult { document_id: string; generation_id: string; job_id: string; duplicate: boolean }
 export interface RAGCapabilities { formats: string[]; max_upload_bytes: number; max_pages: number; image_ocr: boolean; scanned_pdf_ocr: boolean; hybrid: boolean; reranking: boolean }
 export interface SourceSpan { page: number | null; slide: number | null; block: number; start: number; end: number; method: string; language?: string | null }
+export interface SourceVisual { id: string; caption: string; width: number; height: number; media_type: string }
 export interface SourceReference {
+  visuals?: SourceVisual[];
   token: string; document_id: string; version_id: string; generation_id: string; chunk_id: string;
   title: string; filename?: string | null; media_type?: string | null; heading_path: string[]; spans: SourceSpan[]; excerpt: string; warnings: string[]; include_archived?: boolean;
 }
-export interface SourceChunk { id: string; content: string; heading_path: string[]; spans: SourceSpan[]; filename?: string; media_type?: string }
+export interface SourceChunk { id: string; content: string; heading_path: string[]; spans: SourceSpan[]; filename?: string; media_type?: string; visuals?: SourceVisual[] }
 export interface ChatSelection { mode: 'STANDARD' | 'SOURCE_SPECIFIC' | 'CROSS_CONTEXT'; document_ids?: string[]; context_ids?: string[]; include_archived?: boolean }

@@ -75,7 +75,12 @@ def authorize(request, owner, file_id, binding_id, include_archived=False):
                 )
             )
         if not doc:
-            raise missing()
+            from app.rag.repositories.tables import visuals,generations
+            with files.sessions() as session:
+                doc=session.scalar(select(visuals.c.document_id).join(generations,visuals.c.generation_id==generations.c.id).where(
+                    visuals.c.learner_id==owner,visuals.c.file_id==file_id,visuals.c.version_id==binding['document_version_id'],
+                    generations.c.indexed_at.is_not(None),generations.c.state.in_(['READY','SUPERSEDED'])).limit(1))
+            if not doc: raise missing()
         request.app.state.rag_service.source(
             owner, doc, binding["document_version_id"], include_archived
         )

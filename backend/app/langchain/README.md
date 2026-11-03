@@ -32,8 +32,12 @@ resolution to continue. Neither invalid advice nor a missing exact concept match
 requires another student turn. See [assessment workflow](../../../docs/assessments/chat-assessments.md).
 
 Preparation validates explicit source ownership and eligibility without speculative
-embedding/search calls. Only an agent-requested `search_study_material` call delivers
-evidence, after the RAG service revalidates current source eligibility. Tool discovery
+embedding/search calls. Agent-requested Library tools deliver evidence after source
+eligibility is revalidated: `find_study_material` resolves titles, `read_study_material`
+reads an ordered lecture, `search_study_material` retrieves targeted passages, and
+`read_study_visual` supplies an associated owned diagram to the next model round.
+Cold inference preparation has a separate bounded tool budget within the unchanged
+turn deadline. Slow searches are not automatically retried. Tool discovery
 remains available for missing capabilities; general and self-contained queries can
 answer directly. Current high-level profile preferences are read for every request.
 Chat renders the agent's answer without automatic tool/RAG/web limitation banners.
