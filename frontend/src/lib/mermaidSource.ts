@@ -14,3 +14,22 @@ export function normalizeMermaidSource(source: string): string {
   }
   return lines.join('\n');
 }
+
+/** Accept structured titles and legacy Mermaid accessibility metadata. */
+export function readMermaidSpec(code: string): { source: string; title?: string } {
+  if (code.length <= 13000 && code.trimStart().startsWith('{')) {
+    try {
+      const value = JSON.parse(code);
+      if (typeof value?.source === 'string' && value.source.length <= 12000) {
+        const title = typeof value.title === 'string' && value.title.length <= 120 ? value.title.trim() : '';
+        return { source: value.source, title: title || legacyTitle(value.source) };
+      }
+    } catch { /* Invalid JSON follows the normal source fallback. */ }
+  }
+  return { source: code, title: legacyTitle(code) };
+}
+
+function legacyTitle(source: string): string | undefined {
+  if (source.length > 12000) return undefined;
+  return /^[ \t]*accTitle:[ \t]*([^\r\n]+)/m.exec(source)?.[1].trim().slice(0, 120) || undefined;
+}

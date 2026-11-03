@@ -216,3 +216,35 @@ test('a tall image fits the fullscreen viewer without covering its caption or co
   await expect(dialog.locator('.image-viewer-caption')).toBeInViewport();
   await expect(dialog.getByRole('button', { name: 'Close image viewer' })).toBeInViewport();
 });
+
+test('mouse dragging scrolls the reel freely and swipes one image in fullscreen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await images(page);
+  await richChat(page, ['First', 'Second', 'Third'].map(image).join('\n\n'));
+  await page.goto('/chat/polish-chat');
+  const track = page.getByRole('region', { name: 'Scrollable images' });
+  await track.scrollIntoViewIfNeeded();
+  const reel = (await track.boundingBox())!;
+  const y = reel.y + 65;
+  await page.mouse.move(reel.x + 190, y);
+  await page.mouse.down();
+  await page.mouse.move(reel.x + 108, y, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(() => track.evaluate(element => element.scrollLeft)).toBeCloseTo(82, 0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Expand image: Second caption' }).click();
+  const viewer = page.getByRole('dialog');
+  const stage = (await viewer.getByRole('group', { name: 'Image preview' }).boundingBox())!;
+  const left = (await viewer.getByRole('button', { name: 'Previous image' }).boundingBox())!;
+  const right = (await viewer.getByRole('button', { name: 'Next image' }).boundingBox())!;
+  expect(left.x).toBeLessThan(stage.x + stage.width / 4);
+  expect(right.x).toBeGreaterThan(stage.x + stage.width * .75);
+  const mid = stage.y + stage.height / 2;
+  await page.mouse.move(stage.x + stage.width * .75, mid);
+  await page.mouse.down();
+  await page.mouse.move(stage.x + stage.width * .25, mid, { steps: 8 });
+  await page.mouse.up();
+  await expect(viewer.getByRole('status')).toHaveText('Image 3 of 3');
+  await viewer.getByRole('button', { name: 'Previous image' }).click();
+  await expect(viewer.getByRole('status')).toHaveText('Image 2 of 3');
+});

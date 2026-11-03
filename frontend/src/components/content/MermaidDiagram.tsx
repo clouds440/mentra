@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import { normalizeMermaidSource } from '../../lib/mermaidSource';
+import { normalizeMermaidSource, readMermaidSpec } from '../../lib/mermaidSource';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Button, Dialog } from '../ui';
 import { CodeBlock } from './CodeBlock';
@@ -29,7 +29,7 @@ function safeSource(code: string) {
     return property === 'stroke-width' && /^(?:[0-5](?:\.\d)?|6)(?:px)?$/.test(value.trim());
   }));
 }
-function namespaceSvg(raw: string, prefix: string) {
+function namespaceSvg(raw: string, prefix: string, title?: string) {
   if (raw.length > 1_000_000) throw new Error('Diagram exceeds its rendering budget');
   const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { svg: true, svgFilters: true }, FORBID_TAGS: ['foreignObject', 'image', 'a', 'script', 'animate', 'set'], FORBID_ATTR: ['onload', 'onclick'] });
   const doc = new DOMParser().parseFromString(clean, 'image/svg+xml'); const svg = doc.documentElement;
@@ -46,6 +46,7 @@ function namespaceSvg(raw: string, prefix: string) {
     for (const attr of [...node.attributes]) {
       if (/^(?:href|xlink:href)$/i.test(attr.name) && !attr.value.startsWith('#')) { node.removeAttribute(attr.name); continue; }
       let value = attr.value;
+      if (attr.name === 'aria-label') continue;
       if (!safeCss(value)) throw new Error('Unsupported diagram style');
       if (attr.name === 'id') value = ids.get(value) ?? value;
       else if (attr.name === 'aria-labelledby' || attr.name === 'aria-describedby') value = value.split(' ').map(id => ids.get(id) ?? id).join(' ');
@@ -59,7 +60,13 @@ function namespaceSvg(raw: string, prefix: string) {
     }
   }
   svg.setAttribute('role', 'img');
-  if (!svg.getAttribute('aria-labelledby')) svg.setAttribute('aria-label', 'Explanation diagram');
+  if (title) {
+    svg.removeAttribute('aria-labelledby');
+    svg.setAttribute('aria-label', title);
+    const label = svg.querySelector(':scope > title') ?? doc.createElementNS('http://www.w3.org/2000/svg', 'title');
+    label.textContent = title;
+    svg.prepend(label);
+  } else if (!svg.getAttribute('aria-labelledby')) svg.setAttribute('aria-label', 'Explanation diagram');
   return new XMLSerializer().serializeToString(svg);
 }
 function styledSource(code: string, dark: boolean) {
@@ -81,18 +88,21 @@ export function MermaidDiagram({ code }: { code: string }) {
   const id = useId().replace(/[^a-z0-9]/gi, ''); const theme = useResolvedTheme();
   const [rendered, setRendered] = useState<{ key: string; svg: string }>();
   const [errorKey, setErrorKey] = useState(''); const [source, setSource] = useState(false); const [expanded, setExpanded] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   const [downloading, setDownloading] = useState<'svg' | 'png'>(); const [downloadError, setDownloadError] = useState(false);
-  const key = `mentra-theme-v1:${theme}:${code}`;
+  const { source: diagramSource, title } = useMemo(() => readMermaidSpec(code), [code]);
+  const cacheKey = `mentra-theme-v1:${theme}:${diagramSource}`;
+  const key = JSON.stringify([cacheKey, title]);
   useEffect(() => {
     let active = true;
     const generation = diagramCacheGeneration();
     const current = () => active && generation === diagramCacheGeneration();
-    const normalized = normalizeMermaidSource(code);
+    const normalized = normalizeMermaidSource(diagramSource);
     if (!safeSource(normalized)) { setErrorKey(key); return; }
     const task = async () => {
       if (!current()) return;
       try {
-        let raw = readDiagram(key);
+        let raw = readDiagram(cacheKey);
         if (!raw) {
           // Only uncached layout yields; a cached diagram needs no idle delay.
           await new Promise<void>(resolve => {
@@ -111,33 +121,40 @@ export function MermaidDiagram({ code }: { code: string }) {
           raw = (await mermaid.render(`mentraDiagram${++serial}`, styledSource(normalized, theme === 'dark'))).svg;
           if (!current()) return;
         }
-        const svg = namespaceSvg(raw, id);
-        if (current()) { cacheDiagram(key, raw); setErrorKey(''); setRendered({ key, svg }); }
+        const svg = namespaceSvg(raw, id, title);
+        if (current()) { cacheDiagram(cacheKey, raw); setErrorKey(''); setRendered({ key, svg }); }
       } catch { if (current()) setErrorKey(key); }
     };
     queue = queue.catch(() => {}).then(task);
     return () => { active = false; };
-  }, [code, theme, key, id]);
+  }, [diagramSource, theme, cacheKey, key, id, title]);
   const svg = rendered?.key === key ? rendered.svg : undefined;
-  const expandedSvg = useMemo(() => expanded && svg ? namespaceSvg(svg, `${id}-expanded`) : undefined, [expanded, svg, id]);
+  const expandedSvg = useMemo(() => expanded && svg ? namespaceSvg(svg, `${id}-expanded`, title) : undefined, [expanded, svg, id, title]);
   async function download(format: 'svg' | 'png') {
     if (!svg || downloading) return;
     const generation = diagramCacheGeneration();
     setDownloading(format); setDownloadError(false);
-    try { const { downloadVisual } = await import('../../lib/visualExport'); if (generation === diagramCacheGeneration()) await downloadVisual(svg, format, 'mentra-diagram'); }
+    try { const { downloadVisual } = await import('../../lib/visualExport'); if (generation === diagramCacheGeneration()) await downloadVisual(svg, format, title ?? 'mentra-diagram'); }
     catch { setDownloadError(true); } finally { setDownloading(undefined); }
   }
-  const figure = (content = svg) => content ? <div className="mermaid-svg overflow-x-auto p-3" tabIndex={0} role="region" aria-label="Diagram" dangerouslySetInnerHTML={{ __html: content }} /> : <p role="status" className="p-4 text-sm text-muted">{errorKey === key ? 'This diagram could not be displayed. View its source below.' : 'Preparing diagram…'}</p>;
-  return <figure className="mermaid-figure interactive-surface my-5 overflow-hidden">
-    <figcaption className="interactive-toolbar flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><span>Diagram</span><span className="flex flex-wrap gap-1">
-      <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show diagram' : 'View source'}</Button>
-      <Button size="sm" variant="ghost" disabled={!svg} onClick={() => setExpanded(true)}>Expand</Button>
+  const figure = (content = svg) => content ? <div className="mermaid-svg" tabIndex={0} role="region" aria-label={title ?? "Diagram"} dangerouslySetInnerHTML={{ __html: content }} /> : <p role="status" className="p-4 text-sm text-muted">{errorKey === key ? 'This diagram could not be displayed. View its source below.' : 'Preparing diagram…'}</p>;
+  const downloads = <>
       <Button size="sm" variant="ghost" disabled={!svg || !!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button>
       <Button size="sm" variant="ghost" disabled={!svg || !!downloading} loading={downloading === 'png'} onClick={() => void download('png')}>Download PNG</Button>
-    </span></figcaption>
-    {errorKey === key && <p role="status" className="px-3 pt-3 text-sm text-muted">This diagram could not be displayed. Its source is available below.</p>}
-    {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this diagram. Please try again.</p>}
-    {source || errorKey === key ? <CodeBlock code={code} language="mermaid" /> : figure()}
-    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" className="mermaid-fullscreen"><div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2"><span className="text-sm text-muted">Diagram</span><Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></div>{figure(expandedSvg)}</Dialog>}
+  </>;
+  const downloadWarning = downloadError && <p role="status" className="text-sm text-muted">Could not download this diagram. Please try again.</p>;
+  return <figure className="mermaid-figure chat-visual" aria-label={title}>
+    {title && <figcaption className="chat-visual-title" dir="auto">{title}</figcaption>}
+    {errorKey === key && <p role="status" className="text-sm text-muted">This diagram could not be displayed. Its source is available below.</p>}
+    {source || errorKey === key ? <CodeBlock code={diagramSource} language="mermaid" /> : figure()}
+    <div className="visual-actions chat-visual-actions">
+      <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show diagram' : 'View source'}</Button>
+      <Button size="sm" variant="ghost" disabled={!svg} onClick={() => { setZoomed(false); setExpanded(true); }}>Expand</Button>
+      {downloads}
+    </div>
+    {!expanded && downloadWarning}
+    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label={title ? 'Expanded diagram: ' + title : 'Expanded diagram'} className={zoomed ? "mermaid-fullscreen diagram-zoomed" : "mermaid-fullscreen"} viewer={{ heading: title, actions: <><Button size="sm" variant="ghost" aria-pressed={zoomed} onClick={() => setZoomed(value => !value)}>{zoomed ? 'Fit diagram' : 'Zoom in'}</Button>{downloads}</> }}>
+      {downloadWarning}{figure(expandedSvg)}
+    </Dialog>}
   </figure>;
 }

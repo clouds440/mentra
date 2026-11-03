@@ -47,10 +47,10 @@ test('chart modules stay unloaded for text and offscreen charts; repeated charts
   expect(requests).toEqual([]);
   await richChat(page, fence(base) + '\n\n' + Array.from({ length: 80 }, (_, i) => `Paragraph ${i}: The explanation stays readable without waiting for charts.`).join('\n\n'));
   await page.goto('/chat/polish-chat');
-  await expect(page.getByText('Chart', { exact: true })).toBeAttached();
+  await expect(page.getByText('Preparing chart…', { exact: true })).toBeAttached();
   await expect(page.getByText('Paragraph 79:', { exact: false })).toBeVisible();
   expect(requests).toEqual([]);
-  await page.getByText('Chart', { exact: true }).scrollIntoViewIfNeeded();
+  await page.getByText('Preparing chart…', { exact: true }).scrollIntoViewIfNeeded();
   await expect(page.locator('.recharts-figure .recharts-wrapper')).toBeVisible();
   expect(requests.filter(url => /\/BarView-/.test(url))).toHaveLength(1);
   expect(requests.filter(url => /\/(?:PieView|RadarView|ScatterView)-/.test(url))).toHaveLength(0);

@@ -82,21 +82,29 @@ function RechartsFigureContent({ code }: { code: string }) {
   if (!spec) return <div className="my-4"><p role="status" className="text-sm text-muted">This chart has unsupported or invalid data. Its source is available below.</p><CodeBlock code={code} language="json" /></div>;
   const display = expanded && background.current ? background.current : spec;
   const downloads = <><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'svg'} onClick={() => void download('svg')}>Download SVG</Button><Button size="sm" variant="ghost" disabled={!!downloading} loading={downloading === 'png'} onClick={() => void download('png')}>Download PNG</Button></>;
-  return <figure ref={figureRef} className="recharts-figure interactive-surface my-5 min-w-0 overflow-hidden" aria-labelledby={titleId}>
-    <figcaption className="interactive-toolbar flex flex-wrap items-center justify-between gap-2"><span id={titleId} className="text-sm font-medium text-heading">{spec.title}</span><span className="flex flex-wrap gap-1">
+  const description = spec.description;
+  const modelDetails = spec.model && <details className="chart-model"><summary className="ui-disclosure cursor-pointer font-medium">{spec.model.kind === 'illustrative' ? 'Illustrative equation model' : 'Equation model'}</summary><p>{modelSummary(spec.model)}</p></details>;
+  const modelWarning = spec.modelUnavailable && <p role="status" className="text-sm text-muted">Equation controls are unavailable. Showing the supplied data.</p>;
+  const exportWarning = downloadError && <p role="status" className="text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>;
+  return <figure ref={figureRef} className="recharts-figure chat-visual" aria-labelledby={titleId}>
+    <figcaption className="chart-caption">
+      <div id={titleId} className="chat-visual-title" dir="auto">{spec.title}</div>
+      {(description || spec.unit) && <p className="chat-visual-description" dir="auto">{description}{description && spec.unit ? ' ' : ''}{spec.unit ? 'Values in ' + spec.unit + '.' : ''}</p>}
+    </figcaption>
+    {modelWarning}
+    {source ? <CodeBlock code={display !== original || display.model ? serializeChartSpec(display) : code} language="json" /> : <ChartCanvas spec={display} />}
+    {!expanded && !source && <>{controls}{modelDetails}</>}
+    <div className="visual-actions chat-visual-actions">
       <Button size="sm" variant="ghost" aria-pressed={data} onClick={() => setData(value => !value)}>{data ? 'Hide data' : 'View data'}</Button>
       <Button size="sm" variant="ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? 'Show chart' : 'View source'}</Button>
       <Button size="sm" variant="ghost" onClick={() => setExpanded(true)}>Expand</Button>
       {downloads}
-    </span></figcaption>
-    {(spec.description || spec.unit) && <p className="px-3 pt-3 text-sm text-muted">{spec.description}{spec.description && spec.unit ? ' ' : ''}{spec.unit ? `Values in ${spec.unit}.` : ''}</p>}
-    {spec.modelUnavailable && <p role="status" className="px-3 pt-3 text-sm text-muted">Equation controls are unavailable. Showing the supplied data.</p>}
-    {spec.model && <details className="mx-3 mt-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer font-medium">{spec.model.kind === 'illustrative' ? 'Illustrative equation model' : 'Equation model'}</summary><p className="mt-2 break-words leading-5">{modelSummary(spec.model)}</p></details>}
-    {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>}
-    {source ? <CodeBlock code={display !== original || display.model ? serializeChartSpec(display) : code} language="json" /> : <ChartCanvas spec={display} />}
-    {!expanded && controls}
+    </div>
+    {!expanded && exportWarning}
     {data && <ChartDataTable spec={display} />}
-    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen" aria-label={`Expanded chart: ${spec.title}`} onDismiss={() => setExpanded(false)}><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2"><span className="text-sm font-medium text-heading">{spec.title}{spec.unit ? ` (${spec.unit})` : ''}</span><span className="flex flex-wrap items-center gap-1">{downloads}<Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></span></div>{downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this chart. Try again once it has loaded.</p>}<ChartCanvas spec={spec} />{spec.modelUnavailable && <p role="status" className="px-3 text-sm text-muted">Equation controls are unavailable. Showing the supplied data.</p>}{spec.model && <details className="mx-3 rounded-control border border-border px-3 py-2 text-xs text-muted"><summary className="ui-disclosure cursor-pointer">Equation and assumptions</summary><p className="mt-2 break-words">{modelSummary(spec.model)}</p></details>}{controls}</Dialog>}
+    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen chart-viewer" aria-label={'Expanded chart: ' + spec.title} onDismiss={() => setExpanded(false)} viewer={{ heading: spec.title, actions: downloads }}>
+      {exportWarning}{modelWarning}<ChartCanvas spec={spec} />{controls}{modelDetails}
+    </Dialog>}
   </figure>;
 }
 RechartsFigureContent.displayName = 'RechartsFigure';

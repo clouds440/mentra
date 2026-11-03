@@ -224,3 +224,7 @@ Prioritize meaningful primitive behavior, user interactions, and important rende
 - Long topic/skill modals keep a non-scrolling, shrink-0 header and Close control outside the min-h-0 scrolling body. Result and mistake grids share QuestionCardPreview with MarkdownContent preview mode: render emphasis, code and equations within fixed bounds, suppress interactive links/images and full diagram rendering, and reuse the same preview in chat and Assessments.
 
 - Chart equations use the frontend chartEquation/chartModel utilities, never eval/Function or server solver calls. Validate and compile bounded expressions and dependency graphs once; recompute derived series atomically, reject invalid domains and preserve last valid data. Reuse ChartControls and ViewToggle for Slider/Number modes, preserve mode across fullscreen and keep standalone editing available without a model. Auxiliary numeric row inputs belong in metadata/data tables, not dummy plotted series. Export current assumptions, equations and parameters with the chart.
+
+### Chat visual layout
+
+Use the message column for charts, diagrams, and image captions. Keep the canvas background-free and place secondary actions below it. Keep the data, source, and export actions discoverable on touch and keyboard. Fullscreen visuals use the shared Dialog viewer header, with the close control outside the scrolling body. A figure may use the full message width when its contents or labels need the space.

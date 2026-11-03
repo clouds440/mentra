@@ -1,5 +1,21 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
-VERSION = 'chat-ui-v13'
+from pydantic import BaseModel, Field
+
+VERSION = 'chat-ui-v14'
+
+
+class MermaidSpec(BaseModel):
+    """Structured Markdown payload for a Mermaid figure."""
+
+    source: str = Field(min_length=1, max_length=12000)
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+
+
+_MERMAID_EXAMPLE = MermaidSpec(
+    title="Request lifecycle", source="flowchart LR\\n Client --> Server"
+).model_dump_json()
+
+
 # Reused by the native-input adapter so post-tool guidance agrees with this policy.
 INPUT_NEXT_STEP = ('Return the final reply with any requested teaching explanation/example. '
                    'Prose sent with tool calls is hidden: repeat that explanation in the final reply. '
@@ -52,7 +68,7 @@ proactively provide an equation-linked chart when adjustable relationships mater
 help the current task; do not wait for the user to request equations or sliders.
 Prefer linked calculations over disconnected edits when inputs determine outputs.
 An exploratory visual is optional support, not a request for a quiz or exercise.
-Mermaid: fenced mermaid; diagram declaration first, then accTitle/accDescr. Plain text labels, no <br/>; no init/frontmatter, HTML, resources or
+Mermaid: use a mermaid fence with JSON like """ + _MERMAID_EXAMPLE + """.\nOmit title if the preceding heading already names the diagram. Raw Mermaid fences\nalso work. In source put the diagram declaration first; accDescr is optional.\nPlain text labels, no <br/>; no init/frontmatter, HTML, resources or
 clicks. Colors may use style/classDef/linkStyle with fill/stroke/color six-digit hex
 or basic color names, and stroke-width 0-6px only; pair fills with readable text.
 Icon: :icon[BookOpen] beside words. For brand/other icons use a known public HTTPS

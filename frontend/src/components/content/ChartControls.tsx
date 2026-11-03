@@ -3,6 +3,7 @@ import { SlidersHorizontal, Hash } from 'lucide-react';
 import { ViewToggle } from '../ui/ViewToggle';
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, Input, Select } from '../ui';
+import { chartTick } from './charts/format';
 import { chartNumberLimit, type ChartSpec } from '../../lib/chartSpec';
 
 export const ChartControls = memo(function ChartControls({ spec, original, onEdit, onReset, mode, onModeChange, selection, onSelectionChange }: {
@@ -20,14 +21,19 @@ export const ChartControls = memo(function ChartControls({ spec, original, onEdi
   const field = fields.some(item => item.dataKey === selection.field) ? selection.field! : defaultField;
   const parameter = spec.model?.parameters.find(item => item.key === field);
   if (!fields.length) return null;
-  return <section aria-label="Chart controls" className="chart-controls space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">Explore locally</p><div className="flex items-center gap-2"><ViewToggle label="Chart input mode" view={mode} onChange={onModeChange} showLabels options={[{ value: 'slider', label: 'Slider', Icon: SlidersHorizontal }, { value: 'number', label: 'Number', Icon: Hash }]} /><Button size="sm" variant="ghost" onClick={onReset}>Reset</Button></div></div>
-    {!!fields.length && <><div className="grid grid-cols-2 gap-3">
-      <Select aria-label="Data point" disabled={!!parameter} value={parameter ? -1 : row} onChange={event => onSelectionChange({ row: Number(event.target.value), field })}>{parameter && <option value={-1}>All data points</option>}{spec.data.map((item, index) => <option key={index} value={index}>{String(item[spec.xKey])} (#{index + 1})</option>)}</Select>
-      <Select aria-label="Chart value" value={field} onChange={event => onSelectionChange({ row, field: event.target.value })}>{fields.map(item => <option key={item.dataKey} value={item.dataKey}>{item.name}</option>)}</Select>
+  return <section aria-label="Chart controls" className="chart-controls">
+    <div className="chart-control-header">
+      <div><p className="chart-control-title">Explore the chart</p><p className="chart-control-hint">{parameter ? 'Changes apply to every data point.' : spec.model ? 'Linked values update for the selected point.' : 'Changes apply to the selected point.'}</p></div>
+      <div className="visual-actions">
+        <ViewToggle label="Chart input mode" view={mode} onChange={onModeChange} showLabels options={[{ value: 'slider', label: 'Slider', Icon: SlidersHorizontal }, { value: 'number', label: 'Number', Icon: Hash }]} />
+        <Button size="sm" variant="ghost" onClick={onReset}>Reset</Button>
+      </div>
     </div>
-    <ValueEditor key={`${parameter ? -1 : row}:${field}`} spec={spec} original={original} row={parameter ? -1 : row} field={field} onEdit={onEdit} mode={mode} /></>}
-    {spec.model && <p className="text-xs text-muted">Equation outputs update automatically. Changes stay local to this chart.</p>}
+    <div className="chart-control-fields">
+      {fields.length > 1 ? <label><span>Variable</span><Select aria-label="Chart value" value={field} onChange={event => onSelectionChange({ row, field: event.target.value })}>{fields.map(item => <option key={item.dataKey} value={item.dataKey}>{item.name}</option>)}</Select></label> : <p className="chart-control-variable">{fields[0].name}</p>}
+      {!parameter && spec.data.length > 1 && <label><span>Data point</span><Select aria-label="Data point" value={row} onChange={event => onSelectionChange({ row: Number(event.target.value), field })}>{spec.data.map((item, index) => <option key={index} value={index}>{String(item[spec.xKey])} (#{index + 1})</option>)}</Select></label>}
+    </div>
+    <ValueEditor key={(parameter ? -1 : row) + ':' + field} spec={spec} original={original} row={parameter ? -1 : row} field={field} onEdit={onEdit} mode={mode} />
   </section>;
 });
 function ValueEditor({ spec, original, row, field, onEdit, mode }: { mode: 'slider' | 'number'; spec: ChartSpec; original: ChartSpec; row: number; field: string; onEdit: (row: number, field: string, value: number) => boolean }) {
@@ -59,8 +65,8 @@ function ValueEditor({ spec, original, row, field, onEdit, mode }: { mode: 'slid
       setInvalid(!onEdit(row, field, Number(next)));
     }
   }
-  return <div className="space-y-1"><div className="flex min-h-10 items-center gap-3">
-    {mode === 'slider' && <><input aria-label="Adjust selected value" type="range" className="chart-slider min-w-0 flex-1" min={min} max={limit} step={parameter?.step ?? 'any'} aria-invalid={invalid} value={Math.max(min, Math.min(limit, Number(text) || 0))} onChange={event => update(event.target.value, true)} onPointerUp={flush} onKeyUp={flush} onBlur={flush} /><output aria-live="off" className="min-w-20 text-right text-sm tabular-nums" aria-label="Current value">{text}</output></>}
-    {mode === 'number' && <Input aria-label="Selected value" type="number" step={parameter?.step ?? 'any'} min={parameter?.min ?? rowInput?.min ?? (nonnegative ? 0 : -chartNumberLimit)} max={parameter?.max ?? rowInput?.max ?? chartNumberLimit} value={text} aria-invalid={invalid} className="w-28 shrink-0" onChange={event => update(event.target.value)} />}
-  </div>{invalid && <p role="status" className="text-xs text-danger">This value is outside the chart or equation domain. The last valid graph is preserved.</p>}</div>;
+  return <div className="chart-value-editor"><div className="chart-value-row">
+    {mode === 'slider' && <><input aria-label="Adjust selected value" type="range" className="chart-slider min-w-0 flex-1" min={min} max={limit} step={parameter?.step ?? 'any'} aria-invalid={invalid} value={Math.max(min, Math.min(limit, Number(text) || 0))} onChange={event => update(event.target.value, true)} onPointerUp={flush} onKeyUp={flush} onBlur={flush} /><output aria-live="off" className="chart-value-readout" aria-label="Current value">{text}</output></>}
+    {mode === 'number' && <Input aria-label="Selected value" type="number" step={parameter?.step ?? 'any'} min={parameter?.min ?? rowInput?.min ?? (nonnegative ? 0 : -chartNumberLimit)} max={parameter?.max ?? rowInput?.max ?? chartNumberLimit} value={text} aria-invalid={invalid} className="chart-number-input" onChange={event => update(event.target.value)} />}
+  </div>{mode === 'slider' && <div className="chart-range-labels" aria-hidden="true"><span>{chartTick(min)}</span><span>{chartTick(limit)}</span></div>}{invalid && <p role="status" className="text-xs text-danger">This value is outside the chart or equation domain. The last valid graph is preserved.</p>}</div>;
 }

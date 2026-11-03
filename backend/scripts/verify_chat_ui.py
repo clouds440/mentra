@@ -134,7 +134,12 @@ async def main():
             assert re.search(r':color\[Needs review\]\{hex=["\']#F54927["\']\}', content)
             assert 'color' in scope.get('_ui_topics', ())
         if name == 'mermaid':
-            assert '```mermaid' in content and 'accTitle:' in content and 'accDescr:' in content
+            from app.langchain.prompts.chat_ui import MermaidSpec
+            fence = re.search(r'```mermaid\s*\n(.*?)\n```', content, re.S)
+            assert fence, 'Missing Mermaid fence'
+            payload = fence.group(1).strip()
+            source = MermaidSpec.model_validate_json(payload).source if payload.startswith('{') else payload
+            assert source.startswith('sequenceDiagram'), 'Expected a sequence diagram'
         if name == 'comparison':
             bars = cards[0]['bars']
             assert len(bars) == 4 and all(bar.get('group') and bar.get('series') for bar in bars), 'Missing comparison structure'

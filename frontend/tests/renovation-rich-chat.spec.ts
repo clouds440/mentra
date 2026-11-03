@@ -242,8 +242,8 @@ for (const [kind, code] of Object.entries(diagrams)) test(`Mermaid ${kind} rende
     await expect(labels).toContainText(['Learn', 'Practice']);
   }
   await figure.getByRole('button', { name: 'Expand', exact: true }).click();
-  const viewer = page.getByRole('dialog', { name: 'Expanded diagram' });
-  await expect(viewer.locator('svg')).toBeVisible();
+  const viewer = page.getByRole('dialog', { name: kind === 'flowchart' ? 'Expanded diagram: Learning flow' : 'Expanded diagram', exact: true });
+  await expect(viewer.locator('.mermaid-svg > svg')).toBeVisible();
   const bounds = await viewer.boundingBox();
   const viewport = page.viewportSize()!;
   expect(bounds?.width).toBeGreaterThanOrEqual(viewport.width - 1);
@@ -349,4 +349,38 @@ test('chat appearance still works when local storage is blocked', async ({ page 
   await expect(page.getByLabel('Chat text preview')).toHaveCSS('font-size', '18px');
   await page.getByRole('region', { name: 'Conversation history' }).locator('a[href="/chat/polish-chat"]').click();
   await expect(page.getByRole('article', { name: 'Mentra response' }).last().locator('.chat-prose')).toHaveCSS('font-size', '18px');
+});
+
+test('structured Mermaid title stays attached to the diagram and viewer', async ({ page }) => {
+  const source = 'flowchart LR\n A[Input] --> B[Output]';
+  const block = (payload: string) => '\x60\x60\x60mermaid\n' + payload + '\n\x60\x60\x60';
+  await richChat(page, '### Untitled in context\n\n' + block(source) + '\n\n' + block(JSON.stringify({ source, title: 'Request lifecycle' })));
+  await page.goto('/chat/polish-chat');
+  const figures = page.locator('.mermaid-figure');
+  await expect(figures.first().locator('figcaption')).toHaveCount(0);
+  const titled = figures.last();
+  await expect(titled.locator('figcaption')).toHaveText('Request lifecycle');
+  await titled.getByRole('button', { name: 'Expand', exact: true }).click();
+  const viewer = page.getByRole('dialog', { name: 'Expanded diagram: Request lifecycle' });
+  await expect(viewer.locator('.mermaid-svg > svg')).toHaveAttribute('aria-label', 'Request lifecycle');
+  await viewer.getByRole('button', { name: 'Close', exact: true }).click();
+  await titled.getByRole('button', { name: 'View source' }).click();
+  await expect(titled.locator('code')).toContainText('flowchart LR');
+  await expect(titled.locator('code')).not.toContainText('Request lifecycle');
+});
+
+test('long code expands in place while preserving wrap and source text', async ({ page }) => {
+  const source = Array.from({ length: 40 }, (_, i) => 'print(' + i + ')').join('\n');
+  await richChat(page, '\x60\x60\x60python\n' + source + '\n\x60\x60\x60');
+  await page.goto('/chat/polish-chat');
+  const block = page.locator('.code-block');
+  const scroll = block.getByRole('region', { name: 'Python' });
+  await expect.poll(() => scroll.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+  await block.getByRole('button', { name: 'Show full code' }).click();
+  await expect(block.getByRole('button', { name: 'Limit code height' })).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(() => scroll.evaluate(node => node.scrollHeight === node.clientHeight)).toBe(true);
+  await block.getByRole('button', { name: 'Wrap code lines' }).click();
+  expect(await block.locator('code').textContent()).toBe(source);
+  await block.getByRole('button', { name: 'Limit code height' }).click();
+  await expect(scroll).not.toHaveClass(/code-full-height/);
 });
