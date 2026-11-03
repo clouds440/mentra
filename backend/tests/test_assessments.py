@@ -32,6 +32,165 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         attempt=self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
         return assessment,attempt
 
+    async def test_replacing_draft_source_releases_only_superseded_binding(self):
+        from app.files.tables import bindings
+        from unittest.mock import patch
+        assessment, attempt = await self.prepared()
+        def stage(key):
+            return self.files.upload(self.owner,BytesIO(key.encode()),'answers.txt','assessment',key)
+        def store(current, file):
+            return self.service.repository.store_extraction(self.owner,str(current.id),current.revision,
+                dict(answers={},warnings=[]),file['id'],'answers.txt')
+        first,second,third=stage('first'),stage('second'),stage('third')
+        attempt=store(attempt,first)
+        # Negative control recreates the audited missing-release behavior.
+        with patch.object(self.files,'release'):
+            attempt=store(attempt,second)
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(bindings).where(bindings.c.released_at.is_(None))),2)
+        attempt=store(attempt,third)
+        with self.db.sessions() as session:
+            active=list(session.scalars(select(bindings.c.file_id).where(bindings.c.released_at.is_(None))))
+        self.assertEqual(active,[third['id']])
+        self.files.cleanup()
+        self.assertEqual(self.files.read(self.owner,third['id']),b'third')
+        self.assertEqual(len(self.files.provider.objects),1)
+
+    async def test_source_job_survives_client_and_replays_completed_result(self):
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.source_worker import SourceWorker
+        from unittest.mock import patch
+        assessment, attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'1. my answer'),'answers.txt','assessment','durable-source')
+        jobs=SourceJobs(self.service.repository)
+        queued=jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        self.assertEqual(jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)['id'],queued['id'])
+        with self.assertRaises(AppError): jobs.get(self.other,queued['id'])
+        with patch.object(self.service,'_extract_paper',return_value=dict(answers={},warnings=[])) as extract:
+            self.assertTrue(await SourceWorker(self.service).run_once())
+            self.assertFalse(await SourceWorker(self.service).run_once())
+        self.assertEqual(extract.call_count,1)
+        completed=jobs.get(self.owner,queued['id'])
+        self.assertEqual(completed['state'],'completed')
+        self.assertEqual(completed['attempt']['state'],'pending_transcription')
+        self.assertEqual(jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)['state'],'completed')
+
+    async def test_pending_source_survives_staged_expiry_and_cleanup(self):
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.source_worker import SourceWorker
+        from app.files.tables import assets
+        from sqlalchemy import update
+        from datetime import datetime,timezone,timedelta
+        from unittest.mock import patch
+        _,attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'1. retained'),'answers.txt','assessment','pending-source')
+        jobs=SourceJobs(self.service.repository)
+        queued=jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        with self.db.sessions.begin() as session:
+            session.execute(update(assets).where(assets.c.id==stored['id']).values(expires_at=datetime.now(timezone.utc)-timedelta(seconds=1)))
+        self.files.cleanup()
+        self.assertEqual(self.files.read(self.owner,stored['id']),b'1. retained')
+        with patch.object(self.service,'_extract_paper',return_value=dict(answers={},warnings=[])):
+            self.assertTrue(await SourceWorker(self.service).run_once())
+        self.assertEqual(jobs.get(self.owner,queued['id'])['state'],'completed')
+
+    async def test_source_job_reclaim_fences_stale_publication(self):
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.repositories.tables import source_jobs
+        from sqlalchemy import update
+        from datetime import timedelta
+        assessment, attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'answer'),'answers.txt','assessment','reclaim-source')
+        jobs=SourceJobs(self.service.repository)
+        queued=jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        stale=jobs.claim()
+        with self.db.sessions.begin() as session:
+            session.execute(update(source_jobs).where(source_jobs.c.id==queued['id'])
+                .values(claim_until=self.service.repository.clock()-timedelta(seconds=1)))
+        current=jobs.claim()
+        with self.assertRaises(AppError) as error:
+            self.service.repository.store_extraction(self.owner,str(attempt.id),attempt.revision,
+                dict(answers={},warnings=[]),stored['id'],'answers.txt',source_job=stale)
+        self.assertEqual(error.exception.code,'ASSESSMENT_SOURCE_EXPIRED')
+        jobs.finish(stale)
+        self.assertTrue(jobs.active(current))
+        self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'draft')
+
+    async def test_background_budget_reserves_interactive_room(self):
+        from app.db.admission import Admission, background_capacity, leases
+        from app.core.config import Settings
+        gate=Admission(self.db.sessions,settings=Settings(_env_file=None,work_global_capacity=2))
+        async with background_capacity(gate,self.owner):
+            with self.assertRaises(AppError):
+                async with background_capacity(gate,self.other): self.fail('Background work exceeded budget')
+            token=gate.acquire('model',self.other,capacity=2,owner_capacity=2)
+            gate.release(token)
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(leases)),0)
+
+    async def test_queue_diagnostics_detect_missing_worker_and_clear_after_observation(self):
+        from app.db.worker_status import queue_status, Heartbeat
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.repositories.tables import source_jobs
+        from sqlalchemy import update
+        from datetime import timedelta
+        assessment,attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'answer'),'answers.txt','assessment','health-source')
+        jobs=SourceJobs(self.service.repository)
+        queued=jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        with self.db.sessions.begin() as session:
+            session.execute(update(source_jobs).where(source_jobs.c.id==queued['id'])
+                .values(created_at=self.service.repository.clock()-timedelta(minutes=5)))
+        first=queue_status(self.db.sessions)
+        row=next(row for row in first['queues'] if row['role']=='assessment.source')
+        self.assertEqual(row['status'],'stalled')
+        Heartbeat(self.db.sessions).pulse('assessment.source')
+        second=queue_status(self.db.sessions)
+        self.assertEqual(next(row for row in second['queues'] if row['role']=='assessment.source')['status'],'observed')
+
+    async def test_busy_parse_capacity_defers_source_without_spending_attempt(self):
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.repositories.tables import source_jobs
+        from app.assessments.source_worker import SourceWorker
+        from unittest.mock import AsyncMock,patch
+        assessment,attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'answer'),'answers.txt','assessment','capacity-source')
+        jobs=SourceJobs(self.service.repository)
+        queued=jobs.enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        async with self.service.admission.async_reserve('parse',self.owner,capacity=4,owner_capacity=1):
+            with patch.object(self.service,'upload_paper_with_vision',new=AsyncMock()) as infer:
+                self.assertTrue(await SourceWorker(self.service).run_once())
+                infer.assert_not_called()
+        with self.db.sessions() as session:
+            row=session.execute(select(source_jobs).where(source_jobs.c.id==queued['id'])).mappings().one()
+            self.assertEqual(row['attempts'],0)
+            self.assertIsNotNone(row['retry_at'])
+
+    async def test_source_migration_requires_drain_and_retains_originals(self):
+        from alembic import command
+        from app.db.migrate import migration_config,upgrade
+        from app.assessments.repositories.source_jobs import SourceJobs
+        from app.assessments.repositories.tables import source_jobs
+        from sqlalchemy import update
+        assessment,attempt=await self.prepared()
+        stored=self.files.upload(self.owner,BytesIO(b'original'),'answers.txt','assessment','rollback-source')
+        queued=SourceJobs(self.service.repository).enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        with self.assertRaisesRegex(RuntimeError,'Drain assessment source jobs'):
+            with self.db.engine.connect() as connection:
+                command.downgrade(migration_config(connection),'20261103_0039')
+        with self.db.sessions.begin() as session:
+            session.execute(update(source_jobs).where(source_jobs.c.id==queued['id']).values(state='failed'))
+        with self.db.engine.connect() as connection:
+            command.downgrade(migration_config(connection),'20261103_0039')
+        self.assertEqual(self.files.read(self.owner,stored['id']),b'original')
+        from app.assessments.repositories.tables import attempts
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(attempts.c.state).where(attempts.c.id==str(attempt.id))),'draft')
+        upgrade(self.db.engine)
+        self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'draft')
+        with self.db.engine.connect() as connection:
+            command.check(migration_config(connection))
+
     async def test_generation_hides_keys_and_replays_without_duplicates(self):
         assessment=await self.service.generate(self.owner,self.request)
         replay=await self.service.generate(self.owner,self.request)

@@ -1,11 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/v1/files/uploads', async route => {
-    expect(route.request().postData()).toContain('audio');
-    expect(route.request().postData()).toContain('speech');
-    await route.fulfill({json:{id:'11111111-1111-4111-8111-111111111111',filename:'voice.webm',size_bytes:5,media_type:'audio/webm',state:'STAGED',purpose:'speech'}});
-  });
+  await page.route('**/api/v1/files/uploads', () => { throw new Error('Voice must not use remote file storage'); });
   await page.addInitScript(() => {
     const track = { stop() {}, onended: null };
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, writable: true,
@@ -26,8 +22,8 @@ test.beforeEach(async ({ page }) => {
 for (const width of [390, 1280]) test(`voice fills editable multilingual draft at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 });
   let requests = 0;
-  await page.route('**/api/v1/speech/transcriptions', async route => {
-    requests++; expect(route.request().postDataJSON()).toEqual({file_id:'11111111-1111-4111-8111-111111111111'});
+  await page.route('**/api/v1/speech/transcriptions/direct', async route => {
+    requests++; expect(route.request().postData()).toContain('operation_id'); expect(route.request().postData()).toContain('audio');
     await route.fulfill({ json: { text: 'مجھے Newton’s second law سمجھائیں۔', language: 'ur' } });
   });
   await page.goto('/tests/voice-harness.html');
@@ -57,7 +53,7 @@ for (const width of [390, 1280]) test(`voice fills editable multilingual draft a
 test('a late transcription cannot fill a different chat', async ({ page }) => {
   let finish: () => void = () => {};
   const pending = new Promise<void>(resolve => { finish = resolve; });
-  await page.route('**/api/v1/speech/transcriptions', async route => {
+  await page.route('**/api/v1/speech/transcriptions/direct', async route => {
     await pending;
     await route.fulfill({ json: { text: 'Late response', language: 'en' } }).catch(() => {});
   });
@@ -73,7 +69,7 @@ test('a late transcription cannot fill a different chat', async ({ page }) => {
 
 test('recording stops automatically without displaying the cap', async ({ page }) => {
   await page.clock.install();
-  await page.route('**/api/v1/speech/transcriptions', route => route.fulfill({ json: { text: 'Recorded question', language: 'en' } }));
+  await page.route('**/api/v1/speech/transcriptions/direct', route => route.fulfill({ json: { text: 'Recorded question', language: 'en' } }));
   await page.goto('/tests/voice-harness.html');
   await page.getByRole('button', { name: 'Record voice message', exact: true }).click();
   await page.clock.fastForward(30_200);
@@ -89,7 +85,7 @@ test('permission denial, cancellation, retry and switching chats', async ({ page
   await expect(page.getByRole('alert')).toContainText('permission was denied');
   await page.reload();
   let requests = 0;
-  await page.route('**/api/v1/speech/transcriptions', async route => {
+  await page.route('**/api/v1/speech/transcriptions/direct', async route => {
     requests++;
     if (requests === 1) await route.fulfill({ status: 429, json: { error: { message: 'Voice input is busy.' } } });
     else await route.fulfill({ json: { text: 'Hello', language: 'en' } });

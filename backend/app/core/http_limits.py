@@ -13,7 +13,7 @@ class JsonBodyLimit:
         headers = dict(scope.get('headers', []))
         # FastAPI reads a body even when Content-Type is missing or invalid.
         # Only the dedicated upload route has a separate, larger byte budget.
-        if scope.get('path') == '/api/v1/files/uploads' and scope.get('method') == 'POST':
+        if scope.get('path') in ('/api/v1/files/uploads','/api/v1/speech/transcriptions/direct') and scope.get('method') == 'POST':
             return await self.app(scope, receive, send)
         path = scope.get('path', '')
         maximum = 20 * 1024 * 1024 if path == '/api/v1/chat' else 2 * 1024 * 1024

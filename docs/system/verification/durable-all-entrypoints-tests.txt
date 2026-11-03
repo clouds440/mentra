@@ -1,0 +1,96 @@
+Executing <Task finished name='Task-7' coro=<AssessmentWorkflows.generate.<locals>.generate_batch() done, defined at /app/app/langchain/assessment_workflows.py:163> result=(GeneratedAsse...e_tokens=[])]), [{'answer_mode': 'text', 'question_type': 'written'}, {'answer_mode': 'text', 'question_type': 'written'}]) created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.162 seconds
+.................Executing <Task pending name='Task-211' coro=<AssessmentTests.test_busy_parse_capacity_defers_source_without_spending_attempt() running at /app/tests/test_assessments.py:160> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.111 seconds
+..........Executing <Task pending name='Task-322' coro=<AssessmentTests.test_multi_concept_question_uses_overall_grade_for_profile_once() running at /app/tests/test_assessments.py:364> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.527 seconds
+Executing <Task finished name='Task-322' coro=<AssessmentTests.test_multi_concept_question_uses_overall_grade_for_profile_once() done, defined at /app/tests/test_assessments.py:354> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.240 seconds
+.Executing <Task finished name='Task-333' coro=<AssessmentTests.test_original_bytes_are_external_to_attempt_rows() done, defined at /app/tests/test_assessments.py:408> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.136 seconds
+..Executing <Task pending name='Task-348' coro=<AssessmentTests.test_paper_requires_complete_confirmed_transcription() running at /app/tests/test_assessments.py:241> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.121 seconds
+..Executing <Task pending name='Task-370' coro=<AssessmentTests.test_pending_source_survives_staged_expiry_and_cleanup() running at /app/tests/test_assessments.py:94> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.153 seconds
+..Executing <Task finished name='Task-392' coro=<AssessmentTests.test_queue_diagnostics_detect_missing_worker_and_clear_after_observation() done, defined at /app/tests/test_assessments.py:131> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.163 seconds
+.Executing <Task finished name='Task-402' coro=<AssessmentTests.test_replacing_draft_source_releases_only_superseded_binding() done, defined at /app/tests/test_assessments.py:35> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.273 seconds
+..Executing <Task finished name='Task-423' coro=<AssessmentTests.test_source_job_reclaim_fences_stale_publication() done, defined at /app/tests/test_assessments.py:97> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.159 seconds
+.Executing <Task pending name='Task-433' coro=<AssessmentTests.test_source_job_survives_client_and_replays_completed_result() running at /app/tests/test_assessments.py:70> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.145 seconds
+.Executing <Task finished name='Task-443' coro=<AssessmentTests.test_source_migration_requires_drain_and_retains_originals() done, defined at /app/tests/test_assessments.py:169> exception=ProgrammingError('(psycopg.errors.UndefinedTable) relation "assessment_source_job" does not exist\nLINE 2: FROM assessment_source_job \n             ^') created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 1.149 seconds
+E..........Executing <Task finished name='Task-483' coro=<EvaluationBatchTests.test_context_overflow_never_spawns_more_batches_or_trims_answers() done, defined at /app/tests/test_assessment_evaluation_latency.py:104> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 1.163 seconds
+.....Assessment grading failed (TimeoutError)
+........
+======================================================================
+ERROR: test_source_migration_requires_drain_and_retains_originals (tests.test_assessments.AssessmentTests.test_source_migration_requires_drain_and_retains_originals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/usr/local/lib/python3.12/site-packages/psycopg/cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UndefinedTable: relation "assessment_source_job" does not exist
+LINE 2: FROM assessment_source_job 
+             ^
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_assessments.py", line 186, in test_source_migration_requires_drain_and_retains_originals
+    self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'draft')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/core/observability/registration.py", line 100, in wrapped
+    value = fn(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^
+  File "/app/app/assessments/repositories/postgres.py", line 212, in attempt
+    with self.sessions() as session: return self.attempt_public(self._attempt(session, owner, identifier))
+                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/assessments/repositories/postgres.py", line 44, in _attempt
+    row = session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner, t.c.id == identifier)).mappings().first()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2373, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2280, in _execute_internal
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/usr/local/lib/python3.12/site-packages/psycopg/cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.ProgrammingError: (psycopg.errors.UndefinedTable) relation "assessment_source_job" does not exist
+LINE 2: FROM assessment_source_job 
+             ^
+[SQL: SELECT assessment_attempt.log_context, assessment_attempt.id, assessment_attempt.learner_id, assessment_attempt.assessment_id, assessment_attempt.operation_id, assessment_attempt.attempt_number, assessment_attempt.revision, assessment_attempt.state, assessment_attempt.created_at, assessment_attempt.submitted_at, assessment_attempt.answers, assessment_attempt.grades, assessment_attempt.extraction, assessment_attempt.source_file_id, assessment_attempt.filename, assessment_attempt.submission_id, assessment_attempt.submission_hash, assessment_attempt.retry_request_id, assessment_attempt.manual_retries, assessment_attempt.claim_id, assessment_attempt.claim_until, assessment_attempt.worker_attempts, assessment_attempt.retry_at, assessment_attempt.error, assessment_attempt.evidence_status, assessment_attempt.evidence_receipt, assessment_attempt.grade_revision, assessment_attempt.grade_history, assessment_attempt.assistance, assessment_attempt.reported_assistance, assessment_attempt.scoring, assessment_attempt.profile_context_version, assessment_attempt.start_fingerprint, assessment_attempt.chat_inputs, EXISTS (SELECT assessment_source_job.id 
+FROM assessment_source_job 
+WHERE assessment_source_job.learner_id = assessment_attempt.learner_id AND assessment_source_job.attempt_id = assessment_attempt.id AND assessment_source_job.expected_revision = assessment_attempt.revision AND (assessment_source_job.state IN (%(state_1_1)s::VARCHAR, %(state_1_2)s::VARCHAR) OR assessment_source_job.state = %(state_2)s::VARCHAR AND assessment_source_job.retry_at IS NOT NULL)) AS source_pending, (SELECT assessment_source_job.error 
+FROM assessment_source_job 
+WHERE assessment_source_job.learner_id = assessment_attempt.learner_id AND assessment_source_job.attempt_id = assessment_attempt.id AND assessment_source_job.expected_revision = assessment_attempt.revision AND assessment_source_job.state = %(state_3)s::VARCHAR AND assessment_source_job.retry_at IS NULL ORDER BY assessment_source_job.created_at DESC, assessment_source_job.id DESC 
+ LIMIT %(param_1)s::INTEGER) AS source_error 
+FROM assessment_attempt 
+WHERE assessment_attempt.learner_id = %(learner_id_1)s::UUID AND assessment_attempt.id = %(id_1)s::UUID]
+[SQL parameters hidden due to hide_parameters=True]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+----------------------------------------------------------------------
+Ran 63 tests in 85.557s
+
+FAILED (errors=1)

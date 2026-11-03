@@ -135,11 +135,17 @@ async def practise_mistakes(identifier: UUID, body: MistakePracticeRequest, requ
 async def submit(identifier: UUID, body: SubmitAnswers, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.submit, identity.learner_id, str(identifier), body)
 
-@router.post('/attempts/{identifier}/source', response_model=Attempt)
+@router.post('/attempts/{identifier}/source')
 async def source(identifier: UUID, request: Request, body: 'AssessmentSource', identity=Depends(require_onboarded_identity)):
-    from app.db.admission import request_capacity
-    async with request_capacity(request, identity.learner_id, 'parse', seconds=600):
-        return await request.app.state.assessment_service.upload_paper_with_vision(identity.learner_id, str(identifier), body.expected_revision, str(body.file_id))
+    from app.assessments.repositories.source_jobs import SourceJobs
+    return await run_in_threadpool(SourceJobs(request.app.state.assessment_service.repository).enqueue,
+        identity.learner_id,str(identifier),str(body.file_id),body.expected_revision)
+
+@router.get('/source-jobs/{identifier}')
+async def source_job(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
+    from app.assessments.repositories.source_jobs import SourceJobs
+    return await run_in_threadpool(SourceJobs(request.app.state.assessment_service.repository).get,
+        identity.learner_id,str(identifier))
 
 @router.post('/attempts/{identifier}/retry', response_model=Attempt)
 async def retry(identifier: UUID, body: RetryGrading, request: Request, identity=Depends(require_onboarded_identity)):

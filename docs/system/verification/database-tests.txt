@@ -1,0 +1,41 @@
+Exception ignored while finalizing file <_io.BytesIO object at 0x0000020565DDBFB0>:
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\create.py", line 669, in create_engine
+    creator = pop_kwarg("creator", connect)
+BufferError: Existing exports of data: object cannot be re-sized
+Assessment grading failed (AppError)
+C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+  import multipart
+C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\starlette\testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+  _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\fastapi\routing.py:233: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+  is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\starlette\_utils.py:40: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+  return asyncio.iscoroutinefunction(obj) or (callable(obj) and asyncio.iscoroutinefunction(obj.__call__))
+Executing <Task pending name='Task-101' coro=<AssessmentTests.test_multi_concept_question_uses_overall_grade_for_profile_once() running at C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py:232> cb=[_run_until_complete_cb() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:181] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.504 seconds
+Executing <Task finished name='Task-112' coro=<AssessmentTests.test_original_bytes_are_external_to_attempt_rows() done, defined at C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py:276> result=None created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.140 seconds
+Executing <Task pending name='Task-127' coro=<AssessmentTests.test_paper_requires_complete_confirmed_transcription() running at C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py:109> cb=[_run_until_complete_cb() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:181, <3 more>, WorkerThread.stop()] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.100 seconds
+Executing <Task finished name='Task-161' coro=<AssessmentTests.test_replacing_draft_source_releases_only_superseded_binding() done, defined at C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py:35> result=None created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.267 seconds
+Executing <Task finished name='Task-171' coro=<AssessmentTests.test_rollback_keeps_grades_and_mastery_uncommitted() done, defined at C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py:89> result=None created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.117 seconds
+======================================================================
+FAIL: test_large_valid_answers_are_graded_without_single_huge_call (backend.tests.test_assessments.AssessmentTests.test_large_valid_answers_are_graded_without_single_huge_call)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py", line 720, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_assessments.py", line 189, in test_large_valid_answers_are_graded_without_single_huge_call
+    self.assertEqual(graded.state,'graded')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'failed' != 'graded'
+- failed
++ graded
+
+
+----------------------------------------------------------------------
+Ran 23 tests in 23.273s
+
+FAILED (failures=1)

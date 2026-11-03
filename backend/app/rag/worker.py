@@ -141,6 +141,8 @@ def main():
     vector_store = QdrantVectorStore(settings, embedding)
     worker = IngestionWorker(create_rag_service(create_learner_engine(), embedding, vector_store, files, warmup=False))
     stopping = False
+    from app.db.worker_status import Heartbeat
+    heartbeat = Heartbeat(worker.repository.sessions)
 
     def stop(*_args):
         nonlocal stopping
@@ -153,6 +155,7 @@ def main():
         while not stopping:
             if not worker.run_once():
                 time.sleep(1)
+            heartbeat.pulse('rag.ingestion')
             if time.monotonic() - last_sweep > 60:
                 try:
                     worker.reconcile()

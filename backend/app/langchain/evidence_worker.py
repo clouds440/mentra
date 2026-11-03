@@ -8,7 +8,8 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(ignore=('run_once',))
 class ChatEvidenceWorker:
-    def __init__(self,repository,llm,learner):self.repository,self.llm,self.learner=repository,llm,learner
+    def __init__(self,repository,llm,learner,admission=None):
+        self.repository,self.llm,self.learner,self.admission=repository,llm,learner,admission
     async def run_once(self):
         from starlette.concurrency import run_in_threadpool
         job=await run_in_threadpool(self.repository.claim)
@@ -18,7 +19,9 @@ class ChatEvidenceWorker:
             try:
                 packet=await run_in_threadpool(self.learner.get_relevant_context,LearnerContextRequest(learner_id=job['owner'],query=(job['question']+'\n'+job['user']['content'])[:4000],max_concepts=8,include_related=False))
                 allowed={concept.concept_id for concept in packet.concepts}
-                result=await asyncio.wait_for(self.llm.ainvoke(PromptSource.CHAT_EVIDENCE,dict(question=job['question'][:8000],answer=job['user']['content'],concepts=packet.model_dump(mode='json')),output_schema=DemonstrationExtraction),60) if allowed else DemonstrationExtraction(assessable=False)
+                from app.db.admission import background_capacity
+                async with background_capacity(self.admission,job['owner'],seconds=90):
+                    result=await asyncio.wait_for(self.llm.ainvoke(PromptSource.CHAT_EVIDENCE,dict(question=job['question'][:8000],answer=job['user']['content'],concepts=packet.model_dump(mode='json')),output_schema=DemonstrationExtraction),60) if allowed else DemonstrationExtraction(assessable=False)
                 requests=[]
                 if result.assessable:
                     for item in result.observations:
@@ -38,6 +41,8 @@ class ChatEvidenceWorker:
                 execution.outcome = 'success'
             except Exception as error:
                 execution.outcome = 'failed'
-                await run_in_threadpool(self.repository.fail,job)
+                from app.core.exceptions import AppError
+                deferred = isinstance(error,AppError) and error.code == 'WORK_CAPACITY'
+                await run_in_threadpool(self.repository.fail,job,**({'deferred':True} if deferred else {}))
                 logging.getLogger('mentra').warning('Chat evidence job failed (%s)',type(error).__name__)
             return True

@@ -13,6 +13,9 @@
 
 These standards describe the current React, TypeScript, Vite, and Tailwind CSS codebase. Update them when an important frontend convention changes.
 
+- Long answer-sheet operations return durable jobs. Render pending/recoverable failure, poll owner-scoped canonical attempts, and handle source-state changes even when the attempt revision stays the same. Polling must never submit answers or imply completed grading.
+- Browser voice intake uses the bounded direct multipart transcription endpoint and a stable operation UUID per recording retry. Keep existing drafts on errors. Notifications share an authenticated revision stream per owner and abort subscriptions on owner change/unmount. RAG mutations invalidate dependent page caches.
+
 ## Compact visual system
 
 - Default buttons and fields are 36px; small buttons are 32px and large buttons 40px. Coarse-pointer controls grow to 40px and icon controls to 44px. Keep glyphs compact while preserving usable hit areas.

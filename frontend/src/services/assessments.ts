@@ -28,7 +28,22 @@ export const assessments = {
   attempt: (id: string, signal: AbortSignal) => apiRequest<AssessmentAttempt>(`${base}/attempts/${id}`, { signal }),
   saveDraft: (attempt: AssessmentAttempt, answers: Record<string, string>, signal: AbortSignal, assistance?: import('../types/assessments').AssessmentAssistance) => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/draft`, { method: 'PUT', signal, body: JSON.stringify({ expected_revision: attempt.revision, answers, assistance }) }),
   submit: (attempt: AssessmentAttempt, answers: Record<string, string>, operation: string, confirmed: boolean, signal: AbortSignal, assistance: 'unknown' | 'independent' | 'assisted' = 'unknown') => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/submission`, { method: 'POST', signal, body: JSON.stringify({ expected_revision: attempt.revision, client_request_id: operation, answers, transcription_confirmed: confirmed, assistance }) }),
-  paper: async (attempt: AssessmentAttempt, file: File, signal: AbortSignal) => { const stored = await uploadFile(file, file.name, 'assessment', signal); return apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/source`, { method: 'POST', signal, body: JSON.stringify({ file_id: stored.id, expected_revision: attempt.revision }) }); },
+  paper: async (attempt: AssessmentAttempt, file: File, signal: AbortSignal) => {
+    const stored = await uploadFile(file, file.name, 'assessment', signal);
+    type SourceJob = { id: string; state: string; retry_pending: boolean; attempt: AssessmentAttempt | null };
+    let job = await apiRequest<SourceJob>(`${base}/attempts/${attempt.id}/source`, { method: 'POST', signal, body: JSON.stringify({ file_id: stored.id, expected_revision: attempt.revision }) });
+    while (job.state === 'queued' || job.state === 'running' || job.retry_pending) {
+      await new Promise<void>((resolve, reject) => {
+        if (signal.aborted) { reject(new DOMException('Aborted', 'AbortError')); return; }
+        const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', cancel); resolve(); }, 1000);
+        signal.addEventListener('abort', cancel, { once: true });
+      });
+      job = await apiRequest<SourceJob>(`${base}/source-jobs/${job.id}`, { signal, cache: 'no-store' });
+    }
+    if (!job.attempt) throw new Error('Answer-sheet extraction did not finish. Retry this upload.');
+    return job.attempt;
+  },
   remove: (id: string, signal: AbortSignal) => apiRequest<void>(`${base}/${id}`, { method: 'DELETE', signal }),
   correct: (attempt: AssessmentAttempt, answers: Record<string,string>, operation: string, confirmed: boolean, signal: AbortSignal, assistance: 'unknown' | 'independent' | 'assisted' = 'unknown') => apiRequest<AssessmentAttempt>(`${base}/attempts/${attempt.id}/corrections`, { method:'POST', signal,body:JSON.stringify({expected_revision:attempt.revision,client_request_id:operation,answers,transcription_confirmed:confirmed,assistance}) }),
 };

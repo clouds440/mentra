@@ -21,6 +21,8 @@ def transcribe_file(files, processor, owner, file_id):
             .first()
         )
         if row:
+            if row.get('request_hash') is not None:
+                raise AppError('SPEECH_OPERATION_CONFLICT','This request ID belongs to a transient recording.',409)
             if row["expires_at"] <= now():
                 raise missing()
             if row["result"] is not None:

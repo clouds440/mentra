@@ -379,3 +379,5 @@ class Attempt(Contract):
     reported_assistance: AssessmentAssistance = AssessmentAssistance.unknown
     scoring: AttemptScoring | None = None
     retry_pending: bool = False
+    source_pending: bool = False
+    source_error: str | None = None

@@ -1,0 +1,71 @@
+Executing <Task finished name='Task-21' coro=<AssessmentWorkflows.generate.<locals>.generate_batch() done, defined at /app/app/langchain/assessment_workflows.py:163> result=(GeneratedAsse...e_tokens=[])]), [{'answer_mode': 'text', 'question_type': 'written'}, {'answer_mode': 'text', 'question_type': 'written'}]) created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.173 seconds
+Executing <Task finished name='Task-116' coro=<AssessmentTests.test_misconceptions_follow_accepted_grading_evidence() done, defined at /app/tests/test_assessments.py:366> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.213 seconds
+Executing <Task finished name='Task-138' coro=<AssessmentTests.test_original_bytes_are_external_to_attempt_rows() done, defined at /app/tests/test_assessments.py:389> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.145 seconds
+Executing <Task pending name='Task-153' coro=<AssessmentTests.test_paper_requires_complete_confirmed_transcription() running at /app/tests/test_assessments.py:222> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.109 seconds
+Executing <Task finished name='Task-187' coro=<AssessmentTests.test_queue_diagnostics_detect_missing_worker_and_clear_after_observation() done, defined at /app/tests/test_assessments.py:112> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.150 seconds
+Executing <Task finished name='Task-197' coro=<AssessmentTests.test_replacing_draft_source_releases_only_superseded_binding() done, defined at /app/tests/test_assessments.py:35> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.245 seconds
+Executing <Task finished name='Task-218' coro=<AssessmentTests.test_source_job_reclaim_fences_stale_publication() done, defined at /app/tests/test_assessments.py:78> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.144 seconds
+Executing <Task pending name='Task-228' coro=<AssessmentTests.test_source_job_survives_client_and_replays_completed_result() running at /app/tests/test_assessments.py:70> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.135 seconds
+No new upgrade operations detected.
+Executing <Task finished name='Task-238' coro=<AssessmentTests.test_source_migration_requires_drain_and_retains_originals() done, defined at /app/tests/test_assessments.py:150> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 2.518 seconds
+/app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+RAG worker job failed: 46e1df35-0c2f-4069-b272-b9f5b809c389
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+RAG worker job failed: 9ed3ede8-09dc-4c00-badf-457985964ac2
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+RAG worker job failed: b408e509-58e8-4c05-9f03-3132a4f3af0a
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 90, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+RAG worker job failed: 4f0793a3-1254-458b-b950-b339533196a4
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 98, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (ValueError)
+Chat summary read deferred (RuntimeError)
+No new upgrade operations detected.
+No new upgrade operations detected.
+----------------------------------------------------------------------
+Ran 237 tests in 263.958s
+
+OK

@@ -6,6 +6,10 @@
 
 These standards describe the current Python and FastAPI codebase. Update them when an important backend convention changes.
 
+- Local model adapters use `core.inference_device` with backend-specific availability checks. Consume lazy output inside a pure inference callback; discard partial output on device failure, retry once on CPU and retain the supervisor deadline. Device changes do not alter model identity. Never force unsupported GPU operation for CPU-only engines.
+- Long answer-sheet extraction uses the owned durable source queue from both HTTP and chat entry points. Fence publication by claim and attempt revision, protect pending source files, and require explicit transcription review before grading. Reserve shared background/total model admission; capacity deferrals must not consume actual-failure budgets.
+- Fix acceptance requires a discriminating regression or before/after experiment and honest limits. Preserve superseded evidence with model/version/configuration identity; record local verification separately from deployment.
+
 - The main chat model chooses tools semantically using conversation context, configured capabilities and explicit entity IDs. Never infer tool requirements, assessment consent, answer submission or freshness from keywords. Availability does not mandate execution. Use bounded discovery for missing schemas; retain domain-owned authorization and provenance checks.
 - A graph reaching END is execution status, not fulfillment. Persist a versioned response outcome with tool receipts and live job references, preserve partial answers, and retain retryable checkpoints. Aggregate history/status from owner-scoped current job states; reads cannot prove writes or finished generation/grading. Refresh retry budgets per admitted attempt while retaining completed effects and uncertain-write guards.
 

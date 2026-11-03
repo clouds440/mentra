@@ -468,7 +468,7 @@ class StudentProfileTests(unittest.TestCase):
         self.fill_details()
         with self.db.engine.connect() as connection:
             command.check(migration_config(connection))
-        with self.db.engine.begin() as connection:
+        with self.db.engine.connect() as connection:
             command.downgrade(migration_config(connection), '20261007_0002')
         upgrade(self.db.engine)
         self.assertEqual(self.service.get(A).onboarding_phase, 'information')

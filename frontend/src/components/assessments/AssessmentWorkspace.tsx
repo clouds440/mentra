@@ -159,7 +159,7 @@ export function AnswerSheet({ assessment, initial, onChange, actions }: { assess
   const active = useRef<AbortController | null>(null);
   const operation = useRef(crypto.randomUUID());
   useEffect(() => () => active.current?.abort(), []);
-  useEffect(() => { assessmentSession.observe(owner, attempt); }, [owner, attempt.id, attempt.state, attempt.revision, attempt.retry_pending]);
+  useEffect(() => { assessmentSession.observe(owner, attempt); }, [owner, attempt.id, attempt.state, attempt.revision, attempt.retry_pending, attempt.source_pending]);
   useEffect(() => { if (canonical && canonical !== attempt && canonical.revision >= attempt.revision) { if (canonical.state === 'pending_transcription' && (attempt.state !== 'pending_transcription' || attempt.extraction !== canonical.extraction)) { setAnswers(canonical.extraction?.answers ?? canonical.answers); setConfirmed(false); } setAttempt(canonical); onChange(canonical); } }, [canonical, attempt]);
   const evaluating = ['submitted','grading'].includes(attempt.state) || attempt.state === 'failed' && !!attempt.retry_pending;
   const quizPending = evaluating && usesInteractiveAssessment(assessment);
@@ -188,7 +188,9 @@ export function AnswerSheet({ assessment, initial, onChange, actions }: { assess
     } catch(reason) { if(!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Could not retry evaluation. Your submitted answers are kept.'); }
     finally { if(!controller.signal.aborted) setBusy(false); }
   }
+  if (attempt.source_pending) return <section aria-label="Assessment answer sheet" className="space-y-5"><p role="status">Reading your answer sheet. You can leave this page; your assessment is saved.</p>{actions}</section>;
   return <section aria-label="Assessment answer sheet" className="space-y-5">
+    {attempt.source_error && <p role="alert" className="text-sm text-danger">{attempt.source_error} Upload the sheet again or enter your answers below.</p>}
     <PracticeNotice assessment={assessment} />
     <PaperHeader assessment={assessment} />
 

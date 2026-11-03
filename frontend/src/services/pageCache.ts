@@ -32,6 +32,7 @@ export function invalidateMutation(path: string) {
     documents: ['documents', 'learning', 'assessments'], 'learning-contexts': ['learning-contexts', 'documents', 'learning', 'assessments'],
     events: ['events', 'event-proposals', 'notifications'], 'event-proposals': ['events', 'event-proposals', 'notifications'],
     memories: ['memories'], notifications: ['notifications'],
+    rag: ['documents', 'learning', 'assessments'],
     'student-profile': ['learning', 'learning-contexts'],
   };
   if (dependencies[domain]) invalidatePageCache(dependencies[domain], true);

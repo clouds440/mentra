@@ -35,11 +35,15 @@ async def run():
     configure_logging('summarizer')
     init_db()
     sessions = get_session_factory()
+    from app.db.admission import Admission
+    admission = Admission(sessions,settings=settings)
+    from app.db.worker_status import Heartbeat
+    heartbeat = Heartbeat(sessions)
     memories = MemorySummaryRepository(sessions)
     llm = MentraLLM(ModelFactory(settings))
-    chats = ChatSummaryConsumer(ChatRepository(sessions), llm)
+    chats = ChatSummaryConsumer(ChatRepository(sessions), llm,admission)
     from app.history_management.memory.capture import AutomaticMemories
-    capture = AutomaticMemories(sessions, llm)
+    capture = AutomaticMemories(sessions, llm,admission=admission)
     parser = argparse.ArgumentParser()
     parser.add_argument('--retry-owner', type=UUID, help='Owner of the memories or chat to retry.')
     parser.add_argument('--chat', type=UUID, help='With --retry-owner, retry this chat instead of memories.')
@@ -60,7 +64,7 @@ async def run():
         else:
             memories.retry(str(args.retry_owner))
         return
-    service = Summarizer(MemorySummaries(memories, llm), chats, capture)
+    service = Summarizer(MemorySummaries(memories, llm,admission), chats, capture)
     stopping = asyncio.Event()
     for name in (signal.SIGTERM, signal.SIGINT):
         signal.signal(name, lambda *_: stopping.set())
@@ -74,6 +78,7 @@ async def run():
         while not stopping.is_set():
             try:
                 processed = await service.run_once()
+                await run_in_threadpool(heartbeat.pulse,'summarizer')
             except Exception as error:
                 logger.warning('Summary job deferred (%s)', type(error).__name__)
                 processed = False

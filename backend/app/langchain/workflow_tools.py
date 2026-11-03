@@ -226,8 +226,12 @@ def create_workflow_tools(owner, scope, budget):
                 if attachment_id:
                     if attempt.state == 'draft':
                         try:
-                            attempt = await service.upload_paper_with_vision(owner, str(attempt.id), attempt.revision,
-                                attachment['file_id'],from_chat=True)
+                            from app.assessments.repositories.source_jobs import SourceJobs
+                            job = await run_in_threadpool(SourceJobs(service.repository).enqueue,owner,
+                                str(attempt.id),attachment['file_id'],attempt.revision,from_chat=True)
+                            return dict(outcome='answer_preparation_queued',assessment_id=card['assessment_id'],
+                                attempt_id=str(attempt.id),source_job_id=job['id'],assessment_saved=True,
+                                next_step='The answer sheet is queued for reading. The inline card updates when ready for review. Nothing has been submitted for grading.')
                         except Exception as error:
                             return dict(outcome='answer_preparation_failed', assessment_id=card['assessment_id'],
                                 attempt_id=str(attempt.id), assessment_saved=True,

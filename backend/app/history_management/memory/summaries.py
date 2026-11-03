@@ -8,14 +8,15 @@ from app.core.observability.timing import run_in_threadpool
 from app.langchain.prompts import PromptSource
 from app.langchain.token_policy import check_input
 from .summary_schemas import MemorySummary, fits, encoded
-from app.summarization.execution import generation
+from app.summarization.execution import generation, SummaryDeferred
 
 logger = logging.getLogger('mentra')
 
 
 class MemorySummaries:
-    def __init__(self, repository, llm):
+    def __init__(self, repository, llm, admission=None):
         self.repository, self.llm = repository, llm
+        self.admission = admission
 
     async def run_once(self):
         if not settings.memory_summary_enabled:
@@ -53,7 +54,7 @@ class MemorySummaries:
                 if not allowed:
                     blocks = []
                 else:
-                    async with generation():
+                    async with generation(self.admission,claim['learner_id']):
                         for repair in range(2):
                             result = await self.llm.ainvoke(PromptSource.MEMORY_SUMMARY, payload, output_schema=MemorySummary)
                             blocks = result.model_dump(mode='json')['blocks']
@@ -74,6 +75,9 @@ class MemorySummaries:
             except asyncio.CancelledError:
                 await run_in_threadpool(self.repository.release, claim)
                 raise
+            except SummaryDeferred as error:
+                await run_in_threadpool(self.repository.release,claim,retry_at=error.until)
+                execution.outcome = 'deferred'
             except Exception as error:
                 await run_in_threadpool(self.repository.release, claim, error)
                 execution.outcome = 'failed'

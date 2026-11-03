@@ -119,7 +119,7 @@ class EvaluationBatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('sources', packet['questions'][0])
 
     async def test_timeout_stops_automatic_retries_without_resetting_answers(self):
-        job = synthetic_job(1); job['id'] = 'attempt'
+        job = synthetic_job(1); job['id'] = 'attempt'; job['owner'] = str(uuid4())
         failed = []
         async def slow(*args, **kwargs): await asyncio.sleep(5)
         repo = SimpleNamespace(claim=lambda: job, checkpoint_grades=lambda *args: None,

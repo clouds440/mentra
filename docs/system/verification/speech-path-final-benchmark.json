@@ -1,0 +1,116 @@
+{
+  "audio_sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+  "baseline_commit": "c3f0537",
+  "backend": "CPU INT8",
+  "model": "base",
+  "beam": 3,
+  "threads": 2,
+  "storage": "instrumented memory; no live provider",
+  "transport_delay_ms": 0,
+  "medians": {
+    "stored": 4.3529211959998975,
+    "direct": 4.2849528570000075
+  },
+  "rows": [
+    {
+      "mode": "stored",
+      "trial": 0,
+      "wall_seconds": 4.554607109999779,
+      "processing_seconds": 4.3103859869997905,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 1,
+      "downloads": 2
+    },
+    {
+      "mode": "direct",
+      "trial": 0,
+      "wall_seconds": 4.2849528570000075,
+      "processing_seconds": 4.276945744999921,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 0,
+      "downloads": 0
+    },
+    {
+      "mode": "direct",
+      "trial": 1,
+      "wall_seconds": 4.235628729999917,
+      "processing_seconds": 4.225529037000342,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 0,
+      "downloads": 0
+    },
+    {
+      "mode": "stored",
+      "trial": 1,
+      "wall_seconds": 4.3529211959998975,
+      "processing_seconds": 4.310124534999886,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 1,
+      "downloads": 2
+    },
+    {
+      "mode": "stored",
+      "trial": 2,
+      "wall_seconds": 4.348719654999968,
+      "processing_seconds": 4.306902195000021,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 1,
+      "downloads": 2
+    },
+    {
+      "mode": "direct",
+      "trial": 2,
+      "wall_seconds": 4.316249513999992,
+      "processing_seconds": 4.307981669000128,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 0,
+      "downloads": 0
+    },
+    {
+      "mode": "direct",
+      "trial": 3,
+      "wall_seconds": 4.466859724999722,
+      "processing_seconds": 4.458783954999944,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 0,
+      "downloads": 0
+    },
+    {
+      "mode": "stored",
+      "trial": 3,
+      "wall_seconds": 4.375401731999773,
+      "processing_seconds": 4.329288813999938,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 1,
+      "downloads": 2
+    },
+    {
+      "mode": "stored",
+      "trial": 4,
+      "wall_seconds": 4.238290455999959,
+      "processing_seconds": 4.179172581999865,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 1,
+      "downloads": 2
+    },
+    {
+      "mode": "direct",
+      "trial": 4,
+      "wall_seconds": 4.282466797000325,
+      "processing_seconds": 4.27429879500005,
+      "language": "en",
+      "transcript_sha256": "e0be58016a5a1d8b88448e3520ca91c82f4070a87fa5d133de5970d54f17090b",
+      "uploads": 0,
+      "downloads": 0
+    }
+  ]
+}

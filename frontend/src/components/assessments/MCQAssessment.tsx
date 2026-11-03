@@ -82,7 +82,7 @@ export function MCQAssessment({ assessment, initial, onChange, onStart, disabled
     } finally { assessmentSession.end(owner, submission); lock.current = false; if (!controller.signal.aborted) setBusy(false); }
   }
   if (busy) return <section className="space-y-4"><p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Submitting your answers…</p><QuizAnswerReview assessment={assessment} answers={answers} /></section>;
-  if (attempt && attempt.state !== 'draft') return <AnswerSheet assessment={assessment} initial={attempt} onChange={onChange} actions={actions} />;
+  if (attempt && (attempt.state !== 'draft' || attempt.source_pending || attempt.source_error)) return <AnswerSheet assessment={assessment} initial={attempt} onChange={onChange} actions={actions} />;
   return <section aria-label="Interactive quiz" className="space-y-4">
     <PracticeNotice assessment={assessment} />
     <div className="flex flex-wrap items-start justify-between gap-3"><AnswerSheetUpload attempt={attempt} onStart={onStart} draftAnswers={answers} assistance={assistance} onBusyChange={setUploading} disabled={disabled || busy} onChange={result => { setAttempt(result); assessmentSession.observe(owner, result); onChange(result); }} /><PrintPaperButton assessment={assessment} /></div>

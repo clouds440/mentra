@@ -14,6 +14,8 @@ def main():
     configure_logging('events-worker')
     init_db()
     sessions = get_session_factory()
+    from app.db.worker_status import Heartbeat
+    heartbeat = Heartbeat(sessions)
     repository = EventRepository(sessions, notifications=create_notifications(sessions))
     stopping = Event()
     from app.chat.repositories.attachments import AttachmentRepository
@@ -28,6 +30,7 @@ def main():
                 if execution.outcome == 'unknown':
                     execution.outcome = 'success'
                 workflow_logger.event('reminder.batch', processed_count=count)
+            heartbeat.pulse('events.reminders')
             if monotonic() - last_cleanup >= 60:
                 AttachmentRepository(sessions).cleanup_unsent()
                 from app.auth.repositories.postgres import PostgresIdentityRepository

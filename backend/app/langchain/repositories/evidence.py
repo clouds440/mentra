@@ -2,6 +2,7 @@ import re
 from datetime import datetime,timezone,timedelta
 from uuid import uuid4
 from sqlalchemy import select,update,and_,or_,func
+from sqlalchemy.dialects.postgresql import insert
 from app.db.owner_transactions import OwnerTransactions
 from app.chat.repositories.tables import messages,turns,conversations
 from app.core.exceptions import AppError
@@ -15,6 +16,11 @@ class ChatEvidenceRepository:
 
     @staticmethod
     def queue(session,owner,job):
+        eligible = session.scalar(select(turns.c.id).where(turns.c.id == job['turn_id'],
+            turns.c.learner_id == owner, turns.c.attempt == job['attempt'], turns.c.state == 'SUCCEEDED',
+            or_(turns.c.response_outcome.is_(None),turns.c.response_outcome['state'].astext=='completed')))
+        if not eligible:
+            return
         # Formal assessment answers are admitted by the grading worker once.
         # Never also treat their review-card exchange as informal chat evidence.
         cards = session.execute(select(messages.c.metadata).where(messages.c.learner_id==owner,
@@ -28,13 +34,24 @@ class ChatEvidenceRepository:
         if not previous or '?' not in previous or re.match(r'^(please|help|explain|what|how|why|can you|could you|i don.t know|my exam|remember)\b',text): return
         from app.student_profile.repositories.tables import student_profile
         version = session.scalar(select(student_profile.c.context_version).where(student_profile.c.learner_id == owner))
-        session.execute(jobs.insert().values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc),log_context=workflow_logger.envelope(),profile_context_version=version))
+        statement = insert(jobs).values(turn_id=job['turn_id'],learner_id=owner,attempt=job['attempt'],state='queued',attempts=0,created_at=datetime.now(timezone.utc),log_context=workflow_logger.envelope(),profile_context_version=version)
+        # Retire/requeue only an older, unapplied source attempt. Accepted evidence
+        # and an in-flight claim must never be silently overwritten on replay.
+        session.execute(statement.on_conflict_do_update(index_elements=[jobs.c.turn_id],
+            set_=dict(attempt=job['attempt'], state='queued', attempts=0, claim_id=None,
+                claim_until=None, retry_at=None, log_context=workflow_logger.envelope(), profile_context_version=version),
+            where=(jobs.c.attempt < job['attempt']) & jobs.c.state.in_(['queued','ignored','failed'])))
 
     def source(self,session,owner,turn_id,attempt):
         turn=session.execute(select(turns).join(conversations,(turns.c.conversation_id==conversations.c.id)&(turns.c.learner_id==conversations.c.learner_id)).where(turns.c.learner_id==owner,turns.c.id==turn_id,conversations.c.deleted_at.is_(None))).mappings().first()
-        if not turn or turn['attempt']!=attempt or turn['state']!='SUCCEEDED': raise AppError('EVIDENCE_SOURCE_EXPIRED','Evidence source is no longer available.',409)
+        if not turn or turn['attempt']!=attempt or turn['state']!='SUCCEEDED' or (turn.get('response_outcome') or {}).get('state') not in (None,'completed'):
+            raise AppError('EVIDENCE_SOURCE_EXPIRED','Evidence source is no longer available.',409)
         rows=session.execute(select(messages).where(messages.c.learner_id==owner,messages.c.conversation_id==turn['conversation_id'],messages.c.sequence.in_([turn['user_sequence']-1,turn['user_sequence']]))).mappings().all()
-        return dict(turn=dict(turn),question=next(row['content'] for row in rows if row['role']=='assistant'),user=dict(next(row for row in rows if row['role']=='user')))
+        question = next((row for row in rows if row['role']=='assistant'), None)
+        user = next((row for row in rows if row['role']=='user'), None)
+        if question is None or user is None:
+            raise AppError('EVIDENCE_SOURCE_EXPIRED', 'Evidence source is no longer available.', 409)
+        return dict(turn=dict(turn),question=question['content'],user=dict(user))
 
     def claim(self):
         now=datetime.now(timezone.utc)
@@ -54,7 +71,14 @@ class ChatEvidenceRepository:
                     continue
                 if row['state']=='failed' and (not row['retry_at'] or row['retry_at']>now):
                     continue
-                source=self.source(tx._session,owner,turn_id,row['attempt'])
+                try:
+                    source=self.source(tx._session,owner,turn_id,row['attempt'])
+                except AppError as error:
+                    if error.code != 'EVIDENCE_SOURCE_EXPIRED':
+                        raise
+                    tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id,
+                        jobs.c.learner_id==owner).values(state='ignored',claim_id=None,claim_until=None,retry_at=None))
+                    continue
                 claim=str(uuid4())
                 tx._session.execute(update(jobs).where(jobs.c.turn_id==turn_id).values(state='running',claim_id=claim,claim_until=now+timedelta(seconds=90),attempts=row['attempts']+1))
                 return dict(owner=owner,turn_id=turn_id,attempt=row['attempt'],claim_id=claim,log_context=row['log_context'],profile_context_version=row['profile_context_version'],**source)
@@ -80,9 +104,11 @@ class ChatEvidenceRepository:
             receipt=apply(tx)
             tx._session.execute(update(jobs).where(jobs.c.turn_id==job['turn_id']).values(state='applied' if receipt else 'ignored',receipt=receipt,claim_id=None,claim_until=None))
 
-    def fail(self,job):
+    def fail(self,job,*,deferred=False):
         with self.transactions.write(job['owner']) as tx:
             row=tx._session.execute(select(jobs).where(jobs.c.turn_id==job['turn_id'],jobs.c.learner_id==job['owner'])).mappings().first()
             if not row or row['claim_id']!=job['claim_id']:return
-            tx._session.execute(update(jobs).where(jobs.c.turn_id==job['turn_id']).values(state='failed',claim_id=None,claim_until=None,retry_at=datetime.now(timezone.utc)+timedelta(seconds=5*2**row['attempts'])))
+            tx._session.execute(update(jobs).where(jobs.c.turn_id==job['turn_id']).values(state='failed',claim_id=None,claim_until=None,
+                attempts=max(0,row['attempts']-1) if deferred else row['attempts'],
+                retry_at=datetime.now(timezone.utc)+timedelta(seconds=5 if deferred else 5*2**row['attempts'])))
         workflow_logger.event('job.retry_scheduled' if row['attempts'] < 3 else 'job.failed', turn_id=job['turn_id'], attempt=row['attempts'])

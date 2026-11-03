@@ -1,0 +1,24 @@
+{
+  "backend": "CPU",
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "language_cases": 10,
+  "dimension": 384,
+  "max_absolute_vector_difference": 0.0,
+  "reranker": [
+    {
+      "passages": 3,
+      "scores_equal": true
+    },
+    {
+      "passages": 2,
+      "scores_equal": true
+    }
+  ],
+  "device": {
+    "backend": "torch",
+    "device": "cpu",
+    "compute_type": "float32",
+    "reason": "cpu_requested"
+  }
+}

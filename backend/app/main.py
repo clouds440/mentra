@@ -56,6 +56,8 @@ def create_app() -> FastAPI:
                 application.state.work_admission = Admission(get_session_factory(), settings=settings)
                 from app.db.health import readiness
                 application.state.database_health_probe = lambda: readiness(get_session_factory())
+                from app.db.worker_status import queue_status
+                application.state.worker_health_probe = lambda: queue_status(get_session_factory())
                 application.state.learner_service = create_learner_engine(application.state.llm)
                 application.state.auth_service = create_auth_service()
                 application.state.student_profile_service = create_student_profile_service(model_factory, application.state.llm)
@@ -120,7 +122,7 @@ def create_app() -> FastAPI:
     from app.core.http_privacy import PrivateApiResponses
     app.add_middleware(PrivateApiResponses)
 
-    app.add_middleware(FileUploadLimit, maximum=max(25*1024*1024,settings.rag_max_upload_bytes,settings.speech_max_upload_bytes))
+    app.add_middleware(FileUploadLimit, maximum=max(25*1024*1024,settings.rag_max_upload_bytes,settings.speech_max_upload_bytes),speech_maximum=settings.speech_max_upload_bytes)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins + [settings.frontend_origin],

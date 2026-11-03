@@ -1,0 +1,14 @@
+[WebServer] (node:21112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 5 tests using 1 worker
+
+(node:6952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\voice.spec.ts:22:34 › voice fills editable multilingual draft at 390px (3.6s)
+  ok 2 tests\voice.spec.ts:22:34 › voice fills editable multilingual draft at 1280px (1.9s)
+  ok 3 tests\voice.spec.ts:53:1 › a late transcription cannot fill a different chat (1.9s)
+  ok 4 tests\voice.spec.ts:70:1 › recording stops automatically without displaying the cap (1.9s)
+  ok 5 tests\voice.spec.ts:81:1 › permission denial, cancellation, retry and switching chats (3.3s)
+
+  5 passed (15.0s)

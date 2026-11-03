@@ -5,7 +5,7 @@ import json
 import re
 from contextlib import contextmanager
 from uuid import uuid4, UUID
-from sqlalchemy import select, update, delete, func, or_, and_
+from sqlalchemy import select, update, delete, func, or_, and_, literal_column
 from sqlalchemy.dialects.postgresql import insert
 from app.core.exceptions import AppError
 from app.db.owner_transactions import lock_owner
@@ -138,7 +138,7 @@ class MemoryRepository(MemoryHistory):
             if recall:
                 stmt = stmt.where(m.c.status == 'active', or_(m.c.expires_at.is_(None), m.c.expires_at > now()))
             if query:
-                vector = func.to_tsvector('simple', m.c.content)
+                vector = func.to_tsvector(literal_column("'simple'::regconfig"), m.c.content)
                 words = func.websearch_to_tsquery('simple', query)
                 # Trigram-indexed fallback covers inflections/code identifiers.
                 escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
@@ -155,7 +155,7 @@ class MemoryRepository(MemoryHistory):
                     raise AppError('MEMORY_CURSOR_INVALID', 'Invalid memory cursor.', 422)
             order = [m.c.updated_at.desc(), m.c.id.desc()]
             if recall and query:
-                order = [func.ts_rank_cd(func.to_tsvector('simple', m.c.content), func.websearch_to_tsquery('simple', query)).desc(), *order]
+                order = [func.ts_rank_cd(func.to_tsvector(literal_column("'simple'::regconfig"), m.c.content), func.websearch_to_tsquery('simple', query)).desc(), *order]
             rows = [dict(x) for x in session.execute(stmt.order_by(*order).limit(min(limit, 50) + 1)).mappings()]
             more = len(rows) > limit
             rows = rows[:limit]
@@ -169,7 +169,7 @@ class MemoryRepository(MemoryHistory):
                 or_(m.c.expires_at.is_(None), m.c.expires_at > now()))
             if terms:
                 words = func.websearch_to_tsquery('simple', ' OR '.join('"'+x+'"' for x in terms))
-                vector = func.to_tsvector('simple', m.c.content)
+                vector = func.to_tsvector(literal_column("'simple'::regconfig"), m.c.content)
                 base = base.where(or_(vector.op('@@')(words), m.c.id.in_(known_ids)))
                 base = base.order_by(func.ts_rank_cd(vector, words).desc(), m.c.updated_at.desc())
             elif known_ids:

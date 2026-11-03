@@ -12,6 +12,7 @@ from app.history_management.budgets import ToolBudget
 from app.langchain.workflow_tools import create_workflow_tools
 from app.assessments.schemas import SubmitAnswers
 from app.assessments.worker import AssessmentWorker
+from app.assessments.source_worker import SourceWorker
 from app.core.exceptions import AppError
 from tests import test_assessments as fixtures
 
@@ -92,7 +93,12 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with self.db.sessions.begin() as session: attachments.bind(session,self.owner,[file['id']],conversation)
         tool,_ = self.answer_tool(conversation,attachment_ids=[file['id']])
         result = await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id']))
+        self.assertEqual(result['outcome'],'answer_preparation_queued')
+        self.assertTrue(self.service.repository.attempt(self.owner,result['attempt_id']).source_pending)
+        self.assertEqual((await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id'])))['source_job_id'],result['source_job_id'])
+        self.assertTrue(await SourceWorker(self.service).run_once())
         attempt = self.service.repository.attempt(self.owner,result['attempt_id'])
+        self.assertFalse(attempt.source_pending)
         self.assertEqual(attempt.extraction['answers'], {q['id']:text for q,text in zip(card['assessment']['questions'],['First answer','Second answer'])})
         tool,_ = self.answer_tool(conversation)
         with self.assertRaises(AppError): await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id']))
@@ -116,6 +122,8 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with patch('app.vision.assessment_extractor.AssessmentAnswerExtractor.extract',new=AsyncMock(return_value=extraction)) as vision:
             with patch.object(self.service.reader,'read',side_effect=AssertionError('OCR must not run before successful vision')):
                 result = await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id']))
+                vision.assert_not_awaited()
+                self.assertTrue(await SourceWorker(self.service).run_once())
             vision.assert_awaited_once()
         attempt = self.service.repository.attempt(self.owner,result['attempt_id'])
         self.assertEqual(attempt.extraction['handwriting_support'],'vision_requires_review')
@@ -171,12 +179,17 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
         file = self._attachment(attachments,'answers.txt',b'1. First answer')
         with self.db.sessions.begin() as session: attachments.bind(session,self.owner,[file['id']],conversation)
         tool,scope = self.answer_tool(conversation,attachment_ids=[file['id']])
-        with patch.object(self.service,'upload_paper_with_vision',new=AsyncMock(side_effect=RuntimeError('provider failure'))):
+        with patch.object(self.service,'upload_paper_with_vision',new=AsyncMock(side_effect=AppError('TEST_INVALID','Unreadable fixture',422))) as extract:
             result = await tool.ainvoke(dict(draft_id=card['id'],attachment_id=file['id']))
-        self.assertEqual(result['outcome'],'answer_preparation_failed')
+            extract.assert_not_awaited()
+            self.assertTrue(await SourceWorker(self.service).run_once())
+        self.assertEqual(result['outcome'],'answer_preparation_queued')
         self.assertTrue(result['assessment_saved'])
         self.assertEqual(scope['assessment_cards'][0]['attempt_id'],result['attempt_id'])
-        self.assertEqual(self.service.repository.attempt(self.owner,result['attempt_id']).state,'draft')
+        attempt = self.service.repository.attempt(self.owner,result['attempt_id'])
+        self.assertEqual(attempt.state,'draft')
+        self.assertFalse(attempt.source_pending)
+        self.assertIn('existing answers are saved',attempt.source_error)
 
     async def test_status_returns_grade_feedback_and_recoverable_card(self):
         conversation,card = await self.draft()

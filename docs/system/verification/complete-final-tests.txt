@@ -1,0 +1,82 @@
+................................Executing <Task finished name='Task-21' coro=<AssessmentWorkflows.generate.<locals>.generate_batch() done, defined at /app/app/langchain/assessment_workflows.py:163> result=(GeneratedAsse...e_tokens=[])]), [{'answer_mode': 'text', 'question_type': 'written'}, {'answer_mode': 'text', 'question_type': 'written'}]) created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.169 seconds
+...........Executing <Task finished name='Task-138' coro=<AssessmentTests.test_original_bytes_are_external_to_attempt_rows() done, defined at /app/tests/test_assessments.py:411> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.138 seconds
+..Executing <Task pending name='Task-153' coro=<AssessmentTests.test_paper_requires_complete_confirmed_transcription() running at /app/tests/test_assessments.py:244> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.109 seconds
+..Executing <Task pending name='Task-175' coro=<AssessmentTests.test_pending_source_survives_staged_expiry_and_cleanup() running at /app/tests/test_assessments.py:94> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.144 seconds
+..Executing <Task finished name='Task-197' coro=<AssessmentTests.test_queue_diagnostics_detect_missing_worker_and_clear_after_observation() done, defined at /app/tests/test_assessments.py:131> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.195 seconds
+.Executing <Task finished name='Task-207' coro=<AssessmentTests.test_replacing_draft_source_releases_only_superseded_binding() done, defined at /app/tests/test_assessments.py:35> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.272 seconds
+..Executing <Task finished name='Task-228' coro=<AssessmentTests.test_source_job_reclaim_fences_stale_publication() done, defined at /app/tests/test_assessments.py:97> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.161 seconds
+.Executing <Task pending name='Task-238' coro=<AssessmentTests.test_source_job_survives_client_and_replays_completed_result() running at /app/tests/test_assessments.py:70> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.146 seconds
+No new upgrade operations detected.
+.Executing <Task finished name='Task-248' coro=<AssessmentTests.test_source_migration_requires_drain_and_retains_originals() done, defined at /app/tests/test_assessments.py:169> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 2.491 seconds
+.Executing <Task pending name='Task-258' coro=<AssessmentTests.test_uncertain_correction_withdraws_previous_evidence_atomically() running at /app/tests/test_assessments.py:277> wait_for=<Future pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.329 seconds
+......................................./app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+..........RAG worker job failed: fa814d36-268b-494f-9d23-ddb3a84eb737
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.......................RAG worker job failed: 2b2d2719-50a6-4506-8550-875f299541aa
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+..RAG worker job failed: 1ed79b79-afad-444e-adcf-5fb21c806784
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 90, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.RAG worker job failed: cb30a495-932f-4995-a359-da26c551b58a
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 98, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+.......................................................Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+...........Chat summary deferred (RuntimeError)
+......Chat summary deferred (ValueError)
+.........Chat summary read deferred (RuntimeError)
+No new upgrade operations detected.
+No new upgrade operations detected.
+...............................Executing <Task pending name='Task-756' coro=<ChatAssessmentTests.test_chat_document_upload_and_foreign_file_rejection() running at /app/tests/test_chat_assessments.py:95> wait_for=<Task pending name='Task-762' coro=<StructuredTool._arun() running at /usr/local/lib/python3.12/site-packages/langchain_core/tools/structured.py:156> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.307 seconds
+.....Executing <Task pending name='Task-813' coro=<ChatAssessmentTests.test_failed_upload_retains_saved_card_and_retryable_attempt() running at /app/tests/test_chat_assessments.py:183> wait_for=<Task pending name='Task-819' coro=<StructuredTool._arun() running at /usr/local/lib/python3.12/site-packages/langchain_core/tools/structured.py:156> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.304 seconds
+..........................................Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (RuntimeError)
+.....................Executing <Task finished name='Task-1056' coro=<EvaluationBatchTests.test_context_overflow_never_spawns_more_batches_or_trims_answers() done, defined at /app/tests/test_assessment_evaluation_latency.py:104> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 1.010 seconds
+.....Assessment grading failed (TimeoutError)
+........
+----------------------------------------------------------------------
+Ran 323 tests in 323.166s
+
+OK
