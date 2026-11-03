@@ -1,0 +1,112 @@
+{
+  "schema_revision": "20261103_0040",
+  "lexical_index_valid": true,
+  "readiness": "ready",
+  "checks": {
+    "database": "ok",
+    "workers": "ok",
+    "ai": "ok",
+    "embedding": "ok",
+    "qdrant": "ok"
+  },
+  "queues": [
+    {
+      "queue": "assessment_attempt",
+      "role": "assessment.grading",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "assessment_generation_job",
+      "role": "assessment.generation",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "assessment_source_job",
+      "role": "assessment.source",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "assessment_evidence_job",
+      "role": "assessment.evidence",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "chat_evidence_job",
+      "role": "chat.evidence",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "rag_job",
+      "role": "rag.ingestion",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "hm_memory_summary_job",
+      "role": "summarizer",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "chat_summary_job",
+      "role": "summarizer",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "hm_memory_capture_job",
+      "role": "summarizer",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "hm_event_reminder",
+      "role": "events.reminders",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    },
+    {
+      "queue": "file_asset",
+      "role": "files.cleanup",
+      "pending": 0,
+      "oldest_seconds": 0,
+      "active_leases": 0,
+      "status": "idle"
+    }
+  ],
+  "affected_source": {
+    "extraction_state": "ready",
+    "extraction_error": null,
+    "passages": 66,
+    "vectors": 66,
+    "point_identities_match": true,
+    "backend_notes_preserved": 51,
+    "original_file_reference_unchanged": true,
+    "published_generation_unchanged": true
+  }
+}
