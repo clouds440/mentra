@@ -313,7 +313,7 @@ class MemorySummaryRepository:
                 session.execute(delete(j).where(j.c.learner_id == owner))
             return True
 
-    def release(self, claim, error=None):
+    def release(self, claim, error=None, retry_at=None):
         with self.sessions.begin() as session:
             lock_owner(session, claim['learner_id'])
             state = ensure(session, claim['learner_id'])
@@ -322,7 +322,7 @@ class MemorySummaryRepository:
             session.execute(update(j).where(j.c.learner_id == claim['learner_id'], j.c.lease_token == claim['token']).values(
                 lease_token=None, lease_until=None, attempts=attempts, failed=attempts >= MAX_ATTEMPTS,
                 error_code=type(error).__name__ if error else None,
-                available_at=now()+timedelta(seconds=retry_delay(attempts) if error else 0)))
+                available_at=retry_at or now()+timedelta(seconds=retry_delay(attempts) if error else 0)))
 
     def sweep(self):
         with self.sessions() as session:

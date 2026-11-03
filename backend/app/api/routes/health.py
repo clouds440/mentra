@@ -23,6 +23,11 @@ def readiness_check(request: Request) -> JSONResponse:
             raise RuntimeError('Not initialized')
         probe()
         checks['database'] = {'status': 'ok'}
+        worker_probe = getattr(request.app.state,'worker_health_probe',None)
+        if worker_probe:
+            queues = worker_probe()
+            checks['workers'] = queues
+            is_ready = is_ready and queues['status'] == 'ok'
     except Exception:
         checks['database'] = {'status': 'error', 'message': 'Database readiness is unavailable.'}
         is_ready = False

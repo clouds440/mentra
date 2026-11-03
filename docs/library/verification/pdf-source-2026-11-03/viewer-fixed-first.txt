@@ -1,0 +1,55 @@
+[WebServer] (node:19648) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:13152) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening (7.3s)
+  ok 2 tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content (2.6s)
+  ok 3 tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer (2.6s)
+  x  4 tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content (7.7s)
+
+
+  1) tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+    Expected substring: "temporarily unavailable"
+    Received string:    "Mentra could not complete this request."
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+        14 × locator resolved to <p role="alert" class="mb-4 text-sm text-danger">Mentra could not complete this request.</p>
+           - unexpected value "Mentra could not complete this request."
+
+
+      57 |   await sourceFixture(page,'ready',true);
+      58 |   const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+    > 59 |   await expect(viewer.getByRole('alert')).toContainText('temporarily unavailable');
+         |                                           ^
+      60 |   await expect(viewer).not.toContainText('No extracted passages');
+      61 |   await expect(viewer.getByRole('button',{name:'Refresh content'})).toBeVisible();
+      62 | });
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:59:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content 
+  3 passed (22.4s)

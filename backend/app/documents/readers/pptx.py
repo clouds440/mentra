@@ -34,10 +34,16 @@ class PPTXReader:
                 text = '\n'.join(' | '.join(c.text for c in row.cells) for row in shape.table.rows) if shape.has_table else shape.text if shape.has_text_frame else ''
                 if text.strip():
                     blocks.append(dict(text=text, slide=number, heading_path=heading))
-                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                    extra = embedded.read(shape.image.blob, warnings, f'on slide {number}')
+                # Picture placeholders contain p:pic but report PLACEHOLDER.
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE or shape.element.tag.rsplit('}',1)[-1] == 'pic':
+                    extra = embedded.read(shape.image.blob, warnings, f'on slide {number}',slide=number)
                     if extra:
                         blocks.append(dict(text=extra, slide=number, heading_path=heading, method='image_ocr'))
                         warnings.append(f'Image text on slide {number} was read with English OCR; verify it against the source.')
-        warnings.append('Speaker notes, charts and drawing text may be incomplete; inspect the original.')
-        return dict(blocks=blocks, warnings=warnings)
+                elif getattr(shape, 'has_chart', False):
+                    warnings.append(f'Chart visuals on slide {number} need inspection against the original.')
+            if slide.has_notes_slide:
+                frame = slide.notes_slide.notes_text_frame
+                if frame is not None and frame.text.strip():
+                    blocks.append(dict(text=frame.text,slide=number,heading_path=[*heading,'Speaker notes'],method='speaker_notes'))
+        return dict(blocks=blocks, warnings=warnings,visuals=embedded.visuals)

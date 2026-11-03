@@ -1,0 +1,21 @@
+FF
+======================================================================
+FAIL: test_pending_version_reports_processing (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_pending_version_reports_processing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/rag/test_pdf_source_status.py", line 23, in test_pending_version_reports_processing
+    self.assertEqual(version.get('extraction_state'),'processing')
+AssertionError: None != 'processing'
+
+======================================================================
+FAIL: test_ocr_failure_reports_error_on_unpublished_version (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_ocr_failure_reports_error_on_unpublished_version)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/rag/test_pdf_source_status.py", line 31, in test_ocr_failure_reports_error_on_unpublished_version
+    self.assertEqual(version.get('extraction_state'),'failed')
+AssertionError: None != 'failed'
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.094s
+
+FAILED (failures=2)

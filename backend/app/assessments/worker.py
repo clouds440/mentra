@@ -17,11 +17,13 @@ class AssessmentWorker:
                 from app.langchain.workflow_budget import model_budget
                 from time import monotonic
                 from .grading_progress import GRADING_TIMEOUT_SECONDS
+                from app.db.admission import background_capacity
                 async def checkpoint(grades):
                     await run_in_threadpool(self.service.repository.checkpoint_grades, job, grades)
-                with model_budget(deadline=monotonic()+GRADING_TIMEOUT_SECONDS, max_rounds=4,
-                                  max_input_tokens=131072, max_total_tokens=196608):
-                    grades = await asyncio.wait_for(self.service.workflows.grade(job, checkpoint=checkpoint), GRADING_TIMEOUT_SECONDS)
+                async with background_capacity(getattr(self.service,'admission',None),job['owner'],seconds=GRADING_TIMEOUT_SECONDS+30):
+                    with model_budget(deadline=monotonic()+GRADING_TIMEOUT_SECONDS, max_rounds=4,
+                                      max_input_tokens=131072, max_total_tokens=196608):
+                        grades = await asyncio.wait_for(self.service.workflows.grade(job, checkpoint=checkpoint), GRADING_TIMEOUT_SECONDS)
                 await run_in_threadpool(self.service.repository.complete, job, grades)
                 workflow_logger.event('assessment.results_ready', questions=len(grades.questions))
                 execution.outcome = 'success'
@@ -33,12 +35,14 @@ class AssessmentWorker:
                         'AI_CONTEXT_LIMIT', 'AI_WORKFLOW_BUDGET', 'ASSESSMENT_INVALID_GENERATION', 'ASSESSMENT_INVALID_GRADE')
                     message = ('Evaluation timed out. Your answers are saved; retry evaluation to continue.'
                         if isinstance(error, TimeoutError) else error.message if isinstance(error, AppError) and error.code == 'AI_CONTEXT_LIMIT' else None)
-                    await run_in_threadpool(self.service.repository.fail, job, retry=not terminal, error=message)
+                    deferred = isinstance(error,AppError) and error.code == 'WORK_CAPACITY'
+                    await run_in_threadpool(self.service.repository.fail, job, retry=not terminal, error=message,**({'deferred':True} if deferred else {}))
                 logging.getLogger('mentra').warning('Assessment grading failed (%s)', type(error).__name__)
                 workflow_logger.event('assessment.grading_failed', error_type=type(error).__name__, error_code=getattr(error,'code',None))
             return True
 
 async def serve():
+    from starlette.concurrency import run_in_threadpool
     from app.db.database import init_db, get_session_factory
     from app.langchain.model_factory import ModelFactory
     from app.langchain.llm import MentraLLM
@@ -67,13 +71,16 @@ async def serve():
     worker = AssessmentWorker(create_assessments(get_session_factory(), llm, learner, rag, profile, files=files))
     from app.langchain.evidence_worker import ChatEvidenceWorker
     from app.langchain.repositories.evidence import ChatEvidenceRepository
-    evidence_worker = ChatEvidenceWorker(ChatEvidenceRepository(get_session_factory()), worker.service.workflows.llm, worker.service.workflows.learner)
+    evidence_worker = ChatEvidenceWorker(ChatEvidenceRepository(get_session_factory()), worker.service.workflows.llm, worker.service.workflows.learner,admission=worker.service.admission)
     stopping = asyncio.Event()
+    from app.db.worker_status import Heartbeat
+    heartbeat = Heartbeat(get_session_factory())
     for name in (signal.SIGTERM, signal.SIGINT): signal.signal(name, lambda *_:stopping.set())
-    async def consume(consumer):
+    async def consume(consumer, role):
         while not stopping.is_set():
             try:
                 processed = await consumer.run_once()
+                await run_in_threadpool(heartbeat.pulse,role)
                 if processed:
                     continue  # Drain ready jobs; idle polling must not throttle a busy queue.
             except Exception as error:
@@ -83,9 +90,11 @@ async def serve():
     # Independent queues share the process, not a serial scheduling bottleneck.
     from .generation_worker import AssessmentGenerationWorker
     from .evidence_worker import AssessmentEvidenceWorker
+    from .source_worker import SourceWorker
     try:
-        await asyncio.gather(consume(worker), consume(evidence_worker), consume(AssessmentGenerationWorker(worker.service)),
-            consume(AssessmentEvidenceWorker(worker.service)))
+        await asyncio.gather(consume(worker,'assessment.grading'), consume(evidence_worker,'chat.evidence'),
+            consume(AssessmentGenerationWorker(worker.service),'assessment.generation'),
+            consume(AssessmentEvidenceWorker(worker.service),'assessment.evidence'),consume(SourceWorker(worker.service),'assessment.source'))
     finally:
         rag.close(); vectors.close(); embedding.close(); files.close()
 

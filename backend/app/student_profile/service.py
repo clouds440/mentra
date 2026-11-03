@@ -10,9 +10,9 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class StudentProfileService:
-    def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc)):
+    def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc), admission=None):
         self.repository, self.clock = repository, clock
-        self.evidence = ProfileEvidenceService(repository, evaluator, clock=clock)
+        self.evidence = ProfileEvidenceService(repository, evaluator, clock=clock,admission=admission)
         self.calibration = CalibrationService(repository, self.evidence, clock=clock)
 
     def get(self, learner_id):

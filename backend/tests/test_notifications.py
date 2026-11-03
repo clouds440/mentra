@@ -35,6 +35,26 @@ class NotificationTests(unittest.TestCase):
         with self.repository.transactions.write(self.owner) as tx:
             return self.service.publish(tx, draft or self.draft())
 
+    def test_stream_delivers_background_revision_without_client_mutation(self):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import patch, AsyncMock
+        from app.api.routes.notifications import changes
+        request=SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(notifications_service=self.service)),
+            is_disconnected=AsyncMock(return_value=False))
+        async def check():
+            response=await changes(request,SimpleNamespace(learner_id=self.owner))
+            generator=response.body_iterator
+            initial=await anext(generator)
+            self.assertIn('"unread_count": 0',initial)
+            self.publish()
+            with patch('asyncio.sleep',new=AsyncMock()):
+                update=await anext(generator)
+            self.assertIn('"unread_count": 1',update)
+            self.assertEqual(self.repository.unread(self.other)['unread_count'],0)
+            await generator.aclose()
+        asyncio.run(check())
+
     def event(self):
         return self.events.create(self.owner, EventCreate(title='Quiz', kind='quiz', timezone='UTC',
             starts_at=self.now+timedelta(hours=2), client_request_id=uuid4()))['event']

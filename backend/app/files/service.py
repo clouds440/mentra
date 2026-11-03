@@ -21,6 +21,12 @@ def missing():
     return AppError("FILES_NOT_FOUND", "This file is no longer available.", 404)
 
 
+def pending_source(identifier):
+    from app.assessments.repositories.tables import source_jobs as jobs
+    return select(jobs.c.id).where(jobs.c.file_id==identifier,
+        or_(jobs.c.state.in_(['queued','running']), (jobs.c.state=='failed') & jobs.c.retry_at.is_not(None)))
+
+
 def image_media(data):
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
@@ -36,6 +42,7 @@ def image_media(data):
 class FilesService:
     def __init__(self, sessions, provider, settings):
         self.sessions, self.provider, self.settings = sessions, provider, settings
+        self.namespace = f'{settings.files_namespace}/{settings.files_environment or settings.app_env}'
         self.slots = BoundedSemaphore(settings.files_concurrency)
         from app.documents import create_document_reader
 
@@ -67,10 +74,12 @@ class FilesService:
                 .mappings()
                 .first()
             )
+            protected = bool(row and row['expires_at'] and row['expires_at'] <= now()
+                and session.scalar(pending_source(identifier).limit(1)))
         if (
             not row
             or row["state"] not in ("STAGED", "ACTIVE")
-            or (row["expires_at"] and row["expires_at"] <= now())
+            or (row["expires_at"] and row["expires_at"] <= now() and not protected)
         ):
             raise missing()
         if purpose and row["purpose"] != purpose:
@@ -139,10 +148,10 @@ class FilesService:
                 media = image_media(header)
                 resource = "image" if media else "raw"
                 if purpose == "speech":
-                    from app.speech.engine import decode_audio
+                    from app.speech.validation import validate_audio
 
                     # Validate the real container and duration before storing externally.
-                    decode_audio(path.read_bytes(), self.settings.speech_max_seconds)
+                    validate_audio(path.read_bytes(), self.settings.speech_max_seconds, self.settings.speech_timeout_seconds)
                     media, resource = "application/octet-stream", "video"
                 elif purpose == "export":
                     media = "text/calendar"
@@ -249,7 +258,7 @@ class FilesService:
                             "text/calendar": ".ics",
                         }.get(media, ".txt")
                         public_id = (
-                            f"{self.settings.files_namespace}/{self.settings.app_env}/{identifier}"
+                            f"{self.namespace}/{identifier}"
                             + (suffix if resource == "raw" else "")
                         )
                         row = dict(
@@ -324,7 +333,8 @@ class FilesService:
         if (
             not row
             or row["state"] not in ("STAGED", "ACTIVE")
-            or (row["expires_at"] and row["expires_at"] <= now())
+            or (row["expires_at"] and row["expires_at"] <= now()
+                and not session.scalar(pending_source(identifier).limit(1)))
         ):
             raise missing()
         existing = session.execute(
@@ -466,6 +476,17 @@ class FilesService:
         AttachmentRepository(self.sessions, self).cleanup_unsent(limit=limit)
 
         with self.sessions.begin() as session:
+            # Reconcile historical draft replacements from before release was
+            # transactional. Submitted/graded source history is never inferred
+            # to be disposable from a mismatched pointer.
+            from app.assessments.repositories.tables import attempts
+            superseded = list(session.scalars(select(bindings.c.id).join(attempts,
+                (attempts.c.id==bindings.c.assessment_attempt_id) & (attempts.c.learner_id==bindings.c.learner_id))
+                .where(bindings.c.released_at.is_(None),attempts.c.state.in_(['draft','pending_transcription']),
+                    attempts.c.source_file_id.is_not(None),bindings.c.file_id!=attempts.c.source_file_id)
+                .limit(limit).with_for_update(of=bindings,skip_locked=True)))
+            if superseded:
+                session.execute(update(bindings).where(bindings.c.id.in_(superseded)).values(released_at=now()))
             # Revocation precedes deletion; these also recover missed domain cleanup.
             expired_chats = (
                 select(attachments.c.id)
@@ -498,7 +519,7 @@ class FilesService:
                         assets.c.state != "DELETED",
                         assets.c.environment == self.provider.environment,
                         assets.c.public_id.startswith(
-                            f"{self.settings.files_namespace}/{self.settings.app_env}/",
+                            f"{self.namespace}/",
                             autoescape=True,
                         ),
                         or_(
@@ -522,6 +543,7 @@ class FilesService:
                                 reads.c.expires_at > now(),
                             )
                         ),
+                        ~exists(pending_source(assets.c.id)),
                     )
                     .order_by(assets.c.created_at)
                     .limit(limit)
@@ -534,6 +556,8 @@ class FilesService:
             for row in candidates:
                 # Re-read references after acquiring the asset lock. A binding
                 # or read lease can commit after the candidate query's snapshot.
+                if session.scalar(pending_source(row['id']).limit(1)):
+                    continue
                 if session.scalar(
                     select(reads.c.id)
                     .where(reads.c.file_id == row["id"], reads.c.expires_at > now())

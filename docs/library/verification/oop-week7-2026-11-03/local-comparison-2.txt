@@ -1,0 +1,87 @@
+ Container mentra-backend-run-75f7e0028a4e Creating 
+ Container mentra-backend-run-75f7e0028a4e Created 
+{
+  "baseline_revision": "51924b1",
+  "live_llm_calls": 0,
+  "scope": [
+    {
+      "implementation": "before",
+      "repeat": 0,
+      "elapsed_ms": 3929.56,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "before",
+      "repeat": 1,
+      "elapsed_ms": 3718.76,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "before",
+      "repeat": 2,
+      "elapsed_ms": 3681.2,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 0,
+      "elapsed_ms": 554.05,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 1,
+      "elapsed_ms": 550.65,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 2,
+      "elapsed_ms": 565.11,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    }
+  ],
+  "extraction": [
+    {
+      "implementation": "before",
+      "elapsed_ms": 152.61,
+      "blocks": 46,
+      "characters": 10707,
+      "visual_files": 0,
+      "ocr_slides": []
+    },
+    {
+      "implementation": "after",
+      "elapsed_ms": 2119.19,
+      "blocks": 50,
+      "characters": 13969,
+      "visual_files": 4,
+      "ocr_slides": [
+        8,
+        24,
+        25,
+        26
+      ]
+    }
+  ],
+  "ordered_read": {
+    "elapsed_ms": 2087.56,
+    "sql_statements": 8,
+    "outline_sections": 26,
+    "source_chunks": 22,
+    "next_offset": null,
+    "tokens": 2767
+  }
+}

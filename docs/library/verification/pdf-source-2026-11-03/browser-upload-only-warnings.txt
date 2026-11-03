@@ -1,0 +1,66 @@
+[WebServer] (node:22540) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 15 tests using 1 worker
+
+(node:17740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\renovation-library.spec.ts:22:73 › library and upload layout at 390px in light (4.0s)
+  ok  2 tests\renovation-library.spec.ts:22:73 › library and upload layout at 390px in dark (2.5s)
+  ok  3 tests\renovation-library.spec.ts:22:73 › library and upload layout at 1440px in light (2.7s)
+  ok  4 tests\renovation-library.spec.ts:22:73 › library and upload layout at 1440px in dark (2.6s)
+  ok  5 tests\renovation-library.spec.ts:42:1 › existing and new context uploads keep the canonical request workflow (4.9s)
+  x   6 tests\renovation-library.spec.ts:62:1 › dropping files supports upload and rejects oversized and multi-file drops (7.3s)
+(node:1132) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  7 tests\renovation-library.spec.ts:77:1 › failed upload retains the new context, file and retry identity without uploading twice (2.4s)
+  ok  8 tests\renovation-pdf-source.spec.ts:34:1 › a source opened before OCR completes refreshes passages without reopening or permanent warnings (6.0s)
+  ok  9 tests\renovation-pdf-source.spec.ts:43:1 › an unpublished source shows processing rather than claiming no content (2.5s)
+  ok 10 tests\renovation-pdf-source.spec.ts:50:1 › OCR failure remains actionable inside the source viewer (3.0s)
+  ok 11 tests\renovation-pdf-source.spec.ts:57:1 › a passage read error never also claims that extraction produced no content (3.4s)
+  ok 12 tests\renovation-pdf-source.spec.ts:68:1 › failure of a newer reindex does not hide previously published content (6.0s)
+  ok 13 tests\renovation-pdf-source.spec.ts:76:1 › an indexed source with missing passages reports a load inconsistency (5.9s)
+  ok 14 tests\renovation-pdf-source.spec.ts:84:1 › unsaved title edits cannot freeze source processing progress (5.5s)
+  ok 15 tests\renovation-pdf-source.spec.ts:95:1 › one OCR notice appears only for the selected upload and disappears after acceptance (2.9s)
+
+
+  1) tests\renovation-library.spec.ts:62:1 › dropping files supports upload and rejects oversized and multi-file drops 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('dropped.txt', { exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('dropped.txt', { exact: true }) with timeout 5000ms
+      - waiting for getByText('dropped.txt', { exact: true })
+
+
+      65 |   const files = await page.evaluateHandle(() => { const data = new DataTransfer(); data.items.add(new File(['Drop content'], 'dropped.txt', { type: 'text/plain' })); return data; });
+      66 |   await drop.dispatchEvent('drop', { dataTransfer: files });
+    > 67 |   await expect(page.getByText('dropped.txt', { exact: true })).toBeVisible();
+         |                                                                ^
+      68 |   await page.getByRole('button', { name: 'Remove selected file' }).click();
+      69 |   await expect(page.getByRole('button', { name: 'Upload material', exact: true })).toBeDisabled();
+      70 |   await page.getByLabel('File', { exact: true }).setInputFiles({ name: 'large.txt', mimeType: 'text/plain', buffer: Buffer.alloc(3 * 1024 * 1024) });
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-library.spec.ts:67:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-library-droppin-f2e80-rsized-and-multi-file-drops\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-library-droppin-f2e80-rsized-and-multi-file-drops\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-library-droppin-f2e80-rsized-and-multi-file-drops\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-library-droppin-f2e80-rsized-and-multi-file-drops\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests\renovation-library.spec.ts:62:1 › dropping files supports upload and rejects oversized and multi-file drops 
+  14 passed (1.1m)

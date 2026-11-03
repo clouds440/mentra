@@ -62,6 +62,7 @@ speech = Table(
     Column("id", Uuid(as_uuid=False), primary_key=True),
     Column("learner_id", Uuid(as_uuid=False), ForeignKey("learner.id"), nullable=False),
     Column("result", JSONB),
+    Column("request_hash", Text),
     Column("expires_at", DateTime(timezone=True), nullable=False),
     Column("lease_token", Uuid(as_uuid=False)),
     Column("lease_until", DateTime(timezone=True)),

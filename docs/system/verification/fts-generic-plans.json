@@ -1,0 +1,82 @@
+{
+  "bound_config": {
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "audit_fts",
+          "Alias": "audit_fts",
+          "Startup Cost": 0.0,
+          "Total Cost": 10398.0,
+          "Plan Rows": 100,
+          "Plan Width": 4,
+          "Filter": "(to_tsvector($1, content) @@ plainto_tsquery('simple'::regconfig, $2))"
+        }
+      }
+    ],
+    "median_ms": 34.266970000089714,
+    "samples_ms": [
+      38.52649099985683,
+      36.47155900011967,
+      37.091465000003154,
+      41.582072000210246,
+      34.03130400010923,
+      33.39205899987974,
+      34.2893350000395,
+      33.41553700010991,
+      34.24460500013993,
+      33.531286999959775,
+      33.731880999994246,
+      34.57076099994083
+    ]
+  },
+  "literal_config": {
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Bitmap Heap Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "audit_fts",
+          "Alias": "audit_fts",
+          "Startup Cost": 17.54,
+          "Total Cost": 208.62,
+          "Plan Rows": 100,
+          "Plan Width": 4,
+          "Recheck Cond": "(to_tsvector('simple'::regconfig, content) @@ plainto_tsquery('simple'::regconfig, $1))",
+          "Plans": [
+            {
+              "Node Type": "Bitmap Index Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Index Name": "audit_fts_vector",
+              "Startup Cost": 0.0,
+              "Total Cost": 17.51,
+              "Plan Rows": 100,
+              "Plan Width": 0,
+              "Index Cond": "(to_tsvector('simple'::regconfig, content) @@ plainto_tsquery('simple'::regconfig, $1))"
+            }
+          ]
+        }
+      }
+    ],
+    "median_ms": 0.2808450000202356,
+    "samples_ms": [
+      0.3622490000907419,
+      0.3016840000782395,
+      0.2738470000167581,
+      0.3057869998883689,
+      0.25661299991952546,
+      0.3806800000347721,
+      0.34254199999850243,
+      0.24921399995037063,
+      0.2878430000237131,
+      0.25444500010962656,
+      0.24512599998161022,
+      0.25417899996682536
+    ]
+  }
+}

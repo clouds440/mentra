@@ -1,5 +1,5 @@
 """Canonical, bounded chat read facade for the history-management module."""
-from sqlalchemy import select, func, or_, and_, text
+from sqlalchemy import select, func, or_, and_, text, literal_column
 from app.core.exceptions import AppError
 from .tables import conversations as c, messages as m, turns as t
 from .postgres import ChatRepository
@@ -17,7 +17,7 @@ class ChatReadFacade:
         from app.core.config import settings
         from sqlalchemy.exc import DBAPIError
         text_value = c.c.title + ' ' + s.c.content
-        vector = func.to_tsvector('simple', text_value)
+        vector = func.to_tsvector(literal_column("'simple'::regconfig"), text_value)
         query = func.websearch_to_tsquery('simple', body.query)
         pattern = '%' + body.query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
         statement = select(c.c.id.label('conversation_id'), c.c.title, s.c.content.label('summary'),
@@ -142,7 +142,7 @@ class ChatReadFacade:
             if body.message_id:
                 hits = session.execute(base.where(m.c.id == str(body.message_id)).limit(1)).mappings().all()
             elif body.query:
-                vector, query = func.to_tsvector('simple', m.c.content), func.websearch_to_tsquery('simple', body.query)
+                vector, query = func.to_tsvector(literal_column("'simple'::regconfig"), m.c.content), func.websearch_to_tsquery('simple', body.query)
                 hits = session.execute(base.where(vector.op('@@')(query)).order_by(func.ts_rank_cd(vector, query).desc(), m.c.created_at.desc(), m.c.id).limit(body.limit)).mappings().all()
                 if not hits:
                     # Index-backed pg_trgm word similarity; no unbounded Python scans.

@@ -267,3 +267,34 @@ and dismissed history across reload without per-card requests. 49 event temporal
 persistence, proposal and HTTP checks passed against disposable PostgreSQL. Page
 screenshots were visually inspected. Browser APIs in layout checks are fixtures;
 the database regressions exercise actual ownership, retention and pagination.
+
+## Library and shared modal refresh — 2026-11-03
+
+| Surface | Change |
+| --- | --- |
+| Library | One shared filter section, quieter source cards, clear readiness, consolidated actions, shared numbered pagination and simpler context rows |
+| Add material | Responsive two-column file/details workspace, native drag-and-drop file picker, selected-file summary, supported formats disclosure and matching loading skeleton |
+| Context selection | Explicit existing/new choice with reserved field height; newly created contexts remain usable if upload fails before refreshed options arrive |
+| Upload recovery | File, title, context, staged-file receipt and idempotency identity survive retry; oversized, empty and multi-file selections receive local feedback |
+| Material detail | Clear details/version headings and tidy version rows; replacements reuse the same upload workspace and existing revision fences |
+| Shared Dialog | One component-owned close control outside the scrolling content; optional heading/actions slots, viewer layout, busy dismissal guard and opt-in backdrop dismissal |
+| Modal callers | Removed caller-owned close buttons and root scroll/padding/position rules across references, file previews, images, diagrams, charts, skills, evidence, reviews and event forms |
+
+The shared Dialog preserves confirmation/form initial focus, native modality, nested
+Escape behavior and focus return. Fullscreen viewers retain their layout and export controls.
+No backend contracts or storage behavior changed. Loading uses the existing spinner rather
+than a fabricated upload percentage. Upload buttons retain their size and accessible label.
+
+Validation: production build, TypeScript, UI/theme checks and 63 targeted browser checks
+passed. An additional 47-check workspace/gallery/layout run passed before the final focus
+adjustment. The targeted run covers the updated focus behavior, upload retries, shared
+source close control at 390/1280px, nested chat-reference/diagram dismissal, fullscreen chart
+families, saved chat search and upload layouts in light/dark at 390/1440px. Screenshots were
+visually reviewed. APIs are fixtures; no real learner uploads or private data were created.
+
+Broader-suite limits were checked against an isolated unchanged-commit build: four failures
+also reproduce there (an obsolete assessment background-class assertion, two response-reveal
+checks and the old Progress row fixture). The offscreen three-chart check was intermittent
+on the current build (two of three isolated retries passed); no lazy-chart production code
+was changed. These checks are not counted as passing. The page-cache test now excludes
+notification-stream reconnects from page-data reads, preserving its actual cache assertion.

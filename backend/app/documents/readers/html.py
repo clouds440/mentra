@@ -56,7 +56,10 @@ class _HTMLContent:
                     if len(encoded) > 40 * 1024 * 1024:
                         raise ValueError('embedded image exceeds limit')
                     data = base64.b64decode(encoded, validate=True)
-                    extra = self.embedded.read(data, self.warnings, 'in this HTML document')
+                    image_block = len(self.blocks)-1 if alt else len(self.blocks)
+                    extra = self.embedded.read(data, self.warnings, 'in this HTML document', block=image_block)
+                    if not alt and not extra and any(dict(block=image_block) in item['locations'] for item in self.embedded.visuals):
+                        self.blocks.append(dict(text='Embedded source image.', heading_path=self.heading[:], method='visual_reference'))
                     if extra and extra.casefold() != alt.strip().casefold():
                         self.blocks.append(dict(text=extra, heading_path=self.heading[:], method='image_ocr'))
                         self.warnings.append('HTML image text was read with English OCR; verify it against the source.')
@@ -128,4 +131,4 @@ class HTMLReader:
             raise DocumentReadError('Binary content cannot be parsed as text.')
         parser = _HTMLContent(self.vision)
         parser.extract(text)
-        return dict(blocks=parser.blocks, warnings=parser.warnings)
+        return dict(blocks=parser.blocks, warnings=parser.warnings,visuals=parser.embedded.visuals)

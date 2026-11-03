@@ -8,6 +8,7 @@ Documentation is grouped by the module or shared concern it describes. Each fold
 | --- | --- |
 | [Getting started](getting-started/README.md) | Local setup, prerequisites and configuration. |
 | [Architecture](architecture/README.md) | Backend atlas, module boundaries and architecture audits. |
+| [System audit and verified fixes](system/README.md) | Cross-module findings, implementation, comparative evidence and rollback. |
 | [Chat and interactive learning](chat/README.md) | Durable conversations, rich responses, questionnaires, saved search and UI interactions. |
 | [Assessments](assessments/README.md) | Practice, papers, answer sheets, grading, mistake/revision practice and recovery. |
 | [Learning Progress and Learner Engine](learning/README.md) | Topics/subskills, evidence, mastery policies, recommendations and learner verification. |

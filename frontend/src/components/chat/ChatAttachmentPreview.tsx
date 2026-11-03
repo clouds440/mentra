@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../ui/Dialog';
-import { Download, FileText, X } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { Button } from '../ui';
 import { Spinner } from '../ui/Spinner';
 import { ApiError } from '../../services/api';
@@ -41,17 +41,13 @@ export function ChatAttachmentPreview({ filename, load, onClose }: {
     } catch (reason) { if (mounted.current) setError(reason instanceof ApiError ? reason.message : 'Couldn’t download this file. Try again.'); }
     finally { if (mounted.current) setDownloading(false); }
   }
-  return <Dialog open ref={dialog} aria-label={`Preview ${filename}`} onDismiss={onClose}
-    onClick={event => {
-      if (event.target !== event.currentTarget) return;
-      const bounds = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.current?.close();
-    }} className="m-auto max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-hidden rounded-2xl border border-border-strong bg-popover p-0 text-foreground shadow-overlay">
+  return <Dialog closeLabel="Close file preview" open ref={dialog} aria-label={`Preview ${filename}`} onDismiss={onClose}
+    dismissOnBackdrop layout="viewer" className="max-w-5xl">
     <header className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
       <h2 className="min-w-0 truncate text-sm font-medium text-heading">{filename}</h2>
       <div className="flex shrink-0 items-center gap-1">
         <Button size="sm" variant="ghost" className="w-9 !px-0" aria-label={`Download ${filename}`} title="Download original" disabled={downloading} onClick={() => void download()}><Download size={17} aria-hidden="true" /></Button>
-        <Button size="sm" variant="ghost" className="w-9 !px-0" aria-label="Close file preview" title="Close" autoFocus onClick={() => dialog.current?.close()}><X size={18} aria-hidden="true" /></Button>
+
       </div>
     </header>
     <div className="max-h-[calc(90dvh-3.5rem)] overflow-auto overscroll-contain p-3 sm:p-4">

@@ -1,0 +1,4 @@
+PASS: new documentation links resolve (manifest generated with this check).
+PASS: existing library evidence, earlier speech guide and historical migrations unchanged.
+PASS: git diff --check.
+PASS: final backend summary 323 tests OK; final speech 10 identical transcript hashes.

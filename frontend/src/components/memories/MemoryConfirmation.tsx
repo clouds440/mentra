@@ -8,8 +8,7 @@ export function MemoryConfirmation({ title, busy, error, onCancel, children }: {
   const titleId = useId();
 
   return <Dialog open ref={dialog} busy={busy} onDismiss={onCancel} role="alertdialog" aria-labelledby={titleId} aria-busy={busy}
-    onCancel={event => { event.preventDefault(); if (!busy) onCancel(); }}
-    className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-border bg-popover p-5 text-foreground shadow-xl">
+    className="max-w-lg">
     <h3 id={titleId} className="mb-3 font-medium text-heading">{title}</h3>
     {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
     {children}

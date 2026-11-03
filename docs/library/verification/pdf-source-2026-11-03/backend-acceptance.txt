@@ -1,0 +1,52 @@
+./app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+..............RAG worker job failed: e61feeb8-f6b6-4afa-8178-ceee9230609d
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.......................RAG worker job failed: 28b5f93e-d44f-4e15-a87d-b5fb90b0be6e
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+..RAG worker job failed: 02b76317-a017-4211-97a7-3a510acc0f6e
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 90, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.RAG worker job failed: 5edbcb1c-43f6-4293-bddc-0fc940aabf6f
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 98, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+....................................................
+----------------------------------------------------------------------
+Ran 93 tests in 213.184s
+
+OK

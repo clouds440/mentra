@@ -15,6 +15,8 @@ export interface AssessmentAttempt {
   extraction: { answers: Record<string, string>; text: string; warnings: string[]; extraction_confidence: number | null; mapping_confidence: number | null; reader_revision: string; truncated: boolean; handwriting_support?: string } | null;
   error: string | null; evidence_status: 'pending' | 'applied' | 'partial' | 'unavailable' | 'none'; created_at: string;
   retry_pending?: boolean;
+  source_pending?: boolean;
+  source_error?: string | null;
   assistance?: AssessmentAssistance;
   reported_assistance?: AssessmentAssistance;
   scoring?: AttemptScoring | null;

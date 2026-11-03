@@ -1,0 +1,7 @@
+ Container mentra-backend-run-f353219e4b93 Creating 
+ Container mentra-backend-run-f353219e4b93 Created 
+Traceback (most recent call last):
+  File "/app/scripts/study_pipeline_probe.py", line 14, in <module>
+    from app.core.config import settings
+ModuleNotFoundError: No module named 'app'
+

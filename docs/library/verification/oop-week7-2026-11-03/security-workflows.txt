@@ -1,0 +1,120 @@
+test_picture_placeholder_is_not_silently_skipped (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_picture_placeholder_is_not_silently_skipped) ... ok
+test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings) ... ok
+test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance (tests.test_study_pipeline_fixes.PlannerScopeTests.test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance) ... /app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+ok
+test_scripted_planner_finds_reads_inspects_then_finishes_without_search (tests.test_study_pipeline_fixes.PlannerScopeTests.test_scripted_planner_finds_reads_inspects_then_finishes_without_search) ... ok
+test_standard_search_does_not_run_hidden_learner_retrieval (tests.test_study_pipeline_fixes.PlannerScopeTests.test_standard_search_does_not_run_hidden_learner_retrieval) ... ok
+No new upgrade operations detected.
+test_visual_migration_roundtrip_and_retained_data_guard (tests.test_study_pipeline_fixes.PlannerScopeTests.test_visual_migration_roundtrip_and_retained_data_guard) ... ok
+test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget) ... ok
+test_initialization_deadline_does_not_start_search_or_extend_turn (tests.test_study_pipeline_fixes.PreparationTests.test_initialization_deadline_does_not_start_search_or_extend_turn) ... ok
+test_slow_read_is_not_automatically_duplicated (tests.test_study_pipeline_fixes.PreparationTests.test_slow_read_is_not_automatically_duplicated) ... ok
+test_images_are_ephemeral_and_reauthorized_every_round (tests.test_study_pipeline_fixes.VisualModelInputTests.test_images_are_ephemeral_and_reauthorized_every_round) ... ok
+test_requested_tool_delivers_passages_and_citations (tests.test_rag_prefetch.PrefetchTests.test_requested_tool_delivers_passages_and_citations) ... Executing <Task pending name='Task-57' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at /app/tests/test_rag_prefetch.py:76> wait_for=<Task pending name='Task-58' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.129 seconds
+ok
+test_requested_tool_failure_reaches_agent (tests.test_rag_prefetch.PrefetchTests.test_requested_tool_failure_reaches_agent) ... ok
+test_tool_revalidates_instead_of_delivering_stale_prefetch (tests.test_rag_prefetch.PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch) ... ok
+test_unused_failed_prefetch_does_not_warn_model_or_user (tests.test_rag_prefetch.PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user) ... Executing <Task pending name='Task-114' coro=<PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user() running at /app/tests/test_rag_prefetch.py:68> wait_for=<Task pending name='Task-115' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.104 seconds
+ok
+test_unused_successful_prefetch_is_not_context_or_citations (tests.test_rag_prefetch.PrefetchTests.test_unused_successful_prefetch_is_not_context_or_citations) ... ok
+test_archive_unarchive_and_context_policy (tests.rag.test_workflows.WorkflowTests.test_archive_unarchive_and_context_policy) ... ok
+test_archived_access_requires_explicit_scope (tests.rag.test_workflows.WorkflowTests.test_archived_access_requires_explicit_scope) ... ok
+test_assessment_contract_requires_approved_owned_study_sources (tests.rag.test_workflows.WorkflowTests.test_assessment_contract_requires_approved_owned_study_sources) ... ok
+test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks (tests.rag.test_workflows.WorkflowTests.test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks) ... ok
+test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget (tests.rag.test_workflows.WorkflowTests.test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget) ... ok
+test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata (tests.rag.test_workflows.WorkflowTests.test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata) ... ok
+test_canonical_tags_and_unknown_labels_do_not_invent_ids (tests.rag.test_workflows.WorkflowTests.test_canonical_tags_and_unknown_labels_do_not_invent_ids) ... ok
+test_concept_scope_is_applied_before_dense_and_lexical_candidates (tests.rag.test_workflows.WorkflowTests.test_concept_scope_is_applied_before_dense_and_lexical_candidates) ... ok
+test_context_reassignment_uses_canonical_scope_before_payload_refresh (tests.rag.test_workflows.WorkflowTests.test_context_reassignment_uses_canonical_scope_before_payload_refresh) ... ok
+test_delete_cancels_worker_and_purges (tests.rag.test_workflows.WorkflowTests.test_delete_cancels_worker_and_purges) ... ok
+test_delete_outage_and_late_write_reconciliation (tests.rag.test_workflows.WorkflowTests.test_delete_outage_and_late_write_reconciliation) ... RAG worker job failed: 0f0a4867-b5b3-4f8b-811a-8aa82364b4d9
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+ok
+test_duplicate_matching_does_not_substitute_a_different_latest_upload (tests.rag.test_workflows.WorkflowTests.test_duplicate_matching_does_not_substitute_a_different_latest_upload) ... ok
+test_embedding_reset_rebuilds_archived_and_pending_sources_preserving_records (tests.rag.test_workflows.WorkflowTests.test_embedding_reset_rebuilds_archived_and_pending_sources_preserving_records) ... ok
+test_embedding_reset_recovers_retained_text_when_original_file_is_missing (tests.rag.test_workflows.WorkflowTests.test_embedding_reset_recovers_retained_text_when_original_file_is_missing) ... ok
+test_empty_scope_never_searches (tests.rag.test_workflows.WorkflowTests.test_empty_scope_never_searches) ... ok
+test_expired_ingestion_attempts_have_a_terminal_limit (tests.rag.test_workflows.WorkflowTests.test_expired_ingestion_attempts_have_a_terminal_limit) ... ok
+test_expired_worker_is_fenced (tests.rag.test_workflows.WorkflowTests.test_expired_worker_is_fenced) ... ok
+test_explicit_support_gate_excludes_unscored_tail (tests.rag.test_workflows.WorkflowTests.test_explicit_support_gate_excludes_unscored_tail) ... ok
+test_failed_replacement_preserves_active_material (tests.rag.test_workflows.WorkflowTests.test_failed_replacement_preserves_active_material) ... ok
+test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached (tests.rag.test_workflows.WorkflowTests.test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached) ... ok
+test_idempotency_duplicate_and_conflict (tests.rag.test_workflows.WorkflowTests.test_idempotency_duplicate_and_conflict) ... ok
+test_lexical_questions_match_identifiers_without_every_question_word (tests.rag.test_workflows.WorkflowTests.test_lexical_questions_match_identifiers_without_every_question_word) ... ok
+test_library_batches_queries_and_preserves_failed_replacement_summary (tests.rag.test_workflows.WorkflowTests.test_library_batches_queries_and_preserves_failed_replacement_summary) ... ok
+test_library_context_filter_is_canonical (tests.rag.test_workflows.WorkflowTests.test_library_context_filter_is_canonical) ... ok
+test_library_metadata_search_is_unicode_literal_paginated_and_owned (tests.rag.test_workflows.WorkflowTests.test_library_metadata_search_is_unicode_literal_paginated_and_owned) ... ok
+test_merged_tags_remain_searchable_with_old_and_new_ids_and_warm_cache (tests.rag.test_workflows.WorkflowTests.test_merged_tags_remain_searchable_with_old_and_new_ids_and_warm_cache) ... ok
+test_new_publication_invalidates_candidate_cache (tests.rag.test_workflows.WorkflowTests.test_new_publication_invalidates_candidate_cache) ... ok
+test_old_citation_uses_exact_published_generation_after_reindex (tests.rag.test_workflows.WorkflowTests.test_old_citation_uses_exact_published_generation_after_reindex) ... ok
+test_operator_health_reports_owned_coverage_and_pending_lag (tests.rag.test_workflows.WorkflowTests.test_operator_health_reports_owned_coverage_and_pending_lag) ... ok
+test_operator_rebuild_is_transactional_and_resumable (tests.rag.test_workflows.WorkflowTests.test_operator_rebuild_is_transactional_and_resumable) ... ok
+test_optional_reranker_failure_is_explicit_and_scoped (tests.rag.test_workflows.WorkflowTests.test_optional_reranker_failure_is_explicit_and_scoped) ... ok
+test_oversized_scope_is_bounded_and_rejected_before_inference (tests.rag.test_workflows.WorkflowTests.test_oversized_scope_is_bounded_and_rejected_before_inference) ... ok
+test_preextracted_chat_file_never_parses_again (tests.rag.test_workflows.WorkflowTests.test_preextracted_chat_file_never_parses_again) ... ok
+test_publication_requires_expected_point_ids_and_owner_payloads (tests.rag.test_workflows.WorkflowTests.test_publication_requires_expected_point_ids_and_owner_payloads) ... RAG worker job failed: 7939c9b4-1618-4250-8408-0cbb29279af6
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 104, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+ok
+test_reranker_candidate_limit_is_applied_after_owned_hydration (tests.rag.test_workflows.WorkflowTests.test_reranker_candidate_limit_is_applied_after_owned_hydration) ... ok
+test_retry_resumes_persisted_chunks_without_repeating_ocr (tests.rag.test_workflows.WorkflowTests.test_retry_resumes_persisted_chunks_without_repeating_ocr) ... RAG worker job failed: a74c91ad-9534-4f72-9320-80ac09e7bdea
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+ok
+test_retry_reuses_verified_vectors_after_publication_dependency_failure (tests.rag.test_workflows.WorkflowTests.test_retry_reuses_verified_vectors_after_publication_dependency_failure) ... RAG worker job failed: 8b9512e3-9e51-4f33-be4d-d3a8cbf2ee11
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 105, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+ok
+test_revision_conflict_and_reindex (tests.rag.test_workflows.WorkflowTests.test_revision_conflict_and_reindex) ... ok
+test_shared_reader_html_scripts_and_code_survive_rag_ingestion (tests.rag.test_workflows.WorkflowTests.test_shared_reader_html_scripts_and_code_survive_rag_ingestion) ... ok
+test_structured_lexical_policy_distinguishes_punctuated_identifiers (tests.rag.test_workflows.WorkflowTests.test_structured_lexical_policy_distinguishes_punctuated_identifiers) ... ok
+test_successful_replacement_switches_generation (tests.rag.test_workflows.WorkflowTests.test_successful_replacement_switches_generation) ... ok
+test_upload_worker_search_source_and_identity (tests.rag.test_workflows.WorkflowTests.test_upload_worker_search_source_and_identity) ... ok
+test_vector_resume_fetch_is_batched_once_and_publication_still_rechecks (tests.rag.test_workflows.WorkflowTests.test_vector_resume_fetch_is_batched_once_and_publication_still_rechecks) ... ok
+test_binding_consumption_and_shared_original_retention (tests.test_files.FilesTests.test_binding_consumption_and_shared_original_retention) ... ok
+test_cancel_expiry_and_live_read_lease (tests.test_files.FilesTests.test_cancel_expiry_and_live_read_lease) ... ok
+test_original_delivery_auth_ranges_and_deleted_conversation (tests.test_files.FilesTests.test_original_delivery_auth_ranges_and_deleted_conversation) ... ok
+test_provider_failure_is_retryable_and_deletion_retries (tests.test_files.FilesTests.test_provider_failure_is_retryable_and_deletion_retries) ... ok
+test_range_parser (tests.test_files.FilesTests.test_range_parser) ... ok
+test_receipt_replay_conflict_and_wrong_owner (tests.test_files.FilesTests.test_receipt_replay_conflict_and_wrong_owner) ... ok
+test_schema_rollback_refuses_registered_files (tests.test_files.FilesTests.test_schema_rollback_refuses_registered_files) ... ok
+
+----------------------------------------------------------------------
+Ran 65 tests in 229.294s
+
+OK

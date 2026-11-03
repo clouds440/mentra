@@ -93,3 +93,17 @@ jobs = Table('rag_job', metadata,
     CheckConstraint("operation IN ('INGEST','DELETE','RECONCILE')", name='operation'),
     CheckConstraint("state IN ('QUEUED','RUNNING','RETRY_WAIT','SUCCEEDED','FAILED','CANCELLED')", name='state'),
     Index('idx_rag_job_due', 'state', 'next_attempt_at', 'lease_until'))
+
+visuals = Table('rag_visual',metadata,
+    Column('id',Text,primary_key=True),owner(),Column('document_id',Text,nullable=False),
+    Column('version_id',Text,nullable=False),Column('generation_id',Text,nullable=False),
+    Column('file_id',Uuid(as_uuid=False),nullable=False),Column('sha256',Text,nullable=False),
+    Column('media_type',Text,nullable=False),Column('width',Integer,nullable=False),Column('height',Integer,nullable=False),
+    Column('caption',Text,nullable=False),Column('block_refs',JSONB,nullable=False),Column('locations',JSONB,nullable=False),
+    Column('created_at',DateTime(timezone=True),nullable=False),
+    owned_parent('rag_document_version',['document_id','version_id'],['document_id','id']),
+    owned_parent('rag_generation',['document_id','generation_id'],['document_id','id']),
+    ForeignKeyConstraint(['learner_id','file_id'],['file_asset.learner_id','file_asset.id']),
+    UniqueConstraint('learner_id','generation_id','sha256'),
+    CheckConstraint("width > 0 AND height > 0 AND width::bigint*height <= 30000000 AND media_type IN ('image/png','image/jpeg')",name='visual_format'),
+    Index('idx_rag_visual_generation','learner_id','generation_id'))

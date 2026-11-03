@@ -54,6 +54,7 @@ class LexicalMigrationTests(unittest.TestCase):
         query=text("SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relname='idx_rag_chunk_lexical' AND n.nspname=current_schema()")
         with fixture.db.engine.connect() as connection:
             before=connection.scalar(query); connection.commit()
+            command.downgrade(migration_config(connection),'20261103_0039'); connection.commit()
             command.stamp(migration_config(connection),'20261029_0038'); connection.commit()
         upgrade(fixture.db.engine)
         with fixture.db.engine.connect() as connection:

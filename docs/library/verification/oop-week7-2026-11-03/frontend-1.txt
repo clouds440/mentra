@@ -1,0 +1,59 @@
+[WebServer] (node:19792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:12020) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\renovation-pdf-source.spec.ts:34:1 › a source opened before OCR completes refreshes passages without reopening or permanent warnings (18.3s)
+  ok  2 tests\renovation-pdf-source.spec.ts:43:1 › an unpublished source shows processing rather than claiming no content (9.3s)
+  ok  3 tests\renovation-pdf-source.spec.ts:50:1 › OCR failure remains actionable inside the source viewer (9.5s)
+  ok  4 tests\renovation-pdf-source.spec.ts:57:1 › a historical failure is visible from version metadata without recent jobs (9.9s)
+  ok  5 tests\renovation-pdf-source.spec.ts:62:1 › a passage read error never also claims that extraction produced no content (9.2s)
+  ok  6 tests\renovation-pdf-source.spec.ts:73:1 › failure of a newer reindex does not hide previously published content (11.6s)
+  ok  7 tests\renovation-pdf-source.spec.ts:81:1 › an indexed source with missing passages reports a load inconsistency (10.0s)
+  ok  8 tests\renovation-pdf-source.spec.ts:92:1 › unsaved title edits cannot freeze source processing progress (11.3s)
+  ok  9 tests\renovation-pdf-source.spec.ts:103:1 › one OCR notice appears only for the selected upload and disappears after acceptance (8.7s)
+  x  10 tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings (10.2s)
+
+
+  1) tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('img', { name: 'Exception hierarchy' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('img', { name: 'Exception hierarchy' }) with timeout 5000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('img', { name: 'Exception hierarchy' })
+
+
+      129 |   await page.getByRole('button',{name:'Open source version',exact:true}).click();
+      130 |   const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+    > 131 |   await expect(viewer.getByRole('img',{name:'Exception hierarchy'})).toBeVisible();
+          |                                                                      ^
+      132 |   expect(reads).toBe(1);
+      133 |   await expect(viewer).toContainText('Slide 8');
+      134 |   await expect(page.getByText(/was read with OCR|Extraction notes/)).toHaveCount(0);
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:131:70
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-sour-4e72d-without-extraction-warnings\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests\renovation-pdf-source.spec.ts:117:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings 
+  9 passed (1.9m)

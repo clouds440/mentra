@@ -1,0 +1,203 @@
+Executing <Task finished name='Task-21' coro=<AssessmentWorkflows.generate.<locals>.generate_batch() done, defined at /app/app/langchain/assessment_workflows.py:163> result=(GeneratedAsse...e_tokens=[])]), [{'answer_mode': 'text', 'question_type': 'written'}, {'answer_mode': 'text', 'question_type': 'written'}]) created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.149 seconds
+Executing <Task finished name='Task-127' coro=<AssessmentTests.test_original_bytes_are_external_to_attempt_rows() done, defined at /app/tests/test_assessments.py:349> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.266 seconds
+Executing <Task finished name='Task-176' coro=<AssessmentTests.test_queue_diagnostics_detect_missing_worker_and_clear_after_observation() done, defined at /app/tests/test_assessments.py:112> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.142 seconds
+Executing <Task finished name='Task-186' coro=<AssessmentTests.test_replacing_draft_source_releases_only_superseded_binding() done, defined at /app/tests/test_assessments.py:35> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.232 seconds
+Executing <Task finished name='Task-207' coro=<AssessmentTests.test_source_job_reclaim_fences_stale_publication() done, defined at /app/tests/test_assessments.py:78> result=None created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.139 seconds
+Executing <Task pending name='Task-217' coro=<AssessmentTests.test_source_job_survives_client_and_replays_completed_result() running at /app/tests/test_assessments.py:70> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <3 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.129 seconds
+/app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+RAG worker job failed: 1278c384-6f96-430c-b987-ae96c0586261
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+RAG worker job failed: 7be70d76-20de-4347-9532-a72fed78e410
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+RAG worker job failed: 1f0110bf-f090-458c-91c0-a3daf351953a
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 90, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+RAG worker job failed: 821029df-a719-462d-8ea9-e99c5263097e
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 98, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Memory summary deferred (ValueError)
+Chat summary deferred (RuntimeError)
+Chat summary deferred (ValueError)
+Chat summary read deferred (RuntimeError)
+No new upgrade operations detected.
+======================================================================
+FAIL: test_schema_rollback_refuses_registered_files (tests.test_files.FilesTests.test_schema_rollback_refuses_registered_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_files.py", line 58, in test_schema_rollback_refuses_registered_files
+    command.downgrade(migration_config(connection), "20261017_0027")
+  File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 534, in downgrade
+    script.run_env()
+  File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/alembic/env.py", line 38, in <module>
+    run(config.attributes['connection'])
+  File "/app/alembic/env.py", line 29, in run
+    context.run_migrations()
+  File "<string>", line 8, in run_migrations
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 970, in run_migrations
+    self.get_context().run_migrations(**kw)
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 616, in run_migrations
+    step.migration_fn(**kw)
+  File "/app/alembic/versions/20261103_0039_rag_lexical_index.py", line 25, in downgrade
+    with op.get_context().autocommit_block():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 324, in autocommit_block
+    assert self._transaction is not None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_chat_and_assessment_budgets_are_separate (tests.test_chat_summaries.SummaryTests.test_chat_and_assessment_budgets_are_separate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_chat_summaries.py", line 517, in test_chat_and_assessment_budgets_are_separate
+    self.assertEqual(config.chat_input_tokens, 12288)
+AssertionError: 16384 != 12288
+
+======================================================================
+FAIL: test_schema_expansion_restores_tool_result_capacity (tests.test_chat_summaries.SummaryTests.test_schema_expansion_restores_tool_result_capacity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_chat_summaries.py", line 374, in test_schema_expansion_restores_tool_result_capacity
+    asyncio.run(tool_reply(llm, [HumanMessage(id=identifier, content='A question')], None, self.owner, scope, (), {}))
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/app/langchain/history_orchestration.py", line 658, in tool_reply
+    response = await coordinate(model_round, dispatch_round, checkpoint=scope.get('_response_checkpoint'),
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/langchain/graphs/tool_coordinator.py", line 59, in coordinate
+    result = await graph.ainvoke(None if snapshot and snapshot.created_at else {'iteration': 0}, config,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/langgraph/pregel/main.py", line 4155, in ainvoke
+    async for chunk in self.astream(
+  File "/usr/local/lib/python3.12/site-packages/langgraph/pregel/main.py", line 3505, in astream
+    async for _ in runner.atick(
+  File "/usr/local/lib/python3.12/site-packages/langgraph/pregel/_runner.py", line 397, in atick
+    await arun_with_retry(
+  File "/usr/local/lib/python3.12/site-packages/langgraph/pregel/_retry.py", line 744, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 756, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 522, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/langchain/graphs/tool_coordinator.py", line 22, in model
+    async def model(state): return await wrapped(model_round, state)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/langchain/graphs/tool_coordinator.py", line 19, in wrapped
+    value = await node(state)
+            ^^^^^^^^^^^^^^^^^
+  File "/app/app/langchain/history_orchestration.py", line 316, in model_round
+    response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 2302, in _execute_mock_call
+    result = await effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/tests/test_chat_summaries.py", line 364, in answer
+    self.assertEqual(scope['_chat_input_limit'], 12288)
+AssertionError: 16384 != 12288
+During task with name 'model' and id 'dc55cb8e-b080-5fc2-eacd-f8e0e1269b72'
+
+======================================================================
+FAIL: test_migrations_no_drift_and_profile_downgrade_preserves_accounts (tests.student_profile.test_profile.StudentProfileTests.test_migrations_no_drift_and_profile_downgrade_preserves_accounts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/student_profile/test_profile.py", line 472, in test_migrations_no_drift_and_profile_downgrade_preserves_accounts
+    command.downgrade(migration_config(connection), '20261007_0002')
+  File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 534, in downgrade
+    script.run_env()
+  File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/alembic/env.py", line 38, in <module>
+    run(config.attributes['connection'])
+  File "/app/alembic/env.py", line 29, in run
+    context.run_migrations()
+  File "<string>", line 8, in run_migrations
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 970, in run_migrations
+    self.get_context().run_migrations(**kw)
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 616, in run_migrations
+    step.migration_fn(**kw)
+  File "/app/alembic/versions/20261103_0039_rag_lexical_index.py", line 25, in downgrade
+    with op.get_context().autocommit_block():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 324, in autocommit_block
+    assert self._transaction is not None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+----------------------------------------------------------------------
+Ran 233 tests in 267.581s
+
+FAILED (failures=4)

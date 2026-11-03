@@ -1,0 +1,10 @@
+
+Running 3 tests using 1 worker
+
+(node:14704) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\renovation-pdf-source.spec.ts:38:1 › a source opened before OCR completes refreshes passages without reopening or permanent warnings (3.9s)
+  ok 2 tests\renovation-pdf-source.spec.ts:107:1 › one OCR notice appears only for the selected upload and disappears after acceptance (1.1s)
+  ok 3 tests\renovation-pdf-source.spec.ts:121:1 › source diagrams load through authenticated delivery beside their passage without extraction warnings (1.1s)
+
+  3 passed (7.2s)

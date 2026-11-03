@@ -35,8 +35,8 @@ export function ChatSearch({ onOpen }: { onOpen: () => void }) {
   function page(value: number) { const next = new URLSearchParams(params); next.set('chat_search_offset', String(value)); setParams(next, {replace:true}); }
   return <>
     <IconButton size="sm" aria-label="Search saved chats" title="Search saved chats" onClick={() => { const next = new URLSearchParams(params); next.set('search_open','1'); next.delete('message'); setParams(next); }}><Search size={15} aria-hidden="true" /></IconButton>
-    {open && <Dialog open onDismiss={close} aria-labelledby="chat-search-title" aria-describedby="chat-search-description" className="m-auto flex max-h-[85dvh] w-[calc(100%-1.5rem)] max-w-2xl flex-col overflow-hidden rounded-panel border border-border bg-popover p-0 text-foreground shadow-overlay">
-      <header className="shrink-0 space-y-3 border-b border-border p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><h2 id="chat-search-title" className="flex items-center gap-2 font-semibold text-heading"><Search size={18} aria-hidden="true" />Search your chats</h2><Button size="sm" variant="ghost" onClick={close}>Close</Button></div>
+    {open && <Dialog open onDismiss={close} aria-labelledby="chat-search-title" aria-describedby="chat-search-description" layout="viewer" className="max-w-2xl">
+      <header className="shrink-0 space-y-3 border-b border-border p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><h2 id="chat-search-title" className="flex items-center gap-2 font-semibold text-heading"><Search size={18} aria-hidden="true" />Search your chats</h2></div>
         <p id="chat-search-description" className="text-xs text-muted">Find a phrase in your saved messages or chat titles.</p>
         <Input ref={input} autoFocus type="search" aria-label="Search chat titles and messages" placeholder="A topic, phrase or question…" maxLength={200} value={text} onChange={event => { const next = new URLSearchParams(params); next.set('chat_search', event.target.value); next.delete('chat_search_offset'); setParams(next, {replace:true}); }} />
       </header>

@@ -1,9 +1,9 @@
 import { Dialog } from '../ui/Dialog';
-import { materialWarningMessage } from '../../services/userError';
+import { SourceDiagrams } from './SourceDiagrams';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Download, FileText, X, ArrowDown, AlertCircle } from 'lucide-react';
+import { Download, FileText, ArrowDown } from 'lucide-react';
 import { Button } from '../ui';
 import { CodeBlock } from '../content/CodeBlock';
 import { MarkdownContent } from '../content/MarkdownContent';
@@ -16,8 +16,9 @@ export function sourceLocation(source: Pick<SourceReference, 'spans' | 'heading_
   return [...new Set(source.spans.map(s => s.page ? `Page ${s.page}` : s.slide ? `Slide ${s.slide}` : `Section ${s.block + 1}`))].join(', ') || source.heading_path.join(' / ');
 }
 interface OriginalFile { blob: Blob; url: string; media: string; text?: string; truncated: boolean }
+export interface SourceStatus { state: 'processing' | 'ready' | 'failed' | 'unavailable'; error?: string | null }
 
-export function SourceViewer({ source, filename, includeArchived = false, onClose }: { source: SourceReference; filename?: string; includeArchived?: boolean; onClose: () => void }) {
+export function SourceViewer({ source, filename, includeArchived = false, status, onRefresh, onClose }: { source: SourceReference; filename?: string; includeArchived?: boolean; status?: SourceStatus; onRefresh?: () => void; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [chunks, setChunks] = useState<SourceChunk[]>([]);
   const [citedChunk, setCitedChunk] = useState<SourceChunk>();
@@ -29,6 +30,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
   const [view, setView] = useState<'extracted' | 'original'>('extracted');
   const [original, setOriginal] = useState<OriginalFile>();
   const [opening, setOpening] = useState(false);
+  const [reload, setReload] = useState(0);
   const controllerRef = useRef<AbortController>();
   const originalRequest = useRef<Promise<OriginalFile>>();
   const displayFilename = filename ?? source.filename ?? chunks[0]?.filename;
@@ -39,6 +41,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     setOpening(false); setDownloadBusy(false);
     setLoading(true); setLoadingMore(false); setMore(false); setChunks([]); setCitedChunk(undefined); setError(''); setOriginal(undefined); setView('extracted'); originalRequest.current = undefined;
     async function load() {
+      if (!source.generation_id && status && status.state !== 'ready') return;
       if (source.chunk_id) {
         const chunk = await getSourceChunk(source.chunk_id, includeArchived, controller.signal);
         if (chunk.document_id !== source.document_id || chunk.version_id !== source.version_id || source.generation_id && chunk.generation_id !== source.generation_id) throw new Error('Source identity changed');
@@ -52,7 +55,7 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
       .catch(e => { if (!controller.signal.aborted) setError(materialError(e)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [source.document_id, source.version_id, source.generation_id, source.chunk_id, includeArchived]);
+  }, [source.document_id, source.version_id, source.generation_id, source.chunk_id, includeArchived, status?.state, reload]);
   useEffect(() => () => { if (original?.url) URL.revokeObjectURL(original.url); }, [original?.url]);
   async function loadMore() {
     if (loadingMore) return;
@@ -97,11 +100,11 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setDownloadBusy(false); }
   }
-  return <Dialog open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-overlay">
+  return <Dialog closeLabel="Close source" open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} layout="viewer" className="source-dialog max-w-4xl">
     <header className="source-header">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent"><FileText size={13} aria-hidden="true" />Library source</p><h2 className="truncate text-xl font-semibold tracking-tight text-heading">{source.title}</h2><p className="mt-1 truncate text-xs text-muted" title={displayFilename}>{displayFilename ?? sourceLocation(source) ?? 'Study material'}</p></div>
-        <Button variant="ghost" size="sm" className="shrink-0 !px-2" aria-label="Close source" onClick={() => dialog.current?.close()}><X size={18} aria-hidden="true" /></Button>
+
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted">{sourceLocation(source) || 'Source content'}{chunks.length > 0 ? ` · ${chunks.length}${more ? '+' : ''} ${chunks.length === 1 ? 'passage' : 'passages'}` : ''}</span><Button size="sm" variant="secondary" disabled={downloadBusy} onClick={() => void download()}><Download size={14} aria-hidden="true" />{downloadBusy ? 'Opening original…' : 'Download original'}</Button></div>
       <nav className="source-tabs" aria-label="Source view"><button type="button" aria-pressed={view === 'extracted'} onClick={() => setView('extracted')}>Extracted content</button><button type="button" aria-pressed={view === 'original'} onClick={() => void openOriginal()}>Original file</button></nav>
@@ -109,13 +112,16 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     <div className="source-reader">
       {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
       {view === 'extracted' ? <>
-        {source.warnings.length > 0 && <details className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted"><summary className="ui-disclosure cursor-pointer"><AlertCircle size={13} className="mr-2 inline" aria-hidden="true" />Extraction notes ({source.warnings.length})</summary><ul className="mt-3 space-y-2">{source.warnings.map(w => <li key={w}>{materialWarningMessage(w)}</li>)}</ul></details>}
+        {status?.state === 'processing' && <p role="status" className="mb-4 text-sm text-muted">Reading and indexing this source. Extracted content and notes will appear here when processing finishes. The original file is available.</p>}
+        {status?.state === 'failed' && <p role="alert" className="mb-4 text-sm text-danger">{status.error || 'Source extraction did not finish.'} Your original file is preserved. Retry processing from the material page.</p>}
+        {status?.state === 'ready' && status.error && <p role="alert" className="mb-4 text-sm text-muted">Latest processing attempt failed: {status.error} Showing the previously indexed content.</p>}
         {loading && <Skeleton variant="text" rows={8} className="py-6" />}
-        {!loading && chunks.length === 0 && !citedChunk && <p className="source-prose">{source.excerpt || 'No extracted passages are available for this version. Open the original file to inspect it.'}</p>}
+        {!loading && !error && chunks.length === 0 && !citedChunk && status?.state !== 'processing' && status?.state !== 'failed' && <p className="source-prose">{source.excerpt || (status?.state === 'ready' ? 'This source was indexed, but its extracted passages could not be loaded. Refresh the content or open the original file.' : 'No published extraction is available for this version yet. Your original file is preserved.')}</p>}
+        {!loading && (error || !chunks.length && !citedChunk && status?.state !== 'processing') && <Button className="mt-4" variant="secondary" onClick={() => { onRefresh?.(); setReload(value => value + 1); }}>Refresh content</Button>}
         {passages.map(chunk => {
           const language = passageLanguage(chunk, displayFilename);
           const cited = chunk.id === source.chunk_id || chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
-          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}</section>;
+          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}<SourceDiagrams visuals={chunk.visuals} archived={includeArchived} /></section>;
         })}
         {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{citedChunk && !chunks.length ? 'Read full source' : 'Load more passages'}</Button>}
       </> : <>

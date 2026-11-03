@@ -1,0 +1,17 @@
+[WebServer] (node:13116) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:21304) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\renovation-answer-sheets.spec.ts:65:97 › interactive pdf answer sheet enters review and canonical grading (3.3s)
+  ok 2 tests\renovation-answer-sheets.spec.ts:65:97 › interactive txt answer sheet enters review and canonical grading (3.2s)
+  ok 3 tests\renovation-answer-sheets.spec.ts:65:97 › interactive png answer sheet enters review and canonical grading (3.2s)
+  ok 4 tests\renovation-answer-sheets.spec.ts:84:1 › written assigned assessment can upload directly and downloads a question-paper PDF (1.8s)
+  ok 5 tests\renovation-answer-sheets.spec.ts:94:1 › regular chat attachment updates the existing interactive card and the new review card (3.3s)
+  ok 6 tests\renovation-answer-sheets.spec.ts:113:1 › failed upload retries the same attempt and upload receipt (1.9s)
+  ok 7 tests\renovation-answer-sheets.spec.ts:122:1 › self-reported AI use shows the adjusted total with original correctness (3.4s)
+  ok 8 tests\renovation-answer-sheets.spec.ts:140:1 › assistance selected in the quiz is retained when switching to an answer sheet (2.0s)
+
+  8 passed (24.1s)

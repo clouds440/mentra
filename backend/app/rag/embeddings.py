@@ -105,11 +105,14 @@ class SentenceTransformerEmbeddingService:
             model_loader = SentenceTransformer
 
         try:
-            self._model = model_loader(
-                str(model_path),
-                device=app_settings.embedding_device,
-                local_files_only=True,
-            )
+            from app.core.inference_device import LocalModel
+            preference = app_settings.embedding_device
+            if preference == 'auto':
+                preference = app_settings.local_inference_device
+            self._runtime = LocalModel(lambda choice: model_loader(str(model_path),
+                device=choice.device, local_files_only=True), 'torch', preference,
+                on_fallback=lambda:setattr(self,'_model',None))
+            self._model = self._runtime.get()
             dimension_reader = getattr(self._model, 'get_embedding_dimension', None)
             dimension = (dimension_reader or self._model.get_sentence_embedding_dimension)()
         except (OSError, ValueError, RuntimeError) as exc:
@@ -168,12 +171,13 @@ class SentenceTransformerEmbeddingService:
     def _encode(self, texts: Sequence[str]) -> list[list[float]]:
         if hasattr(self._model, 'tokenizer') and any(self._token_count(text) > self.max_tokens for text in texts):
             raise EmbeddingModelError('Embedding input exceeds the model token budget.')
-        embeddings = self._model.encode(
+        embeddings = self._runtime.run(lambda model: model.encode(
             list(texts),
             batch_size=self._batch_size,
             normalize_embeddings=True,
             convert_to_numpy=True,
-        )
+        ))
+        self._model = self._runtime.model
         rows = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
         if len(rows) != len(texts):
             raise EmbeddingModelError(

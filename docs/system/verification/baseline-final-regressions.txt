@@ -1,0 +1,176 @@
+test_enqueue_replay_is_idempotent (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_enqueue_replay_is_idempotent) ... ERROR
+test_handoffs_and_review_waits_do_not_enqueue_evidence (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_handoffs_and_review_waits_do_not_enqueue_evidence) ... FAIL
+test_legacy_stale_job_is_retired (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_legacy_stale_job_is_retired) ... ERROR
+test_partial_response_does_not_enqueue_evidence (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_partial_response_does_not_enqueue_evidence) ... FAIL
+test_storage_override_upload_and_cleanup (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_storage_override_upload_and_cleanup) ... ERROR
+test_submission_is_inside_deadline (backend.tests.test_system_audit_regressions.SpeechDeadlineRegression.test_submission_is_inside_deadline) ... FAIL
+
+======================================================================
+ERROR: test_enqueue_replay_is_idempotent (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_enqueue_replay_is_idempotent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\psycopg\cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "pk_chat_evidence_job"
+DETAIL:  Key (turn_id)=(9407afef-1fc6-4dd5-8122-e05a82bc3bc2) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 105, in test_enqueue_replay_is_idempotent
+    ChatEvidenceRepository.queue(session, self.owner, job)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\app\core\observability\registration.py", line 100, in wrapped
+    value = fn(*args, **kwargs)
+  File "backend/app/langchain/repositories/evidence.py", line 31, in queue
+    if not user or len(user['content'])>12000 or user['metadata'].get('attachments'): return
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2280, in _execute_internal
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\psycopg\cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "pk_chat_evidence_job"
+DETAIL:  Key (turn_id)=(9407afef-1fc6-4dd5-8122-e05a82bc3bc2) already exists.
+[SQL: INSERT INTO chat_evidence_job (log_context, profile_context_version, turn_id, learner_id, attempt, state, attempts, created_at) VALUES (%(log_context)s::JSONB, %(profile_context_version)s::BIGINT, %(turn_id)s::UUID, %(learner_id)s::UUID, %(attempt)s::INTEGER, %(state)s::VARCHAR, %(attempts)s::INTEGER, %(created_at)s::TIMESTAMP WITH TIME ZONE)]
+[SQL parameters hidden due to hide_parameters=True]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+======================================================================
+ERROR: test_legacy_stale_job_is_retired (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_legacy_stale_job_is_retired)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 97, in test_legacy_stale_job_is_retired
+    self.assertIsNone(ChatEvidenceRepository(self.db.sessions).claim())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\app\core\observability\registration.py", line 100, in wrapped
+    value = fn(*args, **kwargs)
+  File "backend/app/langchain/repositories/evidence.py", line 57, in claim
+    now=datetime.now(timezone.utc)
+                   ~^^^^^^^^^^^^^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\app\core\observability\registration.py", line 100, in wrapped
+    value = fn(*args, **kwargs)
+  File "backend/app/langchain/repositories/evidence.py", line 35, in source
+    from app.student_profile.repositories.tables import student_profile
+    
+app.core.exceptions.AppError: Evidence source is no longer available.
+
+======================================================================
+ERROR: test_storage_override_upload_and_cleanup (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_storage_override_upload_and_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 62, in test_storage_override_upload_and_cleanup
+    stored = files.upload(self.owner, BytesIO(b'source'), 'source.txt', 'chat', 'override')
+  File "backend/app/files/service.py", line 277, in upload
+    try:
+    
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 55, in upload
+    policy._owned(row)
+    ~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\app\files\provider.py", line 66, in _owned
+    raise AppError(
+    ...<3 lines>...
+    )
+app.core.exceptions.AppError: File storage namespace does not match this application.
+
+======================================================================
+FAIL: test_handoffs_and_review_waits_do_not_enqueue_evidence (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_handoffs_and_review_waits_do_not_enqueue_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 90, in test_handoffs_and_review_waits_do_not_enqueue_evidence
+    self.assertEqual(session.scalar(select(func.count()).select_from(jobs)),0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 3 != 0
+
+======================================================================
+FAIL: test_partial_response_does_not_enqueue_evidence (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_partial_response_does_not_enqueue_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 83, in test_partial_response_does_not_enqueue_evidence
+    self.assertEqual(session.scalar(select(func.count()).select_from(jobs)), 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_submission_is_inside_deadline (backend.tests.test_system_audit_regressions.SpeechDeadlineRegression.test_submission_is_inside_deadline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 36, in test_submission_is_inside_deadline
+    self.assertEqual(error.exception.code, 'SPEECH_TIMEOUT')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'SPEECH_UNAVAILABLE' != 'SPEECH_TIMEOUT'
+- SPEECH_UNAVAILABLE
++ SPEECH_TIMEOUT
+
+
+----------------------------------------------------------------------
+Ran 6 tests in 9.599s
+
+FAILED (failures=3, errors=3)
+Exception ignored while finalizing file <_io.BytesIO object at 0x000001E1D1C9EC50>:
+BufferError: Existing exports of data: object cannot be re-sized

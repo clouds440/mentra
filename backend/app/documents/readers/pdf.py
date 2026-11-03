@@ -36,19 +36,18 @@ class PDFReader:
                     warnings.append(f'Page {number} has no readable native text and OCR is unavailable; check the original.')
                     blocks.append(dict(text=text, page=number, method=method))
                     continue
-                text, method = pdf_page_text(self.vision, path, number), 'ocr'
+                text, method = pdf_page_text(self.vision,path,number,
+                    capture=lambda data:embedded.capture(data,warnings,page=number)), 'ocr'
                 warnings.append(f'Page {number} was read with OCR; verify equations and handwriting.')
             if not text.strip():
                 warnings.append(f'Page {number} has no readable text; check the original for missing content.')
             blocks.append(dict(text=text, page=number, method=method))
-            if method == 'native' and capabilities.image_ocr:
+            if method == 'native':
                 for image in images:
                     buffer = io.BytesIO()
                     image.image.save(buffer, format='PNG')
-                    extra = embedded.read(buffer.getvalue(), warnings, f'on page {number}', strict=True)
+                    extra = embedded.read(buffer.getvalue(), warnings, f'on page {number}', strict=True,page=number)
                     if extra and extra.casefold() not in text.casefold():
                         blocks.append(dict(text=extra, page=number, method='image_ocr'))
                         warnings.append(f'Image text on page {number} was read with OCR; verify it against the source.')
-            elif method == 'native' and len(images):
-                warnings.append(f'Image text on page {number} was not extracted because OCR is unavailable.')
-        return dict(blocks=blocks, warnings=warnings)
+        return dict(blocks=blocks, warnings=warnings,visuals=embedded.visuals)

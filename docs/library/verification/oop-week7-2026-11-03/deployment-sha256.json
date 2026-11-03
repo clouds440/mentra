@@ -1,0 +1,67 @@
+[
+  {
+    "file": "built-image-tests.txt",
+    "sha256": "10c96e5c692a6a5b6aa5454f8d2ecdbd634528a61c01cd70ce02fda8025badff",
+    "bytes": 3983
+  },
+  {
+    "file": "cleanup.json",
+    "sha256": "bd4553d2b2b0c5772f9629e04caeaeab909b1f54d01d5cf62144d2b6216abed4",
+    "bytes": 596
+  },
+  {
+    "file": "deployed-frontend.txt",
+    "sha256": "642d20d2d1c33a5f3ccd91486494c8abd311039bdd50fff756944e17782f1c88",
+    "bytes": 686
+  },
+  {
+    "file": "deployed-images.json",
+    "sha256": "90dd9b5f5765258aadd7b1b8f74d9f838dfab00f6796a09760b5a2f1357c5b91",
+    "bytes": 1733
+  },
+  {
+    "file": "deployed-search-final.json",
+    "sha256": "277f470743ac834889b6bedb8eec4ea161466230d62d5d382caed8d0f30a6f6d",
+    "bytes": 1001
+  },
+  {
+    "file": "deployed-source-verification.json",
+    "sha256": "c06126b4c4fca4832bea5a95f928e5a795432a7b77a121e25bff12ab3a1c5252",
+    "bytes": 730
+  },
+  {
+    "file": "DEPLOYMENT.md",
+    "sha256": "cb94a7f6498c10dff738972ebb8357232b943affa214ae0f29c7ea1756e711fa",
+    "bytes": 4120
+  },
+  {
+    "file": "docker-build.txt",
+    "sha256": "d16c0e81a70a91e001c5f8f964d5cc73773ef961b699f35a9f0bb6e26aea8316",
+    "bytes": 254594
+  },
+  {
+    "file": "docker-rollout.txt",
+    "sha256": "5f46ba3971ba2a95a5f88c457fe3584bcad160bccabdf7cfb385e3a5e3ab34ab",
+    "bytes": 1620
+  },
+  {
+    "file": "health-ready.json",
+    "sha256": "a49a030db21470b06d91f8245042a5c78895a61955b6f2d777dc029b571d15ee",
+    "bytes": 2960
+  },
+  {
+    "file": "original-integrity.json",
+    "sha256": "cc7c6faec96ec5673da63b708c7e6f3ad108e29853eee3306c5b48d962831615",
+    "bytes": 114
+  },
+  {
+    "file": "predeploy-active-work.json",
+    "sha256": "a3aab0e8fd8f1ec5f51b56200c42c6a9f5fe4cc56294428dfb98cc4cd98cf0f6",
+    "bytes": 114
+  },
+  {
+    "file": "targeted-repair-queued.json",
+    "sha256": "e62e5ee22cd2dc7fc68eaa0026340d427ab8b9d28a0416ab3d835815f4b3f8b4",
+    "bytes": 338
+  }
+]

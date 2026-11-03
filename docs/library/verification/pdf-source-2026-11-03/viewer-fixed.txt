@@ -1,0 +1,13 @@
+[WebServer] (node:13152) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:16860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening (7.7s)
+  ok 2 tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content (2.7s)
+  ok 3 tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer (2.7s)
+  ok 4 tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content (3.0s)
+
+  4 passed (18.5s)

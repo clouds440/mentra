@@ -17,12 +17,15 @@ def main():
     files = create_files()
     files.check_configuration()
     stopping = Event()
+    from app.db.worker_status import Heartbeat
+    heartbeat = Heartbeat(files.sessions)
     for name in (signal.SIGINT, signal.SIGTERM):
         signal.signal(name, lambda *_: stopping.set())
     try:
         while not stopping.is_set():
             try:
                 count = files.cleanup(limit=10)
+                heartbeat.pulse('files.cleanup')
                 if count:
                     logger.info("File cleanup processed %s assets", count)
             except Exception:

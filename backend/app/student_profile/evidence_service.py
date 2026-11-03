@@ -1,19 +1,22 @@
 """Persist evidence first; evaluate outside DB locks; apply once under ownership lock."""
 import asyncio
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from pydantic import ValidationError
 from .errors import conflict, information_required, EvaluationUnavailable
 from .schemas import EvidenceInput, ProfileEvidence, AIEvaluation
 from .policy import context_packet, apply_estimates, POLICY_VERSION
+from app.core.exceptions import AppError
 
 
 from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success')
 class ProfileEvidenceService:
-    def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc)):
+    def __init__(self, repository, evaluator, *, clock=lambda: datetime.now(timezone.utc), admission=None):
         self.repository, self.evaluator, self.clock = repository, evaluator, clock
+        self.admission = admission
 
     def record(self, learner_id: str, observation: EvidenceInput) -> str:
         """Trusted server integration only. No HTTP endpoint accepts these fields."""
@@ -67,7 +70,9 @@ class ProfileEvidenceService:
             return profile
         evidence, context, token = claim
         try:
-            evaluation = await asyncio.wait_for(self.evaluator.evaluate(evidence, context), timeout=45)
+            capacity = self.admission.async_reserve('model',learner_id,capacity=16,owner_capacity=2,seconds=60) if self.admission else nullcontext()
+            async with capacity:
+                evaluation = await asyncio.wait_for(self.evaluator.evaluate(evidence, context), timeout=45)
             evaluation = AIEvaluation.model_validate(evaluation)
             # Validate before entering the final transaction, including references.
             from .policy import validate_evaluation
@@ -75,6 +80,9 @@ class ProfileEvidenceService:
         except (EvaluationUnavailable, asyncio.TimeoutError, ValidationError):
             workflow_logger.set_outcome('degraded', code='PROFILE_EVALUATION_UNAVAILABLE')
             return await run_in_threadpool(self._fail, learner_id, evidence_id, token)
+        except AppError:
+            await run_in_threadpool(self._fail,learner_id,evidence_id,token)
+            raise
         return await run_in_threadpool(self._apply, learner_id, evidence_id, token, evaluation)
 
     def _fail(self, learner_id, evidence_id, token):

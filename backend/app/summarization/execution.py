@@ -18,11 +18,20 @@ def retry_delay(attempts):
 
 
 @asynccontextmanager
-async def generation():
+async def generation(admission=None, owner=None):
     from app.langchain.workflow_budget import current_budget
     token = current_budget.set(None)
     try:
-        async with asyncio.timeout(45):
-            yield
+        from app.db.admission import background_capacity
+        try:
+            async with background_capacity(admission,owner,seconds=60):
+                async with asyncio.timeout(45):
+                    yield
+        except Exception as error:
+            from app.core.exceptions import AppError
+            if isinstance(error,AppError) and error.code == 'WORK_CAPACITY':
+                from datetime import datetime,timezone,timedelta
+                raise SummaryDeferred(datetime.now(timezone.utc)+timedelta(seconds=5)) from None
+            raise
     finally:
         current_budget.reset(token)

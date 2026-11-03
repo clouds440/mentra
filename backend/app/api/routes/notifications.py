@@ -7,6 +7,30 @@ from app.notifications.schemas import InboxEdit, NotificationPreferencesEdit
 router = APIRouter(prefix='/notifications', tags=['notifications'])
 
 
+@router.get('/changes')
+async def changes(request: Request, identity=Depends(require_onboarded_identity)):
+    import asyncio
+    import json
+    from starlette.responses import StreamingResponse
+    repository = request.app.state.notifications_service.repository
+    initial = await run_in_threadpool(repository.unread,identity.learner_id)
+
+    async def events():
+        previous, page = None, initial
+        # Bounded authenticated sessions reconcile durable revisions on reconnect.
+        for _ in range(22):
+            if await request.is_disconnected(): return
+            if page['sync_revision'] != previous:
+                previous = page['sync_revision']
+                yield f'event: notifications\ndata: {json.dumps(page)}\n\n'
+            else:
+                yield ': heartbeat\n\n'
+            await asyncio.sleep(5)
+            page = await run_in_threadpool(repository.unread,identity.learner_id)
+    return StreamingResponse(events(),media_type='text/event-stream',
+        headers={'Cache-Control':'no-store','X-Accel-Buffering':'no'})
+
+
 def service(request: Request, response: Response):
     response.headers['Cache-Control'] = 'no-store'
     return request.app.state.notifications_service

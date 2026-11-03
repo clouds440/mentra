@@ -1,0 +1,59 @@
+test_enqueue_replay_is_idempotent (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_enqueue_replay_is_idempotent) ... ok
+test_legacy_stale_job_is_retired (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_legacy_stale_job_is_retired) ... ok
+test_partial_response_does_not_enqueue_evidence (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_partial_response_does_not_enqueue_evidence) ... ok
+test_storage_override_upload_and_cleanup (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_storage_override_upload_and_cleanup) ... ERROR
+test_submission_is_inside_deadline (backend.tests.test_system_audit_regressions.SpeechDeadlineRegression.test_submission_is_inside_deadline) ... ok
+test_backend_probes_are_independent (backend.tests.test_inference_device.DeviceTests.test_backend_probes_are_independent) ... ok
+test_cpu_choice_never_probes_accelerators (backend.tests.test_inference_device.DeviceTests.test_cpu_choice_never_probes_accelerators) ... ok
+test_device_loss_reloads_once_and_stays_on_cpu (backend.tests.test_inference_device.DeviceTests.test_device_loss_reloads_once_and_stays_on_cpu) ... ok
+test_failed_cpu_recovery_is_not_a_retry_loop (backend.tests.test_inference_device.DeviceTests.test_failed_cpu_recovery_is_not_a_retry_loop) ... ok
+test_initialization_device_loss_recovers (backend.tests.test_inference_device.DeviceTests.test_initialization_device_loss_recovers) ... ok
+test_input_and_asset_errors_are_not_retried (backend.tests.test_inference_device.DeviceTests.test_input_and_asset_errors_are_not_retried) ... Exception ignored while finalizing file <_io.BytesIO object at 0x000001E4E1D317B0>:
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\unittest\mock.py", line 2606, in __new__
+    return tuple.__new__(cls, (args, kwargs))
+BufferError: Existing exports of data: object cannot be re-sized
+ok
+test_lazy_failure_does_not_publish_partial_results (backend.tests.test_inference_device.DeviceTests.test_lazy_failure_does_not_publish_partial_results) ... ok
+test_missing_accelerator_falls_back (backend.tests.test_inference_device.DeviceTests.test_missing_accelerator_falls_back) ... ok
+test_auto_detection_preserves_every_detected_language (backend.tests.test_speech.SpeechTests.test_auto_detection_preserves_every_detected_language) ... ok
+test_chunked_transport_size_limit (backend.tests.test_speech.SpeechTests.test_chunked_transport_size_limit) ... ok
+test_engine_preserves_scripts_and_uses_transcription (backend.tests.test_speech.SpeechTests.test_engine_preserves_scripts_and_uses_transcription) ... ok
+test_http_auth_origin_and_json_file_reference (backend.tests.test_speech.SpeechTests.test_http_auth_origin_and_json_file_reference) ... C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\starlette\_utils.py:40: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+  return asyncio.iscoroutinefunction(obj) or (callable(obj) and asyncio.iscoroutinefunction(obj.__call__))
+C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\fastapi\routing.py:233: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+  is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+ok
+test_paused_languages_are_preserved_in_order (backend.tests.test_speech.SpeechTests.test_paused_languages_are_preserved_in_order) ... ok
+test_real_browser_container_decoding (backend.tests.test_speech.SpeechTests.test_real_browser_container_decoding) ... ok
+test_real_decoder_bounds_and_invalid_content (backend.tests.test_speech.SpeechTests.test_real_decoder_bounds_and_invalid_content) ... ok
+test_silence_does_not_load_model (backend.tests.test_speech.SpeechTests.test_silence_does_not_load_model) ... ok
+test_worker_reuse_busy_timeout_and_recovery (backend.tests.test_speech.SpeechTests.test_worker_reuse_busy_timeout_and_recovery) ... ok
+
+======================================================================
+ERROR: test_storage_override_upload_and_cleanup (backend.tests.test_system_audit_regressions.AuditDatabaseRegressions.test_storage_override_upload_and_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_system_audit_regressions.py", line 48, in test_storage_override_upload_and_cleanup
+    config = Settings(_env_file=None, app_env='production', files_environment='development',
+                      cloudinary_url='cloudinary://dummy:dummy@test')
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\pydantic_settings\main.py", line 140, in __init__
+    super().__init__(
+    ~~~~~~~~~~~~~~~~^
+        **__pydantic_self__._settings_build_values(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+        )
+        ^
+    )
+    ^
+  File "C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\pydantic\main.py", line 263, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Settings
+  Value error, Production FRONTEND_ORIGIN and CORS_ORIGINS require explicit HTTPS origins [type=value_error]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+
+----------------------------------------------------------------------
+Ran 22 tests in 6.426s
+
+FAILED (errors=1)

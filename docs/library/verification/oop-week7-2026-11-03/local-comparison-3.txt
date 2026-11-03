@@ -1,0 +1,90 @@
+ Container mentra-backend-run-793579c36f6e Creating 
+ Container mentra-backend-run-793579c36f6e Created 
+{
+  "baseline_revision": "51924b1",
+  "live_llm_calls": 0,
+  "scope": [
+    {
+      "implementation": "before",
+      "repeat": 0,
+      "elapsed_ms": 3941.12,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "before",
+      "repeat": 1,
+      "elapsed_ms": 3704.21,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "before",
+      "repeat": 2,
+      "elapsed_ms": 3700.9,
+      "sql_statements": 14,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 0,
+      "elapsed_ms": 560.49,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 1,
+      "elapsed_ms": 583.94,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    },
+    {
+      "implementation": "after",
+      "repeat": 2,
+      "elapsed_ms": 563.58,
+      "sql_statements": 2,
+      "eligible_documents": 1,
+      "target_eligible": true
+    }
+  ],
+  "extraction": [
+    {
+      "implementation": "before",
+      "elapsed_ms": 163.35,
+      "blocks": 46,
+      "characters": 10707,
+      "visual_files": 0,
+      "ocr_slides": []
+    },
+    {
+      "implementation": "after",
+      "elapsed_ms": 2204.66,
+      "blocks": 50,
+      "characters": 13969,
+      "visual_files": 4,
+      "ocr_slides": [
+        8,
+        24,
+        25,
+        26
+      ]
+    }
+  ],
+  "ordered_read": {
+    "elapsed_ms": 2063.65,
+    "sql_statements": 8,
+    "outline_sections": 26,
+    "source_chunks": 22,
+    "next_offset": null,
+    "tokens": 2767,
+    "receipt_bytes": 15172,
+    "receipt_tokens": 3793,
+    "receipt_admitted": true
+  }
+}

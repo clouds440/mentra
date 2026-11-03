@@ -86,6 +86,19 @@ class Admission:
 
 
 @asynccontextmanager
+async def background_capacity(admission, owner, *, seconds=120):
+    """Background work shares the total model budget and leaves interactive room."""
+    if admission is None:
+        yield
+        return
+    maximum = admission.settings.work_global_capacity if admission.settings else 16
+    async with admission.async_reserve('background_model',owner,capacity=max(1,maximum//2),
+            owner_capacity=1,seconds=seconds):
+        async with admission.async_reserve('model',owner,capacity=maximum,owner_capacity=2,seconds=seconds):
+            yield
+
+
+@asynccontextmanager
 async def request_capacity(request, owner, kind, *, capacity=4, owner_capacity=1, seconds=300):
     gate = getattr(request.app.state, 'work_admission', None)
     if gate is None:

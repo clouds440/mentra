@@ -185,7 +185,7 @@ class AssessmentService:
             requires_confirmation=True, handwriting_support='unverified', truncated=False)
         return extracted
 
-    async def upload_paper_with_vision(self, owner, identifier, expected_revision, file_id, *, from_chat=False):
+    async def upload_paper_with_vision(self, owner, identifier, expected_revision, file_id, *, from_chat=False, source_job=None):
         from app.core.config import settings
         file=await run_in_threadpool(self.files.metadata,owner,file_id,'chat' if from_chat else 'assessment')
         filename=file['filename']
@@ -201,13 +201,19 @@ class AssessmentService:
             from app.vision.assessment_extractor import AssessmentAnswerExtractor
             assessment = await run_in_threadpool(self.repository.detail, owner, str(attempt.assessment_id))
             try:
-                extracted = await AssessmentAnswerExtractor(self.workflows.llm).extract(data, assessment.questions)
+                from app.db.admission import background_capacity
+                async with background_capacity(self.admission,owner,seconds=750):
+                    extracted = await AssessmentAnswerExtractor(self.workflows.llm).extract(data, assessment.questions)
+            except AppError as error:
+                if error.code=='WORK_CAPACITY': raise
+                vision_failed = True
+                workflow_logger.event('assessment.vision_fallback', code='VISION_UNAVAILABLE')
             except Exception:
                 vision_failed = True
                 workflow_logger.event('assessment.vision_fallback', code='VISION_UNAVAILABLE')
             else:
                 return await run_in_threadpool(self.repository.store_extraction, owner, identifier,
-                    expected_revision, extracted, file_id, safe_filename, reuse=from_chat)
+                    expected_revision, extracted, file_id, safe_filename, reuse=from_chat, source_job=source_job)
         try:
             extracted = await run_in_threadpool(self._extract_paper, owner, identifier, data, filename)
         except AppError as error:
@@ -218,7 +224,7 @@ class AssessmentService:
                 requires_confirmation=True, handwriting_support='unverified', truncated=False)
         if vision_failed:
             extracted['warnings'].append('Vision extraction was unavailable. Review and correct the OCR text before grading.')
-        return await run_in_threadpool(self.repository.store_extraction, owner, identifier, expected_revision, extracted, file_id, safe_filename,reuse=from_chat)
+        return await run_in_threadpool(self.repository.store_extraction, owner, identifier, expected_revision, extracted, file_id, safe_filename,reuse=from_chat,source_job=source_job)
 
 
 @workflow_logger.operation(outcome='success')

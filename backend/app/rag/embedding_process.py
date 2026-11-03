@@ -12,23 +12,25 @@ def _embedding_worker(connection, config):
         settings = Settings(_env_file=None, embedding_model=config['model'], embedding_device=config['device'],
                             embedding_model_revision=config.get('revision', ''))
         engine = SentenceTransformerEmbeddingService(settings, model_path=Path(config['path']))
+        def respond(status,value):
+            connection.send((status,value,engine._runtime.choice.device))
         connection.send(('ok', dict(model_name=engine.model_name, model_version=engine.model_version,
-            dimension=engine.dimension, max_tokens=engine.max_tokens)))
+            dimension=engine.dimension, max_tokens=engine.max_tokens,inference_device=engine._runtime.choice.device)))
         while True:
             message = connection.recv()
             if message is None:
                 break
             operation, argument = message
             if operation == 'token_counts':
-                connection.send(('ok', [engine.token_count(value) for value in argument]))
+                respond('ok', [engine.token_count(value) for value in argument])
                 continue
             if operation == 'chunk_blocks':
                 from app.rag.processing import chunk_blocks
                 from app.rag.errors import ExtractionError
                 try:
-                    connection.send(('ok', chunk_blocks(embedding=engine, **argument)))
+                    respond('ok', chunk_blocks(embedding=engine, **argument))
                 except ExtractionError as error:
-                    connection.send(('extraction_error', str(error)))
+                    respond('extraction_error', str(error))
                 except Exception:
                     connection.send(('error', None))
                 continue
@@ -36,7 +38,7 @@ def _embedding_worker(connection, config):
                 connection.send(('error', None))
                 continue
             try:
-                connection.send(('ok', getattr(engine, operation)(argument)))
+                respond('ok', getattr(engine, operation)(argument))
             except Exception:
                 connection.send(('error', None))
     except (EOFError, BrokenPipeError):
@@ -53,6 +55,8 @@ def _embedding_worker(connection, config):
 class ProcessEmbeddingService:
     def __init__(self, settings, model_path=EMBEDDING_CACHE_DIR, *, worker_target=_embedding_worker):
         self.config = dict(model=settings.embedding_model, device=settings.embedding_device, path=str(model_path))
+        if self.config['device'] == 'auto':
+            self.config['device'] = settings.local_inference_device
         self.config['revision'] = settings.embedding_model_revision
         self.timeout = settings.embedding_worker_timeout
         self.wait = settings.rag_inference_wait_seconds
@@ -62,10 +66,26 @@ class ProcessEmbeddingService:
         self._process = self._connection = None
         self._closed = False
         self._identity = None
+        self._device = None
         with self._lock:
             self._start()
 
-    def _start(self):
+    def prepare(self):
+        """Bounded readiness check before the caller starts its query budget."""
+        if not self._lock.acquire(timeout=self.wait):
+            raise EmbeddingModelError('Embedding capacity is busy.')
+        try:
+            if self._closed:
+                raise EmbeddingModelError('Embedding worker is closed.')
+            if self._process is None or not self._process.is_alive():
+                self._start()
+        finally:
+            self._lock.release()
+
+    def _start(self, timeout=None):
+        from time import monotonic
+        started=monotonic()
+        budget=self.initialization_timeout if timeout is None else max(0,min(timeout,self.initialization_timeout))
         self._stop()
         context = mp.get_context('spawn')
         self._connection, child = context.Pipe()
@@ -73,14 +93,24 @@ class ProcessEmbeddingService:
         self._process.start()
         child.close()
         try:
-            if not self._connection.poll(self.initialization_timeout):
+            if not self._connection.poll(budget):
                 raise EmbeddingModelError('Embedding initialization timed out.')
             status, identity = self._connection.recv()
             if status != 'ok' or not isinstance(identity, dict) or identity.get('model_name') != self.config['model']:
                 raise EmbeddingModelError('Embedding initialization failed.')
+            self._device=identity.pop('inference_device',None)
+            if self._device=='cpu': self.config['device']='cpu'
             if self._identity is not None and self._identity != identity:
                 raise EmbeddingModelError('Embedding identity changed; rebuild or reindex the service.')
             self._identity = identity
+        except (EOFError,BrokenPipeError,OSError):
+            self._stop()
+            from app.core.inference_device import retry_worker_on_cpu
+            remaining=budget-(monotonic()-started)
+            if retry_worker_on_cpu(self.config['device'],self._device,remaining,0):
+                self.config['device']=self._device='cpu'
+                return self._start(timeout=remaining)
+            raise
         except BaseException:
             self._stop()
             raise
@@ -110,19 +140,36 @@ class ProcessEmbeddingService:
         try:
             if self._closed:
                 raise EmbeddingModelError('Embedding worker is closed.')
-            if self._process is None or not self._process.is_alive():
-                self._start()
             from app.rag.process_ipc import exchange
-            try:
-                status, value = exchange(self._connection,(operation,argument),timeout or self.timeout,self._stop)
-            except TimeoutError as error:
-                raise EmbeddingModelError('Embedding inference timed out.') from error
-            if status == 'extraction_error':
-                from app.rag.errors import ExtractionError
-                raise ExtractionError(value)
-            if status != 'ok':
-                raise EmbeddingModelError('Embedding input or inference was unavailable.')
-            return value
+            from app.core.inference_device import retry_worker_on_cpu
+            from time import monotonic
+            # Cold startup has its separately admitted initialization budget.
+            # CPU recovery during an existing operation shares that operation's
+            # remaining deadline; it must not open another full startup window.
+            if self._process is None or not self._process.is_alive(): self._start()
+            deadline=monotonic()+(timeout or self.timeout)
+            for attempt in range(2):
+                try:
+                    if self._process is None or not self._process.is_alive(): self._start(timeout=deadline-monotonic())
+                    try:
+                        reply=exchange(self._connection,(operation,argument),deadline-monotonic(),self._stop)
+                        status,value=reply[:2]
+                        if len(reply)>2:
+                            self._device=reply[2]
+                            if self._device=='cpu': self.config['device']='cpu'
+                    except TimeoutError as error:
+                        raise EmbeddingModelError('Embedding inference timed out.') from error
+                    if status == 'extraction_error':
+                        from app.rag.errors import ExtractionError
+                        raise ExtractionError(value)
+                    if status != 'ok': raise EmbeddingModelError('Embedding input or inference was unavailable.')
+                    return value
+                except (EOFError,BrokenPipeError,OSError):
+                    self._stop()
+                    if retry_worker_on_cpu(self.config['device'],self._device,deadline-monotonic(),attempt):
+                        self.config['device']=self._device='cpu'
+                        continue
+                    raise
         except (EOFError, BrokenPipeError, OSError) as error:
             self._stop()
             raise EmbeddingModelError('Embedding worker is unavailable.') from error

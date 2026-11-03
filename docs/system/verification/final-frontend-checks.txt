@@ -1,0 +1,12 @@
+Audit cache regressions passed.
+Notification stream checks passed: revision delivery, shared connection, invalidation, cleanup, stale suppression.
+
+> mentra-frontend@0.1.0 check:theme
+> node scripts/theme-check.mjs
+
+Theme checks passed: bootstrap, System updates, explicit overrides, persistence, cross-tab sync, blocked storage, listener cleanup.
+
+> mentra-frontend@0.1.0 check:ui
+> node scripts/ui-check.mjs
+
+UI checks passed: explicit transitions, both text palettes, input boundaries and primary actions.

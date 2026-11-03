@@ -1,0 +1,18 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: A successful RAG retry must fetch fresh document state
+
+1 !== 2
+
+    at file:///C:/Users/Xclouds/Documents/mentra/frontend/scripts/audit-cache-check.mjs:22:8 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 2,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.12.0

@@ -1,0 +1,11 @@
+../app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+............................Executing <Task pending name='Task-62' coro=<DirectAnswerTests.test_bad_title_preserves_only_an_approved_general_answer() running at /app/tests/test_tool_recovery.py:319> wait_for=<Task pending name='Task-63' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.176 seconds
+.......................Activity publication unavailable (RuntimeError)
+.Activity publication unavailable (RuntimeError)
+........Executing <Task pending name='Task-369' coro=<ProviderTests.test_real_sdk_retry_is_observed_without_duplicate_retry_owner() running at /app/tests/test_tool_recovery.py:512> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.442 seconds
+.................
+----------------------------------------------------------------------
+Ran 79 tests in 49.158s
+
+OK

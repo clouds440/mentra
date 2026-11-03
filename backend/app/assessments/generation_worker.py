@@ -50,7 +50,8 @@ class AssessmentGenerationWorker:
         stage = 'admission'
         try:
             if self.service.admission:
-                context = self.service.admission.async_reserve('model', owner, capacity=16, owner_capacity=2, seconds=1140)
+                from app.db.admission import background_capacity
+                context = background_capacity(self.service.admission,owner,seconds=1140)
                 await context.__aenter__(); reservation = context
             stage = 'selection'
             if conversation: await run_in_threadpool(self.service.chat.recent, owner, conversation)
@@ -113,6 +114,10 @@ class AssessmentGenerationWorker:
                 result = value.model_dump(mode='json')
             await run_in_threadpool(jobs.update, job, state='completed', result=result, error=None)
         except Exception as error:
+            if isinstance(error,AppError) and error.code=='WORK_CAPACITY':
+                await run_in_threadpool(jobs.defer,job)
+                await asyncio.sleep(5)
+                return True
             from app.core.logging import workflow_logger
             code = error.code if isinstance(error, AppError) else type(error).__name__
             workflow_logger.event('assessment.generation_failed', stage=stage,error_code=code,error_type=type(error).__name__)
