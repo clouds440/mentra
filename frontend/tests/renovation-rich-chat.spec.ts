@@ -109,7 +109,7 @@ test('diagram IDs and arrow references stay valid in regular and expanded views'
   await page.goto('/chat/polish-chat');
   await expect(page.locator('.mermaid-svg > svg')).toBeVisible();
   await page.getByRole('button', { name: 'Expand', exact: true }).click();
-  await expect(page.getByRole('dialog').locator('svg')).toBeVisible();
+  await expect(page.getByRole('dialog').locator('.mermaid-svg > svg')).toBeVisible();
   const missing = await page.locator('.mermaid-svg svg').evaluateAll(svgs => svgs.flatMap(svg => {
     const ids = new Set([svg.id, ...Array.from(svg.querySelectorAll('[id]')).map(node => node.id)]);
     return Array.from(svg.querySelectorAll('*')).flatMap(node => Array.from(node.attributes).flatMap(attribute =>
