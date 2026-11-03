@@ -1,0 +1,13 @@
+WARNING: Links on the default bridge network are deprecated and will be removed in a future release. Use a custom network instead.
+test_reranker_candidate_limit_is_applied_after_owned_hydration (backend.tests.rag.test_workflows.WorkflowTests.test_reranker_candidate_limit_is_applied_after_owned_hydration) ... /repo/backend/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+ok
+test_lease_must_cover_embedding_restart (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_usage_write_failure_does_not_discard_results (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 8.589s
+
+OK

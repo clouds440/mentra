@@ -1,0 +1,9 @@
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (backend.tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_long_passages_still_obey_exact_pair_budget (backend.tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_invalid_or_missing_scores_fall_back (backend.tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (backend.tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.186s
+
+OK

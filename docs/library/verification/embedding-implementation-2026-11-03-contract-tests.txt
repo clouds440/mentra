@@ -1,0 +1,30 @@
+test_lease_must_cover_embedding_restart (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_usage_write_failure_does_not_discard_results (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+test_configured_revision_must_match_baked_identity (backend.tests.test_embeddings.EmbeddingServiceTests.test_configured_revision_must_match_baked_identity) ... ok
+test_documents_are_encoded_in_a_configured_batch (backend.tests.test_embeddings.EmbeddingServiceTests.test_documents_are_encoded_in_a_configured_batch) ... ok
+test_empty_documents_do_not_call_model (backend.tests.test_embeddings.EmbeddingServiceTests.test_empty_documents_do_not_call_model) ... ok
+test_missing_baked_model_metadata_fails_without_downloading (backend.tests.test_embeddings.EmbeddingServiceTests.test_missing_baked_model_metadata_fails_without_downloading) ... ok
+test_model_load_is_local_only_after_image_bake (backend.tests.test_embeddings.EmbeddingServiceTests.test_model_load_is_local_only_after_image_bake) ... ok
+test_non_finite_model_vectors_are_rejected (backend.tests.test_embeddings.EmbeddingServiceTests.test_non_finite_model_vectors_are_rejected) ... ok
+test_query_uses_e5_instruction_and_normalized_vectors (backend.tests.test_embeddings.EmbeddingServiceTests.test_query_uses_e5_instruction_and_normalized_vectors) ... ok
+test_roles_are_idempotent_for_all_supported_languages (backend.tests.test_embeddings.EmbeddingServiceTests.test_roles_are_idempotent_for_all_supported_languages) ... ok
+test_runtime_model_must_match_baked_model (backend.tests.test_embeddings.EmbeddingServiceTests.test_runtime_model_must_match_baked_model) ... ok
+test_token_budget_includes_exactly_one_role_prefix (backend.tests.test_embeddings.EmbeddingServiceTests.test_token_budget_includes_exactly_one_role_prefix) ... ok
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (backend.tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (backend.tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (backend.tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_long_passages_still_obey_exact_pair_budget (backend.tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_missing_assets_use_cooldown_without_starting_worker (backend.tests.rag.test_reranker.RerankerTests.test_missing_assets_use_cooldown_without_starting_worker) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (backend.tests.rag.test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (backend.tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_revision_mismatch_falls_back_without_loading_model (backend.tests.rag.test_reranker.RerankerTests.test_revision_mismatch_falls_back_without_loading_model) ... ok
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (backend.tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 20.419s
+
+OK

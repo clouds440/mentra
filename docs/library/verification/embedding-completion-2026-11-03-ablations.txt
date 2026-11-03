@@ -1,0 +1,22 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  56%|█████▌    | 111/199 [00:00<00:00, 1098.63it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1697.47it/s]
+target250-overlap0-headingFalse {'recall_at3': 1.0, 'chunks': 220, 'elapsed_seconds': 55.52801617299997, 'exact_coverage': False, 'cases': 55}
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/repo/backend/testing/retrieval_ablations.py", line 92, in <module>
+    if __name__=='__main__': main()
+                             ^^^^^^
+  File "/repo/backend/testing/retrieval_ablations.py", line 55, in main
+    vectors=np.asarray(embedding.embed_documents(texts)); scores=query_vectors@vectors.T
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/repo/backend/app/rag/embedding_process.py", line 162, in embed_documents
+    result.extend(self._request('embed_documents', texts[start:start + 32]))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/repo/backend/app/rag/embedding_process.py", line 115, in _request
+    raise EmbeddingModelError('Embedding inference timed out.')
+app.rag.embeddings.EmbeddingModelError: Embedding inference timed out.
+/usr/local/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

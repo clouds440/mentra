@@ -23,6 +23,14 @@ class IngestionWorker:
         workflow_logger.event('job.stage', job_id=job['id'], stage=stage, attempt=job['attempts'])
         logger.info('RAG job %s stage=%s attempt=%s', job['id'], stage, job['attempts'])
 
+    def indexed_ids(self, job, ids):
+        found = set()
+        for start in range(0, len(ids), 500):
+            self.stage(job, 'verifying_points')
+            found.update(self.service.vector_store.indexed_chunk_ids(
+                job['learner_id'], job['generation_id'], ids[start:start + 500]))
+        return found
+
     def run_once(self):
         job = self.repository.claim(self.service.settings.rag_job_lease_seconds)
         if not job:
@@ -54,17 +62,23 @@ class IngestionWorker:
                         except AppError as error:
                             if error.code!='FILES_NOT_FOUND' or not job['request_hash'].startswith('embedding-reset:'): raise
                             parsed=self.repository.retained_extraction(job['learner_id'],job['document_id'],version['id'])
+                            if parsed is None:
+                                raise ExtractionError('Original file is missing and retained text cannot be reconstructed safely.')
                     else:
                         self.stage(job, 'reusing_extraction')
                     self.stage(job, 'chunking')
-                    items = chunk_blocks(parsed['blocks'], self.service.embedding, job['learner_id'], job['document_id'],
-                                         job['generation_id'], self.service.settings.rag_max_chunks, self.service.settings.rag_parser_timeout)
+                    if hasattr(self.service.embedding, 'chunk_blocks'):
+                        items = self.service.embedding.chunk_blocks(parsed['blocks'], job['learner_id'], job['document_id'],
+                            job['generation_id'], self.service.settings.rag_max_chunks, self.service.settings.rag_parser_timeout)
+                    else:
+                        items = chunk_blocks(parsed['blocks'], self.service.embedding, job['learner_id'], job['document_id'],
+                            job['generation_id'], self.service.settings.rag_max_chunks, self.service.settings.rag_parser_timeout)
                     for item in items:
                         item['concept_ids'] = doc['concept_ids']
                     self.repository.save_chunks(job, items, parsed['warnings'])
                 self.service.vector_store.initialize_chunk_indexes()
                 self.stage(job, 'resuming_vectors')
-                indexed = self.service.vector_store.indexed_chunk_ids(job['learner_id'], job['generation_id'], [c['id'] for c in items])
+                indexed = self.indexed_ids(job, [c['id'] for c in items])
                 for start in range(0, len(items), 32):
                     batch = items[start:start + 32]
                     batch = [chunk for chunk in batch if chunk['id'] not in indexed]
@@ -79,7 +93,7 @@ class IngestionWorker:
                 if self.service.vector_store.count_chunks(job['learner_id'], job['generation_id']) != len(items):
                     raise VectorStoreError('Material index coverage is incomplete.')
                 expected = {chunk['id'] for chunk in items}
-                if self.service.vector_store.indexed_chunk_ids(job['learner_id'], job['generation_id'], list(expected)) != expected:
+                if self.indexed_ids(job, list(expected)) != expected:
                     raise VectorStoreError('Material point identities are incomplete.')
                 published = self.repository.publish(job)
                 execution.outcome = 'success' if published else 'cancelled'
@@ -125,7 +139,7 @@ def main():
     files.check_configuration()
     embedding = SentenceTransformerEmbeddingService(settings)
     vector_store = QdrantVectorStore(settings, embedding)
-    worker = IngestionWorker(create_rag_service(create_learner_engine(), embedding, vector_store, files))
+    worker = IngestionWorker(create_rag_service(create_learner_engine(), embedding, vector_store, files, warmup=False))
     stopping = False
 
     def stop(*_args):

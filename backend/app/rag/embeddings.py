@@ -60,6 +60,11 @@ class SentenceTransformerEmbeddingService:
         batch_size: int = DOCUMENT_BATCH_SIZE,
     ) -> None:
         metadata_path = model_path / "model-metadata.json"
+        from model_assets import verify_manifest
+        try:
+            verify_manifest(model_path, role='embedding')
+        except (OSError, ValueError) as error:
+            raise EmbeddingModelError('Embedding asset verification failed.') from error
         if not metadata_path.is_file():
             raise EmbeddingModelError(
                 f"Baked embedding model metadata was not found at {metadata_path}. "
@@ -85,6 +90,8 @@ class SentenceTransformerEmbeddingService:
             raise EmbeddingModelError(
                 f"Embedding model metadata at {metadata_path} has no version."
             )
+        if app_settings.embedding_model_revision and model_version != app_settings.embedding_model_revision:
+            raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than zero.")
 
@@ -179,4 +186,6 @@ class SentenceTransformerEmbeddingService:
             )
         if any(not math.isfinite(value) for vector in vectors for value in vector):
             raise EmbeddingModelError('Embedding model returned a non-finite vector.')
+        if any(sum(value * value for value in vector) <= 1e-12 for vector in vectors):
+            raise EmbeddingModelError('Embedding model returned a zero-norm vector.')
         return vectors

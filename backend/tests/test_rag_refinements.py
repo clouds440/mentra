@@ -58,15 +58,28 @@ class RefinementTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(request.document_ids, ['document'])
             self.assertEqual((request.limit, request.token_budget), (3, 1000))
 
-    async def test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default(self):
-        for retrieval, expected in [(ChatSelection(mode='SOURCE_SPECIFIC', document_ids=['document']), (8, 4800)), (None, (6, 3200))]:
+    async def test_preparation_delegates_budget_to_history_coordinator(self):
+        for retrieval in [ChatSelection(mode='SOURCE_SPECIFIC', document_ids=['document']), None]:
             rag = Mock()
             rag.search.return_value = RetrievalResult(status='ok')
             chat = SimpleNamespace(reply=AsyncMock(return_value='Answer'))
             scope = dict(conversation_id='chat', current_user_message_id='user', context_rows=[], history_references=[], memory_references=[])
             await OrchestrationService(chat, rag=rag).chat_reply([('user', 'Explain this')], retrieval, 'owner', history_scope=scope)
-            budget = scope['_tool_budget']
-            self.assertEqual((budget.max_calls, budget.max_result_tokens), expected)
+            self.assertNotIn('_tool_budget', scope)
+            self.assertEqual(scope['retrieval_selection'], retrieval or ChatSelection())
+            chat.reply.assert_awaited_once()
+
+    async def test_extraction_warnings_reach_new_and_repeated_tool_receipts(self):
+        item = source(1)
+        item.warnings = ['English OCR; verify equations.']
+        rag = Mock()
+        rag.search.return_value = RetrievalResult(status='ok', chunks=[
+            RetrievedChunk(content=item.excerpt, score=1, score_type='test', source=item)])
+        scope = dict(rag_service=rag, retrieval_selection=ChatSelection())
+        tool = create_workflow_tools('owner', scope, ToolBudget())[0]
+        for _ in range(2):
+            receipt = await tool.ainvoke({'query': 'equation'})
+            self.assertEqual(receipt['sources'][0]['warnings'], item.warnings)
 
     def test_extended_budget_still_rejects_oversized_results_and_ninth_call(self):
         budget = ToolBudget(max_calls=8, max_result_tokens=4800, max_result_bytes=19200)

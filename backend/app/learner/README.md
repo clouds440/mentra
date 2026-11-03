@@ -204,8 +204,9 @@ the learner's selected curriculum and trusted relations. Strong misconception cl
   extraction confidence, or mastery, and cannot confirm OCR or curate the ontology.
   `ChatService.reply(..., learner_context=packet)` accepts the compact typed packet.
 - **RAG:** `app.rag.learner_scope.resolve_retrieval_scope` returns owned context IDs and
-  selected concepts. Its Qdrant filter constrains student, context, and live document
-  status; `LearnerDocumentMetadata` defines document provenance. Empty context scope
+  selected concepts. Its Qdrant filter and `LearnerDocumentMetadata` remain legacy compatibility APIs.
+  Production RAG filters owner and canonical active generation IDs, then hydrates
+  and reauthorizes through `RAGService`; do not use legacy payload status for current chunks. Empty context scope
   matches no documents. Dormancy is evaluated from the learner service at retrieval
   time rather than duplicated into document records.
 - **Assessments/OCR:** `LearnerAssessmentAdapter` exposes study, verification, and

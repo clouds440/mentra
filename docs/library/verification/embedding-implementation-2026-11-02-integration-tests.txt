@@ -1,0 +1,52 @@
+WARNING: Links on the default bridge network are deprecated and will be removed in a future release. Use a custom network instead.
+test_chunked_upload_without_content_length_is_also_bounded (test_api.APIBoundaryTests.test_chunked_upload_without_content_length_is_also_bounded) ... ok
+test_client_selected_learner_identity_is_rejected (test_api.APIBoundaryTests.test_client_selected_learner_identity_is_rejected) ... ok
+test_multipart_transport_is_bounded_before_spooling (test_api.APIBoundaryTests.test_multipart_transport_is_bounded_before_spooling) ... ok
+test_failed_index_initialization_is_retryable (test_index_initialization.IndexInitializationTests.test_failed_index_initialization_is_retryable) ... ok
+test_indexes_are_created_once_but_identity_checks_are_not_cached (test_index_initialization.IndexInitializationTests.test_indexes_are_created_once_but_identity_checks_are_not_cached) ... ok
+test_docx_nested_headings_and_code_indentation_survive (test_parsers.ParserStructureTests.test_docx_nested_headings_and_code_indentation_survive) ... ok
+test_pptx_grouped_text_is_not_silently_lost (test_parsers.ParserStructureTests.test_pptx_grouped_text_is_not_silently_lost) ... ok
+test_short_native_pdf_text_does_not_require_ocr (test_parsers.ParserStructureTests.test_short_native_pdf_text_does_not_require_ocr) ... ok
+test_empty_extraction_fails (test_processing.ProcessingTests.test_empty_extraction_fails) ... ok
+test_evaluation_counts_unique_sources (test_processing.ProcessingTests.test_evaluation_counts_unique_sources) ... ok
+test_exact_token_budget_preserves_every_source_character (test_processing.ProcessingTests.test_exact_token_budget_preserves_every_source_character) ... ok
+test_fusion_uses_ranks_and_deduplicates_each_branch (test_processing.ProcessingTests.test_fusion_uses_ranks_and_deduplicates_each_branch) ... ok
+test_short_block_only_tokenizes_once_and_preserves_offsets (test_processing.ProcessingTests.test_short_block_only_tokenizes_once_and_preserves_offsets) ... ok
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_long_passages_still_obey_exact_pair_budget (test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_multilingual_ingestion_search_reranking_and_fallback (test_reranker_real.RealRerankerTests.test_multilingual_ingestion_search_reranking_and_fallback) ... 
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  40%|████      | 80/199 [00:00<00:00, 798.51it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1134.86it/s]
+/repo/backend/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  30%|██▉       | 60/201 [00:00<00:00, 599.76it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1054.42it/s]
+ok
+test_reranking_retains_diverse_viable_candidates (test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_usage_write_failure_does_not_discard_results (test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+test_archive_unarchive_and_context_policy (test_workflows.WorkflowTests.test_archive_unarchive_and_context_policy) ... 
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  84%|████████▍ | 169/201 [00:00<00:00, 1689.45it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1959.26it/s]
+ok
+test_archived_access_requires_explicit_scope (test_workflows.WorkflowTests.test_archived_access_requires_explicit_scope) ... ok
+test_assessment_contract_requires_approved_owned_study_sources (test_workflows.WorkflowTests.test_assessment_contract_requires_approved_owned_study_sources) ... 
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  89%|████████▊ | 178/201 [00:00<00:00, 1779.49it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1972.91it/s]
+ok
+test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks (test_workflows.WorkflowTests.test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks) ... 
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  70%|███████   | 141/201 [00:00<00:00, 1406.61it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1918.54it/s]
+ok
+test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget (test_workflows.WorkflowTests.test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget) ... 

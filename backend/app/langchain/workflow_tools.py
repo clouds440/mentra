@@ -114,6 +114,8 @@ def create_workflow_tools(owner, scope, budget):
                     sources.append(source)
                 # Provenance lives in the server source registry, not every prompt.
                 packet.append(dict(token=source.token, already_provided=True) if supplied else dict(token=source.token, title=source.title, excerpt=source.excerpt))
+                if source.warnings:
+                    packet[-1]['warnings'] = source.warnings[:10]
             receipt = dict(status=result.status, sources=packet, warnings=result.warnings)
             scope.setdefault('retrieval_warnings', []).extend(warning for warning in result.warnings if warning not in scope.get('retrieval_warnings', []))
             return receipt

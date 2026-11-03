@@ -1,0 +1,7 @@
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (backend.tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ok
+test_native_hang_is_killed_and_next_request_restarts (backend.tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.782s
+
+OK

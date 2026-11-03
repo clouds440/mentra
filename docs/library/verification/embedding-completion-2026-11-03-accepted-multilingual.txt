@@ -1,0 +1,15 @@
+test_multilingual_ingestion_search_reranking_and_fallback (tests.rag.test_reranker_real.RealRerankerTests.test_multilingual_ingestion_search_reranking_and_fallback) ... 
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 2008.23it/s]
+/app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  80%|███████▉  | 160/201 [00:00<00:00, 1598.92it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1945.77it/s]
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 31.361s
+
+OK

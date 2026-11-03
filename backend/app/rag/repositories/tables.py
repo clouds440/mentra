@@ -66,7 +66,9 @@ chunks = Table('rag_chunk', metadata,
     owned_parent('rag_generation', ['document_id', 'generation_id'], ['document_id', 'id']),
     UniqueConstraint('generation_id', 'ordinal'), Index('idx_rag_chunk_generation', 'learner_id', 'generation_id'))
 
-Index('idx_rag_chunk_lexical', func.to_tsvector(literal_column("'simple'::regconfig"), chunks.c.content), postgresql_using='gin')
+# The leading regconfig literal prevents automatic table inference in SQLAlchemy.
+# Explicit attachment is essential: migrations enumerate table.indexes.
+Index('idx_rag_chunk_lexical', func.to_tsvector(literal_column("'simple'::regconfig"), chunks.c.content), _table=chunks, postgresql_using='gin')
 
 chunk_concepts = Table('rag_chunk_concept', metadata,
     Column('chunk_id', Text, ForeignKey('rag_chunk.id', ondelete='CASCADE'), primary_key=True),

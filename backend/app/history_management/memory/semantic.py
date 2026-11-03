@@ -4,7 +4,9 @@ from threading import Lock
 from time import monotonic
 
 import numpy as np
-from sqlalchemy import or_, select
+from app.rag.text_windows import token_windows
+from app.core.logging import workflow_logger
+from sqlalchemy import or_, select, delete
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
@@ -37,7 +39,7 @@ class MemorySemanticLookup:
 
                     self.embedding = ProcessEmbeddingService(settings)
                 engine = self.embedding
-                key = f"{engine.model_name}:{engine.model_version}:{engine.dimension}:symmetric-v1"
+                key = f"{engine.model_name}:{engine.model_version}:{engine.dimension}:symmetric-v2"
                 with self.sessions() as session:
                     missing = list(
                         session.execute(
@@ -61,9 +63,24 @@ class MemorySemanticLookup:
                         ).mappings()
                     )
                 if missing:
-                    vectors = engine.embed_similarity(
-                        [row["content"] for row in missing]
-                    )
+                    ready, spans, flattened = [], [], []
+                    for row in missing:
+                        try:
+                            parts = self.windows(engine, row['content'], 8)
+                        except ValueError:
+                            workflow_logger.event('memory.semantic_input_unavailable', reason='token_budget')
+                            continue
+                        if not parts:
+                            workflow_logger.event('memory.semantic_input_unavailable', reason='empty')
+                            continue
+                        ready.append(row)
+                        spans.append((len(flattened),len(flattened)+len(parts)))
+                        flattened.extend(parts)
+                    encoded=np.asarray(engine.embed_similarity(flattened),dtype=np.float32) if flattened else []
+                    if len(encoded)!=len(flattened):
+                        raise ValueError('Incomplete memory embedding batch')
+                    vectors=[encoded[start:end].mean(axis=0) for start,end in spans]
+                    missing = ready
                     with self.sessions.begin() as session:
                         lock_owner(session, owner)
                         pref = session.scalar(
@@ -88,6 +105,7 @@ class MemorySemanticLookup:
                             if (
                                 data.shape != (engine.dimension,)
                                 or not np.isfinite(data).all()
+                                or not np.linalg.norm(data)
                             ):
                                 raise ValueError("Invalid local embedding")
                             entries.append(
@@ -128,31 +146,45 @@ class MemorySemanticLookup:
                                 & (v.c.model_key == key),
                             )
                             .where(m.c.learner_id == owner, m.c.status == "active")
-                            .limit(1000)
+                            .limit(1001)
                         ).mappings()
                     )
-                if any(row["vector"] is None for row in rows):
+                if len(rows) > 1000 or any(row["vector"] is None for row in rows):
+                    workflow_logger.event('memory.semantic_incomplete', reason='overflow' if len(rows) > 1000 else 'backfill')
                     return [], False
                 if not rows:
                     return [], True
                 # Multiple small windows retain corrections late in long or
                 # multilingual messages; no private text leaves this process.
-                windows = [
-                    text[start : start + 256]
-                    for start in range(0, min(len(text), 6000), 192)
-                ][:32]
+                windows = []
+                # Keep the original small, overlapping query windows: a long
+                # message must not dilute a short correction into one large vector.
+                for start in range(0,min(len(text),6000),192):
+                    windows.extend(self.windows(engine,text[start:start+256],32-len(windows)))
+                if not windows:
+                    return [], False
                 queries = np.asarray(engine.embed_similarity(windows), dtype=np.float32)
                 queries /= np.maximum(
                     np.linalg.norm(queries, axis=1, keepdims=True), 1e-12
                 )
                 scored = []
                 for row in rows:
-                    vector = np.frombuffer(row["vector"], dtype="<f4")
+                    try:
+                        vector = np.frombuffer(row["vector"], dtype="<f4")
+                    except (TypeError, ValueError):
+                        vector = np.asarray([], dtype=np.float32)
                     if (
                         vector.size != engine.dimension
                         or row["dimension"] != engine.dimension
+                        or not np.isfinite(vector).all()
+                        or not np.linalg.norm(vector)
                     ):
-                        continue
+                        with self.sessions.begin() as session:
+                            lock_owner(session, owner)
+                            session.execute(delete(v).where(v.c.learner_id==owner,
+                                v.c.memory_id==row['id'],v.c.revision==row['revision'],v.c.model_key==key))
+                        workflow_logger.event('memory.semantic_incomplete',reason='invalid_vector_rebuild')
+                        return [], False
                     score = float(
                         np.max(queries @ vector)
                         / max(float(np.linalg.norm(vector)), 1e-12)
@@ -168,10 +200,15 @@ class MemorySemanticLookup:
                     for _, row in scored[:8]
                 ], True
             except Exception as error:
-                from app.core.logging import workflow_logger
-
                 workflow_logger.event(
                     "memory.semantic_unavailable", error_type=type(error).__name__
                 )
                 self.retry_after = monotonic() + 120
                 return [], False  # Defer rather than creating avoidable duplicates.
+
+    @staticmethod
+    def windows(engine, text, maximum):
+        if hasattr(engine, 'query_token_count') and hasattr(engine, 'max_tokens'):
+            return token_windows(text, engine.query_token_count, engine.max_tokens, max_windows=maximum)
+        # Compatibility for injected test adapters; production implements exact counting.
+        return [text] if text else []

@@ -1,0 +1,25 @@
+{
+  "embedding": {
+    "asset_mismatches": [],
+    "packages": {
+      "torch": "2.14.1+cpu",
+      "sentence-transformers": "5.7.0",
+      "transformers": "5.20.2",
+      "tokenizers": "0.23.3"
+    },
+    "packages_match": true,
+    "identity_matches": true
+  },
+  "reranker": {
+    "asset_mismatches": [],
+    "packages": {
+      "torch": "2.14.1+cpu",
+      "sentence-transformers": "5.7.0",
+      "transformers": "5.20.2",
+      "tokenizers": "0.23.3"
+    },
+    "packages_match": true,
+    "identity_matches": true
+  },
+  "passed": true
+}

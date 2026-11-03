@@ -39,6 +39,49 @@ class TestEmbedding:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_oversized_scope_is_bounded_and_rejected_before_inference(self):
+        from unittest.mock import Mock
+        self.ready()
+        self.settings.rag_max_scope_documents=20
+        with patch.object(self.repo,'eligible',return_value=[{}]*21) as eligible:
+            self.embedding.embed_query=Mock(side_effect=AssertionError('must not infer'))
+            with self.assertRaises(AppError) as error:
+                self.search(context_ids=[self.context.context_id])
+            self.assertEqual(error.exception.code,'RAG_SCOPE_TOO_LARGE')
+            self.assertEqual(eligible.call_args.kwargs['limit'],21)
+            self.embedding.embed_query.assert_not_called()
+
+    def test_explicit_support_gate_excludes_unscored_tail(self):
+        from unittest.mock import Mock
+        self.ready()
+        self.settings.rag_min_reranker_score = 0.5
+        self.service.reranker = Mock()
+        self.service.reranker.rank.return_value = [0.1]
+        result = self.search()
+        self.assertFalse(result.chunks)
+        self.assertEqual(result.status, 'no_matches')
+        self.assertEqual(result.diagnostics.selection_rejections['support_threshold'], 1)
+
+    def test_structured_lexical_policy_distinguishes_punctuated_identifiers(self):
+        a=self.upload(b'C++ uses templates.',key='cplusplus')
+        self.worker.run_once()
+        b=self.upload(b'C# uses the .NET runtime.',key='csharp')
+        self.worker.run_once()
+        docs=self.repo.document_metadata(self.owner,[a['document_id'],b['document_id']])
+        generations=[d['active_generation_id'] for d in docs]
+        for query, document in [('C++',a),('C#',b)]:
+            ids=self.repo.lexical(self.owner,generations,query,10,policy='structured')
+            self.assertEqual(self.repo.get_chunk(self.owner,ids[0])['document_id'],document['document_id'])
+            self.assertEqual(self.repo.lexical(self.other,generations,query,10,policy='structured'),[])
+
+    def test_expired_ingestion_attempts_have_a_terminal_limit(self):
+        accepted = self.upload(key='expired-limit')
+        with self.db.sessions.begin() as session:
+            session.execute(update(jobs).where(jobs.c.id == accepted['job_id']).values(
+                state='RUNNING', attempts=3, lease_until=now()-timedelta(seconds=1)))
+        self.assertIsNone(self.repo.claim(self.settings.rag_job_lease_seconds))
+        self.assertEqual(self.repo.get_job(self.owner, accepted['job_id'])['state'], 'FAILED')
+
     def test_library_metadata_search_is_unicode_literal_paginated_and_owned(self):
         self.ready()
         document = self.repo.list_documents(self.owner)['items'][0]
@@ -412,7 +455,9 @@ class WorkflowTests(unittest.TestCase):
         result = self.search()
         self.assertEqual(len(ranker.rank.call_args.args[1]), 2)
         self.assertEqual(result.diagnostics.reranking, 'ok')
-        self.assertEqual(len(result.chunks), 2)
+        self.assertEqual(len(result.chunks), 3)
+        self.assertEqual([chunk.score_type for chunk in result.chunks], ['reranker', 'reranker', 'rrf'])
+        self.assertIsNone(result.chunks[-1].reranker_rank)
         self.assertEqual(result.chunks[0].score, .9)
 
     def test_operator_rebuild_is_transactional_and_resumable(self):

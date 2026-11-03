@@ -41,7 +41,10 @@ class RAGService:
         self.reranker = None
         if settings.rag_reranker_path:
             from app.rag.reranker import LocalReranker
-            self.reranker = LocalReranker(settings.rag_reranker_path, settings.rag_reranker_timeout)
+            self.reranker = LocalReranker(settings.rag_reranker_path, settings.rag_reranker_timeout,
+                                         expected_revision=settings.rag_reranker_model_revision)
+            if settings.rag_reranker_warm_on_startup:
+                self.reranker.warmup()
 
     def close(self):
         if self.reranker:
@@ -115,7 +118,10 @@ class RAGService:
     def capabilities(self):
         return dict(**self.parser.capabilities(), max_upload_bytes=self.settings.rag_max_upload_bytes,
                     max_pages=self.settings.rag_max_pages, hybrid=self.settings.rag_hybrid_enabled,
-                    reranking=self.reranker is not None, languages=['en'])
+                    reranking=self.reranker is not None, languages=[],
+                    retrieval_language_policy='multilingual; no input language allowlist',
+                    embedding_model=self.embedding.model_name,
+                    max_scope_documents=self.settings.rag_max_scope_documents)
 
     def accept_extracted(self, owner, *, file_id, filename, title, context_ids, key, extracted):
         """Trusted service-only entry: reuse Documents output; never parse/OCR again.
@@ -178,8 +184,18 @@ class RAGService:
     def source(self, owner, document_id, version_id, include_archived=False):
         doc, version = self.repository.source(owner, document_id, version_id)
         self._source_policy(owner, doc, include_archived)
-        self.repository.record_usage(owner, [document_id])
+        self._record_usage(owner, [document_id])
         return version['file_id'], self.files.binding(owner,version['file_id'],'library',dict(document_version_id=version_id))
+
+    def _record_usage(self, owner, document_ids):
+        try:
+            self.repository.record_usage(owner, document_ids)
+        except Exception:
+            workflow_logger.event('rag.usage_unavailable')
+
+    def _lexical(self, owner, generations, query):
+        options = {'policy': self.settings.rag_lexical_policy} if self.settings.rag_lexical_policy != 'simple' else {}
+        return self.repository.lexical(owner, generations, query, self.settings.rag_lexical_candidates, **options)
 
     def _source_policy(self, owner, doc, include_archived):
         contexts = self.context_summaries(owner, doc['context_ids'])
@@ -222,7 +238,11 @@ class RAGService:
         if not ids:
             return [], []
         document_ids = request.document_ids if candidate_documents is None else candidate_documents
-        return ids, self.repository.eligible(owner, ids, document_ids, request.include_archived)
+        eligible = self.repository.eligible(owner, ids, document_ids, request.include_archived,
+            limit=self.settings.rag_max_scope_documents + 1)
+        if len(eligible) > self.settings.rag_max_scope_documents:
+            raise AppError('RAG_SCOPE_TOO_LARGE', 'Select explicit documents or a smaller context before searching this many sources.', 422)
+        return ids, eligible
 
     def validate_selection(self, owner, selection):
         """Check an explicit scope without speculative embedding/retrieval work."""
@@ -235,6 +255,8 @@ class RAGService:
         request.query = normalized_query(request.query)
         started = checkpoint = time.monotonic()
         diagnostics = RetrievalDiagnostics(request_id=str(uuid4()))
+        diagnostics.embedding_identity = dict(model=self.embedding.model_name,
+            revision=self.embedding.model_version, dimension=self.embedding.dimension)
         def mark(stage):
             nonlocal checkpoint
             stamp = time.monotonic()
@@ -257,6 +279,7 @@ class RAGService:
         diagnostics.eligible_documents = len(docs)
         mark('scope')
         if not docs:
+            diagnostics.timings_ms['total'] = round((time.monotonic() - started) * 1000, 2)
             return RetrievalResult(status='no_eligible_sources', context_ids=contexts, diagnostics=diagnostics, mode=request.mode)
         generation_ids = [d['active_generation_id'] for d in docs]
         # A database-derived signature naturally changes across API/worker
@@ -265,6 +288,8 @@ class RAGService:
         # below still run on every hit. Never cache source content or tokens.
         candidate_key = json.dumps(dict(owner=owner, query=normalized_query(request.query),
             config=self.config(), max_tokens=self.embedding.max_tokens, hybrid=self.settings.rag_hybrid_enabled,
+            candidate_limits=[self.settings.rag_dense_candidates, self.settings.rag_lexical_candidates],
+            lexical_policy=self.settings.rag_lexical_policy,
             concepts=sorted(request.concept_ids or []), contexts=sorted(contexts),
             documents=sorted((str(d['id']), str(d['active_generation_id']), d.get('revision', 0)) for d in docs)),
             sort_keys=True, default=str)
@@ -288,12 +313,12 @@ class RAGService:
                         while len(self._query_cache) > 128:
                             self._query_cache.popitem(last=False)
                 mark('embedding')
-                matches = self.vector_store.query_chunks(owner, generation_ids, vector, 80)
+                matches = self.vector_store.query_chunks(owner, generation_ids, vector, self.settings.rag_dense_candidates)
                 mark('dense')
                 lexical = []
                 if self.settings.rag_hybrid_enabled:
                     try:
-                        lexical = self.repository.lexical(owner, generation_ids, request.query, 80)
+                        lexical = self._lexical(owner, generation_ids, request.query)
                     except Exception:
                         warnings.append('Lexical retrieval was unavailable. Results use dense retrieval only.')
                 mark('lexical')
@@ -310,7 +335,7 @@ class RAGService:
             if not self.settings.rag_hybrid_enabled:
                 raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from exc
             try:
-                lexical = self.repository.lexical(owner, generation_ids, request.query, 80)
+                lexical = self._lexical(owner, generation_ids, request.query)
             except Exception:
                 raise AppError('RAG_UNAVAILABLE', 'Your study material is temporarily unavailable. Try again shortly.', 503) from None
             matches = []
@@ -334,35 +359,84 @@ class RAGService:
         diagnostics.hydrated_candidates = len(rows)
         diagnostics.rejected_candidates = len(ranked) - len(rows)
         mark('hydration')
+        original_score_type = score_type
+        reranked_ids = set()
+        reranker_spans = {}
         if self.reranker:
-            candidates = [(key, score) for key, score in ranked if key in rows][:self.settings.rag_reranker_max_candidates]
+            # Spend inference only on individually viable, distinct passages.
+            # Limit each document before the cap, retaining the original tail for
+            # budget/diversity filling. Scores from the two tiers never mix.
+            candidates, hashes, counts = [], set(), {}
+            for key, score in ranked:
+                row = rows.get(key)
+                if not row or row['token_count'] > request.token_budget or row['content_hash'] in hashes:
+                    continue
+                if counts.get(row['document_id'], 0) >= 4:
+                    continue
+                if request.concept_ids and not set(request.concept_ids).intersection(row['concept_ids']):
+                    continue
+                candidates.append((key, score))
+                hashes.add(row['content_hash'])
+                counts[row['document_id']] = counts.get(row['document_id'], 0) + 1
+                if len(candidates) >= self.settings.rag_reranker_max_candidates:
+                    break
             scores = self.reranker.rank(request.query, [rows[key]['content'] for key, _ in candidates]) if candidates else []
-            if scores is not None:
-                ranked = sorted([(key, score) for (key, _), score in zip(candidates, scores, strict=True)], key=lambda item: (-item[1], item[0]))
+            import math
+            if scores is not None and len(scores) == len(candidates) and all(math.isfinite(s) for s in scores):
+                reranked_ids = {key for key, _ in candidates}
+                tail = [(key, score) for key, score in ranked if key not in reranked_ids]
+                ranked = sorted([(key, score) for (key, _), score in zip(candidates, scores, strict=True)], key=lambda item: (-item[1], item[0])) + tail
                 score_type = 'reranker'
                 diagnostics.reranking = 'ok'
+                diagnostics.reranked_candidates = len(candidates)
+                spans=getattr(self.reranker,'winning_spans',[])
+                if isinstance(spans,list) and len(spans)==len(candidates):
+                    reranker_spans={key:span for (key,_),span in zip(candidates,spans,strict=True)}
+                window_pairs=getattr(self.reranker,'window_pairs',0)
+                diagnostics.reranker_window_pairs=window_pairs if isinstance(window_pairs,int) else 0
+                truncated = getattr(self.reranker, 'truncated_passages', 0)
+                diagnostics.truncated_passages = truncated if isinstance(truncated, int) else 0
+                if diagnostics.truncated_passages:
+                    warnings.append('Some passages exceeded the reranker pair budget; only their prefixes were scored.')
             else:
                 diagnostics.reranking = 'fallback'
+                diagnostics.reranking_reason = getattr(self.reranker, 'last_reason', None) or 'invalid_scores'
                 warnings.append('Reranking was unavailable. Results use the original retrieval ranking.')
         mark('reranking')
         result, used, per_document, seen = [], 0, {}, set()
         ranked_positions = {key: index + 1 for index, (key, _) in enumerate(ranked)}
         doc_contexts = {d['id']: d['context_ids'] for d in docs}
+        def reject(reason):
+            diagnostics.selection_rejections[reason] = diagnostics.selection_rejections.get(reason, 0) + 1
         for key, score in ranked:
             row = rows.get(key)
-            if not row or row['content_hash'] in seen or per_document.get(row['document_id'], 0) >= 4:
+            threshold = self.settings.rag_min_reranker_score
+            if threshold is not None and diagnostics.reranking == 'ok' and (key not in reranked_ids or score < threshold):
+                reject('support_threshold')
+                continue
+            if not row:
+                reject('missing')
+                continue
+            if row['content_hash'] in seen:
+                reject('duplicate')
+                continue
+            if per_document.get(row['document_id'], 0) >= 4:
+                reject('document_limit')
                 continue
             if request.concept_ids and not set(request.concept_ids).intersection(row['concept_ids']):
+                reject('concept')
                 continue
             if used + row['token_count'] > request.token_budget:
+                reject('token_budget')
                 continue
             source = SourceReference(token=f'S{len(result)+1}', document_id=row['document_id'], version_id=row['version_id'],
                 generation_id=row['generation_id'], chunk_id=key, title=row['title'], heading_path=row['heading_path'],
                 filename=row.get('filename'), media_type=row.get('media_type'),
                 spans=row['spans'], excerpt=row['content'], warnings=row['warnings'], include_archived=request.include_archived)
-            result.append(RetrievedChunk(content=row['content'], score=score, score_type=score_type, source=source,
+            result.append(RetrievedChunk(content=row['content'], score=score, score_type='reranker' if key in reranked_ids else original_score_type, source=source,
+                reranker_span=reranker_spans.get(key),
                 context_ids=doc_contexts[row['document_id']], concept_ids=row['concept_ids'], dense_rank=dense_ranks.get(key),
-                lexical_rank=lexical_ranks.get(key), reranker_rank=ranked_positions[key] if score_type == 'reranker' else None))
+                lexical_rank=lexical_ranks.get(key), reranker_rank=ranked_positions[key] if key in reranked_ids else None))
             used += row['token_count']
             seen.add(row['content_hash'])
             per_document[row['document_id']] = per_document.get(row['document_id'], 0) + 1
@@ -375,13 +449,15 @@ class RAGService:
             wanted = {current_ids[c] for c in request.concept_ids}
             current = [doc for doc in current if wanted.intersection(current_ids[c] for c in doc['concept_ids'])]
         current_generations = {d['active_generation_id'] for d in current}
+        diagnostics.selection_rejections['reauthorization'] = sum(r.source.generation_id not in current_generations for r in result)
         result = [r for r in result if r.source.generation_id in current_generations]
         current_by_generation = {d['active_generation_id']: d for d in current}
         for chunk in result:
             chunk.context_ids = current_by_generation[chunk.source.generation_id]['context_ids']
-        self.repository.record_usage(owner, list({r.source.document_id for r in result}))
+        self._record_usage(owner, list({r.source.document_id for r in result}))
         mark('selection_and_reauthorization')
         diagnostics.timings_ms['total'] = round((time.monotonic() - started) * 1000, 2)
+        diagnostics.dependency_degraded = bool(warnings)
         workflow_logger.event('rag.retrieval', chunk_count=len(result), retrieval_status='degraded' if warnings else 'ok' if result else 'no_matches')
-        return RetrievalResult(chunks=result, status=('degraded' if warnings else 'ok') if result else 'no_matches', context_ids=contexts,
+        return RetrievalResult(chunks=result, status='degraded' if warnings else 'ok' if result else 'no_matches', context_ids=contexts,
             warnings=warnings, token_use=sum(rows[r.source.chunk_id]['token_count'] for r in result), diagnostics=diagnostics, mode=request.mode)

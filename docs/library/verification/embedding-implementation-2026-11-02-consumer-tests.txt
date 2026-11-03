@@ -1,0 +1,32 @@
+test_extended_budget_still_rejects_oversized_results_and_ninth_call (backend.tests.test_rag_refinements.RefinementTests.test_extended_budget_still_rejects_oversized_results_and_ninth_call) ... ok
+test_extraction_warnings_reach_new_and_repeated_tool_receipts (backend.tests.test_rag_refinements.RefinementTests.test_extraction_warnings_reach_new_and_repeated_tool_receipts) ... ok
+test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity (backend.tests.test_rag_refinements.RefinementTests.test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity) ... ok
+test_preparation_delegates_budget_to_history_coordinator (backend.tests.test_rag_refinements.RefinementTests.test_preparation_delegates_budget_to_history_coordinator) ... ok
+test_repeat_revalidates_instead_of_replaying_prefetched_source_packet (backend.tests.test_rag_refinements.RefinementTests.test_repeat_revalidates_instead_of_replaying_prefetched_source_packet) ... ok
+test_requested_tool_delivers_passages_and_citations (backend.tests.test_rag_prefetch.PrefetchTests.test_requested_tool_delivers_passages_and_citations) ... Executing <Task pending name='Task-36' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at C:\Users\Xclouds\Documents\mentra\backend\tests\test_rag_prefetch.py:76> wait_for=<Task pending name='Task-37' coro=<RunnableCallable.ainvoke() running at C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\langgraph\_internal\_runnable.py:452> cb=[Task.task_wakeup()] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:395> cb=[_run_until_complete_cb() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:181] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.259 seconds
+ok
+test_requested_tool_failure_reaches_agent (backend.tests.test_rag_prefetch.PrefetchTests.test_requested_tool_failure_reaches_agent) ... Executing <Task pending name='Task-61' coro=<gather_reads.<locals>.run() running at C:\Users\Xclouds\Documents\mentra\backend\app\langchain\concurrent_reads.py:33> wait_for=<Future pending cb=[Task.task_wakeup()] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:460> cb=[gather.<locals>._done_callback() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:813] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:395> took 0.362 seconds
+ok
+test_tool_revalidates_instead_of_delivering_stale_prefetch (backend.tests.test_rag_prefetch.PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch) ... ok
+test_unused_failed_prefetch_does_not_warn_model_or_user (backend.tests.test_rag_prefetch.PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user) ... ok
+test_unused_successful_prefetch_is_not_context_or_citations (backend.tests.test_rag_prefetch.PrefetchTests.test_unused_successful_prefetch_is_not_context_or_citations) ... ok
+test_context_headroom_expands_results_and_reads_without_expanding_writes (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_context_headroom_expands_results_and_reads_without_expanding_writes) ... ok
+test_cumulative_budget_supports_admitted_context_across_rounds (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_cumulative_budget_supports_admitted_context_across_rounds) ... ok
+test_deadline_and_context_exhaustion_do_not_expand_results (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_deadline_and_context_exhaustion_do_not_expand_results) ... ok
+test_larger_working_input_still_respects_a_smaller_configured_context (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_larger_working_input_still_respects_a_smaller_configured_context) ... ok
+test_physical_calls_stay_bounded (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_physical_calls_stay_bounded) ... ok
+test_slim_continuation_can_use_headroom_without_double_reserving_protocol (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_slim_continuation_can_use_headroom_without_double_reserving_protocol) ... ok
+test_timeout_defaults_and_shared_workflow (backend.tests.test_adaptive_tool_finalization.BudgetTests.test_timeout_defaults_and_shared_workflow) ... ok
+test_cancellation_is_never_swallowed (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_cancellation_is_never_swallowed) ... ok
+test_exhausted_model_budget_returns_partial_cards (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_exhausted_model_budget_returns_partial_cards) ... ok
+test_forged_receipts_cannot_become_completed_actions (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_forged_receipts_cannot_become_completed_actions) ... ok
+test_pending_search_is_repaired_without_executing_it (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_pending_search_is_repaired_without_executing_it) ... ok
+test_provider_connection_failure_preserves_available_cards (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_provider_connection_failure_preserves_available_cards) ... ok
+test_provider_truncation_is_repaired_instead_of_published_as_complete (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_provider_truncation_is_repaired_instead_of_published_as_complete) ... ok
+test_repeated_unexecuted_action_becomes_honest_partial (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_repeated_unexecuted_action_becomes_honest_partial) ... ok
+test_valid_answer_never_adds_a_call (backend.tests.test_adaptive_tool_finalization.FinalizationTests.test_valid_answer_never_adds_a_call) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 3.697s
+
+OK

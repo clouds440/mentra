@@ -82,6 +82,7 @@ class RetrievedChunk(RAGSchema):
     dense_rank: int | None = None
     lexical_rank: int | None = None
     reranker_rank: int | None = None
+    reranker_span: list[int] | None = Field(default=None, min_length=2, max_length=2)
 
 
 class RetrievalDiagnostics(RAGSchema):
@@ -95,6 +96,13 @@ class RetrievalDiagnostics(RAGSchema):
     query_cache_hit: bool = False
     candidate_cache_hit: bool = False
     reranking: Literal['disabled', 'ok', 'fallback'] = 'disabled'
+    reranking_reason: str | None = None
+    reranked_candidates: int = 0
+    truncated_passages: int = 0
+    reranker_window_pairs: int = 0
+    dependency_degraded: bool = False
+    selection_rejections: dict[str, int] = Field(default_factory=dict)
+    embedding_identity: dict[str, str | int] = Field(default_factory=dict)
 
 
 class RetrievalResult(RAGSchema):
@@ -103,6 +111,6 @@ class RetrievalResult(RAGSchema):
     context_ids: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     token_use: int = 0
-    pipeline_version: str = 'dense-lexical-rrf-v1'
+    pipeline_version: str = 'dense-lexical-rrf-v3'
     diagnostics: RetrievalDiagnostics = Field(default_factory=RetrievalDiagnostics)
     mode: str = 'STANDARD'

@@ -1,0 +1,81 @@
+{
+  "method": "production Python code, deterministic fake dependencies; not model quality or latency evidence",
+  "selection": {
+    "diversity": {
+      "dense": {
+        "count": 8,
+        "documents": [
+          "doc-a",
+          "doc-b"
+        ],
+        "status": "ok"
+      },
+      "reranked": {
+        "count": 4,
+        "documents": [
+          "doc-a"
+        ],
+        "status": "ok"
+      }
+    },
+    "duplicates": {
+      "dense": {
+        "count": 5,
+        "documents": [
+          "doc-a",
+          "doc-b"
+        ],
+        "status": "ok"
+      },
+      "reranked": {
+        "count": 1,
+        "documents": [
+          "doc-a"
+        ],
+        "status": "ok"
+      }
+    },
+    "budget": {
+      "dense": {
+        "count": 4,
+        "documents": [
+          "doc-b"
+        ],
+        "status": "ok"
+      },
+      "reranked": {
+        "count": 0,
+        "documents": [],
+        "status": "no_matches"
+      }
+    },
+    "usage_failure": {
+      "dense": {
+        "error": "RuntimeError",
+        "message": "synthetic metadata write failure"
+      },
+      "reranked": {
+        "error": "RuntimeError",
+        "message": "synthetic metadata write failure"
+      }
+    }
+  },
+  "reranker_tail": {
+    "original_characters": 514,
+    "scored_characters": 504,
+    "answer_visible": false
+  },
+  "reranker_long_query": "Query exceeds reranker pair budget.",
+  "short_blocks": {
+    "blocks": 100,
+    "chunks": 100,
+    "token_count_calls": 100,
+    "total_embedding_tokens": 500
+  },
+  "long_block": {
+    "chunks": 23,
+    "token_count_calls": 287,
+    "character_coverage": 50000,
+    "original_characters": 50000
+  }
+}

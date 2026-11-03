@@ -1,0 +1,3 @@
+mentra-embedding-verification-qdrant
+mentra-embedding-verification-db
+mentra-embedding-verification

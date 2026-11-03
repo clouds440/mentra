@@ -9,6 +9,7 @@ import os
 import tempfile
 import time
 import statistics
+import math
 from pathlib import Path
 from uuid import uuid4
 from qdrant_client import QdrantClient
@@ -71,7 +72,7 @@ def main():
     client = QdrantClient(url=url)
     vector = QdrantVectorStore(settings, embedding, client)
     report = dict(embedding=dict(model=embedding.model_name, revision=embedding.model_version, dimension=embedding.dimension), formats=[])
-    with PostgresSandbox() as database, tempfile.TemporaryDirectory() as folder:
+    with PostgresSandbox() as database, tempfile.TemporaryDirectory():
         learner = LearnerEngine(database.repository)
         owner = learner_id(TEST_LEARNERS[0])
         context = learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=owner, name='Python', activate=True))
@@ -122,6 +123,11 @@ def main():
                 service.reranker = ranker
                 timings = []; reranking_states = []
                 def search(item):
+                    # A pipeline variant never receives another variant's warm
+                    # query/candidate cache credit. Model warmup is separate.
+                    from app.core.read_cache import ReadCache
+                    service._query_cache.clear()
+                    service._candidate_cache = ReadCache()
                     if item['context'] == 'Python':
                         selected = [ids['python-decorators'], ids['python-dictionaries']]
                     elif item['context'] == 'Databases':
@@ -134,17 +140,27 @@ def main():
                     reverse = {value:key for key, value in ids.items()}
                     return [reverse[c.source.document_id] for c in result.chunks]
                 report[label] = evaluate(items, search, k=3)
-                report[label]['latency_ms'] = dict(p50=statistics.median(timings), p95=sorted(timings)[-1], samples=len(timings), includes_cold_start=True)
+                cold_sample = timings[0]
+                timings.clear()
+                for _ in range(max(5, int(os.environ.get('RAG_BENCHMARK_REPETITIONS', '5')))):
+                    for item in items:
+                        search(item)
+                report[label]['latency_ms'] = dict(p50=statistics.median(timings),
+                    p95=sorted(timings)[math.ceil(.95 * len(timings)) - 1],
+                    samples=len(timings), includes_cold_start=False, first_request_ms=cold_sample,
+                    cache_policy='query and candidates cleared per request', raw_samples=timings)
                 report[label]['reranking_states'] = reranking_states
                 if ranker:
                     assert all(state == 'ok' for state in reranking_states), reranking_states
             service.repository.request_delete(owner, next(iter(ids.values())))
             worker.run_once()
-            report['peak_process_rss_mib'] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+            report['parent_peak_rss_mib'] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+            report['scope'] = 'small synthetic smoke comparison; not representative corpus quality'
             print(json.dumps(report, indent=2))
         finally:
             service.reranker = reranker
             service.close()
+            files.close()
             if client.collection_exists(collection):
                 client.delete_collection(collection)
             client.close()

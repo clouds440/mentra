@@ -1,5 +1,9 @@
 # RAG implementation verification
 
+> Completion: [3 November 2026 acceptance record](Embedding_Completion_2026-11-03.md) supersedes the first-increment open-gate status. It includes the confirmed missing-index repair, larger offline corpus, local release/rollback checks and retained historical evidence.
+
+> Later review: [2 November 2026 embedding pipeline audit](Embedding_Pipeline_Audit_and_Improvement_Plan_2026-11-02.md) records current offline tests, confirmed selection bugs, documentation/compatibility remnants and proposed fixes. The dated results below remain historical evidence; the new audit does not claim those fixes are implemented or deployed.
+
 Verified on 2026-10-08 against the working tree. The end-to-end baseline is implemented, including the authenticated frontend. These checks used dedicated test PostgreSQL/Qdrant services and temporary schemas, databases, collections and volumes. Application migrations and deployment were not performed.
 
 ## Results

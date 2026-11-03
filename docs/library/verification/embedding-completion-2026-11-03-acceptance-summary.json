@@ -1,0 +1,149 @@
+{
+  "implementation_complete": true,
+  "local_acceptance_complete": true,
+  "production_deployed": false,
+  "source_tree_sha256": "48082e15d6ff6d539019d5296e33658d1ef3c73ba18529c42bd7c96147e3b2b3",
+  "verified_source_files": 461,
+  "frozen_image_tests": 154,
+  "real_multilingual_cases": 27,
+  "load_requests": 1152,
+  "load_degraded": 0,
+  "worst_load_p95_ms": 774.0502400001787,
+  "normalized_span_cases": 165,
+  "schema_head": "20261103_0039",
+  "source_cluster_mrr_delta_vs_dense": {
+    "dense": {
+      "mean": 0.0,
+      "lower": 0.0,
+      "upper": 0.0,
+      "seed": 1701
+    },
+    "hybrid": {
+      "mean": -0.01893939393939394,
+      "lower": -0.04772727272727273,
+      "upper": 0.0,
+      "seed": 1701
+    },
+    "structured": {
+      "mean": -0.01893939393939394,
+      "lower": -0.04772727272727273,
+      "upper": 0.0,
+      "seed": 1701
+    },
+    "rerank10": {
+      "mean": -0.015909090909090907,
+      "lower": -0.03409090909090909,
+      "upper": -0.004545454545454545,
+      "seed": 1701
+    },
+    "rerank20": {
+      "mean": -0.025,
+      "lower": -0.05,
+      "upper": -0.004545454545454545,
+      "seed": 1701
+    },
+    "rerank40": {
+      "mean": -0.03333333333333333,
+      "lower": -0.06666666666666667,
+      "upper": -0.00909090909090909,
+      "seed": 1701
+    }
+  },
+  "late_support": {
+    "cases": 13,
+    "prefix_top1": 1,
+    "window_top1": 9,
+    "paired_lift": {
+      "mean": 0.6153846153846154,
+      "lower": 0.23076923076923078,
+      "upper": 0.9230769230769231,
+      "seed": 1701
+    },
+    "regressions": [
+      "study-05-q0"
+    ]
+  },
+  "decisions": {
+    "increase_rerank_cap_to_40": "rejected: recall loss and 47 degraded held-out results",
+    "universal_support_threshold": "rejected: 20 percent held-out false abstention",
+    "default_chunk_overlap_or_headings": "rejected: no measured recall gain",
+    "default_block_packing": "rejected: no proven gain and public span contract change required",
+    "universal_english_stemming": "rejected: fixture-specific gain is not a global multilingual policy",
+    "bounded_full_passage_windows": "adopted with explicit overflow fallback and scored-window provenance",
+    "colocated_chunking_and_token_batched_inference": "adopted: exact output equivalence",
+    "lexical_index_repair_and_fixed_configuration": "adopted: missing-index proof and measured index-plan gain"
+  },
+  "caveats": [
+    "Synthetic workflow corpus; no production-distribution accuracy claim.",
+    "First research ranking run used fixed variant order and shared host load; timing is observational.",
+    "Bootstrap groups paraphrases by source; intervals apply only to these fixtures.",
+    "Process-tree memory sampling starts after embedding initialization; separate DB/Qdrant memory excluded."
+  ],
+  "input_sha256": {
+    "embedding-completion-2026-11-03-ablations-final.json": "a9bf02ef92bea55383cde72ba284d29193f0bc69f1c2d85865991a478b4a691d",
+    "embedding-completion-2026-11-03-ablations-final.txt": "bab6b9a77b90602ba72a4fa4d443ab9d307ac59c479a5d9ccffbe92b7a31e4ef",
+    "embedding-completion-2026-11-03-ablations.txt": "22c5467b65097f31857470dd094f233a02d5e9bfd836b4ac39ba67b9fdac22aa",
+    "embedding-completion-2026-11-03-accepted-build.txt": "1c68d5a8c359d0e0c4ee2951cf5eda0a4f42a8d449bdcea166bed9560315fdf3",
+    "embedding-completion-2026-11-03-accepted-canary.json": "fc1d3b37bfbb1c06ddb06df4b8a53a204a27f086fae6544219f30d2839c9babb",
+    "embedding-completion-2026-11-03-accepted-canary.txt": "6d8412e8d510dac91d89d1419b24bd5fcde5725a45fcb12745e13e331136fa37",
+    "embedding-completion-2026-11-03-accepted-multilingual.json": "a8fb2c2830640a50fc96d1ff912307930702b66acccfb93d44d5d74a39467f19",
+    "embedding-completion-2026-11-03-accepted-multilingual.txt": "f86bd546a7f355ec318deca3256f3d6e10a724865e8d99bca2c47bebdf8b47f8",
+    "embedding-completion-2026-11-03-accepted-tests.txt": "ac754b6e15cd47d0a9031e3221fed3d3be77dba478c2cf17a01ab270e250fbfe",
+    "embedding-completion-2026-11-03-artifact-rollback.json": "522d4545c97fe751d2f59e678ad99b3860bb05591718d6c36d9a878b579e0430",
+    "embedding-completion-2026-11-03-asset-parity.json": "eb5ce8e207bf69f05f3db491b53e13b249ad334958407808997e369c11d3711c",
+    "embedding-completion-2026-11-03-asset-parity.txt": "939ffb27a8771817a01b44fe4af9c0da2441814bdcb77026acbc3eefa695e0cd",
+    "embedding-completion-2026-11-03-build.txt": "bda5b2e983c3644074f59bb220adbcc9312848a6f01613a7c0e437defbce0952",
+    "embedding-completion-2026-11-03-completed-build.txt": "98bf163a2c4146a6642023bef8dbd821b28e9daaf17a6ed626c9319168f3f9f0",
+    "embedding-completion-2026-11-03-completed-canary.json": "e7c0a612c9dd3baa62a896401af67602506244d84da0c880f9fa65b539a253a8",
+    "embedding-completion-2026-11-03-completed-canary.txt": "61605f8d97dbc09020b67e96ddc8cbc903b3ff94f582fda8c37fea89161e2e85",
+    "embedding-completion-2026-11-03-completed-tests.txt": "c75a14e5aa709d9465277d3b6919efe38b879b0353745bbf553f7f4b49c3b663",
+    "embedding-completion-2026-11-03-contracts.txt": "2655fd1e1ab0d3d0de3aa3b4746da3715568edc227b5aedb6bc1684292d97563",
+    "embedding-completion-2026-11-03-deadlines.txt": "1f982e334bebc7a502e58237c471b424030c017709045988c231c4b1ff7b9410",
+    "embedding-completion-2026-11-03-final-build.txt": "96a7ac7739869d21c58f79ced4cc0b5c16faceb81669ec5b315dd705b22e58c8",
+    "embedding-completion-2026-11-03-final-contracts.txt": "bd1195c8be15cd24bd77856a274db8fe05846ce925e4ed5d0351bd5f6e9b5ed5",
+    "embedding-completion-2026-11-03-final-source-manifest.json": "79e75b14f1bf0a9824b013357e03962215b0515a002cf7853d76b43b5558b0c0",
+    "embedding-completion-2026-11-03-final.Dockerfile": "17c45bfb4000aff572c8c43a8f3fd84af003ccbb8492e10a075f3cfd51cf7ce1",
+    "embedding-completion-2026-11-03-finished-build.txt": "218932028ed13b4a87d3eb7dda0f1ef351ff6e8156803d0623864d363776bc42",
+    "embedding-completion-2026-11-03-finished-canary.json": "ee3c579cd9badb35fa2e9b4eb0bdd88b1dde43607e33ba2834288909f8cf2ed1",
+    "embedding-completion-2026-11-03-finished-canary.txt": "2c990b21e309715261d948be624187b10281d6dc0b5f46d1f03f43e45e0a99eb",
+    "embedding-completion-2026-11-03-finished-source-manifest.json": "cddfa0e5d5c760798a6686123fdd0d72c9fa0508155421ddb8bc1c06de10ef87",
+    "embedding-completion-2026-11-03-finished-tests.txt": "f8f45294729a71f2e9e2003d513ac71d3388ceab82bb14dbb03eabad372f9cd6",
+    "embedding-completion-2026-11-03-images.json": "86a43a23a3a5861a66f11dea82c71f941e4eeadc0bcdf43ba3ac03d8561c3cc3",
+    "embedding-completion-2026-11-03-indexed-load.json": "c62a7ddd0b41f132d31d47791b19231b3a72eb7ec156103b3aab247ffb96ad43",
+    "embedding-completion-2026-11-03-indexed-load.txt": "937b89797ee4887d649765af4edd54475aba9238abdba53935362a15fb701ed7",
+    "embedding-completion-2026-11-03-indexed-release-build.txt": "0be5eaca930bbc542db7aba2de7276250f00f77b7ea196496f0575a9685ba319",
+    "embedding-completion-2026-11-03-lexical-languages.json": "060dec9325f5d5f1e2b95c72aed748841a8a58692c925119b0981a9fd7b4b82d",
+    "embedding-completion-2026-11-03-lexical-languages.txt": "3615dd5ee1e5036543ccadf872790a413c3719410f3c722c2eae8fcfe88da26f",
+    "embedding-completion-2026-11-03-memory-consumers.txt": "ec44004a6da5bf58ff52addc99cd95c0797b14599ec99b56c63dc490a5944bf1",
+    "embedding-completion-2026-11-03-migration-acceptance.txt": "feb1f09dd090b8d3365fea807c01df7d6cddf49dba4eca809ea7ce0b31ea91f8",
+    "embedding-completion-2026-11-03-multilingual.json": "04fefc9fd61e4f54809a89dd7c3893049ef9d97b6b8a57d79869dac9ea64636c",
+    "embedding-completion-2026-11-03-normalization.json": "6a232b87fc68fd041da3290871a89e6f6a4142b7b537ce06a9682fd6bcc10744",
+    "embedding-completion-2026-11-03-normalization.txt": "b1c452f252cdb85a7ef7f9b37c8f77d134187ce8e7198070343bfab1346ea7e9",
+    "embedding-completion-2026-11-03-packaged-canary.json": "e7c0a612c9dd3baa62a896401af67602506244d84da0c880f9fa65b539a253a8",
+    "embedding-completion-2026-11-03-packaged-canary.txt": "563e9b86c20ebe37b7d1e0a0732617cc25352baf33effbfdd2c57a2d0dd4bcbb",
+    "embedding-completion-2026-11-03-packaged-tests-retry.txt": "d21173b1b155e5bcbb4321e44b977df13170a0ba0ce77d8ff21526bd1aebc3c2",
+    "embedding-completion-2026-11-03-packaged-tests.txt": "14f43b7d9c771e2fecd9aa2bc04e841176a526e8ec82ef9c3c8a8da3e5236556",
+    "embedding-completion-2026-11-03-rag-tests.txt": "b07ee837cde6c15626147b3116e7b4a4461537e77167e8a81db556ec6168b1c0",
+    "embedding-completion-2026-11-03-ready-build.txt": "dabcf006a767299dd6cea50c0e801b186478d1f28783edf9a57dc079f94c68f5",
+    "embedding-completion-2026-11-03-ready-canary.json": "b43666339c7136d47495931f40dd6a1912f1671bc72f3858a37f36a807629f8a",
+    "embedding-completion-2026-11-03-ready-canary.txt": "968f02f4bbb935de7b71db8a8c23205a3ddb49b82afd97e460d1d0bff7cd4aff",
+    "embedding-completion-2026-11-03-ready-tests.txt": "126e6737d0992db439bae0231aeb3906fed49922fe99e58a032d6f0008f16129",
+    "embedding-completion-2026-11-03-release-build.txt": "debba36ccf15f8f03b92ac53d8cd2f65381a48d3960ca63de83ba2dcf311ca93",
+    "embedding-completion-2026-11-03-release-canary.json": "b8d28c6a3719bcc67eef0deee156354c76674df7257520d80f56091c25abc641",
+    "embedding-completion-2026-11-03-release-canary.txt": "73c7d3d2724b66147ab143ab39d812b45392b75e18a5a18fff1caf994a506b0f",
+    "embedding-completion-2026-11-03-research.json": "c36e93eb854705530c1c01ad1dc4410e4afbe54b9de84d3bb531123459d51ca9",
+    "embedding-completion-2026-11-03-research.txt": "230a370ea4d8009f45eab278fcafa10bdaee1014bfb0e2fdfc25a2e5513e39fb",
+    "embedding-completion-2026-11-03-rollback-cleanup.txt": "4ddd8955f09b2680df631557c4291a0e68add533847c200a440958818f417968",
+    "embedding-completion-2026-11-03-rollback-new.txt": "b092eb948fb23ac6e6a149a196430288bd2ea270a2c541a69698adfe453fd13c",
+    "embedding-completion-2026-11-03-rollback-old.txt": "b795cda8023d9b3e04c93bb2c069d559095e047048984ab3c2d225bc9199e2aa",
+    "embedding-completion-2026-11-03-rollback-prepare.txt": "7f7c5223c3d302159dc94d280e467a9b2133197c3a2e0cd68e22b22fc833ad59",
+    "embedding-completion-2026-11-03-source-manifest.json": "9204e68777879e42e23a2e5cff90f0c6663f6a62bc95bb67f99a7292c0c92978",
+    "embedding-completion-2026-11-03-sql-acceptance.json": "9595ae4b9c4de93d183ceabbb6156ff2215cb8d4d1124396a074aed92e0a77db",
+    "embedding-completion-2026-11-03-sql-acceptance.txt": "5c43505a225e2b1439cf7b1d5995af29de829431d16192e00dda93c900a81d3c",
+    "embedding-completion-2026-11-03-sql-fixed.json": "f84f8d074ba6d2ae146652b6cc40cddd79950a956acae68b26a491ad299db41c",
+    "embedding-completion-2026-11-03-sql-fixed.txt": "d8c92aaba172d6130ce90d6c2296a82bd13903841e62d889bdad3ca2085d78ea",
+    "embedding-completion-2026-11-03-sql-plans.json": "a96c496878a82df5bbaba5f94e1257e32dc59cc8c96ae9e52ace635b1f5136b8",
+    "embedding-completion-2026-11-03-sql-plans.txt": "6bba850f8a91a3b9347bd0c72afe44a65de40891ff70ff7e5d0fa7103b06e419",
+    "embedding-completion-2026-11-03-verified-build.txt": "59a90751723ff5131695ee79cdce3a356d049f4506f97cc62c07243e90ab183e"
+  }
+}

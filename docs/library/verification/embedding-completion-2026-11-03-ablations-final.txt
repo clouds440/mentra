@@ -1,0 +1,17 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  46%|████▌     | 91/199 [00:00<00:00, 879.79it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1800.55it/s]
+target250-overlap0-headingFalse {'recall_at3': 1.0, 'chunks': 52, 'elapsed_seconds': 10.549666172999878, 'exact_coverage': True, 'cases': 13}
+target350-overlap0-headingFalse {'recall_at3': 1.0, 'chunks': 39, 'elapsed_seconds': 12.650570469000058, 'exact_coverage': True, 'cases': 13}
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (542 > 512). Running this sequence through the model will result in indexing errors
+target450-overlap0-headingFalse {'recall_at3': 1.0, 'chunks': 26, 'elapsed_seconds': 11.611823285000128, 'exact_coverage': True, 'cases': 13}
+target350-overlap32-headingFalse {'recall_at3': 1.0, 'chunks': 39, 'elapsed_seconds': 12.646444142000064, 'exact_coverage': True, 'cases': 13}
+target350-overlap64-headingFalse {'recall_at3': 1.0, 'chunks': 39, 'elapsed_seconds': 8.428160717000083, 'exact_coverage': True, 'cases': 13}
+target350-overlap0-headingTrue {'recall_at3': 1.0, 'chunks': 39, 'elapsed_seconds': 8.594090335000146, 'exact_coverage': True, 'cases': 13}
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (513 > 512). Running this sequence through the model will result in indexing errors
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  53%|█████▎    | 106/201 [00:00<00:00, 1051.34it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1697.89it/s]
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (1017 > 512). Running this sequence through the model will result in indexing errors

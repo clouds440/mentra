@@ -1,0 +1,8 @@
+{
+  "cases": 165,
+  "normalized_coverage": true,
+  "spans_valid": true,
+  "legacy_ipc_ms": 62.303647999897294,
+  "colocated_ms": 35.42466900012187,
+  "exact_remote_local_equivalence": true
+}

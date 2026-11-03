@@ -1,0 +1,51 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from embedding-completion-2026-11-03-final.Dockerfile
+#1 transferring dockerfile: 614B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/mentra-backend:embedding-complete-20261103
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 145B 0.0s done
+#3 DONE 0.1s
+
+#4 [internal] load build context
+#4 DONE 0.0s
+
+#5 [1/5] FROM docker.io/library/mentra-backend:embedding-complete-20261103@sha256:b089de254ad39c25acaa0a223ca80b6527615a9ccce176fb0af8d4f6877fd9f6
+#5 resolve docker.io/library/mentra-backend:embedding-complete-20261103@sha256:b089de254ad39c25acaa0a223ca80b6527615a9ccce176fb0af8d4f6877fd9f6 0.1s done
+#5 DONE 0.1s
+
+#4 [internal] load build context
+#4 transferring context: 97.84kB 0.1s done
+#4 DONE 0.2s
+
+#5 [1/5] FROM docker.io/library/mentra-backend:embedding-complete-20261103@sha256:b089de254ad39c25acaa0a223ca80b6527615a9ccce176fb0af8d4f6877fd9f6
+#5 CACHED
+
+#6 [2/5] COPY app /app/app
+#6 DONE 0.6s
+
+#7 [3/5] COPY scripts /app/scripts
+#7 DONE 0.1s
+
+#8 [4/5] COPY model_assets.py bake_embedding_model.py bake_reranker_model.py /app/
+#8 DONE 0.2s
+
+#9 [5/5] RUN python -c "from model_assets import write_manifest; write_manifest('/opt/mentra/models/embedding',role='embedding'); write_manifest('/opt/mentra/models/reranker',role='reranker')"
+#9 DONE 2.2s
+
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 0.2s done
+#10 exporting manifest sha256:e3fab7cebceb806276d95cad9bfdb3fe01288a3305cdb6101ded7dfc4e100893 0.0s done
+#10 exporting config sha256:dc03ea4986db25d93d5d215143ccf2f2574375a0aabd69298997ada4a0a9177a 0.0s done
+#10 exporting attestation manifest sha256:40f5fcc2af353b90585a7a312d3af3f60c2453de3937a77fbad624e209bf8cf3 0.0s done
+#10 exporting manifest list sha256:04cc1a84f205b3ec0febbb572ca6fb8a33855096cae9af158d39ad041c716ed0 0.0s done
+#10 naming to docker.io/library/mentra-backend:embedding-verified-20261103 done
+#10 unpacking to docker.io/library/mentra-backend:embedding-verified-20261103 0.1s done
+#10 DONE 0.5s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/lz7oo7wkop4yv02nihzuueeij

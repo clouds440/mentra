@@ -25,6 +25,20 @@ class FakeSentenceTransformer:
 
 
 class EmbeddingServiceTests(unittest.TestCase):
+    def test_zero_norm_vectors_are_rejected(self):
+        from unittest.mock import Mock
+        model=FakeSentenceTransformer()
+        model.encode=Mock(return_value=[[0.,0.]])
+        service=SentenceTransformerEmbeddingService(self.settings,model_path=self.model_path,
+            model_loader=lambda *_args,**_kwargs:model)
+        with self.assertRaisesRegex(EmbeddingModelError,'zero-norm'):
+            service.embed_documents(['source'])
+    def test_configured_revision_must_match_baked_identity(self):
+        settings = self.settings.model_copy(update={'embedding_model_revision': 'another-revision'})
+        with self.assertRaisesRegex(EmbeddingModelError, 'revision does not match'):
+            SentenceTransformerEmbeddingService(settings, model_path=self.model_path,
+                model_loader=lambda *_args, **_kwargs: FakeSentenceTransformer())
+
     def test_non_finite_model_vectors_are_rejected(self):
         from unittest.mock import Mock
         for value in (float('nan'), float('inf')):
@@ -47,8 +61,10 @@ class EmbeddingServiceTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.settings = Settings(
+            _env_file=None,
             embedding_model="intfloat/multilingual-e5-small",
             embedding_device="cpu",
+            embedding_model_revision='',
         )
 
     def tearDown(self) -> None:

@@ -1,0 +1,33 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  70%|██████▉   | 139/199 [00:00<00:00, 1382.47it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1717.34it/s]
+{
+  "schema": "mentra_test_aee396c5d10c4b22a6d314de351d08da",
+  "collection": "mentra_rollback_a2b9ad45fca748dc8835a4e2332226c0",
+  "steps": [
+    "New artifact ingested canonical source; downgraded only derived lexical index.",
+    {
+      "phase": "old",
+      "head": "20261029_0038",
+      "pipeline": "dense-lexical-rrf-v1",
+      "generation_unchanged": true,
+      "model": "intfloat/multilingual-e5-small",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+    },
+    {
+      "phase": "new",
+      "head": "20261103_0039",
+      "pipeline": "dense-lexical-rrf-v3",
+      "generation_unchanged": true,
+      "model": "intfloat/multilingual-e5-small",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+    }
+  ],
+  "owner": "b9cdd0f0-9119-5d06-a170-103315c7f4e7",
+  "document_id": "d72150dc-96f4-497c-acda-5b309f365c8c",
+  "generation_id": "c798957c-7e18-471b-b73e-506c51750846",
+  "new_head": "20261103_0039",
+  "old_passed": true,
+  "new_passed": true
+}

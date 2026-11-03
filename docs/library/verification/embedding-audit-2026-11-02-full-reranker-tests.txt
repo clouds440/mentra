@@ -1,0 +1,13 @@
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (backend.tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (backend.tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (backend.tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_long_passages_still_obey_exact_pair_budget (backend.tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (backend.tests.rag.test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (backend.tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 11.510s
+
+OK

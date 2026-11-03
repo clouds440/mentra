@@ -1,0 +1,5557 @@
+{
+  "simple": {
+    "recall_at3": 0.9454545454545454,
+    "mrr": 0.8772727272727273,
+    "language_recall": {
+      "mixed": 1.0,
+      "arabic": 0.625,
+      "urdu": 1.0,
+      "english": 0.955
+    },
+    "probes": {
+      "dictionaries": [],
+      "catalysts": [],
+      "wrapping": [],
+      "\u0645\u0632\u0627\u062d\u0645\u062a": [
+        "study-56"
+      ],
+      "\u0627\u0644\u0645\u0642\u0627\u0648\u0645\u0629": [
+        "study-58"
+      ]
+    },
+    "cases": 275,
+    "observations": [
+      {
+        "id": "study-05-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-06-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-07-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-08-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-09-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-10-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-11-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-12-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-13-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-14-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-14-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-14-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-15-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-15-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-15-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-16-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-16-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-17-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-17-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-17-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-18-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-18-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-18-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-19-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-19-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      {
+        "id": "study-19-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-20-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-21-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-21-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-21-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-22-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-22-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-22-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-23-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-23-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-23-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-23-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-23-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-24-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-25-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-26-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-26-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-26-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-26-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-26-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-27-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-27-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-27-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-27-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-27-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-28-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-29-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-30-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-30-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-30-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-31-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-32-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-33-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-34-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-35-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-36-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-37-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-38-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-39-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-40-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-41-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-42-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-43-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-44-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-45-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-45-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-45-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-45-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-45-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-46-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-46-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-46-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-46-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-46-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-47-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-48-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-49-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-50-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-50-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-50-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-50-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      {
+        "id": "study-50-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-51-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      {
+        "id": "study-51-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-51-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-51-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-51-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-52-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-52-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-53-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-54-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-55-q0",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q1",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q2",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q3",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-56-q0",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q1",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q2",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q3",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-57-q0",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q1",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q2",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q3",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-58-q0",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-58-q1",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-58-q2",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-58-q3",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0.0
+      },
+      {
+        "id": "study-58-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-59-q0",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q1",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q2",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q3",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      }
+    ]
+  },
+  "english": {
+    "recall_at3": 1.0,
+    "mrr": 0.9878787878787879,
+    "language_recall": {
+      "mixed": 1.0,
+      "arabic": 1.0,
+      "urdu": 1.0,
+      "english": 1.0
+    },
+    "probes": {
+      "dictionaries": [
+        "study-29"
+      ],
+      "catalysts": [
+        "study-14"
+      ],
+      "wrapping": [
+        "study-28"
+      ],
+      "\u0645\u0632\u0627\u062d\u0645\u062a": [
+        "study-56"
+      ],
+      "\u0627\u0644\u0645\u0642\u0627\u0648\u0645\u0629": [
+        "study-58"
+      ]
+    },
+    "cases": 275,
+    "observations": [
+      {
+        "id": "study-05-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-05-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-06-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-06-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-07-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-07-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-08-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-08-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-09-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-09-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-10-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-10-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-11-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-11-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-12-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-12-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-13-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-13-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-14-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-14-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-15-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-15-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-16-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-16-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-17-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-17-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-18-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-18-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-19-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-19-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-20-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-20-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-21-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-21-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-22-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-22-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-23-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-23-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-23-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-23-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-23-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-24-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-24-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-25-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-25-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-26-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-26-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-26-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-26-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-26-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-27-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-27-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-27-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      {
+        "id": "study-27-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-27-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-28-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-28-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-29-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-29-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-30-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-30-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-31-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-31-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-32-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-32-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-33-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-33-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-34-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-34-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-35-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-35-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-36-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-36-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-37-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-37-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-38-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-38-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-39-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-39-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-40-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-40-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-41-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-41-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-42-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-42-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-43-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-43-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-44-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-44-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-45-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-45-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-45-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-45-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-45-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-46-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-46-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-46-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-46-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-46-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-47-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-47-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-48-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-48-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-49-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-49-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-50-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-50-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-50-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-50-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-50-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-51-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-51-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-51-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-51-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-51-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-52-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-52-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-53-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-53-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-54-q0",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q1",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q2",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-q3",
+        "language": "english",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-54-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-55-q0",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q1",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q2",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-q3",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-55-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-56-q0",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q1",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q2",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-q3",
+        "language": "urdu",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-56-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-57-q0",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q1",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q2",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-q3",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-57-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-58-q0",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-58-q1",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-58-q2",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-58-q3",
+        "language": "arabic",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      {
+        "id": "study-58-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      },
+      {
+        "id": "study-59-q0",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q1",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q2",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-q3",
+        "language": "mixed",
+        "answerable": true,
+        "returned": true,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "id": "study-59-none",
+        "language": "english",
+        "answerable": false,
+        "returned": true,
+        "recall": 0,
+        "precision": 0.0,
+        "mrr": 0,
+        "ndcg": 0
+      }
+    ]
+  },
+  "decision": "Keep simple as default: English stemming is language-specific, needs a matching index, and is not a global multilingual policy."
+}

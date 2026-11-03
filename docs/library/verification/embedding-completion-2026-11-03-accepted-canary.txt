@@ -1,0 +1,32 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  60%|██████    | 120/199 [00:00<00:00, 1188.21it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1754.29it/s]
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  57%|█████▋    | 114/201 [00:00<00:00, 1138.74it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1763.95it/s]
+RAG worker job failed: 7a0ee67f-660a-46af-a930-9c4a1b776a94
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 88, in run_once
+    vectors = self.service.embedding.embed_documents([c['content'] for c in batch])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.embeddings.EmbeddingModelError: synthetic failure
+{
+  "passed": true,
+  "steps": [
+    "original ingestion and warmed retrieval passed",
+    "HTTP result serialization, scored-window provenance and owner isolation passed with fixture identities",
+    "failed replacement retained original active generation",
+    "replacement recovery and old canonical citation passed",
+    "same-model rollback restored original retrieval and invalidated candidate signature"
+  ]
+}

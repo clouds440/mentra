@@ -2,6 +2,7 @@
 
 import asyncio
 import unittest
+from unittest.mock import Mock
 from uuid import uuid4
 
 from app.auth.repositories.tables import learner
@@ -57,6 +58,53 @@ def admission(**changes):
 
 
 class MemoryReconciliationTests(unittest.TestCase):
+    def test_long_query_keeps_small_overlapping_windows_and_late_correction(self):
+        self.memory('phone')
+        model=FakeEmbedding(); model.embed_similarity=Mock(wraps=model.embed_similarity)
+        lookup=MemorySemanticLookup(self.db.sessions,model)
+        self.assertTrue(lookup.related(self.owner,'a'*5900+' phone at the end.')[1])
+        windows=model.embed_similarity.call_args.args[0]
+        self.assertLessEqual(len(windows),32)
+        self.assertTrue(all(len(part)<=256 for part in windows))
+        self.assertIn('phone at the end.',windows[-1])
+        self.assertEqual(windows[0][-64:],windows[1][:64])
+    def test_invalid_derived_vector_is_rebuilt_without_changing_memory(self):
+        import struct
+        memory=self.memory('phone')
+        lookup=MemorySemanticLookup(self.db.sessions,FakeEmbedding())
+        self.assertTrue(lookup.related(self.owner,'phone')[1])
+        for invalid in (struct.pack('<fff',float('nan'),0,0),b'bad',b''):
+            with self.db.sessions.begin() as session:
+                session.execute(update(v).where(v.c.memory_id==memory['id']).values(vector=invalid))
+            self.assertEqual(lookup.related(self.owner,'phone'),([],False))
+            self.assertEqual(self.repo.detail(self.owner,memory['id'])['revision'],memory['revision'])
+            self.assertTrue(lookup.related(self.owner,'phone')[1])
+
+    def test_semantic_overflow_never_claims_complete_even_with_all_vectors(self):
+        import struct
+        from app.history_management.repositories.tables import memories
+        seed = self.memory('I study the seed topic.')
+        with self.db.sessions.begin() as session:
+            row = dict(session.execute(select(memories).where(memories.c.id == seed['id'])).mappings().one())
+            rows = [row] + [dict(row, id=uuid4(), content=f'Subject {i}', fingerprint=f'overflow-{i}') for i in range(1000)]
+            session.execute(memories.insert(), rows[1:])
+            session.execute(v.insert(), [dict(learner_id=self.owner, memory_id=r['id'], revision=r['revision'],
+                model_key='synthetic:v1:3:symmetric-v2', dimension=3, vector=struct.pack('<fff', 1, 0, 0)) for r in rows])
+        lookup = MemorySemanticLookup(self.db.sessions, FakeEmbedding())
+        self.assertEqual(lookup.related(self.owner, 'phone'), ([], False))
+
+    def test_token_poison_does_not_prevent_other_memory_backfill(self):
+        bad = self.memory('x' * 100)
+        good = self.memory('phone')
+        class Small(FakeEmbedding):
+            max_tokens = 10
+            query_token_count = staticmethod(len)
+        lookup = MemorySemanticLookup(self.db.sessions, Small())
+        self.assertEqual(lookup.related(self.owner, 'phone'), ([], False))
+        with self.db.sessions() as session:
+            self.assertIsNotNone(session.scalar(select(v.c.memory_id).where(v.c.memory_id == good['id'])))
+            self.assertIsNone(session.scalar(select(v.c.memory_id).where(v.c.memory_id == bad['id'])))
+
     @classmethod
     def setUpClass(cls):
         cls.db = PostgresSandbox()
@@ -572,9 +620,11 @@ class MemoryReconciliationTests(unittest.TestCase):
     def test_semantic_backfill_is_bounded_and_outage_defers(self):
         for index in range(35):
             self.memory(f"I study subject {index}.")
-        lookup = MemorySemanticLookup(self.db.sessions, FakeEmbedding())
+        model=FakeEmbedding(); model.embed_similarity=Mock(wraps=model.embed_similarity)
+        lookup = MemorySemanticLookup(self.db.sessions, model)
         _, ready = lookup.related(self.owner, "music")
         self.assertFalse(ready)
+        self.assertEqual(model.embed_similarity.call_count,1)
         with self.db.sessions() as session:
             self.assertEqual(
                 session.scalar(

@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     memory_fact_days: int = Field(default=180, ge=1, le=3650)
     memory_preference_days: int = Field(default=365, ge=1, le=3650)
     embedding_model: str = "intfloat/multilingual-e5-small"
+    embedding_model_revision: str = ''
     embedding_device: str = "cpu"
     embedding_worker_timeout: float = Field(default=10, gt=0, le=60)
     embedding_initialization_timeout: float = Field(default=45, gt=0, le=120)
@@ -113,7 +114,14 @@ class Settings(BaseSettings):
     document_memory_bytes: int = Field(default=1024 ** 3, ge=64 * 1024 ** 2)
     rag_job_lease_seconds: int = Field(default=300, ge=30)
     rag_hybrid_enabled: bool = True
+    rag_dense_candidates: int = Field(default=80, ge=1, le=500)
+    rag_max_scope_documents: int = Field(default=1000, ge=20, le=10000)
+    rag_lexical_candidates: int = Field(default=80, ge=1, le=500)
+    rag_lexical_policy: Literal['simple', 'structured'] = 'simple'
     rag_reranker_path: str = ''
+    rag_reranker_model_revision: str = ''
+    rag_reranker_warm_on_startup: bool = False
+    rag_min_reranker_score: float | None = Field(default=None, allow_inf_nan=False)
     rag_reranker_timeout: float = Field(default=5, gt=0, le=30)
     rag_reranker_max_candidates: int = Field(default=20, ge=1, le=40)
     rag_inference_wait_seconds: float = Field(default=2, gt=0, le=10)
@@ -174,9 +182,19 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def rag_limits(self):
+        if self.rag_min_reranker_score is not None and (not self.rag_reranker_path or not self.rag_reranker_model_revision):
+            raise ValueError('A support threshold requires an enabled reranker and a pinned reranker revision')
         if self.rag_job_lease_seconds <= self.rag_parser_timeout:
             raise ValueError('RAG_JOB_LEASE_SECONDS must exceed RAG_PARSER_TIMEOUT')
+        inference_window = self.embedding_initialization_timeout + max(self.embedding_worker_timeout,self.rag_parser_timeout+1) + self.rag_inference_wait_seconds + 6
+        if self.rag_job_lease_seconds <= inference_window:
+            raise ValueError('RAG_JOB_LEASE_SECONDS must exceed embedding initialization, inference, wait and cleanup budgets')
         return self
+
+    @field_validator('rag_min_reranker_score', mode='before')
+    @classmethod
+    def optional_reranker_score(cls, value):
+        return None if value == '' else value
 
     @property
     def allowed_origins(self) -> list[str]:

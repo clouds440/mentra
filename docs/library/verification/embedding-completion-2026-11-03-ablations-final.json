@@ -1,0 +1,173 @@
+{
+  "scope": "controlled synthetic ablations; preserve block-v2 defaults unless held-out real-source acceptance agrees",
+  "chunking": {
+    "target250-overlap0-headingFalse": {
+      "recall_at3": 1.0,
+      "chunks": 52,
+      "elapsed_seconds": 10.549666172999878,
+      "exact_coverage": true,
+      "cases": 13
+    },
+    "target350-overlap0-headingFalse": {
+      "recall_at3": 1.0,
+      "chunks": 39,
+      "elapsed_seconds": 12.650570469000058,
+      "exact_coverage": true,
+      "cases": 13
+    },
+    "target450-overlap0-headingFalse": {
+      "recall_at3": 1.0,
+      "chunks": 26,
+      "elapsed_seconds": 11.611823285000128,
+      "exact_coverage": true,
+      "cases": 13
+    },
+    "target350-overlap32-headingFalse": {
+      "recall_at3": 1.0,
+      "chunks": 39,
+      "elapsed_seconds": 12.646444142000064,
+      "exact_coverage": true,
+      "cases": 13
+    },
+    "target350-overlap64-headingFalse": {
+      "recall_at3": 1.0,
+      "chunks": 39,
+      "elapsed_seconds": 8.428160717000083,
+      "exact_coverage": true,
+      "cases": 13
+    },
+    "target350-overlap0-headingTrue": {
+      "recall_at3": 1.0,
+      "chunks": 39,
+      "elapsed_seconds": 8.594090335000146,
+      "exact_coverage": true,
+      "cases": 13
+    }
+  },
+  "passage_windows": [
+    {
+      "id": "study-05-q0",
+      "prefix_top1": true,
+      "full_window_top1": false,
+      "elapsed_ms": 4967.910049000011,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-06-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 4535.245777,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-07-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 4498.231970999996,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-08-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 4291.510181000149,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-09-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 4624.78262899981,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-10-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 4720.384536000211,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-11-q0",
+      "prefix_top1": false,
+      "full_window_top1": false,
+      "elapsed_ms": 2693.017182999938,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-12-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 2465.8330259999275,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-55-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 2255.887781999945,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-56-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 2101.415230000157,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-57-q0",
+      "prefix_top1": false,
+      "full_window_top1": false,
+      "elapsed_ms": 2288.9526500000557,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-58-q0",
+      "prefix_top1": false,
+      "full_window_top1": false,
+      "elapsed_ms": 2308.5602630001176,
+      "exact_window_coverage": true
+    },
+    {
+      "id": "study-59-q0",
+      "prefix_top1": false,
+      "full_window_top1": true,
+      "elapsed_ms": 2332.619257000033,
+      "exact_window_coverage": true
+    }
+  ],
+  "packing": {
+    "before_chunks": 3,
+    "packed_chunks": 1,
+    "reversible_spans": [
+      {
+        "block": 0,
+        "start": 0,
+        "end": 7,
+        "chunk_start": 0,
+        "chunk_end": 7
+      },
+      {
+        "block": 1,
+        "start": 0,
+        "end": 36,
+        "chunk_start": 8,
+        "chunk_end": 44
+      },
+      {
+        "block": 2,
+        "start": 0,
+        "end": 39,
+        "chunk_start": 45,
+        "chunk_end": 84
+      }
+    ],
+    "decision": "not promoted: current public SourceSpan lacks chunk-local offsets; preserve API/citation compatibility"
+  },
+  "parent_identity": {
+    "model": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+  },
+  "sampled_process_tree_peak_rss_mib": 2716.1171875
+}

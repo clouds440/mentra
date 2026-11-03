@@ -1,0 +1,143 @@
+test_memory_reconciliation (unittest.loader._FailedTest.test_memory_reconciliation) ... ERROR
+test_deadline_covers_pipe_submission_to_nonreading_worker (tests.test_embedding_process.EmbeddingProcessTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_long_inputs_use_bounded_token_batches_in_original_order (tests.test_embedding_process.EmbeddingProcessTests.test_long_inputs_use_bounded_token_batches_in_original_order) ... ok
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ok
+test_configured_revision_must_match_baked_identity (tests.test_embeddings.EmbeddingServiceTests.test_configured_revision_must_match_baked_identity) ... ok
+test_documents_are_encoded_in_a_configured_batch (tests.test_embeddings.EmbeddingServiceTests.test_documents_are_encoded_in_a_configured_batch) ... ERROR
+test_empty_documents_do_not_call_model (tests.test_embeddings.EmbeddingServiceTests.test_empty_documents_do_not_call_model) ... ERROR
+test_missing_baked_model_metadata_fails_without_downloading (tests.test_embeddings.EmbeddingServiceTests.test_missing_baked_model_metadata_fails_without_downloading) ... ok
+test_model_load_is_local_only_after_image_bake (tests.test_embeddings.EmbeddingServiceTests.test_model_load_is_local_only_after_image_bake) ... ERROR
+test_non_finite_model_vectors_are_rejected (tests.test_embeddings.EmbeddingServiceTests.test_non_finite_model_vectors_are_rejected) ... ERROR
+test_query_uses_e5_instruction_and_normalized_vectors (tests.test_embeddings.EmbeddingServiceTests.test_query_uses_e5_instruction_and_normalized_vectors) ... ERROR
+test_roles_are_idempotent_for_all_supported_languages (tests.test_embeddings.EmbeddingServiceTests.test_roles_are_idempotent_for_all_supported_languages) ... ERROR
+test_runtime_model_must_match_baked_model (tests.test_embeddings.EmbeddingServiceTests.test_runtime_model_must_match_baked_model) ... ok
+test_token_budget_includes_exactly_one_role_prefix (tests.test_embeddings.EmbeddingServiceTests.test_token_budget_includes_exactly_one_role_prefix) ... ERROR
+test_exact_windows_cover_multilingual_text_and_fail_at_bound (tests.rag.test_window_assets.WindowAssetTests.test_exact_windows_cover_multilingual_text_and_fail_at_bound) ... ok
+test_manifest_detects_corruption_and_path_escape (tests.rag.test_window_assets.WindowAssetTests.test_manifest_detects_corruption_and_path_escape) ... ok
+test_lease_must_cover_embedding_restart (tests.rag.test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (tests.rag.test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (tests.rag.test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_source_fetch_survives_usage_failure_after_policy_check (tests.rag.test_selection_regressions.SelectionRegressionTests.test_source_fetch_survives_usage_failure_after_policy_check) ... ok
+test_usage_write_failure_does_not_discard_results (tests.rag.test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+test_extended_budget_still_rejects_oversized_results_and_ninth_call (tests.test_rag_refinements.RefinementTests.test_extended_budget_still_rejects_oversized_results_and_ninth_call) ... ok
+test_extraction_warnings_reach_new_and_repeated_tool_receipts (tests.test_rag_refinements.RefinementTests.test_extraction_warnings_reach_new_and_repeated_tool_receipts) ... ok
+test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity (tests.test_rag_refinements.RefinementTests.test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity) ... ok
+test_preparation_delegates_budget_to_history_coordinator (tests.test_rag_refinements.RefinementTests.test_preparation_delegates_budget_to_history_coordinator) ... Executing <Task pending name='Task-22' coro=<RefinementTests.test_preparation_delegates_budget_to_history_coordinator() running at /app/tests/test_rag_refinements.py:67> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.202 seconds
+ok
+test_repeat_revalidates_instead_of_replaying_prefetched_source_packet (tests.test_rag_refinements.RefinementTests.test_repeat_revalidates_instead_of_replaying_prefetched_source_packet) ... ok
+test_requested_tool_delivers_passages_and_citations (tests.test_rag_prefetch.PrefetchTests.test_requested_tool_delivers_passages_and_citations) ... Executing <Task pending name='Task-36' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at /app/tests/test_rag_prefetch.py:76> wait_for=<Task pending name='Task-37' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.248 seconds
+ok
+test_requested_tool_failure_reaches_agent (tests.test_rag_prefetch.PrefetchTests.test_requested_tool_failure_reaches_agent) ... Executing <Task pending name='Task-61' coro=<gather_reads.<locals>.run() running at /app/app/langchain/concurrent_reads.py:33> wait_for=<Future pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[gather.<locals>._done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:767] created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.120 seconds
+ok
+test_tool_revalidates_instead_of_delivering_stale_prefetch (tests.test_rag_prefetch.PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch) ... ok
+test_unused_failed_prefetch_does_not_warn_model_or_user (tests.test_rag_prefetch.PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user) ... ok
+test_unused_successful_prefetch_is_not_context_or_citations (tests.test_rag_prefetch.PrefetchTests.test_unused_successful_prefetch_is_not_context_or_citations) ... ok
+test_context_headroom_expands_results_and_reads_without_expanding_writes (tests.test_adaptive_tool_finalization.BudgetTests.test_context_headroom_expands_results_and_reads_without_expanding_writes) ... ok
+test_cumulative_budget_supports_admitted_context_across_rounds (tests.test_adaptive_tool_finalization.BudgetTests.test_cumulative_budget_supports_admitted_context_across_rounds) ... ok
+test_deadline_and_context_exhaustion_do_not_expand_results (tests.test_adaptive_tool_finalization.BudgetTests.test_deadline_and_context_exhaustion_do_not_expand_results) ... ok
+test_larger_working_input_still_respects_a_smaller_configured_context (tests.test_adaptive_tool_finalization.BudgetTests.test_larger_working_input_still_respects_a_smaller_configured_context) ... ok
+test_physical_calls_stay_bounded (tests.test_adaptive_tool_finalization.BudgetTests.test_physical_calls_stay_bounded) ... ok
+test_slim_continuation_can_use_headroom_without_double_reserving_protocol (tests.test_adaptive_tool_finalization.BudgetTests.test_slim_continuation_can_use_headroom_without_double_reserving_protocol) ... ok
+test_timeout_defaults_and_shared_workflow (tests.test_adaptive_tool_finalization.BudgetTests.test_timeout_defaults_and_shared_workflow) ... ok
+test_cancellation_is_never_swallowed (tests.test_adaptive_tool_finalization.FinalizationTests.test_cancellation_is_never_swallowed) ... ok
+test_exhausted_model_budget_returns_partial_cards (tests.test_adaptive_tool_finalization.FinalizationTests.test_exhausted_model_budget_returns_partial_cards) ... ok
+test_forged_receipts_cannot_become_completed_actions (tests.test_adaptive_tool_finalization.FinalizationTests.test_forged_receipts_cannot_become_completed_actions) ... ok
+test_pending_search_is_repaired_without_executing_it (tests.test_adaptive_tool_finalization.FinalizationTests.test_pending_search_is_repaired_without_executing_it) ... ok
+test_provider_connection_failure_preserves_available_cards (tests.test_adaptive_tool_finalization.FinalizationTests.test_provider_connection_failure_preserves_available_cards) ... ok
+test_provider_truncation_is_repaired_instead_of_published_as_complete (tests.test_adaptive_tool_finalization.FinalizationTests.test_provider_truncation_is_repaired_instead_of_published_as_complete) ... ok
+test_repeated_unexecuted_action_becomes_honest_partial (tests.test_adaptive_tool_finalization.FinalizationTests.test_repeated_unexecuted_action_becomes_honest_partial) ... ok
+test_valid_answer_never_adds_a_call (tests.test_adaptive_tool_finalization.FinalizationTests.test_valid_answer_never_adds_a_call) ... ok
+
+======================================================================
+ERROR: test_memory_reconciliation (unittest.loader._FailedTest.test_memory_reconciliation)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_memory_reconciliation
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/tests/test_memory_reconciliation.py", line 42, in <module>
+    from testing.postgres import PostgresSandbox
+ModuleNotFoundError: No module named 'testing'
+
+
+======================================================================
+ERROR: test_documents_are_encoded_in_a_configured_batch (tests.test_embeddings.EmbeddingServiceTests.test_documents_are_encoded_in_a_configured_batch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 85, in test_documents_are_encoded_in_a_configured_batch
+    service = SentenceTransformerEmbeddingService(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_empty_documents_do_not_call_model (tests.test_embeddings.EmbeddingServiceTests.test_empty_documents_do_not_call_model)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 127, in test_empty_documents_do_not_call_model
+    service = SentenceTransformerEmbeddingService(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_model_load_is_local_only_after_image_bake (tests.test_embeddings.EmbeddingServiceTests.test_model_load_is_local_only_after_image_bake)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 144, in test_model_load_is_local_only_after_image_bake
+    SentenceTransformerEmbeddingService(
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_non_finite_model_vectors_are_rejected (tests.test_embeddings.EmbeddingServiceTests.test_non_finite_model_vectors_are_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 39, in test_non_finite_model_vectors_are_rejected
+    service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path, model_loader=lambda *_a, **_k: model)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_query_uses_e5_instruction_and_normalized_vectors (tests.test_embeddings.EmbeddingServiceTests.test_query_uses_e5_instruction_and_normalized_vectors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 65, in test_query_uses_e5_instruction_and_normalized_vectors
+    service = SentenceTransformerEmbeddingService(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_roles_are_idempotent_for_all_supported_languages (tests.test_embeddings.EmbeddingServiceTests.test_roles_are_idempotent_for_all_supported_languages)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 101, in test_roles_are_idempotent_for_all_supported_languages
+    service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+======================================================================
+ERROR: test_token_budget_includes_exactly_one_role_prefix (tests.test_embeddings.EmbeddingServiceTests.test_token_budget_includes_exactly_one_role_prefix)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/test_embeddings.py", line 116, in test_token_budget_includes_exactly_one_role_prefix
+    service = SentenceTransformerEmbeddingService(self.settings, model_path=self.model_path,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/rag/embeddings.py", line 94, in __init__
+    raise EmbeddingModelError('The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.')
+app.rag.embeddings.EmbeddingModelError: The baked embedding revision does not match EMBEDDING_MODEL_REVISION. Rebuild with the pinned revision.
+
+----------------------------------------------------------------------
+Ran 46 tests in 10.106s
+
+FAILED (errors=8)

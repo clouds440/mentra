@@ -1,0 +1,130 @@
+{
+  "variable": [
+    {
+      "Plan": {
+        "Node Type": "Seq Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "rag_chunk",
+        "Alias": "rag_chunk",
+        "Startup Cost": 0.0,
+        "Total Cost": 5652.0,
+        "Plan Rows": 50,
+        "Plan Width": 37,
+        "Actual Startup Time": 0.037,
+        "Actual Total Time": 54.751,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Filter": "(to_tsvector($1, content) @@ websearch_to_tsquery($1, $2))",
+        "Rows Removed by Filter": 9999,
+        "Shared Hit Blocks": 527,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning": {
+        "Shared Hit Blocks": 38,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning Time": 0.276,
+      "Triggers": [],
+      "Execution Time": 54.766
+    }
+  ],
+  "fixed": [
+    {
+      "Plan": {
+        "Node Type": "Bitmap Heap Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "rag_chunk",
+        "Alias": "rag_chunk",
+        "Startup Cost": 769.8,
+        "Total Cost": 943.97,
+        "Plan Rows": 50,
+        "Plan Width": 37,
+        "Actual Startup Time": 1.179,
+        "Actual Total Time": 1.18,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Recheck Cond": "(to_tsvector('simple'::regconfig, content) @@ websearch_to_tsquery('simple'::regconfig, $1))",
+        "Rows Removed by Index Recheck": 0,
+        "Exact Heap Blocks": 1,
+        "Lossy Heap Blocks": 0,
+        "Shared Hit Blocks": 182,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Bitmap Index Scan",
+            "Parent Relationship": "Outer",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Index Name": "idx_rag_chunk_lexical",
+            "Startup Cost": 0.0,
+            "Total Cost": 769.79,
+            "Plan Rows": 50,
+            "Plan Width": 0,
+            "Actual Startup Time": 1.171,
+            "Actual Total Time": 1.171,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Index Cond": "(to_tsvector('simple'::regconfig, content) @@ websearch_to_tsquery('simple'::regconfig, $1))",
+            "Shared Hit Blocks": 181,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          }
+        ]
+      },
+      "Planning": {
+        "Shared Hit Blocks": 7,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning Time": 0.164,
+      "Triggers": [],
+      "Execution Time": 1.198
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX pk_rag_chunk ON mentra_test_3a08853a4b374505af3c42158790930d.rag_chunk USING btree (id)",
+    "CREATE UNIQUE INDEX uq_rag_chunk_generation_id ON mentra_test_3a08853a4b374505af3c42158790930d.rag_chunk USING btree (generation_id, ordinal)",
+    "CREATE INDEX idx_rag_chunk_generation ON mentra_test_3a08853a4b374505af3c42158790930d.rag_chunk USING btree (learner_id, generation_id)",
+    "CREATE INDEX idx_rag_chunk_lexical ON mentra_test_3a08853a4b374505af3c42158790930d.rag_chunk USING gin (to_tsvector('simple'::regconfig, content))"
+  ]
+}

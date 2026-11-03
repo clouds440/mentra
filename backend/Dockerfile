@@ -19,11 +19,15 @@ RUN pip install --no-cache-dir -r requirements.txt -c requirements.lock
 RUN python -m pip check
 
 ARG EMBEDDING_MODEL=intfloat/multilingual-e5-small
+ARG EMBEDDING_MODEL_REVISION=614241f622f53c4eeff9890bdc4f31cfecc418b3
+ENV EMBEDDING_MODEL_REVISION=${EMBEDDING_MODEL_REVISION}
 ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
-COPY bake_embedding_model.py ./
+COPY bake_embedding_model.py model_assets.py ./
 RUN python bake_embedding_model.py
 
 ARG RAG_RERANKER_MODEL=
+ARG RAG_RERANKER_MODEL_REVISION=1427fd652930e4ba29e8149678df786c240d8825
+ENV RAG_RERANKER_MODEL_REVISION=${RAG_RERANKER_MODEL_REVISION}
 ENV RAG_RERANKER_MODEL=${RAG_RERANKER_MODEL}
 COPY bake_reranker_model.py ./
 RUN python bake_reranker_model.py

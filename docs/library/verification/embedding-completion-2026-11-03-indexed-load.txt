@@ -1,0 +1,35 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  62%|██████▏   | 123/199 [00:00<00:00, 1224.11it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1636.07it/s]
+Load cohort 100
+Load cohort 1000
+Load cohort 10000
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (591 > 512). Running this sequence through the model will result in indexing errors
+{
+  "documents": 60,
+  "queries": 300,
+  "quality": {},
+  "chunking": {
+    "250": {
+      "chunks": 6,
+      "elapsed_ms": 152.66629100005957,
+      "coverage": true
+    },
+    "350": {
+      "chunks": 4,
+      "elapsed_ms": 116.43223700002636,
+      "coverage": true
+    },
+    "450": {
+      "chunks": 3,
+      "elapsed_ms": 96.96913800007678,
+      "coverage": true
+    },
+    "colocated": {
+      "chunks": 3,
+      "elapsed_ms": 47.28571100031331,
+      "coverage": true
+    }
+  }
+}

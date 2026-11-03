@@ -1,0 +1,36 @@
+test_deadline_covers_pipe_submission_to_nonreading_worker (backend.tests.test_embedding_process.EmbeddingProcessTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (backend.tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ok
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... Exception ignored while finalizing file <_io.BytesIO object at 0x00000149C1B20270>:
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\ctypes\__init__.py", line 105, in CFUNCTYPE
+    class CFunctionType(_CFuncPtr):
+BufferError: Existing exports of data: object cannot be re-sized
+ok
+test_bake_rejects_missing_weights (backend.tests.rag.test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_deadline_covers_pipe_submission_to_nonreading_worker (backend.tests.rag.test_reranker.RerankerTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (backend.tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (backend.tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (backend.tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_late_support_is_scored_and_window_overflow_is_explicit (backend.tests.rag.test_reranker.RerankerTests.test_late_support_is_scored_and_window_overflow_is_explicit) ... ok
+test_long_passages_still_obey_exact_pair_budget (backend.tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_missing_assets_use_cooldown_without_starting_worker (backend.tests.rag.test_reranker.RerankerTests.test_missing_assets_use_cooldown_without_starting_worker) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (backend.tests.rag.test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... Exception ignored while finalizing file <_io.BytesIO object at 0x00000149C257B0B0>:
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap_external>", line 511, in _compile_bytecode
+BufferError: Existing exports of data: object cannot be re-sized
+ok
+test_native_hang_is_killed_and_next_request_restarts (backend.tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_revision_mismatch_falls_back_without_loading_model (backend.tests.rag.test_reranker.RerankerTests.test_revision_mismatch_falls_back_without_loading_model) ... ok
+test_warmup_reuses_worker_for_first_real_request (backend.tests.rag.test_reranker.RerankerTests.test_warmup_reuses_worker_for_first_real_request) ... ok
+test_exact_windows_cover_multilingual_text_and_fail_at_bound (backend.tests.rag.test_window_assets.WindowAssetTests.test_exact_windows_cover_multilingual_text_and_fail_at_bound) ... ok
+test_manifest_detects_corruption_and_path_escape (backend.tests.rag.test_window_assets.WindowAssetTests.test_manifest_detects_corruption_and_path_escape) ... ok
+test_lease_must_cover_embedding_restart (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_source_fetch_survives_usage_failure_after_policy_check (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_source_fetch_survives_usage_failure_after_policy_check) ... ok
+test_usage_write_failure_does_not_discard_results (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 32.946s
+
+OK

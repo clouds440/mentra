@@ -1,0 +1,99 @@
+{
+  "variable": [
+    {
+      "Plan": {
+        "Node Type": "Seq Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "rag_chunk",
+        "Alias": "rag_chunk",
+        "Startup Cost": 0.0,
+        "Total Cost": 5652.0,
+        "Plan Rows": 50,
+        "Plan Width": 37,
+        "Actual Startup Time": 0.348,
+        "Actual Total Time": 42.903,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Filter": "(to_tsvector($1, content) @@ websearch_to_tsquery($1, $2))",
+        "Rows Removed by Filter": 9999,
+        "Shared Hit Blocks": 633,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning": {
+        "Shared Hit Blocks": 32,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning Time": 0.186,
+      "Triggers": [],
+      "Execution Time": 42.918
+    }
+  ],
+  "fixed": [
+    {
+      "Plan": {
+        "Node Type": "Seq Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "rag_chunk",
+        "Alias": "rag_chunk",
+        "Startup Cost": 0.0,
+        "Total Cost": 5652.0,
+        "Plan Rows": 50,
+        "Plan Width": 37,
+        "Actual Startup Time": 0.047,
+        "Actual Total Time": 47.466,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Filter": "(to_tsvector('simple'::regconfig, content) @@ websearch_to_tsquery('simple'::regconfig, $1))",
+        "Rows Removed by Filter": 9999,
+        "Shared Hit Blocks": 527,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning": {
+        "Shared Hit Blocks": 0,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning Time": 0.125,
+      "Triggers": [],
+      "Execution Time": 47.483
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX pk_rag_chunk ON mentra_test_4bdb7659979a4d16bff4c8ae6b56375e.rag_chunk USING btree (id)",
+    "CREATE UNIQUE INDEX uq_rag_chunk_generation_id ON mentra_test_4bdb7659979a4d16bff4c8ae6b56375e.rag_chunk USING btree (generation_id, ordinal)",
+    "CREATE INDEX idx_rag_chunk_generation ON mentra_test_4bdb7659979a4d16bff4c8ae6b56375e.rag_chunk USING btree (learner_id, generation_id)"
+  ]
+}

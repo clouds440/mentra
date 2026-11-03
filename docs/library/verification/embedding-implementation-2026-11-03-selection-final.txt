@@ -1,0 +1,10 @@
+test_lease_must_cover_embedding_restart (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_source_fetch_survives_usage_failure_after_policy_check (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_source_fetch_survives_usage_failure_after_policy_check) ... ok
+test_usage_write_failure_does_not_discard_results (backend.tests.rag.test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.045s
+
+OK

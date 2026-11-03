@@ -2,7 +2,7 @@
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 import re
-from sqlalchemy import select, update, delete, func, or_, and_, cast, ARRAY, Text, exists
+from sqlalchemy import select, update, delete, func, or_, and_, cast, ARRAY, Text, exists, literal_column
 from app.auth.repositories.tables import learner
 from app.rag.repositories.tables import documents, associations, versions, generations, chunks, jobs, chunk_concepts, document_concepts
 from app.rag.errors import not_found, conflict
@@ -320,10 +320,20 @@ class RAGRepository:
                 return None
             blocks = {}
             for row in rows:
+                if len(row['spans']) != 1:
+                    # A future multi-span chunk needs its own reversible mapping.
+                    # Refuse reconstruction rather than inventing source offsets.
+                    return None
                 span = row['spans'][0]
                 block = blocks.setdefault(span['block'], dict(text='', heading_path=row['heading_path'],
                     **{key: span[key] for key in ('page', 'slide', 'method', 'language') if key in span}))
-                block['text'] += row['content']
+                start, end = span['start'], span['end']
+                if start > len(block['text']) or end - start != len(row['content']):
+                    return None
+                overlap = len(block['text']) - start
+                if overlap and block['text'][start:min(end, len(block['text']))] != row['content'][:overlap]:
+                    return None
+                block['text'] += row['content'][overlap:]
             return dict(blocks=list(blocks.values()), warnings=[*generation['warnings'],
                 'Original source file is missing; this index was rebuilt from retained extracted text.'])
 
@@ -359,6 +369,13 @@ class RAGRepository:
                 jobs.c.next_attempt_at <= now()), and_(jobs.c.state == 'RUNNING', jobs.c.lease_until < now())))
                 .order_by(jobs.c.created_at).with_for_update(skip_locked=True).limit(1)).mappings().first()
             if row is None:
+                return None
+            if row['attempts'] >= 3:
+                session.execute(update(jobs).where(jobs.c.id == row['id']).values(
+                    state='FAILED', error='Processing repeatedly lost its lease. Check worker deadlines before retrying.',
+                    lease_token=None, lease_until=None, updated_at=now()))
+                if row['generation_id']:
+                    session.execute(update(generations).where(generations.c.id == row['generation_id']).values(state='FAILED'))
                 return None
             claimed = dict(row, lease_token=new_id(), state='RUNNING', attempts=row['attempts'] + 1,
                            lease_until=now() + timedelta(seconds=lease_seconds), updated_at=now())
@@ -450,7 +467,7 @@ class RAGRepository:
                 title='Deleted material', filename='Deleted material', concept_ids=[]))
             session.execute(update(jobs).where(jobs.c.id == job['id']).values(state='SUCCEEDED', stage='purged', lease_token=None, updated_at=now()))
 
-    def eligible(self, owner, context_ids, document_ids, include_archived):
+    def eligible(self, owner, context_ids, document_ids, include_archived, *, limit=1001):
         with self.sessions() as session:
             query = select(documents.c.id, documents.c.context_ids, documents.c.concept_ids,
                 documents.c.active_generation_id, documents.c.revision).where(documents.c.learner_id == owner, documents.c.deleted_at.is_(None),
@@ -461,7 +478,7 @@ class RAGRepository:
                 query = query.where(documents.c.id.in_(document_ids))
             if context_ids is not None:
                 query = query.where(documents.c.context_ids.has_any(cast(context_ids, ARRAY(Text))))
-            return [dict(r) for r in session.execute(query).mappings()]
+            return [dict(r) for r in session.execute(query.order_by(documents.c.id).limit(limit)).mappings()]
 
     def hydrate(self, owner, ids, eligible_ids):
         if not ids or not eligible_ids:
@@ -476,21 +493,31 @@ class RAGRepository:
                 documents.c.deleted_at.is_(None))
             return [dict(r) for r in session.execute(query).mappings()]
 
-    def lexical(self, owner, generation_ids, query, limit=40):
+    def lexical(self, owner, generation_ids, query, limit=40, *, policy='simple'):
         if not generation_ids:
             return []
         with self.sessions() as session:
-            vector = func.to_tsvector('simple', chunks.c.content)
+            configuration = literal_column("'simple'::regconfig")
+            vector = func.to_tsvector(configuration, chunks.c.content)
             # Natural-language questions rarely occur verbatim in a passage.
             # Bound values and the websearch parser keep identifiers safe while
             # matching any query term; dense ranking supplies semantic relevance.
             words = re.findall(r'\w+', query, flags=re.UNICODE)
             if not words:
                 return []
-            terms = func.websearch_to_tsquery('simple', ' OR '.join(words))
+            terms = func.websearch_to_tsquery(configuration, ' OR '.join(words))
+            predicate = vector.op('@@')(terms)
+            ordering = []
+            if policy == 'structured':
+                needles = re.findall(r'"([^"\n]{1,200})"', query)
+                needles += [word for word in re.findall(r'[\w.+#/:_-]+', query) if re.search(r'[+#/_:]|\d', word)]
+                if needles:
+                    exact = or_(*(func.lower(chunks.c.content).contains(value.lower(), autoescape=True) for value in needles[:8]))
+                    predicate = or_(predicate, exact)
+                    ordering.append(exact.desc())
             return list(session.execute(select(chunks.c.id).where(chunks.c.learner_id == owner,
-                chunks.c.generation_id.in_(generation_ids), vector.op('@@')(terms))
-                .order_by(func.ts_rank_cd(vector, terms).desc(), chunks.c.id).limit(limit)).scalars())
+                chunks.c.generation_id.in_(generation_ids), predicate)
+                .order_by(*ordering, func.ts_rank_cd(vector, terms).desc(), chunks.c.id).limit(limit)).scalars())
 
     def source(self, owner, document_id, version_id):
         with self.sessions() as session:

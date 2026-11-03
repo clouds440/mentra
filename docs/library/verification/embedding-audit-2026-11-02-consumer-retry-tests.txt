@@ -1,0 +1,32 @@
+test_extended_budget_still_rejects_oversized_results_and_ninth_call (backend.tests.test_rag_refinements.RefinementTests.test_extended_budget_still_rejects_oversized_results_and_ninth_call) ... ok
+test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity (backend.tests.test_rag_refinements.RefinementTests.test_overlapping_lookups_reuse_excerpts_and_keep_citation_identity) ... ok
+test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default (backend.tests.test_rag_refinements.RefinementTests.test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default) ... Executing <Task finished name='Task-15' coro=<RefinementTests.test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default() done, defined at C:\Users\Xclouds\Documents\mentra\backend\tests\test_rag_refinements.py:61> exception=KeyError('_tool_budget') created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 1.038 seconds
+ERROR
+test_repeat_revalidates_instead_of_replaying_prefetched_source_packet (backend.tests.test_rag_refinements.RefinementTests.test_repeat_revalidates_instead_of_replaying_prefetched_source_packet) ... ok
+test_requested_tool_delivers_passages_and_citations (backend.tests.test_rag_prefetch.PrefetchTests.test_requested_tool_delivers_passages_and_citations) ... Executing <Task pending name='Task-29' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at C:\Users\Xclouds\Documents\mentra\backend\tests\test_rag_prefetch.py:76> wait_for=<Task pending name='Task-30' coro=<RunnableCallable.ainvoke() running at C:\Users\Xclouds\Documents\mentra\.venv\Lib\site-packages\langgraph\_internal\_runnable.py:452> cb=[Task.task_wakeup()] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:395> cb=[_run_until_complete_cb() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:181] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py:110> took 0.275 seconds
+ok
+test_requested_tool_failure_reaches_agent (backend.tests.test_rag_prefetch.PrefetchTests.test_requested_tool_failure_reaches_agent) ... Executing <Task pending name='Task-54' coro=<gather_reads.<locals>.run() running at C:\Users\Xclouds\Documents\mentra\backend\app\langchain\concurrent_reads.py:33> wait_for=<Future pending cb=[Task.task_wakeup()] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py:460> cb=[gather.<locals>._done_callback() at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:813] created at C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\tasks.py:395> took 0.203 seconds
+ok
+test_tool_revalidates_instead_of_delivering_stale_prefetch (backend.tests.test_rag_prefetch.PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch) ... ok
+test_unused_failed_prefetch_does_not_warn_model_or_user (backend.tests.test_rag_prefetch.PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user) ... ok
+test_unused_successful_prefetch_is_not_context_or_citations (backend.tests.test_rag_prefetch.PrefetchTests.test_unused_successful_prefetch_is_not_context_or_citations) ... ok
+
+======================================================================
+ERROR: test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default (backend.tests.test_rag_refinements.RefinementTests.test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Xclouds\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\base_events.py", line 720, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\Xclouds\Documents\mentra\backend\tests\test_rag_refinements.py", line 68, in test_rag_gets_modest_extra_budget_and_plain_chat_keeps_default
+    budget = scope['_tool_budget']
+             ~~~~~^^^^^^^^^^^^^^^^
+KeyError: '_tool_budget'
+
+----------------------------------------------------------------------
+Ran 9 tests in 4.328s
+
+FAILED (errors=1)

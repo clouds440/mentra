@@ -1,0 +1,6 @@
+
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  58%|█████▊    | 116/199 [00:00<00:00, 1159.40it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1814.41it/s]
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (542 > 512). Running this sequence through the model will result in indexing errors
+{"cases": 165, "normalized_coverage": true, "spans_valid": true, "legacy_ipc_ms": 62.303647999897294, "colocated_ms": 35.42466900012187, "exact_remote_local_equivalence": true}

@@ -10,10 +10,10 @@ CHUNKER_VERSION = 'block-token-v2'
 from app.core.logging import workflow_logger
 
 @workflow_logger.operation(outcome='success')
-def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunks, max_seconds=120):
+def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunks, max_seconds=120, *, target_tokens=450):
     items = []
     deadline = time.monotonic() + max_seconds
-    ceiling = min(450, embedding.max_tokens - 2)
+    ceiling = min(target_tokens, embedding.max_tokens - 2)
     for number, block in enumerate(blocks):
         text = block['text'].replace('\r\n', '\n').replace('\r', '\n').strip('\n')
         if not text.strip():

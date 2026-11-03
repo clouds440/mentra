@@ -1,0 +1,56 @@
+{
+  "date": "2026-11-02",
+  "timezone": "Asia/Karachi",
+  "baseline_commit": "444e6bb90ad1d9e270c3191ac5002983540b160b",
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "live_llm_calls": false,
+  "production_changes": false,
+  "unique_completed_tests": {
+    "passed": 64,
+    "errors": 1
+  },
+  "database_setup_errors": 1,
+  "real_model_benchmark": "not run",
+  "files": {
+    "docs/library/verification/embedding-audit-2026-11-02-consumer-retry-tests.txt": {
+      "bytes": 4382,
+      "sha256": "689a22e2f0adcd158ffac95463fb69386ec76becd11de6b8bd807bfdc26cac9d"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-consumer-tests.txt": {
+      "bytes": 2756,
+      "sha256": "529fbc31a62f2fd2c96eab9500adf2a0e6a495446e919646b16839a6bf3f5d96"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-core-tests.txt": {
+      "bytes": 4036,
+      "sha256": "7da5852188f6d6ade32a2a9f94d2d43473a7212c1b17aa23c6bf6b658dba3917"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-db-preflight.txt": {
+      "bytes": 1226,
+      "sha256": "39d5169a9ff58e42090f3b6e53d7ed7a792c0a3525cea47570ecc6e89e950f92"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-full-reranker-tests.txt": {
+      "bytes": 1406,
+      "sha256": "8465c75e4df8ca314aa7980279a0bc6d2711743cf15de98cb9a0ae204067759f"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-probes.json": {
+      "bytes": 1744,
+      "sha256": "c896b67173a09f1ed682b747256b7b78ecbcc0e4982124fedb3819ae225a13e9"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-probes.py": {
+      "bytes": 4654,
+      "sha256": "34d0ed1789c97c48a9866b976604b172852342efd364b8e2cdb18c95adf74aa3"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-process-tests.txt": {
+      "bytes": 472,
+      "sha256": "0a274e2b694cc3b48eeaff46adb05bf4b5d77d2560d6ccedc0a35a987545c9cb"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-reader-tests.txt": {
+      "bytes": 4200,
+      "sha256": "58849e9d3a8c6b405733b83952d24e8d3c0904db283af54fbd31875d4e3c3c58"
+    },
+    "docs/library/verification/embedding-audit-2026-11-02-reranker-tests.txt": {
+      "bytes": 745,
+      "sha256": "e4f00cda5b3fa583cc39389268b184c446b41f9c8a0ec213bbfc5c74193a6de6"
+    }
+  }
+}

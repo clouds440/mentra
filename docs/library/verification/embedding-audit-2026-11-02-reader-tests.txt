@@ -1,0 +1,28 @@
+test_all_source_extensions_and_filenames_preserve_source (backend.tests.documents.test_readers.DocumentReaderTests.test_all_source_extensions_and_filenames_preserve_source) ... ok
+test_broken_embedded_images_warn_and_keep_native_content (backend.tests.documents.test_readers.DocumentReaderTests.test_broken_embedded_images_warn_and_keep_native_content) ... ok
+test_coding_files_keep_every_character_and_language (backend.tests.documents.test_readers.DocumentReaderTests.test_coding_files_keep_every_character_and_language) ... ok
+test_content_signatures_override_misleading_extensions (backend.tests.documents.test_readers.DocumentReaderTests.test_content_signatures_override_misleading_extensions) ... ok
+test_default_public_api_reads_in_the_shared_subprocess (backend.tests.documents.test_readers.DocumentReaderTests.test_default_public_api_reads_in_the_shared_subprocess) ... ok
+test_docx_body_and_table_images_use_vision_with_heading_provenance (backend.tests.documents.test_readers.DocumentReaderTests.test_docx_body_and_table_images_use_vision_with_heading_provenance) ... ok
+test_extensionless_source_still_rejects_binary_and_invalid_utf8 (backend.tests.documents.test_readers.DocumentReaderTests.test_extensionless_source_still_rejects_binary_and_invalid_utf8) ... ok
+test_html_embedded_images_use_vision_once_without_fetching_urls (backend.tests.documents.test_readers.DocumentReaderTests.test_html_embedded_images_use_vision_once_without_fetching_urls) ... ok
+test_html_keeps_head_inline_script_style_pre_and_comments (backend.tests.documents.test_readers.DocumentReaderTests.test_html_keeps_head_inline_script_style_pre_and_comments) ... ok
+test_html_nested_template_and_json_script_are_not_discarded (backend.tests.documents.test_readers.DocumentReaderTests.test_html_nested_template_and_json_script_are_not_discarded) ... ok
+test_invalid_utf8_and_binary_source_files_fail_explicitly (backend.tests.documents.test_readers.DocumentReaderTests.test_invalid_utf8_and_binary_source_files_fail_explicitly) ... ok
+test_isolation_rejects_invalid_child_output (backend.tests.documents.test_readers.DocumentReaderTests.test_isolation_rejects_invalid_child_output) ... ok
+test_isolation_timeout_cancels_child_tree (backend.tests.documents.test_readers.DocumentReaderTests.test_isolation_timeout_cancels_child_tree) ... ok
+test_limits_fail_before_starting_a_reader (backend.tests.documents.test_readers.DocumentReaderTests.test_limits_fail_before_starting_a_reader) ... ok
+test_new_format_can_be_composed_without_rewriting_the_facade (backend.tests.documents.test_readers.DocumentReaderTests.test_new_format_can_be_composed_without_rewriting_the_facade) ... ok
+test_pptx_grouped_pictures_and_native_text_share_slide_provenance (backend.tests.documents.test_readers.DocumentReaderTests.test_pptx_grouped_pictures_and_native_text_share_slide_provenance) ... ok
+test_rag_adapter_only_translates_document_errors (backend.tests.documents.test_readers.DocumentReaderTests.test_rag_adapter_only_translates_document_errors) ... ok
+test_standalone_import_does_not_initialize_consuming_modules (backend.tests.documents.test_readers.DocumentReaderTests.test_standalone_import_does_not_initialize_consuming_modules) ... ok
+test_txt_keeps_previous_paragraph_and_indentation_behavior (backend.tests.documents.test_readers.DocumentReaderTests.test_txt_keeps_previous_paragraph_and_indentation_behavior) ... ok
+test_unavailable_vision_warns_instead_of_losing_native_office_text (backend.tests.documents.test_readers.DocumentReaderTests.test_unavailable_vision_warns_instead_of_losing_native_office_text) ... ok
+test_docx_nested_headings_and_code_indentation_survive (backend.tests.rag.test_parsers.ParserStructureTests.test_docx_nested_headings_and_code_indentation_survive) ... ok
+test_pptx_grouped_text_is_not_silently_lost (backend.tests.rag.test_parsers.ParserStructureTests.test_pptx_grouped_text_is_not_silently_lost) ... ok
+test_short_native_pdf_text_does_not_require_ocr (backend.tests.rag.test_parsers.ParserStructureTests.test_short_native_pdf_text_does_not_require_ocr) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 6.483s
+
+OK

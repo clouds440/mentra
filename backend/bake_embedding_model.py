@@ -8,7 +8,8 @@ from huggingface_hub import model_info, snapshot_download
 
 model_name = os.environ["EMBEDDING_MODEL"]
 model_path = Path(os.environ["EMBEDDING_CACHE_DIR"])
-model = model_info(model_name)
+revision = os.environ.get('EMBEDDING_MODEL_REVISION', '').strip()
+model = model_info(model_name, **({'revision': revision} if revision else {}))
 model_version = model.sha
 available_files = {file.rfilename for file in model.siblings}
 weight_file = next(
@@ -45,3 +46,5 @@ snapshot_download(
     json.dumps({"model_name": model_name, "model_version": model_version}),
     encoding="utf-8",
 )
+from model_assets import write_manifest
+write_manifest(model_path, role='embedding')

@@ -9,7 +9,8 @@ def _embedding_worker(connection, config):
     from app.core.config import Settings
     from app.rag.embeddings import SentenceTransformerEmbeddingService
     try:
-        settings = Settings(_env_file=None, embedding_model=config['model'], embedding_device=config['device'])
+        settings = Settings(_env_file=None, embedding_model=config['model'], embedding_device=config['device'],
+                            embedding_model_revision=config.get('revision', ''))
         engine = SentenceTransformerEmbeddingService(settings, model_path=Path(config['path']))
         connection.send(('ok', dict(model_name=engine.model_name, model_version=engine.model_version,
             dimension=engine.dimension, max_tokens=engine.max_tokens)))
@@ -18,6 +19,19 @@ def _embedding_worker(connection, config):
             if message is None:
                 break
             operation, argument = message
+            if operation == 'token_counts':
+                connection.send(('ok', [engine.token_count(value) for value in argument]))
+                continue
+            if operation == 'chunk_blocks':
+                from app.rag.processing import chunk_blocks
+                from app.rag.errors import ExtractionError
+                try:
+                    connection.send(('ok', chunk_blocks(embedding=engine, **argument)))
+                except ExtractionError as error:
+                    connection.send(('extraction_error', str(error)))
+                except Exception:
+                    connection.send(('error', None))
+                continue
             if operation not in ('token_count', 'query_token_count', 'embed_query', 'embed_documents', 'embed_similarity'):
                 connection.send(('error', None))
                 continue
@@ -39,6 +53,7 @@ def _embedding_worker(connection, config):
 class ProcessEmbeddingService:
     def __init__(self, settings, model_path=EMBEDDING_CACHE_DIR, *, worker_target=_embedding_worker):
         self.config = dict(model=settings.embedding_model, device=settings.embedding_device, path=str(model_path))
+        self.config['revision'] = settings.embedding_model_revision
         self.timeout = settings.embedding_worker_timeout
         self.wait = settings.rag_inference_wait_seconds
         self.initialization_timeout = settings.embedding_initialization_timeout
@@ -89,7 +104,7 @@ class ProcessEmbeddingService:
             self._connection.close()
         self._process = self._connection = None
 
-    def _request(self, operation, argument):
+    def _request(self, operation, argument, *, timeout=None):
         if not self._lock.acquire(timeout=self.wait):
             raise EmbeddingModelError('Embedding capacity is busy.')
         try:
@@ -97,11 +112,14 @@ class ProcessEmbeddingService:
                 raise EmbeddingModelError('Embedding worker is closed.')
             if self._process is None or not self._process.is_alive():
                 self._start()
-            self._connection.send((operation, argument))
-            if not self._connection.poll(self.timeout):
-                self._stop()
-                raise EmbeddingModelError('Embedding inference timed out.')
-            status, value = self._connection.recv()
+            from app.rag.process_ipc import exchange
+            try:
+                status, value = exchange(self._connection,(operation,argument),timeout or self.timeout,self._stop)
+            except TimeoutError as error:
+                raise EmbeddingModelError('Embedding inference timed out.') from error
+            if status == 'extraction_error':
+                from app.rag.errors import ExtractionError
+                raise ExtractionError(value)
             if status != 'ok':
                 raise EmbeddingModelError('Embedding input or inference was unavailable.')
             return value
@@ -130,23 +148,38 @@ class ProcessEmbeddingService:
     def token_count(self, text):
         return self._request('token_count', text)
 
+    def chunk_blocks(self, blocks, owner, document_id, generation_id, max_chunks, max_seconds, *, target_tokens=450):
+        return self._request('chunk_blocks', dict(blocks=blocks, owner=owner,
+            document_id=document_id, generation_id=generation_id, max_chunks=max_chunks,
+            max_seconds=max_seconds, target_tokens=target_tokens), timeout=max_seconds + 1)
+
     def query_token_count(self, text):
         return self._request('query_token_count', text)
 
     def embed_query(self, text):
         return self._request('embed_query', text)
 
-    def embed_documents(self, texts):
+    def _embed_batches(self, operation, texts):
         result = []
         for start in range(0, len(texts), 32):
-            result.extend(self._request('embed_documents', texts[start:start + 32]))
+            values = texts[start:start + 32]
+            counts = self._request('token_counts', values)
+            batch, used = [], 0
+            for value, count in zip(values, counts, strict=True):
+                if batch and used + count > 4096:
+                    result.extend(self._request(operation, batch))
+                    batch, used = [], 0
+                batch.append(value)
+                used += count
+            if batch:
+                result.extend(self._request(operation, batch))
         return result
 
+    def embed_documents(self, texts):
+        return self._embed_batches('embed_documents', texts)
+
     def embed_similarity(self, texts):
-        result = []
-        for start in range(0, len(texts), 32):
-            result.extend(self._request('embed_similarity', texts[start:start + 32]))
-        return result
+        return self._embed_batches('embed_similarity', texts)
 
     def close(self):
         with self._lock:

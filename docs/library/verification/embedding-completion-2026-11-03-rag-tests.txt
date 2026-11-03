@@ -1,0 +1,135 @@
+test_chunked_upload_without_content_length_is_also_bounded (test_api.APIBoundaryTests.test_chunked_upload_without_content_length_is_also_bounded) ... ok
+test_client_selected_learner_identity_is_rejected (test_api.APIBoundaryTests.test_client_selected_learner_identity_is_rejected) ... ok
+test_multipart_transport_is_bounded_before_spooling (test_api.APIBoundaryTests.test_multipart_transport_is_bounded_before_spooling) ... ok
+test_failed_index_initialization_is_retryable (test_index_initialization.IndexInitializationTests.test_failed_index_initialization_is_retryable) ... ok
+test_indexes_are_created_once_but_identity_checks_are_not_cached (test_index_initialization.IndexInitializationTests.test_indexes_are_created_once_but_identity_checks_are_not_cached) ... ok
+test_docx_nested_headings_and_code_indentation_survive (test_parsers.ParserStructureTests.test_docx_nested_headings_and_code_indentation_survive) ... ok
+test_pptx_grouped_text_is_not_silently_lost (test_parsers.ParserStructureTests.test_pptx_grouped_text_is_not_silently_lost) ... ok
+test_short_native_pdf_text_does_not_require_ocr (test_parsers.ParserStructureTests.test_short_native_pdf_text_does_not_require_ocr) ... ok
+test_empty_extraction_fails (test_processing.ProcessingTests.test_empty_extraction_fails) ... ok
+test_evaluation_counts_unique_sources (test_processing.ProcessingTests.test_evaluation_counts_unique_sources) ... ok
+test_exact_token_budget_preserves_every_source_character (test_processing.ProcessingTests.test_exact_token_budget_preserves_every_source_character) ... ok
+test_fusion_uses_ranks_and_deduplicates_each_branch (test_processing.ProcessingTests.test_fusion_uses_ranks_and_deduplicates_each_branch) ... ok
+test_short_block_only_tokenizes_once_and_preserves_offsets (test_processing.ProcessingTests.test_short_block_only_tokenizes_once_and_preserves_offsets) ... ok
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_late_support_is_scored_and_window_overflow_is_explicit (test_reranker.RerankerTests.test_late_support_is_scored_and_window_overflow_is_explicit) ... ok
+test_long_passages_still_obey_exact_pair_budget (test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_missing_assets_use_cooldown_without_starting_worker (test_reranker.RerankerTests.test_missing_assets_use_cooldown_without_starting_worker) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_revision_mismatch_falls_back_without_loading_model (test_reranker.RerankerTests.test_revision_mismatch_falls_back_without_loading_model) ... ok
+test_warmup_reuses_worker_for_first_real_request (test_reranker.RerankerTests.test_warmup_reuses_worker_for_first_real_request) ... ok
+test_multilingual_ingestion_search_reranking_and_fallback (test_reranker_real.RealRerankerTests.test_multilingual_ingestion_search_reranking_and_fallback) ... 
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]
+Loading weights:  52%|█████▏    | 103/199 [00:00<00:00, 1028.97it/s]
+Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1562.64it/s]
+/repo/backend/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  46%|████▋     | 93/201 [00:00<00:00, 927.70it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 1458.37it/s]
+ok
+test_lease_must_cover_embedding_restart (test_selection_regressions.SelectionRegressionTests.test_lease_must_cover_embedding_restart) ... ok
+test_point_verification_renews_between_bounded_batches (test_selection_regressions.SelectionRegressionTests.test_point_verification_renews_between_bounded_batches) ... ok
+test_reranking_retains_diverse_viable_candidates (test_selection_regressions.SelectionRegressionTests.test_reranking_retains_diverse_viable_candidates) ... ok
+test_source_fetch_survives_usage_failure_after_policy_check (test_selection_regressions.SelectionRegressionTests.test_source_fetch_survives_usage_failure_after_policy_check) ... ok
+test_usage_write_failure_does_not_discard_results (test_selection_regressions.SelectionRegressionTests.test_usage_write_failure_does_not_discard_results) ... ok
+test_exact_windows_cover_multilingual_text_and_fail_at_bound (test_window_assets.WindowAssetTests.test_exact_windows_cover_multilingual_text_and_fail_at_bound) ... ok
+test_manifest_detects_corruption_and_path_escape (test_window_assets.WindowAssetTests.test_manifest_detects_corruption_and_path_escape) ... ok
+test_archive_unarchive_and_context_policy (test_workflows.WorkflowTests.test_archive_unarchive_and_context_policy) ... ok
+test_archived_access_requires_explicit_scope (test_workflows.WorkflowTests.test_archived_access_requires_explicit_scope) ... ok
+test_assessment_contract_requires_approved_owned_study_sources (test_workflows.WorkflowTests.test_assessment_contract_requires_approved_owned_study_sources) ... ok
+test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks (test_workflows.WorkflowTests.test_bound_rag_tools_cannot_choose_identity_or_unseen_chunks) ... ok
+test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget (test_workflows.WorkflowTests.test_cached_query_skips_duplicate_token_work_but_rechecks_changed_budget) ... ok
+test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata (test_workflows.WorkflowTests.test_candidate_cache_reuses_work_but_reauthorizes_and_refreshes_metadata) ... ok
+test_canonical_tags_and_unknown_labels_do_not_invent_ids (test_workflows.WorkflowTests.test_canonical_tags_and_unknown_labels_do_not_invent_ids) ... ok
+test_concept_scope_is_applied_before_dense_and_lexical_candidates (test_workflows.WorkflowTests.test_concept_scope_is_applied_before_dense_and_lexical_candidates) ... ok
+test_context_reassignment_uses_canonical_scope_before_payload_refresh (test_workflows.WorkflowTests.test_context_reassignment_uses_canonical_scope_before_payload_refresh) ... ok
+test_delete_cancels_worker_and_purges (test_workflows.WorkflowTests.test_delete_cancels_worker_and_purges) ... ok
+test_delete_outage_and_late_write_reconciliation (test_workflows.WorkflowTests.test_delete_outage_and_late_write_reconciliation) ... RAG worker job failed: e05bf7f2-6676-401d-8b8b-1e4fa563bdc6
+Traceback (most recent call last):
+  File "/repo/backend/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+ok
+test_duplicate_matching_does_not_substitute_a_different_latest_upload (test_workflows.WorkflowTests.test_duplicate_matching_does_not_substitute_a_different_latest_upload) ... ok
+test_embedding_reset_rebuilds_archived_and_pending_sources_preserving_records (test_workflows.WorkflowTests.test_embedding_reset_rebuilds_archived_and_pending_sources_preserving_records) ... ok
+test_embedding_reset_recovers_retained_text_when_original_file_is_missing (test_workflows.WorkflowTests.test_embedding_reset_recovers_retained_text_when_original_file_is_missing) ... ok
+test_empty_scope_never_searches (test_workflows.WorkflowTests.test_empty_scope_never_searches) ... ok
+test_expired_ingestion_attempts_have_a_terminal_limit (test_workflows.WorkflowTests.test_expired_ingestion_attempts_have_a_terminal_limit) ... ok
+test_expired_worker_is_fenced (test_workflows.WorkflowTests.test_expired_worker_is_fenced) ... ok
+test_explicit_support_gate_excludes_unscored_tail (test_workflows.WorkflowTests.test_explicit_support_gate_excludes_unscored_tail) ... ok
+test_failed_replacement_preserves_active_material (test_workflows.WorkflowTests.test_failed_replacement_preserves_active_material) ... ok
+test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached (test_workflows.WorkflowTests.test_hybrid_outages_are_disclosed_and_partial_candidates_are_not_cached) ... ok
+test_idempotency_duplicate_and_conflict (test_workflows.WorkflowTests.test_idempotency_duplicate_and_conflict) ... ok
+test_lexical_questions_match_identifiers_without_every_question_word (test_workflows.WorkflowTests.test_lexical_questions_match_identifiers_without_every_question_word) ... ok
+test_library_batches_queries_and_preserves_failed_replacement_summary (test_workflows.WorkflowTests.test_library_batches_queries_and_preserves_failed_replacement_summary) ... ok
+test_library_context_filter_is_canonical (test_workflows.WorkflowTests.test_library_context_filter_is_canonical) ... ok
+test_library_metadata_search_is_unicode_literal_paginated_and_owned (test_workflows.WorkflowTests.test_library_metadata_search_is_unicode_literal_paginated_and_owned) ... ok
+test_merged_tags_remain_searchable_with_old_and_new_ids_and_warm_cache (test_workflows.WorkflowTests.test_merged_tags_remain_searchable_with_old_and_new_ids_and_warm_cache) ... ok
+test_new_publication_invalidates_candidate_cache (test_workflows.WorkflowTests.test_new_publication_invalidates_candidate_cache) ... ok
+test_old_citation_uses_exact_published_generation_after_reindex (test_workflows.WorkflowTests.test_old_citation_uses_exact_published_generation_after_reindex) ... ok
+test_operator_health_reports_owned_coverage_and_pending_lag (test_workflows.WorkflowTests.test_operator_health_reports_owned_coverage_and_pending_lag) ... ok
+test_operator_rebuild_is_transactional_and_resumable (test_workflows.WorkflowTests.test_operator_rebuild_is_transactional_and_resumable) ... ok
+test_optional_reranker_failure_is_explicit_and_scoped (test_workflows.WorkflowTests.test_optional_reranker_failure_is_explicit_and_scoped) ... ok
+test_preextracted_chat_file_never_parses_again (test_workflows.WorkflowTests.test_preextracted_chat_file_never_parses_again) ... ok
+test_publication_requires_expected_point_ids_and_owner_payloads (test_workflows.WorkflowTests.test_publication_requires_expected_point_ids_and_owner_payloads) ... RAG worker job failed: a692c99e-7bc3-4794-8991-ce18c09a6581
+Traceback (most recent call last):
+  File "/repo/backend/app/rag/worker.py", line 97, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+ok
+test_reranker_candidate_limit_is_applied_after_owned_hydration (test_workflows.WorkflowTests.test_reranker_candidate_limit_is_applied_after_owned_hydration) ... ok
+test_retry_resumes_persisted_chunks_without_repeating_ocr (test_workflows.WorkflowTests.test_retry_resumes_persisted_chunks_without_repeating_ocr) ... RAG worker job failed: 10ace3cd-12e1-4b00-a48d-5f476f1348af
+Traceback (most recent call last):
+  File "/repo/backend/app/rag/worker.py", line 90, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+ok
+test_retry_reuses_verified_vectors_after_publication_dependency_failure (test_workflows.WorkflowTests.test_retry_reuses_verified_vectors_after_publication_dependency_failure) ... RAG worker job failed: e70c5468-5692-4114-a6c0-878419b455b6
+Traceback (most recent call last):
+  File "/repo/backend/app/rag/worker.py", line 98, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+ok
+test_revision_conflict_and_reindex (test_workflows.WorkflowTests.test_revision_conflict_and_reindex) ... ok
+test_shared_reader_html_scripts_and_code_survive_rag_ingestion (test_workflows.WorkflowTests.test_shared_reader_html_scripts_and_code_survive_rag_ingestion) ... ok
+test_structured_lexical_policy_distinguishes_punctuated_identifiers (test_workflows.WorkflowTests.test_structured_lexical_policy_distinguishes_punctuated_identifiers) ... ok
+test_successful_replacement_switches_generation (test_workflows.WorkflowTests.test_successful_replacement_switches_generation) ... ok
+test_upload_worker_search_source_and_identity (test_workflows.WorkflowTests.test_upload_worker_search_source_and_identity) ... ok
+test_vector_resume_fetch_is_batched_once_and_publication_still_rechecks (test_workflows.WorkflowTests.test_vector_resume_fetch_is_batched_once_and_publication_still_rechecks) ... ok
+
+----------------------------------------------------------------------
+Ran 75 tests in 446.481s
+
+OK

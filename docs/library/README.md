@@ -8,6 +8,9 @@ Source ingestion, provenance, E5 retrieval, reranking and verification.
 
 | Document | Scope |
 | --- | --- |
+| [Embedding completion and acceptance — 2026-11-03](Embedding_Completion_2026-11-03.md) | Current finding closure, measured adoption decisions, restored lexical index, final-image tests and rollback evidence. |
+| [Embedding implementation ledger — 2026-11-03](Embedding_Implementation_2026-11-03.md) | Implemented fixes, current offline/model evidence, preserved historical behavior and outstanding research gates. |
+| [Embedding pipeline audit and improvement plan — 2026-11-02](Embedding_Pipeline_Audit_and_Improvement_Plan_2026-11-02.md) | End-to-end findings, offline test comparisons, historical remnants, phased fixes and evidence/supersession requirements; fixes remain proposed. |
 | [Mentra RAG System Implementation Plan](Mentra_RAG_System_Implementation_Plan.md) | Design / implementation plan; compare with current code. |
 | [RAG implementation verification](rag-verification.md) | Dated audit / evidence record. |
 | [RAG setup and contracts](rag.md) | Feature contracts or implementation reference. |
@@ -17,7 +20,7 @@ Source ingestion, provenance, E5 retrieval, reranking and verification.
 | Location | Meaning |
 | --- | --- |
 | `screenshots/` | Fresh screenshots captured from the local running app live under screenshots/showcase; history retains earlier screenshots. (6 current files.) |
-| `verification/` | Preserved dated checks/probes; not proof of current deployment. (4 current files.) |
+| `verification/` | Preserved dated checks/probes, including the 2026-11-02 offline audit; not proof of current deployment. |
 
 ## Current showcase captures
 

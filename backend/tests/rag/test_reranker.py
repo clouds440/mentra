@@ -8,6 +8,55 @@ from app.rag.reranker import LocalReranker
 
 
 class RerankerTests(unittest.TestCase):
+    def test_busy_caller_cannot_overwrite_another_threads_diagnostics(self):
+        from concurrent.futures import ThreadPoolExecutor
+        ranker=LocalReranker('unused',1)
+        self.addCleanup(ranker.close)
+        ranker.last_reason=None; ranker.winning_spans=[[0,5]]
+        ranker._lock.acquire()
+        try:
+            def busy():
+                self.assertIsNone(ranker.rank('query',['passage']))
+                ranker.winning_spans=[]
+                return ranker.last_reason
+            with ThreadPoolExecutor(1) as pool:
+                self.assertEqual(pool.submit(busy).result(),'busy')
+            self.assertIsNone(ranker.last_reason)
+            self.assertEqual(ranker.winning_spans,[[0,5]])
+        finally: ranker._lock.release()
+    def test_deadline_covers_pipe_submission_to_nonreading_worker(self):
+        import time
+        ranker=LocalReranker('unused',.1,worker_target=nonreading_worker,cold_timeout=.1)
+        self.addCleanup(ranker.close)
+        start=time.monotonic()
+        self.assertIsNone(ranker.rank('query',['x' * 2_000_000]))
+        self.assertLess(time.monotonic()-start,8)
+        self.assertEqual(ranker.last_reason,'cold_timeout')
+    def test_warmup_reuses_worker_for_first_real_request(self):
+        ranker=LocalReranker('unused', 1, worker_target=fake_worker)
+        self.addCleanup(ranker.close)
+        self.assertTrue(ranker.warmup())
+        process=ranker._process
+        self.assertEqual(ranker.rank('query', ['passage']), [1.])
+        self.assertIs(process, ranker._process)
+    def test_revision_mismatch_falls_back_without_loading_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path/'model-metadata.json').write_text(json.dumps(dict(model_name='test', model_version='v1')))
+            ranker = LocalReranker(path, 1, expected_revision='v2')
+            self.addCleanup(ranker.close)
+            self.assertIsNone(ranker.rank('query', ['passage']))
+            self.assertEqual(ranker.last_reason, 'missing_or_invalid_assets')
+            self.assertIsNone(ranker._process)
+
+    def test_missing_assets_use_cooldown_without_starting_worker(self):
+        ranker = LocalReranker('missing-audit-model-assets', 1)
+        self.addCleanup(ranker.close)
+        self.assertIsNone(ranker.rank('query', ['passage']))
+        self.assertEqual(ranker.last_reason, 'missing_or_invalid_assets')
+        self.assertIsNone(ranker._process)
+        self.assertIsNone(ranker.rank('query', ['passage']))
+        self.assertEqual(ranker.last_reason, 'cooldown')
     def test_model_load_is_cpu_local_only_and_reused_with_plain_pairs(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
@@ -41,11 +90,21 @@ class RerankerTests(unittest.TestCase):
 
     def test_long_passages_still_obey_exact_pair_budget(self):
         tokenizer = SimpleNamespace(encode=lambda query, passage=None, **kwargs: [0] * (len(query) + len(passage or '') + 3))
-        predict = Mock(return_value=[1.])
+        predict = Mock(side_effect=lambda pairs, **kw: [1.] * len(pairs))
         ranker = self.ranker(tokenizer, predict)
         self.assertEqual(ranker._rank('query', ['a' * 1000]), [1.])
         pair = predict.call_args.args[0][0]
         self.assertEqual(len(tokenizer.encode(*pair)), 512)
+        self.assertEqual(ranker.truncated_passages, 0)
+        self.assertEqual(''.join(pair[1] for pair in predict.call_args.args[0]), 'a' * 1000)
+
+    def test_late_support_is_scored_and_window_overflow_is_explicit(self):
+        tokenizer = SimpleNamespace(encode=lambda query, passage=None, **kwargs: [0] * (len(query) + len(passage or '') + 3))
+        predict = Mock(side_effect=lambda pairs, **kw: [2. if 'ANSWER' in p else -2. for _, p in pairs])
+        ranker = self.ranker(tokenizer, predict)
+        self.assertEqual(ranker._rank('query', ['a' * 600 + ' ANSWER']), [2.])
+        with self.assertRaisesRegex(ValueError, 'coverage'):
+            ranker._rank('query', ['a' * 3000])
 
     def test_invalid_or_missing_scores_fall_back(self):
         tokenizer = SimpleNamespace(encode=lambda *args, **kwargs: [0])
@@ -61,7 +120,7 @@ class RerankerTests(unittest.TestCase):
         self.assertIsNone(ranker.rank('query', ['passage']))
 
     def test_native_hang_is_killed_and_next_request_restarts(self):
-        ranker = LocalReranker('unused', .05, worker_target=fake_worker)
+        ranker = LocalReranker('unused', .05, worker_target=fake_worker, cooldown_seconds=0)
         self.addCleanup(ranker.close)
         self.assertEqual(ranker.rank('query', ['passage']), [1.])
         process = ranker._process
@@ -86,6 +145,11 @@ def fake_worker(connection, path):
         pass
     finally:
         connection.close()
+
+
+def nonreading_worker(connection, path):
+    import time
+    time.sleep(60)
 
 
 class RerankerBakeTests(unittest.TestCase):
