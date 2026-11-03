@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, ArrowUpRight, BookOpen, CheckCircle2, X } from 'lucide-react';
+import { Activity, ArrowUpRight, BookOpen, CheckCircle2 } from 'lucide-react';
 import { Dialog } from '../ui/Dialog';
-import { Button, IconButton, buttonStyles } from '../ui';
+import { Button, buttonStyles } from '../ui';
 import { Skeleton } from '../ui/Skeleton';
 import { progressExplanation } from '../../services/learning';
 import { practiceLink } from '../../services/practiceIntent';
@@ -21,8 +21,8 @@ export function ProgressEvidence({ concept, context, onClose }: { concept: strin
     return () => controller.abort();
   }, [concept, context, retry]);
   const practiceContext = data?.context_id || context;
-  return <Dialog open onDismiss={onClose} aria-labelledby="progress-evidence-title" className="m-auto flex max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-2xl flex-col overflow-hidden rounded-panel border border-border bg-popover p-0 text-foreground shadow-overlay">
-    <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:p-5"><div className="min-w-0"><p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-accent"><Activity size={14} aria-hidden="true" />Your learning evidence</p><h2 id="progress-evidence-title" className="text-base font-semibold text-heading">What is this estimate based on?</h2></div><IconButton aria-label="Close evidence details" onClick={onClose}><X size={17} aria-hidden="true" /></IconButton></header>
+  return <Dialog closeLabel="Close evidence details" open onDismiss={onClose} aria-labelledby="progress-evidence-title" layout="viewer" className="max-w-2xl">
+    <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:p-5"><div className="min-w-0"><p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-accent"><Activity size={14} aria-hidden="true" />Your learning evidence</p><h2 id="progress-evidence-title" className="text-base font-semibold text-heading">What is this estimate based on?</h2></div></header>
     <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
       {error ? <p role="alert" className="text-sm text-danger">{error} <Button size="sm" variant="ghost" onClick={() => setRetry(value => value + 1)}>Retry</Button></p> : !data ? <Skeleton variant="text" rows={7} /> : <div className="space-y-5 text-sm">
         <div className="space-y-3 rounded-panel border border-border bg-surface p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="break-words font-semibold text-heading">{data.name}</h3><span className="workspace-status">{progressStatus(data.knowledge_status)}</span></div>

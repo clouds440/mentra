@@ -1,10 +1,10 @@
-import { PageShell, PageSkeleton } from '../components/workspace/PageShell';
+import { PageShell } from '../components/workspace/PageShell';
 import { buttonStyles } from '../components/ui/Button';
-import { FilePlus2 } from 'lucide-react';
+import { ArrowLeft, FilePlus2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MaterialUpload } from '../components/library/MaterialUpload';
+import { MaterialUpload, MaterialUploadSkeleton } from '../components/library/MaterialUpload';
 import { Button } from '../components/ui';
 import { getCapabilities, listContexts, materialError } from '../services/rag';
 import type { LearningContext, RAGCapabilities } from '../types/rag';
@@ -29,12 +29,12 @@ export function AddMaterialPage() {
     return () => controller.abort();
   }, [reload]);
 
-  return <PageShell>
-    <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link>
-    <WorkspaceHeader title="Add material" description="Give your study sources a home. Upload a file and connect it to what you’re learning." icon={FilePlus2} />
+  return <PageShell className="library-page">
+    <Link to="/library" className={buttonStyles({ variant: 'ghost', size: 'sm', className: 'w-fit -ml-2 text-muted' })}><ArrowLeft size={15} aria-hidden="true" />Back to Library</Link>
+    <WorkspaceHeader title="Add material" description="Your notes, books and ideas. Turn a source into something you can study with Mentra." icon={FilePlus2} />
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}
-    {!capabilities && !error && <PageSkeleton layout="form" />}
-    {capabilities && <div className="workspace-panel max-w-3xl"><MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
-      onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} /></div>}
+    {!capabilities && !error && <MaterialUploadSkeleton />}
+    {capabilities && <MaterialUpload contexts={contexts} capabilities={capabilities} onContextCreated={refresh}
+      onAccepted={(_id, duplicate) => navigate(`/library?uploaded=${duplicate ? 'duplicate' : 'accepted'}`)} />}
   </PageShell>;
 }

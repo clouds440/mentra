@@ -3,8 +3,8 @@ import type { Assessment, AssessmentAttempt } from '../../types/assessments';
 import { feedbackAppearance, QuestionFeedback, type FeedbackOutcome } from '../interactions/QuestionFeedback';
 import { questionLabel, selectedAnswer } from './AssessmentPaper';
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { Button, Dialog, IconButton } from '../ui';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Button, Dialog } from '../ui';
 import { ViewToggle } from '../ui/ViewToggle';
 import { useQuestionNavigation } from './useQuestionNavigation';
 import { MistakePractice } from './MistakePractice';
@@ -53,8 +53,8 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
         <Button size="sm" variant="secondary" className="mt-auto w-full" onClick={() => { setSelected(position); setReviewOpen(true); }}>Review result</Button>
       </article>;
     })}</div> : results.map(item => <div key={item.question.id}>{renderFeedback(item)}</div>)}
-    {reviewOpen && <Dialog open onDismiss={() => setReviewOpen(false)} aria-labelledby="result-review-title" className="max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-3"><h2 id="result-review-title" className="font-medium text-heading">Question {current+1} of {results.length}</h2><IconButton aria-label="Close result review" onClick={() => setReviewOpen(false)}><X size={18} /></IconButton></div>
+    {reviewOpen && <Dialog closeLabel="Close result review" open onDismiss={() => setReviewOpen(false)} aria-labelledby="result-review-title" className="max-w-2xl">
+      <div className="mb-4 flex items-center justify-between gap-3"><h2 id="result-review-title" className="font-medium text-heading">Question {current+1} of {results.length}</h2></div>
       <nav aria-label="Result questions" className="mb-4 flex flex-wrap gap-1.5">{results.map(({question,index,outcome},position)=><button key={question.id} type="button" aria-label={`Question ${index+1}: ${feedbackAppearance[outcome].label.toLowerCase()}`} aria-current={position===current?'step':undefined} onClick={()=>setSelected(position)} className={`ui-button grid min-h-8 min-w-8 place-items-center rounded-control border px-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-accent ${outcome==='correct'?'border-success/40 bg-success/10 text-success':outcome==='wrong'?'border-danger/40 bg-danger/10 text-danger':'border-warning/40 bg-warning/10 text-warning'} ${position===current?'ring-2 ring-offset-1 ring-current':''}`}>{index+1}</button>)}</nav>
       {visible.map(item => <div key={item.question.id} className="question-transition" data-navigation={direction}>{renderFeedback(item)}</div>)}
       {results.length>1 && <div className="mt-4 flex justify-between gap-2"><Button size="sm" variant="secondary" disabled={current===0} onClick={()=>setSelected(value=>value-1)}><ArrowLeft size={14} aria-hidden="true" />Previous result</Button><Button size="sm" variant="secondary" disabled={current===results.length-1} onClick={()=>setSelected(value=>value+1)}>Next result<ArrowRight size={14} aria-hidden="true" /></Button></div>}

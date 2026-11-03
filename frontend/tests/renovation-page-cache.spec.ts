@@ -83,7 +83,8 @@ for (const [route, visible] of [
     const reads: string[] = [];
     page.on('request', request => {
       const path = new URL(request.url()).pathname;
-      if (/\/api\/v1\/(documents|learning|assessments|events|event-proposals|memories|notifications)/.test(path)) reads.push(request.url());
+      // Notification-stream reconnects are separate from page-data refreshes.
+      if (path !== '/api/v1/notifications/changes' && /\/api\/v1\/(documents|learning|assessments|events|event-proposals|memories|notifications)/.test(path)) reads.push(request.url());
     });
     await page.goto(route);
     await expect(page.getByText(visible, {exact:true}).first()).toBeVisible();
@@ -129,7 +130,7 @@ test('material processing updates until completion and then stops polling', asyn
   await expect(page.getByText('Preparing',{exact:true})).toBeVisible();
   completed = true;
   await page.clock.runFor(3500);
-  await expect(page.getByText('Ready',{exact:true})).toBeVisible();
+  await expect(page.getByText('Ready to study',{exact:true})).toBeVisible();
   // Completion invalidates dependent material views once. Wait for that
   // revalidation before measuring the absence of further polling.
   await expect.poll(async () => { await page.clock.runFor(100); return reads; }).toBe(3);

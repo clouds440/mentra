@@ -3,7 +3,7 @@ import { materialWarningMessage } from '../../services/userError';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Download, FileText, X, ArrowDown, AlertCircle } from 'lucide-react';
+import { Download, FileText, ArrowDown, AlertCircle } from 'lucide-react';
 import { Button } from '../ui';
 import { CodeBlock } from '../content/CodeBlock';
 import { MarkdownContent } from '../content/MarkdownContent';
@@ -97,11 +97,11 @@ export function SourceViewer({ source, filename, includeArchived = false, onClos
     } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setDownloadBusy(false); }
   }
-  return <Dialog open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} className="source-dialog m-auto max-h-[88dvh] w-[calc(100%-1.5rem)] max-w-4xl rounded-2xl border border-border-strong bg-popover text-foreground shadow-overlay">
+  return <Dialog closeLabel="Close source" open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} layout="viewer" className="source-dialog max-w-4xl">
     <header className="source-header">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent"><FileText size={13} aria-hidden="true" />Library source</p><h2 className="truncate text-xl font-semibold tracking-tight text-heading">{source.title}</h2><p className="mt-1 truncate text-xs text-muted" title={displayFilename}>{displayFilename ?? sourceLocation(source) ?? 'Study material'}</p></div>
-        <Button variant="ghost" size="sm" className="shrink-0 !px-2" aria-label="Close source" onClick={() => dialog.current?.close()}><X size={18} aria-hidden="true" /></Button>
+
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted">{sourceLocation(source) || 'Source content'}{chunks.length > 0 ? ` · ${chunks.length}${more ? '+' : ''} ${chunks.length === 1 ? 'passage' : 'passages'}` : ''}</span><Button size="sm" variant="secondary" disabled={downloadBusy} onClick={() => void download()}><Download size={14} aria-hidden="true" />{downloadBusy ? 'Opening original…' : 'Download original'}</Button></div>
       <nav className="source-tabs" aria-label="Source view"><button type="button" aria-pressed={view === 'extracted'} onClick={() => setView('extracted')}>Extracted content</button><button type="button" aria-pressed={view === 'original'} onClick={() => void openOriginal()}>Original file</button></nav>
