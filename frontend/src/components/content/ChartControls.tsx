@@ -29,10 +29,11 @@ export const ChartControls = memo(function ChartControls({ spec, original, onEdi
         <Button size="sm" variant="ghost" onClick={onReset}>Reset</Button>
       </div>
     </div>
-    <div className="chart-control-fields">
-      {fields.length > 1 ? <label><span>Variable</span><Select aria-label="Chart value" value={field} onChange={event => onSelectionChange({ row, field: event.target.value })}>{fields.map(item => <option key={item.dataKey} value={item.dataKey}>{item.name}</option>)}</Select></label> : <p className="chart-control-variable">{fields[0].name}</p>}
+    {(fields.length > 1 || (!parameter && spec.data.length > 1)) && <div className="chart-control-fields">
+      {fields.length > 1 ? <label><span>Variable</span><Select aria-label="Chart value" value={field} onChange={event => onSelectionChange({ row, field: event.target.value })}>{fields.map(item => <option key={item.dataKey} value={item.dataKey}>{item.name}</option>)}</Select></label> : null}
       {!parameter && spec.data.length > 1 && <label><span>Data point</span><Select aria-label="Data point" value={row} onChange={event => onSelectionChange({ row: Number(event.target.value), field })}>{spec.data.map((item, index) => <option key={index} value={index}>{String(item[spec.xKey])} (#{index + 1})</option>)}</Select></label>}
-    </div>
+    </div>}
+    {fields.length === 1 && <p className="chart-control-variable">{fields[0].name}</p>}
     <ValueEditor key={(parameter ? -1 : row) + ':' + field} spec={spec} original={original} row={parameter ? -1 : row} field={field} onEdit={onEdit} mode={mode} />
   </section>;
 });

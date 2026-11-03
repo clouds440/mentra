@@ -693,6 +693,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .interactive-surface .field-control { background: transparent; }
 .chart-controls { border-top: 1px solid rgb(var(--border) / .65); padding: .75rem 0 .25rem; display: grid; gap: .625rem; }
 .chart-control-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+.chart-control-header > .visual-actions { flex: none; max-width: 100%; }
 .chart-control-title, .chart-control-variable { margin: 0; color: rgb(var(--heading)); font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
 .chart-control-hint { margin: 0; color: rgb(var(--muted)); font-size: .75rem; }
 .chart-control-fields { display: flex; align-items: end; flex-wrap: wrap; gap: .5rem .75rem; }
