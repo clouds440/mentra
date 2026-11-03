@@ -1,6 +1,6 @@
 export interface LearningContext { context_id: string; name: string; status: 'ACTIVE' | 'RELATED' | 'DORMANT' | 'ARCHIVED' }
 export interface MaterialJob { id: string; document_id: string; generation_id: string | null; operation: string; state: string; stage: string; attempts: number; error: string | null }
-export interface MaterialVersion { id: string; filename: string; media_type: string; size_bytes: number; created_at: string; generation_id?: string | null; warnings?: string[] }
+export interface MaterialVersion { id: string; filename: string; media_type: string; size_bytes: number; created_at: string; generation_id?: string | null; warnings?: string[]; extraction_state?: 'processing' | 'ready' | 'failed' | 'unavailable'; extraction_error?: string | null }
 export interface MaterialGeneration { id: string; version_id: string; state: string; warnings: string[]; chunk_count: number }
 export interface MaterialDocument {
   id: string; title: string; filename: string; context_ids: string[]; archived: boolean; revision: number;

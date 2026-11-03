@@ -147,7 +147,7 @@ class RAGRepository:
         for version in latest_versions:
             # Match the public version-page contract; never leak storage keys.
             by_id[version['document_id']]['versions'].append({key: version[key] for key in
-                ('id', 'filename', 'media_type', 'size_bytes', 'created_at', 'generation_id', 'warnings')})
+                ('id', 'filename', 'media_type', 'size_bytes', 'created_at', 'generation_id', 'warnings', 'extraction_state', 'extraction_error')})
         for document_id, count in session.execute(select(versions.c.document_id, func.count()).where(
             versions.c.learner_id == owner, versions.c.document_id.in_(ids)).group_by(versions.c.document_id)):
             by_id[document_id]['version_count'] = count
@@ -169,17 +169,37 @@ class RAGRepository:
     def _attach_published_versions(self, session, owner, rows):
         if not rows:
             return
-        published = session.execute(select(generations.c.version_id, generations.c.id, generations.c.warnings).where(
-            generations.c.learner_id == owner, generations.c.version_id.in_([r['id'] for r in rows]),
-            generations.c.indexed_at.is_not(None)).distinct(generations.c.version_id)
-            .order_by(generations.c.version_id, generations.c.created_at.desc())).mappings()
-        latest = {}
-        for row in published:
-            latest.setdefault(row['version_id'], row)
+        version_ids = [row['id'] for row in rows]
+        published = select(generations.c.version_id, generations.c.id, generations.c.warnings).where(
+            generations.c.learner_id == owner, generations.c.version_id.in_(version_ids),
+            generations.c.indexed_at.is_not(None),generations.c.state.in_(['READY','SUPERSEDED'])).distinct(generations.c.version_id)
+        published = published.order_by(generations.c.version_id, generations.c.created_at.desc(),generations.c.id.desc()).cte('published_source')
+        # Publication and extraction progress are different facts. In particular,
+        # failed/unpublished versions must not look like successful empty sources.
+        attempted = select(generations.c.id,
+            generations.c.version_id,generations.c.state,generations.c.warnings).where(
+                generations.c.learner_id==owner,generations.c.version_id.in_(version_ids))
+        attempted = attempted.distinct(generations.c.version_id).order_by(generations.c.version_id,
+                generations.c.created_at.desc(),generations.c.id.desc()).cte('attempted_source')
+        latest_jobs = select(jobs.c.generation_id,
+            jobs.c.state,jobs.c.error).where(jobs.c.learner_id==owner,jobs.c.operation=='INGEST',
+                jobs.c.generation_id.in_(select(attempted.c.id)))
+        latest_jobs = latest_jobs.distinct(jobs.c.generation_id).order_by(jobs.c.generation_id,jobs.c.created_at.desc(),jobs.c.id.desc()).cte('source_job')
+        status = {row['id']:row for row in session.execute(select(versions.c.id,
+            published.c.id.label('generation_id'),published.c.warnings.label('published_warnings'),
+            attempted.c.state.label('attempt_state'),attempted.c.warnings.label('attempt_warnings'),
+            latest_jobs.c.state.label('job_state'),latest_jobs.c.error)
+            .outerjoin(published,published.c.version_id==versions.c.id)
+            .outerjoin(attempted,attempted.c.version_id==versions.c.id)
+            .outerjoin(latest_jobs,latest_jobs.c.generation_id==attempted.c.id)
+            .where(versions.c.learner_id==owner,versions.c.id.in_(version_ids))).mappings()}
         for row in rows:
-            generation = latest.get(row['id'])
-            row['generation_id'] = generation['id'] if generation else None
-            row['warnings'] = generation['warnings'] if generation else []
+            value = status[row['id']]
+            row['generation_id'] = value['generation_id']
+            row['warnings'] = (value['published_warnings'] if value['generation_id'] else value['attempt_warnings']) or []
+            row['extraction_state'] = ('ready' if value['generation_id'] else 'processing' if value['job_state'] in ('QUEUED','RUNNING','RETRY_WAIT')
+                else 'failed' if value['attempt_state']=='FAILED' else 'unavailable')
+            row['extraction_error'] = value['error'] if value['job_state']=='FAILED' else None
 
     def list_versions(self, owner, document_id, offset=0, limit=25):
         with self.sessions() as session:

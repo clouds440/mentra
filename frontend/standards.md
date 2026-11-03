@@ -13,6 +13,8 @@
 
 These standards describe the current React, TypeScript, Vite, and Tailwind CSS codebase. Update them when an important frontend convention changes.
 
+- Library source viewers follow version publication even while metadata forms have unsaved edits. Distinguish processing, extraction failure and passage-read failure; manual refresh invalidates document caches. Show one OCR notice only inside the selected PDF/image upload flow and remove it on acceptance. Keep permanent per-page warning lists out of material/source viewers; retain actionable processing errors and backend provenance.
+
 - Long answer-sheet operations return durable jobs. Render pending/recoverable failure, poll owner-scoped canonical attempts, and handle source-state changes even when the attempt revision stays the same. Polling must never submit answers or imply completed grading.
 - Browser voice intake uses the bounded direct multipart transcription endpoint and a stable operation UUID per recording retry. Keep existing drafts on errors. Notifications share an authenticated revision stream per owner and abort subscriptions on owner change/unmount. RAG mutations invalidate dependent page caches.
 

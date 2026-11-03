@@ -1,0 +1,17 @@
+{
+  "generation_state": "READY",
+  "job_state": "SUCCEEDED",
+  "job_error": null,
+  "saved_chunks": 66,
+  "indexed_vectors": 66,
+  "point_identities_match": true,
+  "span_methods": {
+    "native": 38,
+    "ocr": 4,
+    "image_ocr": 24
+  },
+  "extraction_warning_count": 51,
+  "publication_seconds": 34.666,
+  "read_only_inspection": true,
+  "private_source_text_recorded": false
+}

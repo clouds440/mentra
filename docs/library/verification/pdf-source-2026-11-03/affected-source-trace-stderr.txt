@@ -1,0 +1,2 @@
+/app/app/rag/qdrant_store.py:213: UserWarning: Qdrant client version 1.15.1 is incompatible with server version 1.19.2. Major versions should match and minor version difference must not exceed 1. Set check_compatibility=False to skip version check.
+  self._client = QdrantClient(

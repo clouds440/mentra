@@ -1,0 +1,177 @@
+{
+  "baseline_commit": "4e49dab",
+  "verification_date": "2026-11-03",
+  "scope": "Pre-deployment source, documentation and acceptance evidence; hashes are exact worktree bytes; excludes this manifest",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 341,
+      "sha256": "e0a70836e1ea5272faca84b627c24ef9be33b6df319196aab4c1395c371e6881"
+    },
+    {
+      "path": "backend/app/rag/repositories/postgres.py",
+      "bytes": 44928,
+      "sha256": "6fd505d7e6228a8a76ce21d2557fadc829474fd58b7045dbfe83bb1a24d8cd73"
+    },
+    {
+      "path": "backend/testing/verify_scanned_pdf_source.py",
+      "bytes": 3790,
+      "sha256": "bd542c8844bd41303379180f7fb4a266d4aa296477776c3e4938b2b3bf6ca1e1"
+    },
+    {
+      "path": "backend/tests/rag/test_pdf_source_status.py",
+      "bytes": 6237,
+      "sha256": "65a0b4940288478cf57dc471e3579c4ddef76d8cd22d77ad083c413d5207e713"
+    },
+    {
+      "path": "docs/library/PDF_Source_Viewer_Fix_2026-11-03.md",
+      "bytes": 9036,
+      "sha256": "9d4290a0e659d7dec21df40195d010d1f0867f9cd8e2619bc75fde6e4b079bc5"
+    },
+    {
+      "path": "docs/library/README.md",
+      "bytes": 2009,
+      "sha256": "9c495f0242b4353fd7c4c92e067d9961181803be3d88b91d627f6f501a4d974d"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/affected-source-trace-stderr.txt",
+      "bytes": 282,
+      "sha256": "5a81a450e9fccc4f0cf66c05f4acf77b7883f943ea3e746a180d5767d43bff43"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/affected-source-trace.json",
+      "bytes": 381,
+      "sha256": "f3a038651860736fc11f8b5b2f2fc68ffecdbcec15c57a71bdc34e0879a2afac"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/backend-acceptance.txt",
+      "bytes": 3021,
+      "sha256": "c53980a0758b26a8291979f2a740c7fd6537a50cf999e46530f2a86fd88ec7d8"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/backend-corrections.txt",
+      "bytes": 376,
+      "sha256": "1b36a41367e70f9073dc832d5305831189ea9d95c234d7479c713aaa84a56687"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/backend-final.txt",
+      "bytes": 3784,
+      "sha256": "840563f75bf202c780f3f73ab58c826cc4967e85e4f437563d88ff8733193b37"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/backend-focused.txt",
+      "bytes": 3592,
+      "sha256": "847db535d9799033cc711ec97fe78f0b6cc22d77da07a0c4bd3b90a195127c7d"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/browser-acceptance.txt",
+      "bytes": 2439,
+      "sha256": "0d652354b43c8f6021ace7fc4e027bd0003a8e2774f2130ed43154fbb4f1b18b"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/browser-final.txt",
+      "bytes": 2155,
+      "sha256": "a5a180c216f0baa220a932a4ce51c309cd37fb50b139e62ac6cd5be87da29198"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/browser-upload-only-warnings.txt",
+      "bytes": 5439,
+      "sha256": "b311f7b9695d0f3ed7b121fec0eed4d5f1fa4c5ed9b6f35c5eb86b0e5179d141"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/cache-recovery.txt",
+      "bytes": 543,
+      "sha256": "820fbfb916e79127dbd129982e1a6eeeff1a868d76cffae1013ff3a93c3cf9d7"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/frontend-build.txt",
+      "bytes": 224655,
+      "sha256": "f29cc023b872aa5259ae7872fde52c605ab42532ee34f6b237b396622f9eb527"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/frontend-conventions.txt",
+      "bytes": 232,
+      "sha256": "63ce6e3320eec8dbb87d4d75829c59ba6626d529f5b1373b8852f54f7d929dcd"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/frontend-final-build.txt",
+      "bytes": 224655,
+      "sha256": "e6dcd63ea365b8e9d415f904d4273e899a5e63207a49cc7bb8f0805976b6f214"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/older-version-acceptance.txt",
+      "bytes": 103,
+      "sha256": "6d68038f172523f4095614c865bba943e63b381552d0337871e5f39b3a9b095c"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/real-ocr-e5-stderr.txt",
+      "bytes": 504,
+      "sha256": "4aca25cc62795fd900015bc056bae737c8498f3ac9c58734b603e7251b01a157"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/real-ocr-e5.json",
+      "bytes": 497,
+      "sha256": "264b9882f0028e5f7695def44ed1e4f1b113b9429dad09ab7e4cbaccc91cf6e0"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/static.txt",
+      "bytes": 20,
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/version-baseline.txt",
+      "bytes": 1226,
+      "sha256": "51e15a50b2ef236d516df0720b689929e3dcab134fbd436088f14c7b01f2cb95"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/viewer-baseline.txt",
+      "bytes": 13308,
+      "sha256": "a2abe15964550e8d272d2f06cefc3ffcb9045a1b15621f78095b353720706649"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/viewer-fixed-first.txt",
+      "bytes": 3989,
+      "sha256": "808d1327eb92e12d7cf5ae44cd5dcce27e5b0de1c6d04de0400543c24a7b3593"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/viewer-fixed.txt",
+      "bytes": 940,
+      "sha256": "d2f3c25314de30adbb1ab209e61edd62ca7fbc4060723d4b6c092b9c654951a4"
+    },
+    {
+      "path": "frontend/src/components/library/MaterialUpload.tsx",
+      "bytes": 9767,
+      "sha256": "fe462e25c0b352ae84709ecb0ca01e42708384e6ae645ee7ed4c4aca7449ef73"
+    },
+    {
+      "path": "frontend/src/components/library/SourceViewer.tsx",
+      "bytes": 12592,
+      "sha256": "a4fcfef60f37ecdb178c7881087becbb132974e0655e2ca2cd1c316c5e087b62"
+    },
+    {
+      "path": "frontend/src/pages/MaterialDetailPage.tsx",
+      "bytes": 14141,
+      "sha256": "44985aeb596afbfb1d88d4f8a18cc7ec124dc6a8b1aa0010f76dc665dd773c6e"
+    },
+    {
+      "path": "frontend/src/types/rag.ts",
+      "bytes": 2201,
+      "sha256": "2f9071140af3300ef1f615dbd4e64f67ff70d74b85d06fb765dc6e3d640e5ee9"
+    },
+    {
+      "path": "frontend/standards.md",
+      "bytes": 42634,
+      "sha256": "49e3ca78bcadb1229ea99752eaf6a0f890cbd9d5f38f8eb48b7c44c41bc7ded0"
+    },
+    {
+      "path": "frontend/tests/renovation-library.spec.ts",
+      "bytes": 7248,
+      "sha256": "28e4742bffe5d3269f77b932b77853a1a414081e8ae1cf36cf7943ffb1cc8799"
+    },
+    {
+      "path": "frontend/tests/renovation-pdf-source.spec.ts",
+      "bytes": 8090,
+      "sha256": "70c34ea0a91af8282b49eb4b75b0904abef27d807eee38e9b46c0646127c068c"
+    }
+  ]
+}

@@ -61,6 +61,8 @@ test('existing and new context uploads keep the canonical request workflow', asy
 
 test('dropping files supports upload and rejects oversized and multi-file drops', async ({ page }) => {
   await setup(page); await page.goto('/library/new');
+  // The loading skeleton also contains .file-dropzone; wait for the real form.
+  await expect(page.getByRole('button', { name: 'Upload material', exact: true })).toBeVisible();
   const drop = page.locator('.file-dropzone');
   const files = await page.evaluateHandle(() => { const data = new DataTransfer(); data.items.add(new File(['Drop content'], 'dropped.txt', { type: 'text/plain' })); return data; });
   await drop.dispatchEvent('drop', { dataTransfer: files });
