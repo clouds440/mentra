@@ -1,0 +1,85 @@
+../app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+...F............................RAG worker job failed: 9dfadc3c-69cb-4e99-ae52-c458b5662259
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 44, in run_once
+    self.service.vector_store.delete_chunks(job['learner_id'], job['document_id'])
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.......................RAG worker job failed: 6db23862-320f-45e6-badb-af74f047993a
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 104, in run_once
+    raise VectorStoreError('Material point identities are incomplete.')
+app.rag.vector_store.VectorStoreError: Material point identities are incomplete.
+..RAG worker job failed: cfdb1a6a-9ccc-408a-bcd1-943757630992
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 97, in run_once
+    self.service.vector_store.upsert_chunks([VectorChunk(c['id'], job['learner_id'], job['document_id'],
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+app.rag.vector_store.VectorStoreError: offline
+.RAG worker job failed: f4f077ab-c949-497f-8c05-03f106aacb00
+Traceback (most recent call last):
+  File "/app/app/rag/worker.py", line 105, in run_once
+    published = self.repository.publish(job)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: temporary dependency failure
+.......Executing <Task pending name='Task-8' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at /app/tests/test_rag_prefetch.py:76> wait_for=<Task pending name='Task-9' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 5.191 seconds
+Executing <Task finished name='Task-9' coro=<RunnableCallable.ainvoke() done, defined at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> result={'done': False, 'response': AIMessage(con...tool_calls=[]), 'runtime': {'active': ['find_study_material', 'present_questionnaire', 'read_study_material', 'read_study_visual', 'search_study_material'], 'attempt': 1, 'budget': {'calls': 0, 'delivered': {}, 'max_calls': 6, 'max_result_bytes': 25600, ...}, 'conversation': [{'data': {'additional_kwargs': {}, 'content': 'Refactor this source file', 'id': 'user', 'name': None, ...}, 'type': 'human'}], ...}} created at /usr/local/lib/python3.12/asyncio/tasks.py:422> took 0.231 seconds
+Executing <Task finished name='Task-17' coro=<RunnableCallable.ainvoke() done, defined at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> result={'done': True, 'response': {'content': 'Supported by...ssage [[S1]].', 'conversation_title': None, 'outcome': 'completed', 'tasks': []}, 'runtime': {'active': ['find_study_material', 'present_questionnaire', 'read_study_material', 'read_study_visual', 'search_study_material'], 'attempt': 1, 'budget': {'calls': 1, 'delivered': {'{"status":"o...warnings":[]}': 'read'}, 'max_calls': 6, 'max_result_bytes': 25600, ...}, 'conversation': [{'data': {'additional_kwargs': {}, 'content': 'Refactor this source file', 'id': 'user', 'name': None, ...}, 'type': 'human'}, {'data': {'additional_kwargs': {}, 'content': '', 'id': None, 'invalid_tool_calls': [], ...}, 'type': 'ai'}, {'data': {'additional_kwargs': {}, 'artifact': None, 'content': '{"status":"o...":"receipt1"}', 'id': None, ...}, 'type': 'tool'}], ...}} created at /usr/local/lib/python3.12/asyncio/tasks.py:422> took 0.158 seconds
+Executing <Task pending name='Task-8' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at /app/tests/test_rag_prefetch.py:76> wait_for=<Task pending name='Task-21' coro=<AsyncExitStack.__aexit__() running at /usr/local/lib/python3.12/contextlib.py:707> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:420> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.113 seconds
+Executing <Task pending name='Task-8' coro=<PrefetchTests.test_requested_tool_delivers_passages_and_citations() running at /app/tests/test_rag_prefetch.py:76> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:922, Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.262 seconds
+.Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-28' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.289 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-29' coro=<run_in_executor() running at /usr/local/lib/python3.12/site-packages/langchain_core/runnables/config.py:678> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.144 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:922, Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.102 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-32' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.110 seconds
+Executing <Task pending name='Task-33' coro=<gather_reads.<locals>.run() running at /app/app/langchain/concurrent_reads.py:33> wait_for=<Task pending name='Task-34' coro=<StructuredTool._arun() running at /usr/local/lib/python3.12/site-packages/langchain_core/tools/structured.py:156> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[gather.<locals>._done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:767] created at /usr/local/lib/python3.12/asyncio/tasks.py:420> took 0.115 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-36' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.125 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-37' coro=<run_in_executor() running at /usr/local/lib/python3.12/site-packages/langchain_core/runnables/config.py:678> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.104 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:922, Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.134 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Task pending name='Task-40' coro=<AsyncExitStack.__aexit__() running at /usr/local/lib/python3.12/contextlib.py:707> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:420> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.104 seconds
+Executing <Task pending name='Task-27' coro=<PrefetchTests.test_requested_tool_failure_reaches_agent() running at /app/tests/test_rag_prefetch.py:84> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:922, Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.188 seconds
+.Executing <Task pending name='Task-46' coro=<PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch() running at /app/tests/test_rag_prefetch.py:89> wait_for=<Task pending name='Task-47' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.380 seconds
+Executing <Task pending name='Task-46' coro=<PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch() running at /app/tests/test_rag_prefetch.py:89> wait_for=<Task pending name='Task-51' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.114 seconds
+Executing <Task pending name='Task-46' coro=<PrefetchTests.test_tool_revalidates_instead_of_delivering_stale_prefetch() running at /app/tests/test_rag_prefetch.py:89> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at /usr/local/lib/python3.12/asyncio/tasks.py:922, Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/base_events.py:448> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181, <1 more>, WorkerThread.stop()] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.213 seconds
+.Executing <Task pending name='Task-65' coro=<PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user() running at /app/tests/test_rag_prefetch.py:68> wait_for=<Task pending name='Task-66' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.270 seconds
+Executing <Task pending name='Task-65' coro=<PrefetchTests.test_unused_failed_prefetch_does_not_warn_model_or_user() running at /app/tests/test_rag_prefetch.py:68> wait_for=<Task pending name='Task-70' coro=<AsyncExitStack.__aexit__() running at /usr/local/lib/python3.12/contextlib.py:707> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:420> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.183 seconds
+.Executing <Task pending name='Task-76' coro=<PrefetchTests.test_unused_successful_prefetch_is_not_context_or_citations() running at /app/tests/test_rag_prefetch.py:58> wait_for=<Task pending name='Task-77' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.396 seconds
+.
+======================================================================
+FAIL: test_broken_embedded_images_warn_and_keep_native_content (tests.documents.test_readers.DocumentReaderTests.test_broken_embedded_images_warn_and_keep_native_content)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/documents/test_readers.py", line 155, in test_broken_embedded_images_warn_and_keep_native_content
+    self.assertEqual(result.text, 'Native')
+AssertionError: 'Native\n\nEmbedded source image.' != 'Native'
+  Native
+- 
+- Embedded source image.
+
+
+----------------------------------------------------------------------
+Ran 72 tests in 312.699s
+
+FAILED (failures=1)

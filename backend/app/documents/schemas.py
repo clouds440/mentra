@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import TypedDict, Required
+from dataclasses import dataclass, field
+from typing import TypedDict, Required, NotRequired
 
 
 class DocumentBlock(TypedDict, total=False):
@@ -14,6 +14,7 @@ class DocumentBlock(TypedDict, total=False):
 class DocumentPayload(TypedDict):
     blocks: list[DocumentBlock]
     warnings: list[str]
+    visuals: NotRequired[list[dict]]
 
 
 @dataclass
@@ -23,6 +24,7 @@ class DocumentContent:
     blocks: list[DocumentBlock]
     warnings: list[str]
     reader_revision: str
+    visuals: list[dict] = field(default_factory=list)
 
     @property
     def text(self) -> str:

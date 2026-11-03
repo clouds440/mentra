@@ -1,0 +1,43 @@
+{
+  "initialization_ms": 12477.15,
+  "searches": [
+    {
+      "active_search_ms": 5096.21,
+      "chunks": 3,
+      "associated_diagrams": 0,
+      "reranking": "ok",
+      "timings_ms": {
+        "scope": 802.85,
+        "embedding": 44.62,
+        "dense": 1870.17,
+        "lexical": 327.25,
+        "candidates": 0.52,
+        "fusion": 0.13,
+        "hydration": 407.52,
+        "reranking": 553.86,
+        "selection_and_reauthorization": 1088.09,
+        "total": 5095.01
+      }
+    },
+    {
+      "active_search_ms": 4007.93,
+      "chunks": 3,
+      "associated_diagrams": 1,
+      "reranking": "ok",
+      "timings_ms": {
+        "scope": 807.82,
+        "embedding": 31.27,
+        "dense": 467.26,
+        "lexical": 284.41,
+        "candidates": 0.48,
+        "fusion": 0.1,
+        "hydration": 401.57,
+        "reranking": 667.94,
+        "selection_and_reauthorization": 1346.03,
+        "total": 4006.87
+      }
+    }
+  ],
+  "live_llm_calls": 0,
+  "local_cached_inference": true
+}

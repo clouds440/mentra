@@ -1,0 +1,12 @@
+[
+  {
+    "image": "mentra-backend:latest",
+    "id": "sha256:46dc230965f79fd596c1fba63cae2f25553ad3f34bd29c6ff765d56e288a37e4",
+    "revision": "444e6bb90ad1d9e270c3191ac5002983540b160b"
+  },
+  {
+    "image": "mentra-frontend:latest",
+    "id": "sha256:927820d48d512da9ecb882f0806c2c589c1f4d46a51fff4af72fd86785e97fcf",
+    "revision": "4e49dabf78514e691a57a398b195126945373dd2"
+  }
+]

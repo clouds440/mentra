@@ -48,6 +48,7 @@ def chunk_blocks(blocks, embedding, owner, document_id, generation_id, max_chunk
                 raise ExtractionError('A source unit cannot fit the embedding budget.')
             span = dict(block=number, start=start, end=end, page=block.get('page'),
                         slide=block.get('slide'), method=block.get('method', 'native'))
+            if block.get('visual_keys'): span['visual_keys']=block['visual_keys']
             if block.get('language'):
                 span['language'] = block['language']
             ordinal = len(items)

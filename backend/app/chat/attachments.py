@@ -43,7 +43,8 @@ class AttachmentService:
                 self.repository.extraction_failed(owner, identifier, str(error))
                 raise AppError('CHAT_DOCUMENT_UNREADABLE', str(error), 422) from None
         extracted = dict(id=identifier, filename=row['filename'], format=result.format, media_type=result.media_type,
-                         blocks=result.blocks, warnings=result.warnings, reader_revision=result.reader_revision)
+                         blocks=result.blocks, warnings=result.warnings, reader_revision=result.reader_revision,
+                         visual_manifest=[{k:v for k,v in visual.items() if k!='data_base64'} for visual in result.visuals])
         self.repository.save_extraction(owner, identifier, conversation_id, extracted)
         return extracted
 

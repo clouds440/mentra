@@ -1,0 +1,58 @@
+{
+  "implementation_commit": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+  "acceptance_manifest_sha256": "19f08197184d1a665f0cd8d94bb83b42da5968a66f9c285fd01ceb157197f0cc",
+  "verified_original_acceptance_hashes": true,
+  "scope": "Supplementary deployment evidence; no source changes after implementation commit",
+  "files": [
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/README.md",
+      "bytes": 3339,
+      "sha256": "fec5eadedaff64d5f93d351351af040af2151add89f17d38134f7dd97fa84b69"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/backup-receipt.json",
+      "bytes": 331,
+      "sha256": "c11ba1759301f4f80d96c59ecd3622a25af9fda551e93035655452ba3a7a81cf"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/browser-deployed-image.txt",
+      "bytes": 2251,
+      "sha256": "3e59a0b177fede2b44f78f9ef9f39ebd0eee67b7309e1abfbaa1de84d8760fc2"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/compose-update.txt",
+      "bytes": 1620,
+      "sha256": "cfa62dacbfb66546edf32b8f27750edaee92479639d4bd70c525ea8d0d7d49bd"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/docker-build.txt",
+      "bytes": 259341,
+      "sha256": "361b6e005a496cca6a3b6c3192db6c98a1d17c83b71c8eb314a4a058bafbb1fb"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/pre-restart-work.json",
+      "bytes": 151,
+      "sha256": "a9172e57ece427f3468a1cf16ab8d39199fb23d44b744b7fd0578a2d74c80d9d"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/runtime-after.json",
+      "bytes": 1712,
+      "sha256": "b96ca743e92dd7e67560933938f643eded8b4de5221206c046d54e6b33a299b2"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/runtime-before.json",
+      "bytes": 398,
+      "sha256": "c008f45a8632f83b1ea4e134b43abd6fb5588615255e1a30df1831c747284bac"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/runtime-checks-stderr.txt",
+      "bytes": 282,
+      "sha256": "5a81a450e9fccc4f0cf66c05f4acf77b7883f943ea3e746a180d5767d43bff43"
+    },
+    {
+      "path": "docs/library/verification/pdf-source-2026-11-03/runtime-checks.json",
+      "bytes": 2487,
+      "sha256": "39255d1fcc44cb5ca7d57557b32bd6a5c0b6aa99dc9ccb19ae4fae0bf81855a7"
+    }
+  ]
+}

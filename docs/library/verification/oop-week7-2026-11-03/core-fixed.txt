@@ -1,0 +1,31 @@
+../app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+.F
+======================================================================
+FAIL: test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_study_pipeline_fixes.py", line 37, in test_cold_preparation_has_separate_bounded_budget
+    self.assertEqual(result,{'state':'ok'})
+AssertionError: {'outcome': 'unavailable', 'code': 'TOOL_TI[223 chars]None} != {'state': 'ok'}
++ {'state': 'ok'}
+- {'argument_errors': None,
+-  'attempts': 1,
+-  'category': 'transient_dependency',
+-  'code': 'TOOL_TIMEOUT',
+-  'effect_certainty': 'read_only',
+-  'outcome': 'unavailable',
+-  'reason': 'The service could not complete this request in time.',
+-  'retryable': True,
+-  'task_impact': 'optional'}
+
+----------------------------------------------------------------------
+Ran 4 tests in 5.293s
+
+FAILED (failures=1)

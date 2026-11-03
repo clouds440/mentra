@@ -1,0 +1,51 @@
+[
+  {
+    "name": "mentra-backend",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": "healthy"
+  },
+  {
+    "name": "mentra-frontend",
+    "image_id": "sha256:2b9cf0cdc90bcd63f00e9cc4a13981966017ca2333ad748fef44a736dce951ea",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": "healthy"
+  },
+  {
+    "name": "mentra-rag-worker-1",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": null
+  },
+  {
+    "name": "mentra-assessment-worker-1",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": null
+  },
+  {
+    "name": "mentra-summarizer-1",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": null
+  },
+  {
+    "name": "mentra-events-worker-1",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": null
+  },
+  {
+    "name": "mentra-files-worker-1",
+    "image_id": "sha256:ea312f20e20854e378fb9037ee782949331830b1c9943d34188c9ac64527a585",
+    "revision": "ed6197d26bb0b8872ca88b2ad7bce41e33e56449",
+    "running": true,
+    "health": null
+  }
+]

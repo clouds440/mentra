@@ -138,6 +138,6 @@ export function MermaidDiagram({ code }: { code: string }) {
     {errorKey === key && <p role="status" className="px-3 pt-3 text-sm text-muted">This diagram could not be displayed. Its source is available below.</p>}
     {downloadError && <p role="status" className="px-3 pt-3 text-sm text-muted">Could not download this diagram. Please try again.</p>}
     {source || errorKey === key ? <CodeBlock code={code} language="mermaid" /> : figure()}
-    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" className="mermaid-fullscreen"><div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2"><span className="text-sm text-muted">Diagram</span><Button variant="ghost" onClick={() => setExpanded(false)}>Close</Button></div>{figure(expandedSvg)}</Dialog>}
+    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label="Expanded diagram" heading="Diagram" layout="viewer" className="mermaid-fullscreen">{figure(expandedSvg)}</Dialog>}
   </figure>;
 }

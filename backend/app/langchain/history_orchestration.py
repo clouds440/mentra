@@ -312,8 +312,10 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             result_bytes_remaining=max(0, budget.max_result_bytes-budget.result_characters))
         workflow_logger.event('chat.context_budget', input_limit=input_limit, estimated_input_tokens=round_cost+count_tokens_approximately(conversation),
             summary_revision=summary['revision'] if summary else 0, recent_history_target=history_target)
+        from .source_visuals import model_messages
+        visual_conversation = await model_messages(conversation, scope, owner)
         try:
-            response = await llm.ainvoke_messages(PromptSource.CHAT, conversation,
+            response = await llm.ainvoke_messages(PromptSource.CHAT, visual_conversation,
                 additional_sources=sources, system_context=runtime_context, tools=available_tools or None,
                 **({'tool_choice': answer_schema.__name__ if final else 'required'} if answer_schema else {}),
                 on_delta=None)
@@ -514,7 +516,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
             history_count, memory_count = len(scope['history_references']), len(scope['memory_references'])
             evidence_before = set(scope['evidence_ids'])
             visible_before = list(scope['visible_ids'])
-            read_scopes = {key: len(scope.get(key, [])) for key in ('study_sources', 'event_references', 'retrieval_warnings')}
+            read_scopes = {key: len(scope.get(key, [])) for key in ('study_sources', 'event_references', 'retrieval_warnings', '_source_visual_ids')}
             retrieval_before = scope.get('retrieval_status')
             retrieval_context_before = scope.get('retrieval_context_ids')
             accounted = False

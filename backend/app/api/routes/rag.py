@@ -166,6 +166,13 @@ def get_chunk(chunk_id: str, include_archived: bool = False, service=Depends(rag
     return service.get_chunk(identity.learner_id, chunk_id, include_archived)
 
 
+@router.get('/rag/visuals/{visual_id}/source')
+async def visual_source(visual_id: str, request: Request, include_archived: bool = False,
+                        service=Depends(rag),identity=Depends(require_onboarded_identity)):
+    file_id,binding=await run_in_threadpool(service.visual_source,identity.learner_id,visual_id,include_archived)
+    return await deliver(request,identity.learner_id,file_id,binding,'inline',include_archived)
+
+
 @router.get('/documents/{document_id}/versions/{version_id}/source')
 async def source(document_id: str, version_id: str, request: Request, include_archived: bool = False,
            service=Depends(rag), identity=Depends(require_onboarded_identity)):

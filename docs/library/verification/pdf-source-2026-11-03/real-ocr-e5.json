@@ -1,0 +1,17 @@
+{
+  "native_characters": 0,
+  "job_state": "SUCCEEDED",
+  "extraction_state": "ready",
+  "saved_passages": 1,
+  "indexed_vectors": 1,
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "embedding_dimension": 384,
+  "vector_backend": "Qdrant local",
+  "retrieval": "dense only",
+  "returned_sources": 1,
+  "ocr_provenance": true,
+  "warnings_preserved": true,
+  "original_bytes_preserved": true,
+  "hosted_model_calls": 0
+}

@@ -1,0 +1,138 @@
+test_picture_placeholder_is_not_silently_skipped (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_picture_placeholder_is_not_silently_skipped) ... ok
+test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings) ... ok
+test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance (tests.test_study_pipeline_fixes.PlannerScopeTests.test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance) ... /app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+ok
+test_scripted_planner_finds_reads_inspects_then_finishes_without_search (tests.test_study_pipeline_fixes.PlannerScopeTests.test_scripted_planner_finds_reads_inspects_then_finishes_without_search) ... ok
+test_standard_search_does_not_run_hidden_learner_retrieval (tests.test_study_pipeline_fixes.PlannerScopeTests.test_standard_search_does_not_run_hidden_learner_retrieval) ... ok
+test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget) ... ok
+test_initialization_deadline_does_not_start_search_or_extend_turn (tests.test_study_pipeline_fixes.PreparationTests.test_initialization_deadline_does_not_start_search_or_extend_turn) ... ok
+test_slow_read_is_not_automatically_duplicated (tests.test_study_pipeline_fixes.PreparationTests.test_slow_read_is_not_automatically_duplicated) ... ok
+test_images_are_ephemeral_and_reauthorized_every_round (tests.test_study_pipeline_fixes.VisualModelInputTests.test_images_are_ephemeral_and_reauthorized_every_round) ... ok
+test_all_source_extensions_and_filenames_preserve_source (tests.documents.test_readers.DocumentReaderTests.test_all_source_extensions_and_filenames_preserve_source) ... ok
+test_broken_embedded_images_warn_and_keep_native_content (tests.documents.test_readers.DocumentReaderTests.test_broken_embedded_images_warn_and_keep_native_content) ... FAIL
+test_coding_files_keep_every_character_and_language (tests.documents.test_readers.DocumentReaderTests.test_coding_files_keep_every_character_and_language) ... ok
+test_content_signatures_override_misleading_extensions (tests.documents.test_readers.DocumentReaderTests.test_content_signatures_override_misleading_extensions) ... ok
+test_default_public_api_reads_in_the_shared_subprocess (tests.documents.test_readers.DocumentReaderTests.test_default_public_api_reads_in_the_shared_subprocess) ... ok
+test_docx_body_and_table_images_use_vision_with_heading_provenance (tests.documents.test_readers.DocumentReaderTests.test_docx_body_and_table_images_use_vision_with_heading_provenance) ... ok
+test_extensionless_source_still_rejects_binary_and_invalid_utf8 (tests.documents.test_readers.DocumentReaderTests.test_extensionless_source_still_rejects_binary_and_invalid_utf8) ... ok
+test_html_embedded_images_use_vision_once_without_fetching_urls (tests.documents.test_readers.DocumentReaderTests.test_html_embedded_images_use_vision_once_without_fetching_urls) ... ok
+test_html_keeps_head_inline_script_style_pre_and_comments (tests.documents.test_readers.DocumentReaderTests.test_html_keeps_head_inline_script_style_pre_and_comments) ... ok
+test_html_nested_template_and_json_script_are_not_discarded (tests.documents.test_readers.DocumentReaderTests.test_html_nested_template_and_json_script_are_not_discarded) ... ok
+test_invalid_utf8_and_binary_source_files_fail_explicitly (tests.documents.test_readers.DocumentReaderTests.test_invalid_utf8_and_binary_source_files_fail_explicitly) ... ok
+test_isolation_rejects_invalid_child_output (tests.documents.test_readers.DocumentReaderTests.test_isolation_rejects_invalid_child_output) ... ok
+test_isolation_timeout_cancels_child_tree (tests.documents.test_readers.DocumentReaderTests.test_isolation_timeout_cancels_child_tree) ... ok
+test_limits_fail_before_starting_a_reader (tests.documents.test_readers.DocumentReaderTests.test_limits_fail_before_starting_a_reader) ... ok
+test_new_format_can_be_composed_without_rewriting_the_facade (tests.documents.test_readers.DocumentReaderTests.test_new_format_can_be_composed_without_rewriting_the_facade) ... ok
+test_pptx_grouped_pictures_and_native_text_share_slide_provenance (tests.documents.test_readers.DocumentReaderTests.test_pptx_grouped_pictures_and_native_text_share_slide_provenance) ... ok
+test_rag_adapter_only_translates_document_errors (tests.documents.test_readers.DocumentReaderTests.test_rag_adapter_only_translates_document_errors) ... ok
+test_standalone_import_does_not_initialize_consuming_modules (tests.documents.test_readers.DocumentReaderTests.test_standalone_import_does_not_initialize_consuming_modules) ... ok
+test_txt_keeps_previous_paragraph_and_indentation_behavior (tests.documents.test_readers.DocumentReaderTests.test_txt_keeps_previous_paragraph_and_indentation_behavior) ... ok
+test_unavailable_vision_warns_instead_of_losing_native_office_text (tests.documents.test_readers.DocumentReaderTests.test_unavailable_vision_warns_instead_of_losing_native_office_text) ... ok
+test_approval_fields_must_be_actual_booleans (tests.test_tool_recovery.DirectAnswerTests.test_approval_fields_must_be_actual_booleans) ... ok
+test_bad_title_preserves_only_an_approved_general_answer (tests.test_tool_recovery.DirectAnswerTests.test_bad_title_preserves_only_an_approved_general_answer) ... Executing <Task pending name='Task-62' coro=<DirectAnswerTests.test_bad_title_preserves_only_an_approved_general_answer() running at /app/tests/test_tool_recovery.py:319> wait_for=<Task pending name='Task-63' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.853 seconds
+ok
+test_general_answer_and_title_take_one_model_call (tests.test_tool_recovery.DirectAnswerTests.test_general_answer_and_title_take_one_model_call) ... Executing <Task pending name='Task-73' coro=<DirectAnswerTests.test_general_answer_and_title_take_one_model_call() running at /app/tests/test_tool_recovery.py:298> wait_for=<Task pending name='Task-74' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.109 seconds
+ok
+test_identical_parallel_reads_share_one_physical_admission (tests.test_tool_recovery.DirectAnswerTests.test_identical_parallel_reads_share_one_physical_admission) ... Executing <Task pending name='Task-84' coro=<DirectAnswerTests.test_identical_parallel_reads_share_one_physical_admission() running at /app/tests/test_tool_recovery.py:430> wait_for=<Task pending name='Task-85' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.151 seconds
+Executing <Task pending name='Task-89' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:522> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> took 0.203 seconds
+ok
+test_model_can_ask_a_direct_clarification_without_approval_fields (tests.test_tool_recovery.DirectAnswerTests.test_model_can_ask_a_direct_clarification_without_approval_fields) ... Executing <Task pending name='Task-105' coro=<DirectAnswerTests.test_model_can_ask_a_direct_clarification_without_approval_fields() running at /app/tests/test_tool_recovery.py:307> wait_for=<Task pending name='Task-106' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.123 seconds
+ok
+test_oversized_read_rolls_back_undelivered_references (tests.test_tool_recovery.DirectAnswerTests.test_oversized_read_rolls_back_undelivered_references) ... Executing <Task pending name='Task-116' coro=<DirectAnswerTests.test_oversized_read_rolls_back_undelivered_references() running at /app/tests/test_tool_recovery.py:346> wait_for=<Task pending name='Task-117' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.112 seconds
+ok
+test_parallel_reads_preserve_success_and_distinct_call_ids (tests.test_tool_recovery.DirectAnswerTests.test_parallel_reads_preserve_success_and_distinct_call_ids) ... Executing <Task pending name='Task-134' coro=<DirectAnswerTests.test_parallel_reads_preserve_success_and_distinct_call_ids() running at /app/tests/test_tool_recovery.py:406> wait_for=<Task pending name='Task-135' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.145 seconds
+Executing <Task pending name='Task-139' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:522> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> took 0.242 seconds
+ok
+test_plain_provider_answer_does_not_need_keyword_approval (tests.test_tool_recovery.DirectAnswerTests.test_plain_provider_answer_does_not_need_keyword_approval) ... Executing <Task pending name='Task-165' coro=<DirectAnswerTests.test_plain_provider_answer_does_not_need_keyword_approval() running at /app/tests/test_tool_recovery.py:313> wait_for=<Task pending name='Task-166' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.108 seconds
+ok
+test_read_selection_and_retry_need_only_two_model_calls (tests.test_tool_recovery.DirectAnswerTests.test_read_selection_and_retry_need_only_two_model_calls) ... Executing <Task pending name='Task-176' coro=<DirectAnswerTests.test_read_selection_and_retry_need_only_two_model_calls() running at /app/tests/test_tool_recovery.py:361> wait_for=<Task pending name='Task-177' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:452> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.182 seconds
+Executing <Task pending name='Task-181' coro=<RunnableCallable.ainvoke() running at /usr/local/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:522> wait_for=<Task pending name='Task-182' coro=<StructuredTool._arun() running at /usr/local/lib/python3.12/site-packages/langchain_core/tools/structured.py:156> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:422> took 0.139 seconds
+ok
+test_second_invalid_argument_stops_corrections_and_finalizes (tests.test_tool_recovery.DirectAnswerTests.test_second_invalid_argument_stops_corrections_and_finalizes) ... FAIL
+test_exact_discovery_prunes_used_schema_and_catalog_is_bounded (tests.test_tool_recovery.DiscoveryTests.test_exact_discovery_prunes_used_schema_and_catalog_is_bounded) ... ok
+test_full_toolbox_is_available_once_under_admission_budget (tests.test_tool_recovery.DiscoveryTests.test_full_toolbox_is_available_once_under_admission_budget) ... ok
+test_missing_service_never_claims_enabled (tests.test_tool_recovery.DiscoveryTests.test_missing_service_never_claims_enabled) ... ok
+test_answer_reserve_stops_optional_work (tests.test_tool_recovery.ExecutionTests.test_answer_reserve_stops_optional_work) ... ok
+test_authorization_is_not_retried_and_writes_are_unknown (tests.test_tool_recovery.ExecutionTests.test_authorization_is_not_retried_and_writes_are_unknown) ... ok
+test_business_failure_reports_failed_and_recovery_card_is_saved (tests.test_tool_recovery.ExecutionTests.test_business_failure_reports_failed_and_recovery_card_is_saved) ... ok
+test_exhaustion_suppresses_same_dependency (tests.test_tool_recovery.ExecutionTests.test_exhaustion_suppresses_same_dependency) ... ok
+test_http_timeout_retries_and_honors_short_retry_after (tests.test_tool_recovery.ExecutionTests.test_http_timeout_retries_and_honors_short_retry_after) ... ok
+test_internal_validation_is_not_mislabeled_as_invalid_tool_arguments (tests.test_tool_recovery.ExecutionTests.test_internal_validation_is_not_mislabeled_as_invalid_tool_arguments) ... ok
+test_invalid_arguments_count_once_before_execution (tests.test_tool_recovery.ExecutionTests.test_invalid_arguments_count_once_before_execution) ... ok
+test_lifecycle_guard_prevents_write_and_propagates (tests.test_tool_recovery.ExecutionTests.test_lifecycle_guard_prevents_write_and_propagates) ... ok
+test_live_assessment_status_is_not_reused_as_a_cached_snapshot (tests.test_tool_recovery.ExecutionTests.test_live_assessment_status_is_not_reused_as_a_cached_snapshot) ... ok
+test_mutation_invalidates_both_read_caches_and_prefetch (tests.test_tool_recovery.ExecutionTests.test_mutation_invalidates_both_read_caches_and_prefetch) ... ok
+test_read_retries_without_model_and_caches_success (tests.test_tool_recovery.ExecutionTests.test_read_retries_without_model_and_caches_success) ... ok
+test_reporting_outage_preserves_saved_receipt (tests.test_tool_recovery.ExecutionTests.test_reporting_outage_preserves_saved_receipt) ... Activity publication unavailable (RuntimeError)
+ok
+test_reporting_outage_stops_repeated_reports_but_keeps_write_guard (tests.test_tool_recovery.ExecutionTests.test_reporting_outage_stops_repeated_reports_but_keeps_write_guard) ... Activity publication unavailable (RuntimeError)
+ok
+test_retry_after_outside_deadline_is_not_ignored (tests.test_tool_recovery.ExecutionTests.test_retry_after_outside_deadline_is_not_ignored) ... ok
+test_distinct_attachments_do_not_share_a_prefetch_cache_entry (tests.test_tool_recovery.PreparationTests.test_distinct_attachments_do_not_share_a_prefetch_cache_entry) ... Executing <Task pending name='Task-327' coro=<PreparationTests.test_distinct_attachments_do_not_share_a_prefetch_cache_entry() running at /app/tests/test_tool_recovery.py:491> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 0.101 seconds
+ok
+test_general_query_skips_all_unrelated_reads (tests.test_tool_recovery.PreparationTests.test_general_query_skips_all_unrelated_reads) ... ERROR
+test_inaccessible_explicit_source_rejects_without_model_call (tests.test_tool_recovery.PreparationTests.test_inaccessible_explicit_source_rejects_without_model_call) ... ok
+test_required_document_failure_reaches_limited_answer (tests.test_tool_recovery.PreparationTests.test_required_document_failure_reaches_limited_answer) ... ok
+test_existing_sdk_retry_header_reports_without_a_model_call (tests.test_tool_recovery.ProviderTests.test_existing_sdk_retry_header_reports_without_a_model_call) ... ok
+test_model_invocation_obeys_shared_deadline (tests.test_tool_recovery.ProviderTests.test_model_invocation_obeys_shared_deadline) ... ok
+test_real_sdk_retry_is_observed_without_duplicate_retry_owner (tests.test_tool_recovery.ProviderTests.test_real_sdk_retry_is_observed_without_duplicate_retry_owner) ... Executing <Task pending name='Task-369' coro=<ProviderTests.test_real_sdk_retry_is_observed_without_duplicate_retry_owner() running at /app/tests/test_tool_recovery.py:512> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /usr/local/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181] created at /usr/local/lib/python3.12/asyncio/runners.py:100> took 1.031 seconds
+ok
+test_events_and_contextual_assessment_revision (tests.test_tool_recovery.RoutingTests.test_events_and_contextual_assessment_revision) ... ok
+test_explicit_sources_and_attachments_deny_general_shortcut (tests.test_tool_recovery.RoutingTests.test_explicit_sources_and_attachments_deny_general_shortcut) ... ok
+test_only_general_queries_are_candidates (tests.test_tool_recovery.RoutingTests.test_only_general_queries_are_candidates) ... ok
+test_attachment_selection_preserves_current_uploads_and_named_older_files (tests.test_chat_images.ChatImageTests.test_attachment_selection_preserves_current_uploads_and_named_older_files) ... ok
+test_chat_passes_query_and_three_images_directly_to_same_model (tests.test_chat_images.ChatImageTests.test_chat_passes_query_and_three_images_directly_to_same_model) ... ok
+test_direct_image_marker_does_not_poison_ocr_cache_or_library (tests.test_chat_images.ChatImageTests.test_direct_image_marker_does_not_poison_ocr_cache_or_library) ... ok
+test_earlier_upload_is_model_selected_and_owner_scoped (tests.test_chat_images.ChatImageTests.test_earlier_upload_is_model_selected_and_owner_scoped) ... ok
+test_image_attachment_references_the_unified_original_without_ocr (tests.test_chat_images.ChatImageTests.test_image_attachment_references_the_unified_original_without_ocr) ... ok
+test_invalid_and_oversized_images_reject_before_storage (tests.test_chat_images.ChatImageTests.test_invalid_and_oversized_images_reject_before_storage) ... ok
+test_library_replay_revalidates_deletion_and_context_changes (tests.test_chat_images.ChatImageTests.test_library_replay_revalidates_deletion_and_context_changes) ... ok
+test_ocr_fallback_replaces_only_rejected_request_and_keeps_conversation_objects (tests.test_chat_images.ChatImageTests.test_ocr_fallback_replaces_only_rejected_request_and_keeps_conversation_objects) ... ok
+test_owned_image_preparation_skips_ocr_and_documents_still_route_to_reader (tests.test_chat_images.ChatImageTests.test_owned_image_preparation_skips_ocr_and_documents_still_route_to_reader) ... ok
+test_preparation_accepts_rasters_bounds_dimensions_and_preserves_original (tests.test_chat_images.ChatImageTests.test_preparation_accepts_rasters_bounds_dimensions_and_preserves_original) ... ok
+test_three_image_limit_is_enforced_before_binding (tests.test_chat_images.ChatImageTests.test_three_image_limit_is_enforced_before_binding) ... ok
+test_three_images_fit_the_default_tool_chat_budget (tests.test_chat_images.ChatImageTests.test_three_images_fit_the_default_tool_chat_budget) ... ok
+test_unrelated_followup_does_not_resend_old_screenshot (tests.test_chat_images.ChatImageTests.test_unrelated_followup_does_not_resend_old_screenshot) ... ok
+
+======================================================================
+ERROR: test_general_query_skips_all_unrelated_reads (tests.test_tool_recovery.PreparationTests.test_general_query_skips_all_unrelated_reads)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_tool_recovery.py", line 468, in test_general_query_skips_all_unrelated_reads
+    self.assertEqual(scope['_tool_budget'].calls, 2)
+                     ~~~~~^^^^^^^^^^^^^^^^
+KeyError: '_tool_budget'
+
+======================================================================
+FAIL: test_broken_embedded_images_warn_and_keep_native_content (tests.documents.test_readers.DocumentReaderTests.test_broken_embedded_images_warn_and_keep_native_content)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/app/tests/documents/test_readers.py", line 156, in test_broken_embedded_images_warn_and_keep_native_content
+    self.assertEqual(len(result.visuals),1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_second_invalid_argument_stops_corrections_and_finalizes (tests.test_tool_recovery.DirectAnswerTests.test_second_invalid_argument_stops_corrections_and_finalizes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_tool_recovery.py", line 385, in test_second_invalid_argument_stops_corrections_and_finalizes
+    self.assertEqual(scope.get('_tool_budget', ToolBudget()).calls, 0)
+AssertionError: 2 != 0
+
+----------------------------------------------------------------------
+Ran 79 tests in 60.548s
+
+FAILED (failures=2, errors=1)

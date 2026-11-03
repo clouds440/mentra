@@ -9,7 +9,7 @@ from app.documents.isolation import read_isolated
 from app.documents.ports import FormatReader
 from app.documents.schemas import DocumentContent, DocumentPayload
 
-READER_VERSION = 'documents-native-vision-v3'
+READER_VERSION = 'documents-native-vision-v4'
 
 
 from app.core.logging import workflow_logger
@@ -63,7 +63,7 @@ class DocumentReader:
         media_type = self.detect(path, filename or path.name)
         payload = self.parse(path, media_type, max_pages, timeout)
         kind = next(kind for kind, media in MEDIA.items() if media == media_type)
-        return DocumentContent(kind, media_type, payload['blocks'], payload['warnings'], self.version)
+        return DocumentContent(kind, media_type, payload['blocks'], payload['warnings'], self.version,payload.get('visuals',[]))
 
     def parse(self, path: Path, media_type: str, max_pages: int = 200, timeout: int = 120) -> DocumentPayload:
         self._limits(max_pages, timeout)
@@ -85,6 +85,30 @@ class DocumentReader:
         if engine is None or not engine.available():
             raise DocumentReadError('This file format is unsupported on this server.')
         result = engine.read(Path(path), kind, max_pages)
+        # Different embedded encodings can normalize to identical raster bytes.
+        # Persist one file while retaining every source association.
+        unique = {}
+        for visual in result.get('visuals', []):
+            existing = unique.get(visual['sha256'])
+            if existing:
+                existing['locations'].extend(point for point in visual['locations'] if point not in existing['locations'])
+            else:
+                unique[visual['sha256']] = visual
+        if 'visuals' in result:
+            result['visuals'] = list(unique.values())
+        for visual in result.get('visuals',[]):
+            refs=set()
+            for location in visual['locations']:
+                for index,block in enumerate(result['blocks']):
+                    if (location.get('block')==index or
+                        any(location.get(key) is not None and location[key]==block.get(key) for key in ('page','slide'))):
+                        refs.add(index)
+            if not refs or not any(result['blocks'][index]['text'].strip() for index in refs):
+                location=visual['locations'][0] if visual['locations'] else {}
+                refs.add(len(result['blocks']))
+                result['blocks'].append(dict(text='Visual image in this source. Open the original diagram to inspect its graphical content.',
+                    method='visual_reference',**{key:location[key] for key in ('page','slide') if key in location}))
+            visual['block_refs']=sorted(refs)
         if sum(len(block['text']) for block in result['blocks']) > 5_000_000:
             raise DocumentReadError('Extracted text exceeds the processing limit. Split this material into smaller files.')
         if any('\x00' in block['text'] for block in result['blocks']):

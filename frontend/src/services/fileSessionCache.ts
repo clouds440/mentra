@@ -56,6 +56,7 @@ subscribeApiMutations((path, method) => {
   if (/^\/api\/v1\/events\/[^/]+$/.test(route)) invalidate(route + '/calendar');
   if (method !== 'DELETE' && method !== 'PATCH') return;
   if (/^\/api\/v1\/(documents|chat-attachments|files)\/[^/]+$/.test(route)) invalidate(route + '/');
+  if (/^\/api\/v1\/documents\/[^/]+$/.test(route)) invalidate('/api/v1/rag/visuals/');
   const conversation = /^\/api\/v1\/conversations\/([^/]+)$/.exec(route);
   // Chat source URLs carry the conversation as a query parameter.
   if (conversation) { invalidate('/api/v1/chat-attachments/'); }

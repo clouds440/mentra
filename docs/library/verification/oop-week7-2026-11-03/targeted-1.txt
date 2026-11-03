@@ -1,0 +1,38 @@
+test_picture_placeholder_is_not_silently_skipped (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_picture_placeholder_is_not_silently_skipped) ... ok
+test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings) ... ok
+test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance (tests.test_study_pipeline_fixes.PlannerScopeTests.test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance) ... /app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+ok
+test_standard_search_does_not_run_hidden_learner_retrieval (tests.test_study_pipeline_fixes.PlannerScopeTests.test_standard_search_does_not_run_hidden_learner_retrieval) ... ok
+test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget) ... ok
+test_initialization_deadline_does_not_start_search_or_extend_turn (tests.test_study_pipeline_fixes.PreparationTests.test_initialization_deadline_does_not_start_search_or_extend_turn) ... ok
+test_slow_read_is_not_automatically_duplicated (tests.test_study_pipeline_fixes.PreparationTests.test_slow_read_is_not_automatically_duplicated) ... ok
+test_images_are_ephemeral_and_reauthorized_every_round (tests.test_study_pipeline_fixes.VisualModelInputTests.test_images_are_ephemeral_and_reauthorized_every_round) ... ok
+test_blank_pdf_is_failed_not_empty_ready (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_blank_pdf_is_failed_not_empty_ready) ... ok
+test_failed_reindex_keeps_published_passages_and_exposes_latest_error (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_failed_reindex_keeps_published_passages_and_exposes_latest_error) ... ok
+test_image_only_pdf_is_ocr_read_persisted_and_retrievable (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_image_only_pdf_is_ocr_read_persisted_and_retrievable) ... ok
+test_ocr_failure_reports_error_on_unpublished_version (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_ocr_failure_reports_error_on_unpublished_version) ... ok
+test_older_failed_version_retains_its_own_status_and_error (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_older_failed_version_retains_its_own_status_and_error) ... ok
+test_pending_version_reports_processing (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_pending_version_reports_processing) ... ok
+test_deadline_covers_pipe_submission_to_nonreading_worker (tests.test_embedding_process.EmbeddingProcessTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_long_inputs_use_bounded_token_batches_in_original_order (tests.test_embedding_process.EmbeddingProcessTests.test_long_inputs_use_bounded_token_batches_in_original_order) ... ok
+test_native_timeout_is_killed_and_worker_restarts_with_same_identity (tests.test_embedding_process.EmbeddingProcessTests.test_native_timeout_is_killed_and_worker_restarts_with_same_identity) ... ok
+test_bake_pins_revision_downloads_tokenizer_and_records_identity (tests.rag.test_reranker.RerankerBakeTests.test_bake_pins_revision_downloads_tokenizer_and_records_identity) ... ok
+test_bake_rejects_missing_weights (tests.rag.test_reranker.RerankerBakeTests.test_bake_rejects_missing_weights) ... ok
+test_busy_caller_cannot_overwrite_another_threads_diagnostics (tests.rag.test_reranker.RerankerTests.test_busy_caller_cannot_overwrite_another_threads_diagnostics) ... ok
+test_deadline_covers_pipe_submission_to_nonreading_worker (tests.rag.test_reranker.RerankerTests.test_deadline_covers_pipe_submission_to_nonreading_worker) ... ok
+test_empty_and_closed_requests_do_not_submit_model_work (tests.rag.test_reranker.RerankerTests.test_empty_and_closed_requests_do_not_submit_model_work) ... ok
+test_fitting_passages_are_not_repeatedly_truncated_or_tokenized (tests.rag.test_reranker.RerankerTests.test_fitting_passages_are_not_repeatedly_truncated_or_tokenized) ... ok
+test_invalid_or_missing_scores_fall_back (tests.rag.test_reranker.RerankerTests.test_invalid_or_missing_scores_fall_back) ... ok
+test_late_support_is_scored_and_window_overflow_is_explicit (tests.rag.test_reranker.RerankerTests.test_late_support_is_scored_and_window_overflow_is_explicit) ... ok
+test_long_passages_still_obey_exact_pair_budget (tests.rag.test_reranker.RerankerTests.test_long_passages_still_obey_exact_pair_budget) ... ok
+test_missing_assets_use_cooldown_without_starting_worker (tests.rag.test_reranker.RerankerTests.test_missing_assets_use_cooldown_without_starting_worker) ... ok
+test_model_load_is_cpu_local_only_and_reused_with_plain_pairs (tests.rag.test_reranker.RerankerTests.test_model_load_is_cpu_local_only_and_reused_with_plain_pairs) ... ok
+test_native_hang_is_killed_and_next_request_restarts (tests.rag.test_reranker.RerankerTests.test_native_hang_is_killed_and_next_request_restarts) ... ok
+test_revision_mismatch_falls_back_without_loading_model (tests.rag.test_reranker.RerankerTests.test_revision_mismatch_falls_back_without_loading_model) ... ok
+test_warmup_reuses_worker_for_first_real_request (tests.rag.test_reranker.RerankerTests.test_warmup_reuses_worker_for_first_real_request) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 82.996s
+
+OK

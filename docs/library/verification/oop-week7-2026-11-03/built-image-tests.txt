@@ -1,0 +1,28 @@
+test_picture_placeholder_is_not_silently_skipped (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_picture_placeholder_is_not_silently_skipped) ... ok
+test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings (tests.test_study_pipeline_fixes.PicturePlaceholderTests.test_text_only_deck_does_not_claim_unread_speaker_notes_or_drawings) ... ok
+test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance (tests.test_study_pipeline_fixes.PlannerScopeTests.test_diagram_upload_read_retrieve_owner_archive_and_superseded_provenance) ... /app/app/rag/qdrant_store.py:128: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  self._get_client().create_payload_index(self.collection_name, field, m.PayloadSchemaType.KEYWORD, wait=True)
+ok
+test_scripted_planner_finds_reads_inspects_then_finishes_without_search (tests.test_study_pipeline_fixes.PlannerScopeTests.test_scripted_planner_finds_reads_inspects_then_finishes_without_search) ... ok
+test_standard_search_does_not_run_hidden_learner_retrieval (tests.test_study_pipeline_fixes.PlannerScopeTests.test_standard_search_does_not_run_hidden_learner_retrieval) ... ok
+test_visual_integrity_and_quota_fail_before_publication (tests.test_study_pipeline_fixes.PlannerScopeTests.test_visual_integrity_and_quota_fail_before_publication) ... ok
+No new upgrade operations detected.
+test_visual_migration_roundtrip_and_retained_data_guard (tests.test_study_pipeline_fixes.PlannerScopeTests.test_visual_migration_roundtrip_and_retained_data_guard) ... ok
+test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget) ... ok
+test_initialization_deadline_does_not_start_search_or_extend_turn (tests.test_study_pipeline_fixes.PreparationTests.test_initialization_deadline_does_not_start_search_or_extend_turn) ... ok
+test_slow_read_is_not_automatically_duplicated (tests.test_study_pipeline_fixes.PreparationTests.test_slow_read_is_not_automatically_duplicated) ... ok
+test_checkpoint_retains_only_visual_ids (tests.test_study_pipeline_fixes.VisualModelInputTests.test_checkpoint_retains_only_visual_ids) ... ok
+test_full_citation_registry_does_not_silently_skip_read_passages (tests.test_study_pipeline_fixes.VisualModelInputTests.test_full_citation_registry_does_not_silently_skip_read_passages) ... ok
+test_images_are_ephemeral_and_reauthorized_every_round (tests.test_study_pipeline_fixes.VisualModelInputTests.test_images_are_ephemeral_and_reauthorized_every_round) ... ok
+test_provider_rejected_source_diagram_falls_back_truthfully_without_replaying_tools (tests.test_study_pipeline_fixes.VisualModelInputTests.test_provider_rejected_source_diagram_falls_back_truthfully_without_replaying_tools) ... ok
+test_blank_pdf_is_failed_not_empty_ready (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_blank_pdf_is_failed_not_empty_ready) ... ok
+test_failed_reindex_keeps_published_passages_and_exposes_latest_error (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_failed_reindex_keeps_published_passages_and_exposes_latest_error) ... ok
+test_image_only_pdf_is_ocr_read_persisted_and_retrievable (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_image_only_pdf_is_ocr_read_persisted_and_retrievable) ... ok
+test_ocr_failure_reports_error_on_unpublished_version (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_ocr_failure_reports_error_on_unpublished_version) ... ok
+test_older_failed_version_retains_its_own_status_and_error (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_older_failed_version_retains_its_own_status_and_error) ... ok
+test_pending_version_reports_processing (tests.rag.test_pdf_source_status.PDFSourceStatusTests.test_pending_version_reports_processing) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 25.590s
+
+OK

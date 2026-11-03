@@ -32,7 +32,7 @@ class DOCXReader:
                 if part is None:
                     warnings.append('An embedded document image could not be located; inspect the original.')
                     continue
-                text = embedded.read(part.blob, warnings, 'in this document')
+                text = embedded.read(part.blob, warnings, 'in this document',block=len(blocks)-1)
                 if text and text.casefold() not in paragraph.text.casefold():
                     blocks.append(dict(text=text, heading_path=heading[:], method='image_ocr'))
                     warnings.append('Document image text was read with English OCR; verify handwriting and equations.')
@@ -55,4 +55,4 @@ class DOCXReader:
                         for paragraph in cell.paragraphs:
                             paragraph_images(paragraph)
         warnings.append('Headers, footers, comments, drawing text and handwritten annotations may be incomplete; inspect the original.')
-        return dict(blocks=blocks, warnings=warnings)
+        return dict(blocks=blocks, warnings=warnings,visuals=embedded.visuals)

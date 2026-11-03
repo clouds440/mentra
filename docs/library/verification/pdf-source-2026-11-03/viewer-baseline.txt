@@ -1,0 +1,176 @@
+[WebServer] (node:7840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:14956) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening (16.7s)
+(node:11248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  2 tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content (7.6s)
+(node:21156) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  3 tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer (7.7s)
+(node:20704) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  4 tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content (7.7s)
+
+
+  1) tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' })
+    Expected substring: "Scanned body alpha was recovered with OCR."
+    Received string:    "Library sourceScanned lecturescanned.pdfSource contentDownload originalExtracted contentOriginal fileNo extracted passages are available for this version. Open the original file to inspect it."
+    Timeout: 12000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: 'Source: Scanned lecture' }) with timeout 12000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' })
+        28 × locator resolved to <dialog open="" data-layout="viewer" aria-label="Source: Scanned lecture" class="dialog-frame source-dialog max-w-4xl">…</dialog>
+           - unexpected value "Library sourceScanned lecturescanned.pdfSource contentDownload originalExtracted contentOriginal fileNo extracted passages are available for this version. Open the original file to inspect it."
+
+
+      34 |   const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+      35 |   state.state = 'ready';
+    > 36 |   await expect(viewer).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
+         |                        ^
+      37 |   await expect(viewer.getByText('Extraction notes (1)',{exact:true})).toBeVisible();
+      38 |   await viewer.getByText('Extraction notes (1)',{exact:true}).click();
+      39 |   await expect(viewer).toContainText('Some text on page 1 may be inaccurate or missing.');
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:36:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-so-eea8f-and-notes-without-reopening\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-a-so-eea8f-and-notes-without-reopening\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-so-eea8f-and-notes-without-reopening\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-a-so-eea8f-and-notes-without-reopening\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('status')
+    Expected substring: "Reading and indexing"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('status') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('status')
+
+
+      43 |   await sourceFixture(page);
+      44 |   const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+    > 45 |   await expect(viewer.getByRole('status')).toContainText('Reading and indexing');
+         |                                            ^
+      46 |   await expect(viewer).not.toContainText('No extracted passages');
+      47 | });
+      48 |
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:45:44
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-an-u-b3bd9-er-than-claiming-no-content\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-an-u-b3bd9-er-than-claiming-no-content\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-an-u-b3bd9-er-than-claiming-no-content\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-an-u-b3bd9-er-than-claiming-no-content\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+    Expected substring: "server OCR tools are unavailable"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+
+
+      50 |   await sourceFixture(page,'failed');
+      51 |   const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+    > 52 |   await expect(viewer.getByRole('alert')).toContainText('server OCR tools are unavailable');
+         |                                           ^
+      53 |   await expect(viewer.getByRole('button',{name:'Download original'})).toBeEnabled();
+      54 | });
+      55 |
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:52:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-OCR--3054c-le-inside-the-source-viewer\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-OCR--3054c-le-inside-the-source-viewer\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-OCR--3054c-le-inside-the-source-viewer\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-OCR--3054c-le-inside-the-source-viewer\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+    Expected substring: "temporarily unavailable"
+    Received string:    "Mentra could not complete this request."
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: 'Source: Scanned lecture' }).getByRole('alert')
+        14 × locator resolved to <p role="alert" class="mb-4 text-sm text-danger">Mentra could not complete this request.</p>
+           - unexpected value "Mentra could not complete this request."
+
+
+      57 |   await sourceFixture(page,'ready',true);
+      58 |   const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+    > 59 |   await expect(viewer.getByRole('alert')).toContainText('temporarily unavailable');
+         |                                           ^
+      60 |   await expect(viewer).not.toContainText('No extracted passages');
+      61 |   await expect(viewer.getByRole('button',{name:'Refresh content'})).toBeVisible();
+      62 | });
+        at C:\Users\Xclouds\Documents\mentra\frontend\tests\renovation-pdf-source.spec.ts:59:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\renovation-pdf-source-a-pa-feaa6-raction-produced-no-content\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening 
+    tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content 
+    tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer 
+    tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content 

@@ -1,0 +1,23 @@
+[WebServer] (node:21344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 14 tests using 1 worker
+
+(node:22032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\renovation-library.spec.ts:22:73 › library and upload layout at 390px in light (676ms)
+  ok  2 tests\renovation-library.spec.ts:22:73 › library and upload layout at 390px in dark (681ms)
+  ok  3 tests\renovation-library.spec.ts:22:73 › library and upload layout at 1440px in light (626ms)
+  ok  4 tests\renovation-library.spec.ts:22:73 › library and upload layout at 1440px in dark (711ms)
+  ok  5 tests\renovation-library.spec.ts:42:1 › existing and new context uploads keep the canonical request workflow (873ms)
+  ok  6 tests\renovation-library.spec.ts:62:1 › dropping files supports upload and rejects oversized and multi-file drops (724ms)
+  ok  7 tests\renovation-library.spec.ts:77:1 › failed upload retains the new context, file and retry identity without uploading twice (564ms)
+  ok  8 tests\renovation-pdf-source.spec.ts:32:1 › a source opened before OCR completes refreshes passages and notes without reopening (3.8s)
+  ok  9 tests\renovation-pdf-source.spec.ts:42:1 › an unpublished source shows processing rather than claiming no content (423ms)
+  ok 10 tests\renovation-pdf-source.spec.ts:49:1 › OCR failure remains actionable inside the source viewer (442ms)
+  ok 11 tests\renovation-pdf-source.spec.ts:56:1 › a passage read error never also claims that extraction produced no content (522ms)
+  ok 12 tests\renovation-pdf-source.spec.ts:67:1 › failure of a newer reindex does not hide previously published content (3.8s)
+  ok 13 tests\renovation-pdf-source.spec.ts:75:1 › an indexed source with missing passages reports a load inconsistency (3.8s)
+  ok 14 tests\renovation-pdf-source.spec.ts:83:1 › unsaved title edits cannot freeze source processing progress (3.5s)
+
+  14 passed (23.6s)

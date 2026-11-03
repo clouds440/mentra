@@ -1,0 +1,31 @@
+EXPECTED_BASELINE_FAILURE_CONFIRMED: frozen 51924b1; 250ms cold start; 100ms query budget; no LLM calls
+test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget) ... FAIL
+
+======================================================================
+FAIL: test_cold_preparation_has_separate_bounded_budget (tests.test_study_pipeline_fixes.PreparationTests.test_cold_preparation_has_separate_bounded_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/tests/test_study_pipeline_fixes.py", line 98, in test_cold_preparation_has_separate_bounded_budget
+    self.assertEqual(result, {"state": "ok"})
+AssertionError: {'outcome': 'unavailable', 'code': 'TOOL_TI[223 chars]None} != {'state': 'ok'}
++ {'state': 'ok'}
+- {'argument_errors': None,
+-  'attempts': 1,
+-  'category': 'transient_dependency',
+-  'code': 'TOOL_TIMEOUT',
+-  'effect_certainty': 'read_only',
+-  'outcome': 'unavailable',
+-  'reason': 'The service could not complete this request in time.',
+-  'retryable': True,
+-  'task_impact': 'optional'}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.228s
+
+FAILED (failures=1)

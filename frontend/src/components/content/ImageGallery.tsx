@@ -1,5 +1,5 @@
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, ImageOff, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { Dialog, IconButton } from '../ui';
 import { publicImageUrl } from '../../lib/imageUrls';
 
@@ -29,16 +29,14 @@ export function ImageGallery({ images, children }: { images: GalleryImage[]; chi
   const move = (offset: number) => { direction.current = Math.sign(offset); setSelected(current => current === null ? null : Math.max(0, Math.min(images.length - 1, current + offset))); stage.current?.focus({ preventScroll: true }); };
   const source = image?.source ? publicImageUrl(image.source, true) : null;
   return <GalleryContext.Provider value={context}>{children}
-    {image && index !== null && <Dialog open className="visual-fullscreen image-viewer" aria-label={`Expanded image: ${imageCaption(image)}`} onDismiss={() => setSelected(null)}
+    {image && index !== null && <Dialog closeLabel="Close image viewer" open layout="viewer" className="visual-fullscreen image-viewer" aria-label={`Expanded image: ${imageCaption(image)}`} onDismiss={() => setSelected(null)}
+      heading={<span role="status" aria-live="polite" className="text-xs tabular-nums">Image {index + 1} of {images.length}</span>}
+      headerActions={images.length > 1 && <><IconButton aria-label="Previous image" disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={20} /></IconButton><IconButton aria-label="Next image" disabled={index === images.length - 1} onClick={() => move(1)}><ChevronRight size={20} /></IconButton></>}
       onKeyDown={event => {
         if (event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); move(event.key === 'ArrowLeft' ? -1 : 1); }
         if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); setSelected(event.key === 'Home' ? 0 : images.length - 1); stage.current?.focus({ preventScroll: true }); }
       }}>
-      <div className="image-viewer-toolbar"><span role="status" aria-live="polite" className="text-xs tabular-nums">Image {index + 1} of {images.length}</span><div className="flex items-center gap-2">
-        {images.length > 1 && <><IconButton aria-label="Previous image" disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={20} /></IconButton><IconButton aria-label="Next image" disabled={index === images.length - 1} onClick={() => move(1)}><ChevronRight size={20} /></IconButton></>}
-        <IconButton aria-label="Close image viewer" onClick={() => setSelected(null)}><X size={20} /></IconButton>
-      </div></div>
       <div className="image-viewer-stage" ref={stage} tabIndex={-1} role="group" aria-label="Image preview" data-direction={direction.current > 0 ? 'next' : 'previous'} onPointerDown={event => { if (event.pointerType === 'touch' && event.isPrimary) start.current = { x: event.clientX, y: event.clientY }; }}
         onPointerCancel={() => { start.current = undefined; }} onPointerUp={event => {
           const from = start.current; start.current = undefined;

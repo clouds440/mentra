@@ -148,8 +148,8 @@ class ToolExecutor:
 
     async def execute(self, tool, arguments, *, required=False, max_attempts=None, timeout=None):
         started = monotonic()
-        max_attempts = max_attempts or settings.tool_read_max_attempts
-        timeout = timeout or settings.tool_read_timeout_seconds
+        max_attempts = max_attempts or (tool.metadata or {}).get('read_max_attempts') or settings.tool_read_max_attempts
+        timeout = timeout or (tool.metadata or {}).get('read_timeout') or settings.tool_read_timeout_seconds
         name = tool.name
         web = name in ('web_search', 'web_research')
         if web:
@@ -189,6 +189,33 @@ class ToolExecutor:
         label = LABELS.get(name, 'Processing your request')
         call_id = current_tool_call.get()
         await self.publisher.emit(step, 'planned', label, tool_name=name, tool_call_id=call_id)
+        prepare = (tool.metadata or {}).get('prepare')
+        if prepare is not None:
+            try:
+                tool.args_schema.model_validate(arguments)
+            except ValidationError:
+                prepare = None  # Invalid calls must not initialize local models.
+        if current_budget.get() and current_budget.get().remaining <= current_budget.get().answer_reserve:
+            prepare = None
+        if prepare is not None and not write:
+            envelope = current_budget.get()
+            preparation_limit = min(float((tool.metadata or {}).get('preparation_timeout',30)),
+                envelope.tool_remaining if envelope else 75)
+            cold_started = monotonic()
+            try:
+                async with workflow_logger.step('app.langchain.tool_execution','tool.initialization',input=dict(tool_name=name)):
+                    await asyncio.wait_for(prepare(),max(.001,preparation_limit))
+            except Exception as error:
+                if isinstance(error,AppError) and error.code in LIFECYCLE_CODES: raise
+                receipt=failure(error,attempts=0,required=required).model_dump()
+                if isinstance(error,TimeoutError): receipt.update(code='TOOL_INITIALIZATION_TIMEOUT',reason='Local model initialization took too long. Retry shortly.')
+                self.failed[key]=receipt
+                self.outages[domain]=receipt
+                remember_failure(self.scope,name,receipt)
+                await self.publisher.emit(step,'failed',receipt['reason'],tool_name=name,error_code=receipt['code'])
+                return project(receipt)
+            finally:
+                workflow_logger.event('tool.initialization_timing',tool_name=name,initialization_ms=round((monotonic()-cold_started)*1000,3))
         attempts = 0
         for attempt in range(1, (1 if write else max_attempts) + 1):
             attempts = attempt

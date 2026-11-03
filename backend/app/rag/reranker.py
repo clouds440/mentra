@@ -38,6 +38,7 @@ class LocalReranker:
         self.path, self.timeout = Path(path), timeout
         self._model = None
         self._process = self._connection = None
+        self._ready = False
         self._target = worker_target
         self._lock = Lock()
         self._closed = False
@@ -192,6 +193,7 @@ class LocalReranker:
                 self._stop()
                 self._retry_after = time.monotonic() + self.cooldown_seconds
                 return None
+            self._ready = True
             return scores
         except Exception:
             self._stop()
@@ -204,6 +206,8 @@ class LocalReranker:
 
     def warmup(self):
         """Bounded optional local warmup; failure leaves retrieval fallback intact."""
+        if self._ready and self._process is not None and self._process.is_alive() and not self._closed:
+            return True
         return self.rank('local model readiness', ['local inference readiness']) is not None
 
     def _spawn(self):
@@ -216,6 +220,7 @@ class LocalReranker:
         child.close()
 
     def _stop(self, graceful=False):
+        self._ready = False
         if self._process is not None:
             if graceful and self._process.is_alive():
                 try:
