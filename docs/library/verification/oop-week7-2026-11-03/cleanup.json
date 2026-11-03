@@ -1,0 +1,15 @@
+{
+  "removed_test_container": "mentra-oop-tests-20261103",
+  "removed_test_network": "mentra-oop-verify-20261103",
+  "removed_image_tags": [
+    "mentra-backend:embedding-finished-20261103",
+    "mentra-backend:embedding-ready-20261103",
+    "mentra-backend:embedding-accepted-20261103",
+    "mentra-backend:embedding-release-20261103",
+    "mentra-backend:embedding-completed-20261103",
+    "mentra-backend:embedding-verified-20261103",
+    "mentra-backend:embedding-final-20261103",
+    "mentra-backend:embedding-complete-20261103",
+    "mentra-backend:embedding-20261103"
+  ]
+}

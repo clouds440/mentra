@@ -1,0 +1,30 @@
+{
+  "schema": "20261103_0041",
+  "generation_state": "READY",
+  "ingestion_state": "SUCCEEDED",
+  "ingestion_attempts": 1,
+  "stored_chunks": 51,
+  "exact_vectors": 51,
+  "visual_files": 4,
+  "ocr_slides": [
+    8,
+    24,
+    25,
+    26
+  ],
+  "image_integrity_verified": true,
+  "original_generation_citation_accessible": true,
+  "original_bytes_preserved": true,
+  "ordered_read_ms": 2395.6,
+  "outline_sections": 26,
+  "body_chunks": 27,
+  "next_offset": null,
+  "all_diagrams_in_read": true,
+  "receipt_bytes": 19925,
+  "receipt_tokens": 5085,
+  "source_delivery_status": 200,
+  "range_delivery_status": 206,
+  "other_owner_denied_status": 404,
+  "route_identity_injected_in_isolated_test_app": true,
+  "live_llm_calls": 0
+}

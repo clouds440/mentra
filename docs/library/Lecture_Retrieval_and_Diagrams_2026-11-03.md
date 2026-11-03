@@ -93,3 +93,5 @@ No new live chat was generated, so **no new end-to-end answer time or live answe
 6. Record deployment and targeted repair results in a new evidence receipt. Keep historical audits, failed intermediate runs and prior manifests unchanged.
 
 Rollback application images to the prior known image revision while keeping the additive table. Do not downgrade 0041 after visuals have been stored: its guard intentionally refuses to destroy retained provenance. Stop ingestion before any full database restore; a backup restore also rolls back later user work and is a recovery operation, not routine application rollback. Original Office/PDF files and earlier generations are preserved by this implementation.
+
+[Deployment and repaired-source evidence](verification/oop-week7-2026-11-03/DEPLOYMENT.md) records the completed rollout, original/hash checks, all four retained diagrams, and measured reads/searches from the final images.

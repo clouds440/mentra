@@ -1,0 +1,116 @@
+{
+  "status": "ready",
+  "service": "mentra-api",
+  "checks": {
+    "database": {
+      "status": "ok"
+    },
+    "workers": {
+      "status": "ok",
+      "queues": [
+        {
+          "queue": "assessment_attempt",
+          "role": "assessment.grading",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "assessment_generation_job",
+          "role": "assessment.generation",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "assessment_source_job",
+          "role": "assessment.source",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "assessment_evidence_job",
+          "role": "assessment.evidence",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "chat_evidence_job",
+          "role": "chat.evidence",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "rag_job",
+          "role": "rag.ingestion",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "hm_memory_summary_job",
+          "role": "summarizer",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "chat_summary_job",
+          "role": "summarizer",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "hm_memory_capture_job",
+          "role": "summarizer",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "hm_event_reminder",
+          "role": "events.reminders",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        },
+        {
+          "queue": "file_asset",
+          "role": "files.cleanup",
+          "pending": 0,
+          "oldest_seconds": 0,
+          "active_leases": 0,
+          "status": "idle"
+        }
+      ]
+    },
+    "ai": {
+      "status": "ok"
+    },
+    "embedding": {
+      "status": "ok",
+      "loaded": true,
+      "model_name": "intfloat/multilingual-e5-small",
+      "model_version": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "dimension": 384
+    },
+    "qdrant": {
+      "status": "ok",
+      "collection": "mentra-study-materials"
+    }
+  }
+}
