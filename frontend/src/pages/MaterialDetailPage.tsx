@@ -12,17 +12,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, Input, Select, FormField, buttonStyles } from '../components/ui';
 import { MaterialUpload } from '../components/library/MaterialUpload';
-import { SourceViewer, type SourceStatus } from '../components/library/SourceViewer';
+import { MaterialSourceTab } from '../components/library/MaterialSourceTab';
+import { useSidePanelActions } from '../components/workspace/sidePanelState';
 import { getMaterial, getCapabilities, listContexts, listVersions, updateMaterial, deleteMaterial, reindexMaterial, retryJob, pendingJob, materialError, tagMaterial } from '../services/rag';
-import type { LearningContext, MaterialDocument, MaterialVersion, RAGCapabilities, SourceReference } from '../types/rag';
+import type { LearningContext, MaterialDocument, MaterialVersion, RAGCapabilities } from '../types/rag';
 
 export function MaterialDetailPage() {
   const { documentId = '' } = useParams(); const navigate = useNavigate();
   const [doc, setDoc] = useState<MaterialDocument>(); const [contexts, setContexts] = useState<LearningContext[]>([]);
-  const [sourceDocument, setSourceDocument] = useState<MaterialDocument>();
+  const panel = useSidePanelActions();
   const [caps, setCaps] = useState<RAGCapabilities>(); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(''); const [selection, setSelection] = useState<string[]>([]);
-  const [source, setSource] = useState<SourceReference>(); const [reload, setReload] = useState(0); const [consent, setConsent] = useState(false);
+  const [reload, setReload] = useState(0); const [consent, setConsent] = useState(false);
   const [conceptLabels, setConceptLabels] = useState(''); const [tagNotice, setTagNotice] = useState('');
   const [olderVersions, setOlderVersions] = useState<MaterialVersion[]>([]); const [loadingVersions, setLoadingVersions] = useState(false);
   const controllerRef = useRef<AbortController>();
@@ -46,7 +47,7 @@ export function MaterialDetailPage() {
         const isProcessing = !!pendingJob(data);
         if (processing.current && !isProcessing) invalidatePageCache(['documents', 'learning'], true);
         processing.current = isProcessing;
-        latestDocument.current = data; setSourceDocument(data); setContexts(ctx); setCaps(capabilities);
+        latestDocument.current = data; setContexts(ctx); setCaps(capabilities);
         if (dirty.current && revision.current !== `${data.id}:${data.revision}`) setConflict(true);
         else {
           setDoc(data);
@@ -57,7 +58,7 @@ export function MaterialDetailPage() {
     }
     void load(); return () => { abort.abort(); if (request.current === abort) request.current = undefined; };
   }, [documentId, reload]);
-  useEffect(() => { setSource(undefined); setOlderVersions([]); setConsent(false); }, [documentId]);
+  useEffect(() => { setOlderVersions([]); setConsent(false); }, [documentId]);
   async function action(name: string, work: () => Promise<unknown>) { if (busy) return; setBusy(true); setActiveAction(name); setError(''); try { await work(); if (name === 'save') dirty.current = false; refresh(); } catch (e) { setError(materialError(e)); refresh(); } finally { setBusy(false); setActiveAction(''); } }
   function reloadSaved() {
     const data = latestDocument.current; if (!data) return;
@@ -75,21 +76,12 @@ export function MaterialDetailPage() {
   if (!doc || doc.id !== documentId) return <PageShell><WorkspaceHeader title="Material" description="Your source, details and versions." icon={FileText} /><Link to="/library" className="text-accent">Back to Library</Link>{error ? <p role="alert" className="mt-4 text-danger">{error}</p> : <Skeleton variant="form" />}</PageShell>;
   const job = pendingJob(doc); const active = doc.generations.find(g => g.id === doc.active_generation_id);
   const versions = [...doc.versions, ...olderVersions];
-  // Keep the open viewer current even when a metadata edit protects the form's
-  // older snapshot. Citation viewers elsewhere retain their pinned generation.
-  const liveDocument = sourceDocument?.id === doc.id ? sourceDocument : doc;
-  const liveVersion = source && [...liveDocument.versions, ...olderVersions].find(version => version.id === source.version_id);
-  const liveSource = source && { ...source, generation_id: liveVersion?.generation_id ?? source.generation_id,
-    warnings: liveVersion?.warnings ?? source.warnings };
-  const sourceGenerationIds = new Set(liveDocument.generations.filter(g => g.version_id === source?.version_id).map(g => g.id));
-  const sourceJob = liveDocument.jobs.find(j => sourceGenerationIds.has(j.generation_id ?? '') && j.operation === 'INGEST');
-  const sourceStatus: SourceStatus = { state: liveVersion?.extraction_state ?? (liveSource?.generation_id ? 'ready' :
-    sourceJob && ['QUEUED','RUNNING','RETRY_WAIT'].includes(sourceJob.state) ? 'processing' :
-    sourceJob?.state === 'FAILED' ? 'failed' : 'unavailable'), error: liveVersion?.extraction_error ?? sourceJob?.error };
-  function openVersion(versionId: string) {
-    if (!doc) return;
-    const version = versions.find(v => v.id === versionId);
-    setSource({ token: '', document_id: doc.id, version_id: versionId, generation_id: version?.generation_id ?? '', chunk_id: '', title: doc.title, heading_path: [], spans: [], excerpt: '', warnings: version?.warnings ?? [] });
+  function openVersion(version: MaterialVersion) {
+    const initial = latestDocument.current?.id === doc?.id ? latestDocument.current : doc;
+    if (!initial) return;
+    panel?.open({ title: version.filename, icon: <FileText size={14} aria-hidden="true" />,
+      content: <MaterialSourceTab initial={initial} version={version} allowArchived={consent}
+        archivedContext={contexts.some(item => initial.context_ids.includes(item.context_id) && item.status === 'ARCHIVED')} /> });
   }
   return <PageShell className="library-page">
     <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'w-fit' })}>Back to Library</Link><WorkspaceHeader title={doc.title} description={doc.archived ? 'Archived material' : active ? 'Ready to study - Source details and versions' : 'Preparing your study source'} icon={FileText} actions={<>{active && !doc.archived && <Link to={`/?document=${doc.id}`} className={buttonStyles({ variant: 'secondary' })}>Study in chat</Link>}{active && !doc.archived && <Link to={practiceLink({ document_ids: [doc.id], context_id: contexts.find(item => doc.context_ids.includes(item.context_id) && item.status !== 'ARCHIVED')?.context_id, topic: doc.title })} className={buttonStyles({ variant: 'secondary' })}>Quiz this material</Link>}</>} />
@@ -104,9 +96,8 @@ export function MaterialDetailPage() {
     </form>
     <div className="action-row border-b border-border pb-4"><Button variant="secondary" disabled={busy || !!job} loading={activeAction === 'archive'} onClick={() => void action('archive', () => updateMaterial(doc, { archived: !doc.archived }))}>{doc.archived ? 'Unarchive material' : 'Archive material'}</Button><Button variant="secondary" disabled={busy || !!job || doc.archived} loading={activeAction === 'reindex'} onClick={() => void action('reindex', () => reindexMaterial(doc))}>Reindex material</Button><Button variant="danger" disabled={busy} onClick={() => deleteDialog.current?.showModal()}>Delete material</Button></div>
     <form className="workspace-panel space-y-3" onSubmit={e => { e.preventDefault(); void action('tags', async () => { const result = await tagMaterial(doc, conceptLabels.split(',').map(s => s.trim()).filter(Boolean)); setTagNotice(result.unresolved_labels.length ? `No canonical match for: ${result.unresolved_labels.join(', ')}. These labels were not attached.` : 'Canonical concept tags updated.'); }); }}><label className="block text-sm">Concept tags<Input className="mt-2" value={conceptLabels} onChange={e => setConceptLabels(e.target.value)} placeholder="Known concept names, separated by commas" /></label><p className="text-xs text-muted">Only concepts already recognized by Mentra can be attached. This does not change your learning estimates.</p><Button disabled={busy || !!job} loading={activeAction === 'tags'} variant="secondary" type="submit">Resolve concept tags</Button>{tagNotice && <p role="status" className="text-sm text-muted">{tagNotice}</p>}</form>
-    <PageSection title="Source versions" description="Your original files and revisions, in one place.">{(doc.archived || contexts.some(c => doc.context_ids.includes(c.context_id) && c.status === 'ARCHIVED')) && <Toggle className="mt-3" label="Allow viewing archived source material" checked={consent} onChange={e => setConsent(e.target.checked)} />}<ul className="library-version-list">{versions.map((version, index) => <li key={version.id}><FileText size={19} className="shrink-0 text-accent" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="break-all text-sm font-medium text-heading">{version.filename}</p><p className="mt-1 text-xs text-muted">{Math.ceil(version.size_bytes / 1024)} KiB · {index === 0 ? 'Latest upload' : 'Earlier version'}</p></div><Button size="sm" variant="secondary" onClick={() => openVersion(version.id)}>Open source version</Button></li>)}</ul>{!versions.length && <p className="text-sm text-muted">Your source version will appear here after upload.</p>}{versions.length < doc.version_count && <Button className="mt-3" variant="secondary" disabled={loadingVersions} loading={loadingVersions} onClick={() => void loadVersions()}>{'Load earlier versions'}</Button>}</PageSection>
+    <PageSection title="Source versions" description="Your original files and revisions, in one place.">{(doc.archived || contexts.some(c => doc.context_ids.includes(c.context_id) && c.status === 'ARCHIVED')) && <Toggle className="mt-3" label="Allow viewing archived source material" checked={consent} onChange={e => setConsent(e.target.checked)} />}<ul className="library-version-list">{versions.map((version, index) => <li key={version.id}><FileText size={19} className="shrink-0 text-accent" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="break-all text-sm font-medium text-heading">{version.filename}</p><p className="mt-1 text-xs text-muted">{Math.ceil(version.size_bytes / 1024)} KiB · {index === 0 ? 'Latest upload' : 'Earlier version'}</p></div><Button size="sm" variant="secondary" onClick={() => openVersion(version)}>Open source version</Button></li>)}</ul>{!versions.length && <p className="text-sm text-muted">Your source version will appear here after upload.</p>}{versions.length < doc.version_count && <Button className="mt-3" variant="secondary" disabled={loadingVersions} loading={loadingVersions} onClick={() => void loadVersions()}>{'Load earlier versions'}</Button>}</PageSection>
     {caps && !doc.archived && <MaterialUpload contexts={contexts} capabilities={caps} replacement={doc} onContextCreated={refresh} onAccepted={() => refresh()} />}
-    {liveSource && <SourceViewer source={liveSource} filename={liveVersion?.filename} status={sourceStatus} onRefresh={() => { invalidatePageCache(['documents']); refresh(); }} includeArchived={consent} onClose={() => setSource(undefined)} />}
     <Dialog busy={busy} ref={deleteDialog} aria-label="Delete material confirmation" className="max-w-md"><h2 className="font-medium">Delete {doc.title}?</h2><p className="mt-3 text-sm text-muted">This removes the material and its source versions. It stops appearing in chat immediately after the request is accepted; storage cleanup may take longer.</p><div className="mt-5 flex gap-3"><Button variant="secondary" onClick={() => deleteDialog.current?.close()}>Keep material</Button><Button variant="danger" disabled={busy} loading={activeAction === 'delete'} onClick={() => void action('delete', async () => { await deleteMaterial(doc.id); deleteDialog.current?.close(); navigate('/library?deleted=1'); })}>Confirm deletion</Button></div></Dialog>
   </PageShell>;
 }

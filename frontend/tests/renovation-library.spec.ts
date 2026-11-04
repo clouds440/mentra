@@ -24,7 +24,7 @@ for (const width of [390, 1440]) for (const theme of ['light', 'dark']) test(`li
   await page.addInitScript(theme => localStorage.setItem('mentra-theme', theme), theme);
   await setup(page);
   await page.goto('/library');
-  await expect(page.getByRole('link', { name: 'Motion and forces', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Motion and forces', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`library-${theme}-${width}.png`), fullPage: true });
   await page.getByRole('button', { name: 'Add material', exact: true }).click();
   await expect(page.getByText('Drop a file to get started')).toBeVisible();

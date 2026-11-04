@@ -2,8 +2,9 @@ import { expect, test } from '@playwright/test';
 import { workspace } from './renovation-fixtures';
 import { richChat } from './renovation-rich-fixtures';
 
-for (const width of [390, 1280]) test(`shared modal close control stays fixed while a long source scrolls at ${width}px`, async ({ page }) => {
+for (const width of [390, 1280]) test(`side panel close control stays fixed while a long source scrolls at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await workspace(page, false, true);
   await page.route('**/api/v1/documents/material-1', route => route.fulfill({ json: {
     id: 'material-1', title: 'Long learning source', filename: 'notes.txt', context_ids: ['context-1'], archived: false, revision: 1,
@@ -16,22 +17,22 @@ for (const width of [390, 1280]) test(`shared modal close control stays fixed wh
   await page.goto('/library/material-1');
   const opener = page.getByRole('button', { name: 'Open source version', exact: true });
   await opener.click();
-  const dialog = page.getByRole('dialog', { name: 'Source: Long learning source' });
-  const close = dialog.getByRole('button', { name: 'Close source', exact: true });
+  const dialog = page.getByRole('tabpanel', { name: 'notes.txt' });
+  const close = page.getByRole('button', { name: 'Close side panel', exact: true });
   await expect(dialog.getByText('Section 5', { exact: false })).toBeVisible();
   await expect(close).toHaveCount(1);
   const before = await close.boundingBox();
   await dialog.locator('.source-reader').evaluate(node => { node.scrollTop = node.scrollHeight; });
-  await dialog.locator('.dialog-content').evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await dialog.evaluate(node => { node.scrollTop = node.scrollHeight; });
   await expect(close).toBeInViewport();
   expect(await close.boundingBox()).toEqual(before);
-  expect(await dialog.evaluate(node => node.scrollTop)).toBe(0);
+  expect(await page.locator('#workspace-side-panel').evaluate(node => node.scrollTop)).toBe(0);
   await close.click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
 });
 
-test('chat reference close stays fixed and a nested diagram closes independently', async ({ page }) => {
+test('chat reference opens in the side panel and its fullscreen diagram closes independently', async ({ page }) => {
   const fixture = await richChat(page, 'From our earlier discussion [[H1]].');
   Object.assign(fixture.items[1], { history_references: [{ token: 'H1', conversation_id: 'older-chat', title: 'Earlier notes', sequence: 1 }] });
   await page.route('**/api/v1/memories/history/older-chat?**', route => route.fulfill({ json: {
@@ -41,10 +42,10 @@ test('chat reference close stays fixed and a nested diagram closes independently
   await page.goto('/chat/polish-chat');
   const opener = page.getByRole('button', { name: 'Open history reference H1' });
   await opener.click();
-  const parent = page.getByRole('dialog', { name: 'Earlier notes' });
-  const close = parent.getByRole('button', { name: 'Close reference', exact: true });
+  const parent = page.getByRole('tabpanel', { name: 'Earlier notes' });
+  const close = page.getByRole('button', { name: 'Close side panel', exact: true });
   const bounds = await close.boundingBox();
-  await parent.locator('.dialog-content').evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await parent.evaluate(node => { node.scrollTop = node.scrollHeight; });
   await expect(close).toBeInViewport();
   expect(await close.boundingBox()).toEqual(bounds);
   await parent.getByRole('button', { name: 'Expand', exact: true }).click();

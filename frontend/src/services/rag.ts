@@ -5,7 +5,7 @@ import type { MaterialList, MaterialDocument, MaterialVersion, MaterialJob, Lear
 const path = (id: string) => `/api/v1/documents/${encodeURIComponent(id)}`;
 export const libraryPage = (offset = 0, archived?: boolean, signal?: AbortSignal, contextId?: string, query = '') => apiRequest<MaterialList & { contexts: LearningContext[] }>(`/api/v1/documents/page?offset=${offset}${archived === undefined ? '' : `&archived=${archived}`}${contextId ? `&context_id=${encodeURIComponent(contextId)}` : ''}${query ? `&query=${encodeURIComponent(query)}` : ''}`, { signal });
 export const listMaterials = (offset = 0, archived?: boolean, signal?: AbortSignal, contextId?: string, query = '') => apiRequest<MaterialList>(`/api/v1/documents?offset=${offset}${archived === undefined ? '' : `&archived=${archived}`}${contextId ? `&context_id=${encodeURIComponent(contextId)}` : ''}${query ? `&query=${encodeURIComponent(query)}` : ''}`, { signal });
-export const getMaterial = (id: string, signal?: AbortSignal) => apiRequest<MaterialDocument>(path(id), { signal });
+export const getMaterial = (id: string, signal?: AbortSignal, fresh = false) => apiRequest<MaterialDocument>(path(id), { signal, cache: fresh ? 'no-store' : undefined });
 export const listVersions = (id: string, offset: number, signal?: AbortSignal) => apiRequest<{ items: MaterialVersion[]; total: number }>(`${path(id)}/versions?offset=${offset}`, { signal });
 export const getCapabilities = (signal?: AbortSignal) => apiRequest<RAGCapabilities>('/api/v1/rag/capabilities', { signal });
 export async function listContexts(signal?: AbortSignal): Promise<LearningContext[]> {

@@ -1,24 +1,29 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean, dismiss: () => void) {
-  const [desktop, setDesktop] = useState(() => matchMedia('(min-width: 1024px)').matches);
+const navigation = { desktopQuery: '(min-width: 1024px)', inertIds: ['workspace-content'],
+  closeOnDesktop: true, opener: '#workspace-content button[aria-label="Open navigation menu"]' };
+
+export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean, dismiss: () => void, options = navigation) {
+  const [desktop, setDesktop] = useState(() => matchMedia(options.desktopQuery).matches);
   const close = useRef(dismiss); close.current = dismiss;
   useLayoutEffect(() => {
-    const media = matchMedia('(min-width: 1024px)');
-    const update = () => { setDesktop(media.matches); if (media.matches) close.current(); };
+    const media = matchMedia(options.desktopQuery);
+    const update = () => { setDesktop(media.matches); if (media.matches && options.closeOnDesktop) close.current(); };
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
-  }, []);
+  }, [options]);
   useLayoutEffect(() => {
     const navigation = panel.current;
     if (!navigation) return;
     navigation.inert = !desktop && !open;
     if (desktop || !open) return;
-    const content = document.getElementById('workspace-content');
-    const previous = document.querySelector<HTMLElement>('#workspace-content button[aria-label="Open navigation menu"]') ?? document.activeElement as HTMLElement | null;
-    const priorInert = content?.inert ?? false;
-    if (content) content.inert = true;
-    const focusable = () => Array.from(navigation.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),[tabindex="0"]')).filter(element => element.getClientRects().length > 0);
+    const previous = (options.opener && document.querySelector<HTMLElement>(options.opener)) || document.activeElement as HTMLElement | null;
+    const background = options.inertIds.flatMap(id => {
+      const element = document.getElementById(id);
+      return element ? [{ element, inert: element.inert }] : [];
+    });
+    background.forEach(({ element }) => { element.inert = true; });
+    const focusable = () => Array.from(navigation.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),iframe,[tabindex="0"]')).filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
     const frame = requestAnimationFrame(() => focusable()[0]?.focus());
     const keydown = (event: KeyboardEvent) => {
       // Native top-layer dialogs own focus and Escape while above navigation.
@@ -33,12 +38,12 @@ export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean
     document.addEventListener('keydown', keydown);
     return () => {
       cancelAnimationFrame(frame); document.removeEventListener('keydown', keydown);
-      if (content) content.inert = priorInert;
+      background.forEach(({ element, inert }) => { element.inert = inert; });
       requestAnimationFrame(() => {
         // A nested popover may restore its anchor during the same Escape event.
         if (navigation.inert && previous?.isConnected && !previous.closest('[inert]') && previous.getClientRects().length) previous.focus();
       });
     };
-  }, [panel, desktop, open]);
+  }, [panel, desktop, open, options]);
   return desktop;
 }

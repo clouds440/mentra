@@ -4,13 +4,15 @@ import { useChatScroll } from '../hooks/useChatScroll';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
-import { ArrowDown, FileText, X } from 'lucide-react';
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, FileText, PanelRightOpen, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
+import { ChatSourceCatalog, hasChatSources } from '../components/chat/ChatSources';
+import { useSidePanelActions } from '../components/workspace/sidePanelState';
 import { ChatMessage } from '../components/chat/ChatMessage';
 import { useChatFontSize } from '../components/chat/chatAppearance';
 import { ChatActivity } from '../components/chat/ChatActivity';
@@ -37,6 +39,14 @@ export function ChatPage() {
   const id = conversationId ?? draftId;
   useLayoutEffect(() => { if (!conversationId) chatStore.markDraft(id); }, [id, conversationId]);
   const view = useConversation(id);
+  const panel = useSidePanelActions();
+  const hasSources = useMemo(() => view.messages.some(hasChatSources), [view.messages]);
+  useEffect(() => {
+    if (!panel || (!hasSources && !(conversationId && view.before))) return;
+    panel.setLauncher({ title: 'Chat sources', icon: <PanelRightOpen size={14} aria-hidden="true" />,
+      content: <ChatSourceCatalog key={id} messages={view.messages} conversationId={conversationId} before={view.before} /> });
+    return () => panel.setLauncher();
+  }, [panel, id, hasSources, conversationId, view.before, view.messages]);
   const [, refreshPause] = useState(0);
   useEffect(() => {
     if (!view.turn?.can_resume || !view.turn.resume_until) return;

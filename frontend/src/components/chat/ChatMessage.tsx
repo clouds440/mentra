@@ -4,21 +4,18 @@ import { MarkdownContent } from '../content/MarkdownContent';
 import { MentraLogo } from '../brand/MentraLogo';
 import type { ChatMessageData } from '../../types/chat';
 import type { InteractionCardData } from '../../types/interactions';
-import { memo, useMemo, useState, lazy, Suspense, type ReactNode } from 'react';
-import { SourceViewer, sourceLocation } from '../library/SourceViewer';
-import type { SourceReference } from '../../types/rag';
-import type { HistoryReference, MemoryReference } from '../../types/memories';
+import { memo, useMemo, lazy, Suspense, type ReactNode } from 'react';
+import { SourceMarkdownLink } from '../webSearch/SourceLink';
 import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
 import { ChoiceCard } from './ChoiceCard';
 import { ConversationalQuestionnaire } from './ConversationalQuestionnaire';
 import { Link } from 'react-router-dom';
 import { WebCitation } from '../webSearch/WebCitation';
-import { WebCitations } from '../webSearch/WebCitations';
 import { CopyResponse } from './CopyResponse';
+import { ChatSourceButtons, useSourceTabs } from './ChatSources';
 import { ContextualActions } from './ContextualActions';
 
-const HistoryReferenceViewer = lazy(() => import('./HistoryReferenceViewer').then(module => ({ default: module.HistoryReferenceViewer })));
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
 const AssessmentGenerationCard = lazy(() => import('../assessments/AssessmentGenerationCard').then(module => ({ default: module.AssessmentGenerationCard })));
 
@@ -57,8 +54,7 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage = memo(function ChatMessage({ message, reveal = false, showContextualAction = false }: ChatMessageProps) {
-  const [source, setSource] = useState<SourceReference>();
-  const [historyReference, setHistoryReference] = useState<HistoryReference | MemoryReference>();
+  const { openSource, openReference } = useSourceTabs();
   const isAssistant = message.role === 'assistant';
   const inputCards = message.interactions?.filter((card): card is Exclude<InteractionCardData, { kind: 'value_bars' }> => card.kind !== 'value_bars' && ['single_choice', 'multiple_choice', 'text_input', 'form', 'questionnaire'].includes(card.kind)) ?? [];
   const grouped = inputCards.length > 1 || inputCards.some(card => card.kind === 'questionnaire');
@@ -73,9 +69,9 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
     const history = [...(message.history_references ?? []), ...(message.memory_references ?? [])].find(item => item.token === token);
     const web = message.web_sources?.find(item => item.token === token && message.web_citations?.includes(item.token));
     if (web) return <WebCitation source={web}>{children}</WebCitation>;
-    if (history) return <button className="text-accent underline" onClick={() => setHistoryReference(history)} aria-label={`Open ${history.token.startsWith('H') ? 'history' : 'memory'} reference ${history.token}`}>{children}</button>;
-    return found ? <button className="text-accent underline" onClick={() => setSource(found)} aria-label={`Open cited source ${found.title}`}>{children}</button> : <a href={href} rel="noopener noreferrer">{children}</a>;
-  } }), [message.sources, message.citations, message.web_sources, message.web_citations, message.history_references, message.memory_references]);
+    if (history) return <button className="text-accent underline" onClick={() => openReference(history)} aria-label={`Open ${history.token.startsWith('H') ? 'history' : 'memory'} reference ${history.token}`}>{children}</button>;
+    return found ? <button className="text-accent underline" onClick={() => openSource(found)} aria-label={`Open cited source ${found.title}`}>{children}</button> : <SourceMarkdownLink href={href}>{children}</SourceMarkdownLink>;
+  } }), [message.sources, message.citations, message.web_sources, message.web_citations, message.history_references, message.memory_references, openSource, openReference]);
 
   return (
     <article
@@ -102,16 +98,12 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
           <div className="markdown-content">
             <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
             {['partial','failed'].includes(message.response_outcome?.state ?? '') && <p role="status" className={`mt-3 text-sm ${message.response_outcome?.state === 'partial' ? 'text-warning' : 'text-danger'}`}>{message.response_outcome?.state === 'partial' ? 'This response is partly complete. Completed results are saved.' : 'This response failed.'} {message.response_outcome?.retryable ? 'You can retry the unfinished step.' : 'See the response or card for what to do next.'}</p>}
-            <WebCitations sources={message.web_sources} citations={message.web_citations} searches={message.web_searches} />
             {message.conversation_id && grouped && <ConversationalQuestionnaire cards={inputCards} messageId={message.id} conversationId={message.conversation_id} />}
             {message.conversation_id && message.interactions?.filter(card => !grouped || !inputCards.some(input => input.id === card.id)).map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {!!message.event_proposals?.length && <div className="chat-domain-card">{message.event_proposals.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}</div>}
             {!!message.assessment_cards?.length && <div className="chat-domain-card"><Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense></div>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
-            {message.sources && message.sources.length > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Study sources ({message.sources.length})</summary><ul className="mt-2 space-y-2">{message.sources.map(s => <li key={s.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setSource(s)}>{message.citations?.includes(s.token) ? `[${s.token}] Cited: ` : 'Consulted: '}{s.title} · {sourceLocation(s)}</button></li>)}</ul></details>}
-            {source && <SourceViewer source={source} includeArchived={source.include_archived ?? false} onClose={() => setSource(undefined)} />}
-            {historyReference && <Suspense fallback={<Skeleton variant="text" />}><HistoryReferenceViewer reference={historyReference} onClose={() => setHistoryReference(undefined)} /></Suspense>}
-            {((message.history_references?.length ?? 0) + (message.memory_references?.length ?? 0)) > 0 && <details className="mt-4 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">Personal context consulted</summary><ul className="mt-2 space-y-2">{[...(message.history_references ?? []), ...(message.memory_references ?? [])].map(item => <li key={item.token}><button className="block w-full rounded-control px-2 py-2 text-left text-accent transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={() => setHistoryReference(item)}>[{item.token}] {'title' in item ? item.title : 'Saved memory'}</button></li>)}</ul></details>}
+            <ChatSourceButtons message={message} />
             {!!message.content.trim() && <CopyResponse content={message.content} />}
             {showContextualAction && message.conversation_id && <ContextualActions message={message} conversationId={message.conversation_id} />}
           </div>

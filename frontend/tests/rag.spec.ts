@@ -126,16 +126,15 @@ test('Library upload, refresh, grounded chat, citation, replacement and deletion
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('button', { name: 'Open cited source Decorator Notes' })).toBeVisible();
   await page.getByRole('button', { name: 'Open cited source Decorator Notes' }).click();
-  await expect(page.getByRole('dialog', { name: 'Source: Decorator Notes' })).toBeVisible();
-  await expect(page.getByRole('dialog').getByText('Python decorators wrap functions.', { exact: false }).first()).toBeVisible();
-  await expect(page.getByRole('dialog').locator('section')).toHaveCount(1);
-  const sourceBounds = await page.getByRole('dialog').boundingBox();
-  expect(Math.abs(sourceBounds!.y + sourceBounds!.height / 2 - page.viewportSize()!.height / 2)).toBeLessThan(2);
+  const sourceTab = page.getByRole('tabpanel', { name: 'Decorator Notes' });
+  await expect(sourceTab).toBeVisible();
+  await expect(sourceTab.getByText('Python decorators wrap functions.', { exact: false }).first()).toBeVisible();
+  await expect(sourceTab.locator('section')).toHaveCount(1);
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download original' }).click(); await download;
-  await page.getByRole('button', { name: 'Close source' }).click();
+  await page.getByRole('button', { name: 'Close side panel' }).click();
   await page.goto('/library');
-  await page.getByRole('link', { name: 'Decorator Notes', exact: true }).click();
+  await page.getByRole('listitem').filter({ hasText: 'Decorator Notes' }).getByRole('link', { name: 'Manage material' }).click();
   await expect(page.getByText('Ready to study', { exact: true })).toBeVisible();
   await page.getByLabel('File', { exact: true }).setInputFiles({ name: 'decorators-v2.txt', mimeType: 'text/plain', buffer: Buffer.from('Python decorators now have revised source examples and reusable wrappers.') });
   await page.getByRole('button', { name: 'Submit replacement', exact: true }).click();
@@ -150,7 +149,7 @@ test('Library upload, refresh, grounded chat, citation, replacement and deletion
   await page.getByRole('button', { name: 'Delete material', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page).toHaveURL(/\/library\?deleted=1$/);
-  await expect(page.getByRole('link', { name: 'Decorator Notes', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Decorator Notes', exact: true })).toHaveCount(0);
 });
 
 for (const theme of ['light', 'dark'] as const) {

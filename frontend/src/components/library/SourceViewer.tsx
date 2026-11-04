@@ -1,4 +1,4 @@
-import { Dialog } from '../ui/Dialog';
+import { SourceMarkdownLink } from '../webSearch/SourceLink';
 import { SourceDiagrams } from './SourceDiagrams';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,8 +18,9 @@ export function sourceLocation(source: Pick<SourceReference, 'spans' | 'heading_
 interface OriginalFile { blob: Blob; url: string; media: string; text?: string; truncated: boolean }
 export interface SourceStatus { state: 'processing' | 'ready' | 'failed' | 'unavailable'; error?: string | null }
 
-export function SourceViewer({ source, filename, includeArchived = false, status, onRefresh, onClose }: { source: SourceReference; filename?: string; includeArchived?: boolean; status?: SourceStatus; onRefresh?: () => void; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
+interface SourceReaderProps { source: SourceReference; filename?: string; includeArchived?: boolean; status?: SourceStatus; onRefresh?: () => void }
+
+export function SourceReader({ source, filename, includeArchived = false, status, onRefresh }: SourceReaderProps) {
   const [chunks, setChunks] = useState<SourceChunk[]>([]);
   const [citedChunk, setCitedChunk] = useState<SourceChunk>();
   const [error, setError] = useState('');
@@ -100,7 +101,7 @@ export function SourceViewer({ source, filename, includeArchived = false, status
     } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setDownloadBusy(false); }
   }
-  return <Dialog closeLabel="Close source" open ref={dialog} onDismiss={onClose} aria-label={`Source: ${source.title}`} layout="viewer" className="source-dialog max-w-4xl">
+  return <>
     <header className="source-header">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent"><FileText size={13} aria-hidden="true" />Library source</p><h2 className="truncate text-xl font-semibold tracking-tight text-heading">{source.title}</h2><p className="mt-1 truncate text-xs text-muted" title={displayFilename}>{displayFilename ?? sourceLocation(source) ?? 'Study material'}</p></div>
@@ -121,7 +122,7 @@ export function SourceViewer({ source, filename, includeArchived = false, status
         {passages.map(chunk => {
           const language = passageLanguage(chunk, displayFilename);
           const cited = chunk.id === source.chunk_id || chunk.spans.some(span => source.spans.some(selected => selected.block === span.block && selected.start < span.end && selected.end > span.start));
-          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}<SourceDiagrams visuals={chunk.visuals} archived={includeArchived} /></section>;
+          return <section key={chunk.id} className="source-passage"><div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] font-medium text-muted"><span className="uppercase tracking-wider">{sourceLocation(chunk)}</span>{cited && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">Cited passage</span>}{chunk.heading_path.length > 0 && <span>{chunk.heading_path.join(' / ')}</span>}</div>{isMarkdown(language) ? <MarkdownContent content={chunk.content} linkComponent={SourceMarkdownLink} /> : language ? <CodeBlock code={chunk.content} language={language} /> : <div className="source-prose">{chunk.content}</div>}<SourceDiagrams visuals={chunk.visuals} archived={includeArchived} /></section>;
         })}
         {more && <Button className="mt-6" variant="secondary" disabled={loadingMore} loading={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} aria-hidden="true" />{citedChunk && !chunks.length ? 'Read full source' : 'Load more passages'}</Button>}
       </> : <>
@@ -132,5 +133,5 @@ export function SourceViewer({ source, filename, includeArchived = false, status
         {original && original.text === undefined && !original.media.startsWith('image/') && original.media !== 'application/pdf' && <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center text-muted"><FileText size={32} strokeWidth={1.2} aria-hidden="true" /><p className="text-sm">{displayFilename ?? 'Original file'}</p><p className="max-w-xs text-xs leading-5">Read the extracted content here, or download the original to open it in its document application.</p></div>}
       </>}
     </div>
-  </Dialog>;
+  </>;
 }

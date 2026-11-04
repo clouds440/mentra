@@ -74,7 +74,7 @@ test('review and practice links retain exact concept, context and purpose withou
   await expect(page).toHaveURL(new RegExp('concept=' + conceptId));
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Shared topic');
   await page.reload();
-  await expect(page.getByText('Practising 1 selected topic in this learning context.')).toBeVisible();
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Shared topic');
   expect(jobs).toBe(0);
 });
 
@@ -100,7 +100,7 @@ test('Library searches the server and preserves the query through filters', asyn
   await page.goto('/library');
   await page.getByRole('searchbox', { name: 'Search Library' }).fill('اردو');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Material 55', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Material 55', exact: true })).toBeVisible();
   expect(requests.at(-1)?.searchParams.get('query')).toBe('اردو');
   await expect(page.getByRole('link', { name: 'Quiz this material', exact: true })).toHaveAttribute('href', /document=material-55/);
   await page.reload();
@@ -134,10 +134,10 @@ for (const [width, scheme] of [[360, 'light'], [390, 'dark'], [1440, 'light']] a
       return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Retry later'}}});
     });
     await page.goto('/library');
-    for (const label of ['View material','Study in chat','Quiz this material']) {
+    for (const label of ['Manage material','Study in chat','Quiz this material']) {
       const link=page.getByRole('link',{name:label,exact:true});
       await expect(link).toBeVisible();
-      await expect(link).toHaveCSS('border-top-width','1px');
+      await expect(link).toHaveCSS('border-top-width', label === 'Study in chat' ? '1px' : '0px');
       await expect(link).toHaveCSS('text-decoration-line','none');
     }
     await page.getByRole('link',{name:'Quiz this material',exact:true}).click();
@@ -145,6 +145,7 @@ for (const [width, scheme] of [[360, 'light'], [390, 'dark'], [1440, 'light']] a
     await expect(form.getByLabel('Topic',{exact:true})).toHaveValue('Material 1');
     await expect(form.getByLabel('Number of questions',{exact:true})).toHaveValue('3');
     for (const name of ['Assessment learning context','Assessment purpose','Assessment results style','Assessment format']) await expect(form.getByLabel(name,{exact:true})).toHaveCount(0);
+    await form.getByText('Practice settings · optional', { exact: true }).click();
     await form.getByRole('checkbox',{name:'Short answers',exact:true}).check();
     await form.getByRole('checkbox',{name:'Multiple choice',exact:true}).uncheck();
     await form.getByRole('checkbox',{name:'Multiple choice',exact:true}).focus();

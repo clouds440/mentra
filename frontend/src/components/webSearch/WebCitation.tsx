@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { WebSource } from '../../types/webSearch';
+import { SourceLink } from './SourceLink';
 import { safeWebsite, WebsiteIcon } from './WebsiteIcon';
 
 export function safeSource(source: WebSource): boolean {
@@ -12,9 +13,9 @@ export function safeSource(source: WebSource): boolean {
 
 export function WebCitation({ source, children }: { source: WebSource; children?: ReactNode }) {
   if (!safeSource(source)) return <span>{children ?? `[${source.token}]`}</span>;
-  return <a href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
-    title={`${source.title} · ${source.domain}`} aria-label={`Open web source ${source.token}: ${source.title} on ${source.domain} (new tab)`}
+  return <SourceLink href={source.url} sourceTitle={source.title} excerpt={source.excerpt}
+    title={`${source.title} · ${source.domain}`} aria-label={`Open web source ${source.token}: ${source.title} on ${source.domain}`}
     className="inline-flex max-w-full items-center gap-1 rounded-md px-1 text-accent underline decoration-accent/40 underline-offset-2 hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
     <WebsiteIcon website={source} /><span>{children ?? `[${source.token}]`}</span>
-  </a>;
+  </SourceLink>;
 }

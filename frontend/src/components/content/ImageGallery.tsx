@@ -1,6 +1,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { Dialog, IconButton } from '../ui';
+import { SourceLink } from '../webSearch/SourceLink';
 import { publicImageUrl } from '../../lib/imageUrls';
 
 export type GalleryImage = { src: string; alt: string; label: string; source?: string };
@@ -57,7 +58,7 @@ export function ImageGallery({ images, children }: { images: GalleryImage[]; chi
           <IconButton aria-label="Next image" disabled={index === images.length - 1} onClick={() => move(1)}><ChevronRight size={16} /></IconButton>
         </div>}
       </div>
-      <div className="image-viewer-caption" dir="auto">{imageCaption(image)}{source && <> · <a href={source} target="_blank" rel="noopener noreferrer">Source</a></>}</div>
+      <div className="image-viewer-caption" dir="auto">{imageCaption(image)}{source && <> · <SourceLink href={source} onPreview={() => setSelected(null)}>Source</SourceLink></>}</div>
     </Dialog>}
   </GalleryContext.Provider>;
 }

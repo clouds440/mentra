@@ -107,16 +107,16 @@ for (const width of [1280,390]) test(`saved portrait preview fits above text and
   await message.scrollIntoViewIfNeeded();
   await page.screenshot({path:info.outputPath('saved-attachment.png')});
   await open.click();
-  const dialog=page.getByRole('dialog',{name:'Preview portrait.png',exact:true});
+  const dialog=page.getByRole('tabpanel',{name:'portrait.png',exact:true});
   await expect(dialog.getByRole('img')).toBeVisible();
   expect(state.sourceReads()).toBe(previewReads);
   const downloaded=page.waitForEvent('download');
-  await dialog.getByRole('button',{name:'Download portrait.png',exact:true}).click();
+  await dialog.getByRole('link',{name:'Download portrait.png',exact:true}).click();
   expect((await downloaded).suggestedFilename()).toBe('portrait.png');
   await page.screenshot({path:info.outputPath('attachment-overlay.png')});
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0); await expect(open).toBeFocused();
-  await open.click(); await dialog.getByRole('button',{name:'Close file preview'}).click();
+  await open.click(); await page.getByRole('button',{name:'Close side panel'}).click();
   await expect(dialog).toHaveCount(0); expect(state.sourceReads()).toBe(previewReads);
   await add.click();
   await expect(card.getByLabel('Learning context for portrait.png',{exact:true})).toBeVisible();
@@ -138,7 +138,7 @@ test('document preview reports explicit open errors and retries without leaking 
   await expect(card).not.toContainText('notes.txt');
   await expect(card.getByRole('alert')).toHaveCount(0);
   await card.getByRole('button',{name:'Open notes.txt',exact:true}).click();
-  const dialog=page.getByRole('dialog',{name:'Preview notes.txt'});
+  const dialog=page.getByRole('tabpanel',{name:'notes.txt'});
   await expect(dialog.getByRole('alert')).toBeVisible();
   await expect(card.getByRole('alert')).toHaveCount(0);
   state.allowSource();

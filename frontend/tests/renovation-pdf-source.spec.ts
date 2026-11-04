@@ -37,7 +37,7 @@ async function sourceFixture(page: Page, state: 'processing' | 'ready' | 'failed
 
 test('a source opened before OCR completes refreshes passages without reopening or permanent warnings', async ({page}) => {
   const state = await sourceFixture(page);
-  const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer = page.getByRole('tabpanel',{name:'scanned.pdf'});
   state.state = 'ready';
   await expect(viewer).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
   await expect(viewer).not.toContainText('Extraction notes');
@@ -46,26 +46,26 @@ test('a source opened before OCR completes refreshes passages without reopening 
 
 test('an unpublished source shows processing rather than claiming no content', async ({page}) => {
   await sourceFixture(page);
-  const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer = page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer.getByRole('status')).toContainText('Reading and indexing');
   await expect(viewer).not.toContainText('No extracted passages');
 });
 
 test('OCR failure remains actionable inside the source viewer', async ({page}) => {
   await sourceFixture(page,'failed');
-  const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer = page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer.getByRole('alert')).toContainText('server OCR tools are unavailable');
   await expect(viewer.getByRole('button',{name:'Download original'})).toBeEnabled();
 });
 
 test('a historical failure is visible from version metadata without recent jobs', async ({page}) => {
   await sourceFixture(page,'failed',false,true);
-  await expect(page.getByRole('dialog',{name:'Source: Scanned lecture'}).getByRole('alert')).toContainText('server OCR tools are unavailable');
+  await expect(page.getByRole('tabpanel',{name:'scanned.pdf'}).getByRole('alert')).toContainText('server OCR tools are unavailable');
 });
 
 test('a passage read error never also claims that extraction produced no content', async ({page}) => {
   const state=await sourceFixture(page,'ready',true);
-  const viewer = page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer = page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer.getByRole('alert')).toBeVisible();
   await expect(viewer).not.toContainText('No extracted passages');
   await expect(viewer.getByRole('button',{name:'Refresh content'})).toBeVisible();
@@ -77,7 +77,7 @@ test('a passage read error never also claims that extraction produced no content
 test('failure of a newer reindex does not hide previously published content', async ({page}) => {
   const state=await sourceFixture(page);
   state.state='ready'; state.extractionError='OCR needs repair.';
-  const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer=page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
   await expect(viewer.getByRole('alert')).toContainText('Showing the previously indexed content.');
 });
@@ -85,7 +85,7 @@ test('failure of a newer reindex does not hide previously published content', as
 test('an indexed source with missing passages reports a load inconsistency', async ({page}) => {
   const state=await sourceFixture(page);
   state.empty=true; state.state='ready';
-  const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer=page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer).toContainText('This source was indexed, but its extracted passages could not be loaded.',{timeout:12000});
   await expect(viewer.getByRole('button',{name:'Refresh content'})).toBeVisible();
   state.empty=false;
@@ -95,18 +95,18 @@ test('an indexed source with missing passages reports a load inconsistency', asy
 
 test('unsaved title edits cannot freeze source processing progress', async ({page}) => {
   const state=await sourceFixture(page);
-  await page.getByRole('button',{name:'Close source',exact:true}).click();
+  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
   await page.getByLabel('Title',{exact:true}).fill('My unsaved lecture title');
   await page.getByRole('button',{name:'Open source version',exact:true}).click();
   state.state='ready';
-  await expect(page.getByRole('dialog',{name:'Source: Scanned lecture'})).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
-  await page.getByRole('button',{name:'Close source',exact:true}).click();
+  await expect(page.getByRole('tabpanel',{name:'scanned.pdf'})).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
+  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
   await expect(page.getByLabel('Title',{exact:true})).toHaveValue('My unsaved lecture title');
 });
 
 test('one OCR notice appears only for the selected upload and disappears after acceptance', async ({page}) => {
   await sourceFixture(page,'ready');
-  await page.getByRole('button',{name:'Close source',exact:true}).click();
+  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
   await expect(page.getByRole('status',{name:'OCR upload notice'})).toHaveCount(0);
   await expect(page.getByText(/Extraction notes|may be inaccurate or missing/)).toHaveCount(0);
   await page.getByLabel('File',{exact:true}).setInputFiles({name:'scan.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF synthetic')});
@@ -114,13 +114,13 @@ test('one OCR notice appears only for the selected upload and disappears after a
   await page.getByRole('button',{name:'Submit replacement',exact:true}).click();
   await expect(page.getByRole('status',{name:'OCR upload notice'})).toHaveCount(0);
   await page.getByRole('button',{name:'Open source version',exact:true}).click();
-  await expect(page.getByRole('dialog',{name:'Source: Scanned lecture'})).toContainText('Scanned body alpha');
+  await expect(page.getByRole('tabpanel',{name:'scanned.pdf'})).toContainText('Scanned body alpha');
   await expect(page.getByText(/Extraction notes|may be inaccurate or missing/)).toHaveCount(0);
 });
 
 test('source diagrams load through authenticated delivery beside their passage without extraction warnings', async ({page}) => {
   const state=await sourceFixture(page,'ready',false,false,true);
-  const viewer=page.getByRole('dialog',{name:'Source: Scanned lecture'});
+  const viewer=page.getByRole('tabpanel',{name:'scanned.pdf'});
   await expect(viewer.getByRole('img',{name:'Exception hierarchy'})).toBeVisible();
   await expect.poll(() => viewer.getByRole('img',{name:'Exception hierarchy'}).evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   expect(state.visualReads).toBe(1);

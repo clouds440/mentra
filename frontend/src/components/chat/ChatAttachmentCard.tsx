@@ -9,8 +9,8 @@ import { createContext, listContexts } from '../../services/rag';
 import type { LearningContext } from '../../types/rag';
 import { Button, Input, Select } from '../ui';
 import { buttonStyles } from '../ui/Button';
-import { ChatAttachmentPreview, type AttachmentOriginal } from './ChatAttachmentPreview';
-import { fileLanguage } from '../../lib/codeLanguages';
+import { ChatAttachmentPreview, readAttachmentOriginal, type AttachmentOriginal } from './ChatAttachmentPreview';
+import { useSidePanelActions } from '../workspace/sidePanelState';
 
 export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachment; conversationId: string }) {
   const [loadingContexts, setLoadingContexts] = useState(false);
@@ -20,7 +20,7 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
   const [error, setError] = useState<string>();
   const [newContext, setNewContext] = useState('');
   const [original, setOriginal] = useState<AttachmentOriginal>();
-  const [opened, setOpened] = useState(false);
+  const panel = useSidePanelActions();
   const [imageFailed, setImageFailed] = useState(false);
   const [imageWidth, setImageWidth] = useState<number>();
   const card = useRef<HTMLDivElement>(null);
@@ -36,13 +36,7 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
     const current = source.current;
     if (current.original) return current.original;
     if (current.pending) return current.pending;
-    const pending = getChatAttachmentSource(file.id, conversationId, current.controller.signal).then(async blob => {
-      const image = ['image/png','image/jpeg','image/gif','image/webp'].includes(blob.type);
-      const textual = !image && blob.type !== 'application/pdf' && !blob.type.includes('officedocument') && (!!fileLanguage(file.filename) || blob.type.startsWith('text/') || ['application/json','application/xml','application/yaml'].includes(blob.type));
-      const limit = 256 * 1024;
-      const text = textual ? new TextDecoder().decode(await blob.slice(0, limit).arrayBuffer(), {stream:blob.size > limit}) : undefined;
-      if (current.controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      const value = {blob, url:URL.createObjectURL(blob), image, text, truncated:textual && blob.size > limit};
+    const pending = getChatAttachmentSource(file.id, conversationId, current.controller.signal).then(blob => readAttachmentOriginal(blob, file.filename, current.controller.signal)).then(value => {
       current.original = value; setOriginal(value); return value;
     });
     current.pending = pending;
@@ -112,7 +106,8 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
   const libraryActionClass = 'absolute bottom-2 right-2 h-8 w-8 p-0 bg-card/95 shadow-sm backdrop-blur-sm';
   return <div ref={card} className={`flex max-w-full flex-col items-end gap-1 text-sm ${choosing ? 'w-72' : 'w-fit'}`} aria-label={`Attachment ${file.filename}`}>
     <div className="relative w-fit max-w-full self-end">
-      <button type="button" aria-label={`Open ${file.filename}`} style={original?.image && !imageFailed ? {width:imageWidth ?? 320} : undefined} className="flex max-w-full justify-end overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background" onClick={() => setOpened(true)}>
+      <button type="button" aria-label={`Open ${file.filename}`} style={original?.image && !imageFailed ? {width:imageWidth ?? 320} : undefined} className="flex max-w-full justify-end overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background" onClick={() => panel?.open({ title: file.filename, reuseKey: 'attachment:' + conversationId + ':' + file.id, icon: <FileText size={14} aria-hidden="true" />,
+        content: <ChatAttachmentPreview filename={file.filename} fileId={file.id} conversationId={conversationId} cached={source.current.original?.blob} /> })}>
         {original?.image && !imageFailed ? <img src={original.url} alt={file.filename} className="block h-auto max-h-72 w-auto max-w-full" onLoad={event => {
           const image = event.currentTarget;
           setImageWidth(Math.min(320, image.naturalWidth, 288 * image.naturalWidth / image.naturalHeight));
@@ -129,6 +124,5 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
       <div className="flex flex-wrap gap-2"><Button size="sm" disabled={!context || busy} loading={busy} onClick={() => void save()}>Add extracted content</Button><Button size="sm" variant="ghost" disabled={busy} onClick={() => setChoosing(false)}>Not now</Button></div>
     </div>}
     {error && <p className="mt-1 max-w-xs text-xs text-danger" role="alert">{error}</p>}
-    {opened && <ChatAttachmentPreview filename={file.filename} load={loadOriginal} onClose={() => setOpened(false)} />}
   </div>;
 }

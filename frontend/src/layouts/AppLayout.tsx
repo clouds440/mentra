@@ -5,8 +5,16 @@ import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
 import { IconButton } from '../components/ui/IconButton';
 import { useResizableSidebar } from '../hooks/useResizableSidebar';
+import { useAuth } from '../components/auth/AuthProvider';
+import { SidePanel, SidePanelTrigger } from '../components/workspace/SidePanel';
+import { SidePanelProvider } from '../components/workspace/sidePanelState';
 
 export function AppLayout() {
+  const { identity } = useAuth();
+  return <SidePanelProvider key={identity?.learner_id}><AppWorkspace /></SidePanelProvider>;
+}
+
+function AppWorkspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebar = useResizableSidebar();
@@ -68,12 +76,13 @@ export function AppLayout() {
               )}
             </IconButton>
           </div>
-          <div className="pointer-events-auto shrink-0 rounded-control bg-background"><NotificationBell quiet={isChat} /></div>
+          <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-control bg-background"><SidePanelTrigger /><NotificationBell quiet={isChat} /></div>
         </div>
         <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
           <Outlet context={chatContext} />
         </main>
       </div>
+      <SidePanel />
     </div>
   );
 }

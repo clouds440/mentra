@@ -27,7 +27,7 @@ test('progress groups skills and finds a late-page subskill by its parent', asyn
   await page.getByRole('searchbox', { name: 'Search topics and subskills' }).fill('chain');
   await expect(page.getByText('Matches: Chain rule')).toBeVisible();
   await page.getByRole('button', { name: 'Explore Differentiation rules' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Topic subskills' });
+  const dialog = page.getByRole('tabpanel', { name: 'Differentiation rules' });
   await expect(dialog.getByText('Chain rule', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Differentiate composite functions.', {exact:true})).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Practise this skill' })).toHaveAttribute('href', /concept=skill-11/);

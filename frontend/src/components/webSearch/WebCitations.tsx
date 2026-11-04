@@ -16,11 +16,9 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
 }) {
   if (!sources.length) return null;
   const zone = searches[searches.length - 1]?.reference_timezone ?? 'UTC';
-  return <div className="mt-4 text-sm">
-    {searches.some(search => search.cache_hit) && <p className="mb-2 text-xs text-subtle">Recently cached web results were reused; original search dates are shown below.</p>}
-    {!!sources.length && <details className="rounded-xl border border-border px-3 py-2">
-      <summary className="ui-disclosure cursor-pointer text-muted">Web sources ({sources.length})</summary>
-      <ol className="mt-3 space-y-3">{sources.slice(0, 10).map(source => <li key={source.token} className="min-w-0">
+  return <div className="p-4 text-sm"><h2 className="font-semibold text-heading">Web sources</h2>
+    {searches.some(search => search.cache_hit) && <p className="mt-2 text-xs text-subtle">Recently cached web results were reused; original search dates are shown below.</p>}
+      <ol className="mt-3 space-y-3">{sources.map(source => <li key={source.token} className="min-w-0">
         <WebCitation source={source}><span className="break-words">[{source.token}] {source.title}</span></WebCitation>
         <p className="mt-1 text-xs text-subtle">{citations.includes(source.token) ? 'Cited' : 'Consulted'} · {source.domain}</p>
         <p className="text-xs text-subtle">{source.source_date_status === 'future' ? 'Source date is in the future; verify it.'
@@ -30,6 +28,5 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
         <p className="text-xs text-subtle">Searched {instant(source.searched_at, zone)} ({zone})</p>
         {source.excerpt && <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{source.excerpt}</p>}
       </li>)}</ol>
-    </details>}
   </div>;
 }
