@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 const navigation = { desktopQuery: '(min-width: 1024px)', inertIds: ['workspace-content'],
-  closeOnDesktop: true, opener: '#workspace-content button[aria-label="Open navigation menu"]' };
+  closeOnDesktop: true, opener: '#workspace-content button[aria-label="Open navigation menu"]', fallbackFocus: '#workspace-main' };
 
 export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean, dismiss: () => void, options = navigation) {
   const [desktop, setDesktop] = useState(() => matchMedia(options.desktopQuery).matches);
@@ -23,8 +23,9 @@ export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean
       return element ? [{ element, inert: element.inert }] : [];
     });
     background.forEach(({ element }) => { element.inert = true; });
-    const focusable = () => Array.from(navigation.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),iframe,[tabindex="0"]')).filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
-    const frame = requestAnimationFrame(() => focusable()[0]?.focus());
+    const focusable = () => Array.from(navigation.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,summary,iframe,[contenteditable],[tabindex]'))
+      .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') && !element.closest('[inert]') && element.getClientRects().length > 0);
+    const frame = requestAnimationFrame(() => { (focusable()[0] ?? navigation).focus(); });
     const keydown = (event: KeyboardEvent) => {
       // Native top-layer dialogs own focus and Escape while above navigation.
       if (document.querySelector('dialog[open]')) return;
@@ -41,7 +42,10 @@ export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean
       background.forEach(({ element, inert }) => { element.inert = inert; });
       requestAnimationFrame(() => {
         // A nested popover may restore its anchor during the same Escape event.
-        if (navigation.inert && previous?.isConnected && !previous.closest('[inert]') && previous.getClientRects().length) previous.focus();
+        if (!navigation.inert || document.querySelector('dialog[open]')) return;
+        const target = previous?.isConnected && !previous.closest('[inert]') && previous.getClientRects().length
+          ? previous : Array.from(document.querySelectorAll<HTMLElement>(options.fallbackFocus)).find(element => !element.closest('[inert]') && element.getClientRects().length);
+        target?.focus({ preventScroll: true });
       });
     };
   }, [panel, desktop, open, options]);

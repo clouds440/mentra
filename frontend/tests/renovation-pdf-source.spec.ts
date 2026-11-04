@@ -51,6 +51,50 @@ test('an unpublished source shows processing rather than claiming no content', a
   await expect(viewer).not.toContainText('No extracted passages');
 });
 
+test('finishing extraction preserves the original-file view in a retained tab', async ({ page }) => {
+  const state = await sourceFixture(page);
+  let originalReads = 0;
+  await page.route('**/versions/pdf-version/source?*', route => {
+    originalReads++;
+    return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' });
+  });
+  const viewer = page.getByRole('tabpanel', { name: 'scanned.pdf' });
+  await expect(viewer.getByRole('status')).toContainText('Reading and indexing');
+  await viewer.getByRole('button', { name: 'Original file' }).click();
+  const preview = viewer.locator('iframe[title="Original PDF"]');
+  await expect(preview).toBeVisible();
+  const original = await preview.getAttribute('src');
+  state.state = 'ready';
+  await expect.poll(() => state.chunkReads, { timeout: 12000 }).toBeGreaterThan(0);
+  await expect(preview).toHaveAttribute('src', original!);
+  await expect(viewer.getByRole('button', { name: 'Original file' })).toHaveAttribute('aria-pressed', 'true');
+  expect(originalReads).toBe(1);
+  await viewer.getByRole('button', { name: 'Extracted content' }).click();
+  await expect(viewer).toContainText('Scanned body alpha was recovered with OCR.');
+});
+
+test('deleting a material clears its retained preview', async ({ page }) => {
+  await sourceFixture(page, 'ready');
+  const viewer = page.getByRole('tabpanel', { name: 'scanned.pdf' });
+  await expect(viewer).toContainText('Scanned body alpha was recovered with OCR.');
+  await viewer.getByRole('link', { name: 'Manage material' }).click();
+  let removed = false;
+  await page.route('**/api/v1/documents/pdf-source', route => {
+    if (route.request().method() === 'DELETE') {
+      removed = true;
+      return route.fulfill({ json: { state: 'deleted' } });
+    }
+    if (removed) return route.fulfill({ status: 404, json: { error: { code: 'NOT_FOUND', message: 'Removed' } } });
+    return route.fallback();
+  });
+  await page.getByRole('button', { name: 'Delete material', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm deletion' }).click();
+  await expect(page).toHaveURL(/\/library\?deleted=1$/);
+  await page.getByRole('button', { name: 'Open side panel', exact: true }).click();
+  await expect(viewer.getByRole('alert')).toBeVisible();
+  await expect(viewer).not.toContainText('Scanned body alpha');
+});
+
 test('OCR failure remains actionable inside the source viewer', async ({page}) => {
   await sourceFixture(page,'failed');
   const viewer = page.getByRole('tabpanel',{name:'scanned.pdf'});

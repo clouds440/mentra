@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 
 /** One anchored surface for listboxes and account menus, including modal dialogs. */
-export function Popover({ anchor, open, onClose, children, className, id, role, label, placement = 'below', matchWidth = false, contentWidth = false, width = 280, multiselectable, focusOnOpen = false, viewportPadding = 12, maxHeight = 320 }: {
+export function Popover({ anchor, open, onClose, children, className, id, role, label, placement = 'below', matchWidth = false, contentWidth = false, width = 280, multiselectable, focusOnOpen = false, viewportPadding = 12, maxHeight = 320, keepMounted = false, portalContainer }: {
   anchor: RefObject<HTMLElement>; open: boolean; onClose: () => void; children: ReactNode;
   className?: string; id?: string; role?: string; label?: string;
   placement?: 'below' | 'above'; matchWidth?: boolean; multiselectable?: boolean; focusOnOpen?: boolean;
@@ -11,6 +11,8 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
   maxHeight?: number;
   width?: number;
   contentWidth?: boolean;
+  keepMounted?: boolean;
+  portalContainer?: RefObject<HTMLElement>;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const close = useRef(onClose); close.current = onClose;
@@ -50,7 +52,7 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
       window.removeEventListener('scroll', schedulePosition, true); window.removeEventListener('resize', schedulePosition);
       window.visualViewport?.removeEventListener('resize', schedulePosition); window.visualViewport?.removeEventListener('scroll', schedulePosition); };
   }, [open, anchor, placement, matchWidth, contentWidth, width, focusOnOpen, viewportPadding, maxHeight]);
-  if (!open) return null;
-  return createPortal(<div ref={panel} id={id} role={role} aria-label={label} aria-multiselectable={multiselectable || undefined} style={style}
-    className={cn('overlay-panel z-[100] overflow-x-hidden overflow-y-auto overscroll-contain rounded-control p-1', className)}>{children}</div>, anchor.current?.closest('dialog[open], [data-modal-navigation]') ?? document.body);
+  if (!open && !keepMounted) return null;
+  return createPortal(<div ref={panel} id={id} role={role} aria-label={label} aria-multiselectable={multiselectable || undefined} hidden={!open} style={open ? style : { display: 'none' }}
+    className={cn('overlay-panel z-[100] overflow-x-hidden overflow-y-auto overscroll-contain rounded-control p-1', className)}>{children}</div>, portalContainer?.current ?? anchor.current?.closest('dialog[open], [data-modal-navigation]') ?? document.body);
 }

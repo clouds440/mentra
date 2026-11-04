@@ -8,9 +8,10 @@ import { openSourcesInMentra } from './sourcePreference';
 function previewUrl(href: string) {
   try {
     const url = new URL(href);
+    const host = url.hostname.replace(/\.$/, '');
     if (url.protocol === 'https:' && url.origin !== location.origin && !url.port && !url.username && !url.password
-        && /^[a-z\d.-]+\.[a-z]{2,}$/i.test(url.hostname)
-        && !/\.(?:local|internal|localhost|test|invalid|onion)$/i.test(url.hostname)) return url;
+        && /^(?:[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?\.)+[a-z]{2,}$/i.test(host)
+        && !/(?:^|\.)(?:localhost|local|internal|test|invalid|example|onion|lan|corp|home\.arpa)$/i.test(host)) return url;
   } catch { /* Relative links stay in their normal navigation path. */ }
   return undefined;
 }
@@ -26,7 +27,9 @@ function WebSourcePreview({ url, title, excerpt }: { url: URL; title: string; ex
       {excerpt && <p className="text-sm leading-6 text-body">{excerpt}</p>}
       <p className="text-xs text-muted">If the publisher blocks this preview, use Open in browser.</p>
     </header>
-    <iframe src={url.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer" {...{ credentialless: '' }} />
+    <iframe src={url.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
+      allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'"
+      {...{ credentialless: '' }} />
   </div>;
 }
 
@@ -43,7 +46,7 @@ export function SourceLink({ href, sourceTitle, excerpt, onPreview, children, ..
   const external = /^https?:\/\//i.test(href);
   return <a {...props} href={href} target={external ? '_blank' : props.target} rel="noopener noreferrer" referrerPolicy="no-referrer"
     onClick={event => {
-      if (!panel || !openSourcesInMentra() || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      if (!panel || props.download != null || !openSourcesInMentra() || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const url = previewUrl(href);
       if (!url) return;
       event.preventDefault();

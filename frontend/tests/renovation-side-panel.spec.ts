@@ -135,4 +135,10 @@ test('the panel dropdown browses sources from earlier messages without changing 
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
   await expect(catalog).toHaveCount(0);
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(1);
+  await panel.getByRole('button', { name: 'From this chat' }).click();
+  await expect(catalog.getByRole('link', { name: /Article 2/ })).toBeVisible();
+  await expect(catalog.getByRole('button', { name: 'Load earlier sources' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(catalog).toHaveCount(0);
+  await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
 });

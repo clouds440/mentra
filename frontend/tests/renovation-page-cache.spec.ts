@@ -138,5 +138,5 @@ test('material processing updates until completion and then stops polling', asyn
   await page.clock.fastForward(180000);
   await page.clock.runFor(1000);
   expect(reads).toBe(final);
-  await expect(page.getByRole('link',{name:'Processing notes',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Processing notes',exact:true})).toBeVisible();
 });

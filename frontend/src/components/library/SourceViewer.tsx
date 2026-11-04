@@ -9,6 +9,8 @@ import { CodeBlock } from '../content/CodeBlock';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { fileLanguage } from '../../lib/codeLanguages';
 import { groupPassages, isMarkdown, passageLanguage } from './sourcePresentation';
+import { usePageRefresh } from '../../hooks/usePageRefresh';
+import { ApiError } from '../../services/api';
 import { downloadSource, getSourceChunk, getSourceChunks, materialError } from '../../services/rag';
 import type { SourceReference, SourceChunk } from '../../types/rag';
 
@@ -31,16 +33,20 @@ export function SourceReader({ source, filename, includeArchived = false, status
   const [view, setView] = useState<'extracted' | 'original'>('extracted');
   const [original, setOriginal] = useState<OriginalFile>();
   const [opening, setOpening] = useState(false);
+  const [fileError, setFileError] = useState('');
   const [reload, setReload] = useState(0);
+  const [accessDenied, setAccessDenied] = useState(false);
   const controllerRef = useRef<AbortController>();
+  const fileController = useRef<AbortController>();
+  const originalUrl = useRef<string>();
   const originalRequest = useRef<Promise<OriginalFile>>();
   const displayFilename = filename ?? source.filename ?? chunks[0]?.filename;
   const passages = useMemo(() => [...(citedChunk ? [citedChunk] : []), ...groupPassages(chunks.filter(chunk => chunk.id !== citedChunk?.id))], [chunks, citedChunk]);
+  usePageRefresh(() => setReload(value => value + 1), !status, ['documents', 'learning-contexts']);
   useEffect(() => {
 
     const controller = new AbortController(); controllerRef.current = controller;
-    setOpening(false); setDownloadBusy(false);
-    setLoading(true); setLoadingMore(false); setMore(false); setChunks([]); setCitedChunk(undefined); setError(''); setOriginal(undefined); setView('extracted'); originalRequest.current = undefined;
+    setLoading(true); setLoadingMore(false); setMore(false); setChunks([]); setCitedChunk(undefined); setError('');
     async function load() {
       if (!source.generation_id && status && status.state !== 'ready') return;
       if (source.chunk_id) {
@@ -53,11 +59,26 @@ export function SourceReader({ source, filename, includeArchived = false, status
       }
     }
     void load()
-      .catch(e => { if (!controller.signal.aborted) setError(materialError(e)); })
+      .then(() => { if (!controller.signal.aborted) setAccessDenied(false); })
+      .catch(e => {
+        if (controller.signal.aborted) return;
+        if (e instanceof ApiError && [401, 403, 404, 410].includes(e.status)) setAccessDenied(true);
+        setError(materialError(e));
+      })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [source.document_id, source.version_id, source.generation_id, source.chunk_id, includeArchived, status?.state, reload]);
-  useEffect(() => () => { if (original?.url) URL.revokeObjectURL(original.url); }, [original?.url]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fileController.current = controller;
+    setOriginal(undefined); setView('extracted'); setOpening(false); setDownloadBusy(false); setFileError('');
+    return () => {
+      controller.abort();
+      originalRequest.current = undefined;
+      if (originalUrl.current) URL.revokeObjectURL(originalUrl.current);
+      originalUrl.current = undefined;
+    };
+  }, [source.document_id, source.version_id, includeArchived, accessDenied]);
   async function loadMore() {
     if (loadingMore) return;
     const controller = controllerRef.current;
@@ -71,7 +92,7 @@ export function SourceReader({ source, filename, includeArchived = false, status
   async function originalFile() {
     if (original) return original;
     if (originalRequest.current) return originalRequest.current;
-    const controller = controllerRef.current;
+    const controller = fileController.current;
     const request = downloadSource(source.document_id, source.version_id, includeArchived, controller?.signal).then(async blob => {
       const media = blob.type;
       const binary = media.startsWith('image/') || media === 'application/pdf' || media.includes('officedocument');
@@ -80,25 +101,26 @@ export function SourceReader({ source, filename, includeArchived = false, status
       const text = textual ? new TextDecoder().decode(await blob.slice(0, limit).arrayBuffer(), { stream: blob.size > limit }) : undefined;
       if (controller?.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       const file = { blob, url: URL.createObjectURL(blob), media, text, truncated: textual && blob.size > limit };
+      originalUrl.current = file.url;
       setOriginal(file); return file;
     });
     originalRequest.current = request;
     try { return await request; } finally { if (originalRequest.current === request) originalRequest.current = undefined; }
   }
   async function openOriginal() {
-    const controller = controllerRef.current;
-    setView('original'); setOpening(true); setError('');
-    try { await originalFile(); } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
+    const controller = fileController.current;
+    setView('original'); setOpening(true); setFileError('');
+    try { await originalFile(); } catch (e) { if (!controller?.signal.aborted) setFileError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setOpening(false); }
   }
   async function download() {
-    const controller = controllerRef.current;
-    setDownloadBusy(true); setError('');
+    const controller = fileController.current;
+    setDownloadBusy(true); setFileError('');
     try {
       const file = await originalFile();
       if (controller?.signal.aborted) return;
       const anchor = document.createElement('a'); anchor.href = file.url; anchor.download = displayFilename ?? source.title; anchor.click();
-    } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
+    } catch (e) { if (!controller?.signal.aborted) setFileError(materialError(e)); }
     finally { if (!controller?.signal.aborted) setDownloadBusy(false); }
   }
   return <>
@@ -111,8 +133,9 @@ export function SourceReader({ source, filename, includeArchived = false, status
       <nav className="source-tabs" aria-label="Source view"><button type="button" aria-pressed={view === 'extracted'} onClick={() => setView('extracted')}>Extracted content</button><button type="button" aria-pressed={view === 'original'} onClick={() => void openOriginal()}>Original file</button></nav>
     </header>
     <div className="source-reader">
-      {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
+      {fileError && <p role="alert" className="mb-4 text-sm text-danger">{fileError}</p>}
       {view === 'extracted' ? <>
+        {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
         {status?.state === 'processing' && <p role="status" className="mb-4 text-sm text-muted">Reading and indexing this source. Extracted content and notes will appear here when processing finishes. The original file is available.</p>}
         {status?.state === 'failed' && <p role="alert" className="mb-4 text-sm text-danger">{status.error || 'Source extraction did not finish.'} Your original file is preserved. Retry processing from the material page.</p>}
         {status?.state === 'ready' && status.error && <p role="alert" className="mb-4 text-sm text-muted">Latest processing attempt failed: {status.error} Showing the previously indexed content.</p>}

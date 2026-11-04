@@ -10,7 +10,8 @@ const panelId = 'workspace-side-panel';
 const desktopQuery = '(min-width: 1200px)';
 const resizeOptions = { min: 300, max: 600, initial: 410, rail: 0, side: 'right', id: panelId,
   label: 'Resize side panel', storageKey: 'mentra.side-panel.width.v1', desktopQuery };
-const drawerOptions = { desktopQuery, inertIds: ['workspace-content', 'main-sidebar'], closeOnDesktop: false, opener: '' };
+const drawerOptions = { desktopQuery, inertIds: ['workspace-content', 'main-sidebar'], closeOnDesktop: false, opener: '',
+  fallbackFocus: '[aria-controls="workspace-side-panel"]:is(button), #workspace-main' };
 
 export function SidePanelTrigger() {
   const { tabs, visible, launcher } = useSidePanelState();
@@ -29,6 +30,7 @@ export function SidePanel() {
   const browseButton = useRef<HTMLButtonElement>(null);
   const browseId = useId();
   const [browsing, setBrowsing] = useState(false);
+  const [hasBrowsed, setHasBrowsed] = useState(false);
   const drag = useRef<{ pointer: number; start: number; scroll: number; moved: boolean }>();
   const opener = useRef<HTMLElement | null>(null);
   const sidebar = useResizableSidebar(resizeOptions);
@@ -42,7 +44,8 @@ export function SidePanel() {
     return () => {
       if (panel.current?.contains(document.activeElement) || document.activeElement === document.body) {
         requestAnimationFrame(() => {
-          const target = opener.current?.isConnected && opener.current.getClientRects().length ? opener.current
+          if (!panel.current?.inert) return;
+          const target = opener.current?.isConnected && !opener.current.closest('[inert]') && opener.current.getClientRects().length ? opener.current
             : document.querySelector<HTMLElement>('[aria-controls="workspace-side-panel"]:is(button)') ?? document.getElementById('workspace-main');
           target?.focus({ preventScroll: true });
         });
@@ -121,8 +124,9 @@ export function SidePanel() {
           </div>
           {launcher && <>
             <IconButton ref={browseButton} size="sm" aria-label="From this chat" aria-expanded={browsing} aria-controls={browsing ? browseId : undefined}
-              title="From this chat" onClick={() => setBrowsing(value => !value)}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
-            <Popover anchor={browseButton} open={browsing} onClose={() => setBrowsing(false)} id={browseId} role="region" label="From this chat" width={340} maxHeight={450} focusOnOpen>
+              title="From this chat" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
+            <Popover anchor={browseButton} open={browsing && visible} onClose={() => setBrowsing(false)} id={browseId} role="region" label="From this chat"
+              width={340} maxHeight={450} focusOnOpen keepMounted={hasBrowsed} portalContainer={panel}>
               {launcher.content}
             </Popover>
           </>}
