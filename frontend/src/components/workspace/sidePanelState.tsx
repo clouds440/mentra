@@ -5,15 +5,27 @@ export interface PanelTab {
   content: ReactNode;
   icon?: ReactNode;
   reuseKey?: string;
+  parentId?: string;
 }
 interface OpenTab extends PanelTab { id: string }
 interface PanelState { tabs: OpenTab[]; active: string; visible: boolean; launcher?: PanelTab }
 const empty: PanelState = { tabs: [], active: '', visible: false };
+
+function removeTab(state: PanelState, id: string) {
+  const index = state.tabs.findIndex(tab => tab.id === id);
+  if (index < 0) return state;
+  const tabs = state.tabs.filter(tab => tab.id !== id);
+  if (!tabs.length) return { ...state, ...empty };
+  return { ...state, tabs, active: state.active === id ? tabs[Math.min(index, tabs.length - 1)].id : state.active };
+}
+
 const State = createContext(empty);
+export const PanelTabScope = createContext<string | undefined>(undefined);
 const Actions = createContext<{
   open: (tab: PanelTab) => void;
   select: (id: string) => void;
   close: (id: string) => void;
+  back: (id: string) => void;
   hide: () => void;
   toggle: () => void;
   setLauncher: (tab?: PanelTab) => void;
@@ -34,12 +46,12 @@ export function SidePanelProvider({ children }: { children: ReactNode }) {
       setState(value => value.tabs.some(tab => tab.id === id) ? { ...value, active: id } : value);
     },
     close(id: string) {
+      setState(value => removeTab(value, id));
+    },
+    back(id: string) {
       setState(value => {
-        const index = value.tabs.findIndex(tab => tab.id === id);
-        if (index < 0) return value;
-        const tabs = value.tabs.filter(tab => tab.id !== id);
-        if (!tabs.length) return { ...value, ...empty };
-        return { ...value, tabs, active: value.active === id ? tabs[Math.min(index, tabs.length - 1)].id : value.active };
+        const parentId = value.tabs.find(tab => tab.id === id)?.parentId;
+        return parentId && value.tabs.some(tab => tab.id === parentId) ? { ...value, active: parentId } : removeTab(value, id);
       });
     },
     hide() { setState(value => value.visible ? { ...value, visible: false } : value); },

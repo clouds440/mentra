@@ -1,4 +1,4 @@
-import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from '../components/navigation/AppSidebar';
@@ -60,7 +60,7 @@ function AppWorkspace() {
               onClick={() => setMobileOpen(true)}
               type="button"
             >
-              <Menu aria-hidden="true" size={19} />
+              <PanelLeft aria-hidden="true" size={19} />
             </IconButton>
             <IconButton
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -69,14 +69,10 @@ function AppWorkspace() {
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
             >
-              {collapsed ? (
-                <PanelLeftOpen aria-hidden="true" size={18} />
-              ) : (
-                <PanelLeftClose aria-hidden="true" size={18} />
-              )}
+              <PanelLeft aria-hidden="true" size={18} />
             </IconButton>
           </div>
-          <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-control bg-background"><SidePanelTrigger /><NotificationBell quiet={isChat} /></div>
+          <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-control bg-background"><NotificationBell quiet={isChat} /><SidePanelTrigger /></div>
         </div>
         <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
           <Outlet context={chatContext} />

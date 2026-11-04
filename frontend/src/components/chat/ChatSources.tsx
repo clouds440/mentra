@@ -1,4 +1,4 @@
-import { BookOpen, FileText, Globe, History, PanelRightOpen } from 'lucide-react';
+import { BookOpen, Brain, FileText, History, ListTree, PanelRight } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ChatMessageData } from '../../types/chat';
 import type { StoredMessage } from '../../types/conversations';
@@ -17,7 +17,7 @@ const ReferenceContent = lazy(() => import('./HistoryReferenceViewer').then(modu
 const referenceTitle = (item: HistoryReference | MemoryReference) => 'title' in item ? item.title : 'Saved memory';
 type SourceGroup = 'web' | 'study' | 'personal';
 const groups = [
-  { kind: 'web', title: 'Web sources', Icon: Globe },
+  { kind: 'web', title: 'Web sources', Icon: ListTree },
   { kind: 'study', title: 'Study sources', Icon: BookOpen },
   { kind: 'personal', title: 'Personal context', Icon: History },
 ] as const;
@@ -36,7 +36,8 @@ export function useSourceTabs() {
       content: <SourceReader source={source} includeArchived={source.include_archived ?? false} /> });
   }, [panel]);
   const openReference = useCallback((reference: HistoryReference | MemoryReference) => {
-    panel?.open({ title: referenceTitle(reference), icon: <History size={14} aria-hidden="true" />,
+    const Icon = 'memory_id' in reference ? Brain : History;
+    panel?.open({ title: referenceTitle(reference), icon: <Icon size={14} aria-hidden="true" />,
       content: <Suspense fallback={<Skeleton variant="text" className="p-4" />}><ReferenceContent reference={reference} onClose={panel.hide} /></Suspense> });
   }, [panel]);
   return { openSource, openReference };
@@ -67,7 +68,7 @@ export function ChatSourceButtons({ message }: { message: ChatMessageData }) {
     const total = count(message, kind);
     return total > 0 && <button key={kind} type="button" className={buttonStyles({ size: 'sm', variant: 'secondary' })} title="Open in side panel"
       onClick={() => panel.open({ title, icon: <Icon size={14} aria-hidden="true" />, content: <ChatSourceCollection message={message} group={kind} /> })}>
-      <PanelRightOpen size={15} aria-hidden="true" />{title} ({total})
+      <PanelRight size={15} aria-hidden="true" />{title} ({total})
     </button>;
   })}</div>;
 }
@@ -125,7 +126,7 @@ export function ChatSourceCatalog({ messages, conversationId, before }: {
   }, [messages, earlier]);
   return <>
     {!!web.length && <SourceList title="Web sources">{web.map(item => <li key={item.url}>
-      <SourceLink href={item.url} sourceTitle={item.title} excerpt={item.excerpt} className="workspace-source-row block">
+      <SourceLink href={item.url} sourceTitle={item.title} className="workspace-source-row block">
         <span className="block">{item.title}</span><span className="text-xs text-muted">{item.domain}</span>
       </SourceLink>
     </li>)}</SourceList>}

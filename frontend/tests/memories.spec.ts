@@ -128,13 +128,13 @@ test('actual memory/history tool calls, references, chat deletion retention and 
   await send(page, 'Recall memories about diagrams');
   await page.getByRole('button', { name: 'Open memory reference M1' }).click();
   await expect(page.getByRole('tabpanel')).toContainText('Remember that I prefer mermaid diagrams.');
-  await page.getByRole('button', { name: 'Close side panel' }).click();
+  await page.getByRole('button', { name: 'Hide side panel' }).click();
   await page.getByRole('button', { name: 'Start a new chat' }).click();
   await expect(page).toHaveURL(/\/$/);
   await send(page, 'Find past chats about mermaid');
   await page.getByRole('button', { name: 'Open history reference H1' }).click();
   await expect(page.getByRole('dialog')).toContainText('Remember that I prefer mermaid diagrams.');
-  await page.getByRole('button', { name: 'Close side panel' }).click();
+  await page.getByRole('button', { name: 'Hide side panel' }).click();
   await page.goto(sourceChat);
   await page.getByRole('link', { name: 'Remember that I prefer mermaid diagrams.', exact: true }).hover();
   await page.getByRole('button', { name: 'Actions for Remember that I prefer mermaid diagrams.', exact: true }).focus();

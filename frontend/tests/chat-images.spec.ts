@@ -116,7 +116,7 @@ for (const width of [1280,390]) test(`saved portrait preview fits above text and
   await page.screenshot({path:info.outputPath('attachment-overlay.png')});
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0); await expect(open).toBeFocused();
-  await open.click(); await page.getByRole('button',{name:'Close side panel'}).click();
+  await open.click(); await page.getByRole('button',{name:'Hide side panel'}).click();
   await expect(dialog).toHaveCount(0); expect(state.sourceReads()).toBe(previewReads);
   await add.click();
   await expect(card.getByLabel('Learning context for portrait.png',{exact:true})).toBeVisible();

@@ -132,7 +132,7 @@ test('Library upload, refresh, grounded chat, citation, replacement and deletion
   await expect(sourceTab.locator('section')).toHaveCount(1);
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download original' }).click(); await download;
-  await page.getByRole('button', { name: 'Close side panel' }).click();
+  await page.getByRole('button', { name: 'Hide side panel' }).click();
   await page.goto('/library');
   await page.getByRole('listitem').filter({ hasText: 'Decorator Notes' }).getByRole('link', { name: 'Manage material' }).click();
   await expect(page.getByText('Ready to study', { exact: true })).toBeVisible();

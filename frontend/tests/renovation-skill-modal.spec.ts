@@ -9,7 +9,7 @@ test('skill panel scrolls its body while keeping Close visible', async ({ page }
   } : { items: [topic], total: 1, ungrouped_count: 0, limit: 10, offset: 0 } }));
   await page.goto('/progress'); await page.getByRole('button', { name: 'Explore Differentiation', exact: true }).click();
   const dialog = page.getByRole('tabpanel', { name: 'Differentiation' });
-  const close = page.getByRole('button', { name: 'Close side panel' });
+  const close = page.getByRole('button', { name: 'Hide side panel' });
   await expect(dialog.getByText('Rule 0', { exact: true })).toBeVisible();
   const before = await close.boundingBox();
   const body = dialog;

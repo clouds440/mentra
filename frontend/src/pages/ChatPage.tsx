@@ -4,7 +4,7 @@ import { useChatScroll } from '../hooks/useChatScroll';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
-import { ArrowDown, FileText, PanelRightOpen, X } from 'lucide-react';
+import { ArrowDown, FileText, Layers, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
@@ -43,7 +43,7 @@ export function ChatPage() {
   const hasSources = useMemo(() => view.messages.some(hasChatSources), [view.messages]);
   useEffect(() => {
     if (!panel || (!hasSources && !(conversationId && view.before))) return;
-    panel.setLauncher({ title: 'Chat sources', icon: <PanelRightOpen size={14} aria-hidden="true" />,
+    panel.setLauncher({ title: 'Chat sources', icon: <Layers size={14} aria-hidden="true" />,
       content: <ChatSourceCatalog key={id} messages={view.messages} conversationId={conversationId} before={view.before} /> });
     return () => panel.setLauncher();
   }, [panel, id, hasSources, conversationId, view.before, view.messages]);

@@ -9,21 +9,34 @@ const web = (index: number) => ({ token: 'W' + index, url: 'https://example.org/
 async function citations(page: Page) {
   const fixture = await richChat(page, 'An explanation with sources [[W1]] and [[W2]].');
   Object.assign(fixture.items[1], { web_citations: ['W1', 'W2'], web_sources: Array.from({ length: 8 }, (_, i) => web(i + 1)) });
-  await page.context().route('https://example.org/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>Publisher preview</h1>' }));
+  await page.context().route('https://example.org/**', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html>
+    <meta name="color-scheme" content="light dark">
+    <style>h1 { color: black; } @media (prefers-color-scheme: dark) { h1 { color: white; } }</style>
+    <h1>Publisher preview</h1>` }));
+  await page.route('**/api/v1/web/preview', route => {
+    const { url } = route.request().postDataJSON();
+    return route.fulfill({ json: url === web(2).url ? { status: 'blocked' } : { status: 'available', url } });
+  });
 }
 
 test('sources open new tabs, retain previews, resize and scroll without losing chat position', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ colorScheme: null });
   await citations(page);
   await page.goto('/chat/polish-chat');
-  await page.getByRole('button', { name: 'Open side panel', exact: true }).click();
+  const trigger = page.getByRole('button', { name: 'Open side panel', exact: true });
+  await expect(trigger.locator('svg')).toHaveClass(/lucide-panel-right/);
+  expect((await trigger.boundingBox())!.x).toBeGreaterThan((await page.getByRole('link', { name: 'Notifications' }).boundingBox())!.x);
+  await trigger.click();
   await expect(page.getByRole('tabpanel', { name: 'Chat sources' })).toBeVisible();
   await page.getByRole('button', { name: 'Close tab: Chat sources' }).click();
   const open = page.getByRole('button', { name: 'Web sources (8)', exact: true });
   await expect(open).toHaveAttribute('title', 'Open in side panel');
   await open.click();
   const panel = page.getByRole('complementary', { name: 'Side panel' });
+  await expect(panel).toHaveCSS('transition-property', 'width, visibility');
   const list = panel.getByRole('tabpanel', { name: 'Web sources' });
+  await expect(panel.getByRole('tab', { name: 'Web sources' }).locator('svg')).toHaveClass(/lucide-list-tree/);
   const first = list.getByRole('link', { name: /Open web source W1:/ });
   await expect(first).toHaveAttribute('href', web(1).url);
   await expect(first).toHaveAttribute('target', '_blank');
@@ -31,13 +44,39 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   const preview = panel.getByRole('tabpanel', { name: 'Article 1' });
   await expect(preview.getByRole('link', { name: 'Open in browser' })).toHaveAttribute('href', web(1).url);
   await expect(preview.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');
-  await expect(preview.frameLocator('iframe').getByRole('heading', { name: 'Publisher preview' })).toBeVisible();
+  const publisher = preview.frameLocator('iframe').getByRole('heading', { name: 'Publisher preview' });
+  await expect(publisher).toBeVisible();
+  for (const [theme, color] of [['dark', 'rgb(255, 255, 255)'], ['light', 'rgb(0, 0, 0)']]) {
+    await page.evaluate(next => window.dispatchEvent(new StorageEvent('storage', {
+      key: 'mentra-theme', newValue: next, storageArea: localStorage,
+    })), theme);
+    await expect(publisher).toHaveCSS('color', color);
+  }
+  await expect(preview.getByText('Publisher excerpt 1')).toHaveCount(0);
+  await preview.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(list).toBeVisible();
+  await expect(panel.getByRole('tab', { name: 'Article 1' })).toBeVisible();
   await page.screenshot({ path: info.outputPath('desktop-sources.png') });
   for (let i = 2; i <= 6; i++) {
     await panel.getByRole('tab', { name: 'Web sources' }).click();
     await list.getByRole('link', { name: new RegExp('Open web source W' + i + ':') }).click();
+    if (i === 2) {
+      const blocked = panel.getByRole('tabpanel', { name: 'Article 2' });
+      await expect(blocked.getByRole('status')).toContainText('This publisher restricts embedded previews');
+      await expect(blocked.locator('iframe')).toHaveCount(0);
+      await expect(blocked.getByRole('link', { name: 'Open in browser' })).toHaveAttribute('href', web(2).url);
+    }
   }
   const strip = panel.getByRole('tablist');
+  await expect(strip).toHaveCSS('scrollbar-width', 'none');
+  const previous = panel.getByRole('button', { name: 'Scroll tabs left' });
+  const next = panel.getByRole('button', { name: 'Scroll tabs right' });
+  await expect(previous).toBeEnabled();
+  await expect(next).toBeDisabled();
+  await previous.click();
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(next).toBeDisabled();
   const bounds = (await strip.boundingBox())!;
   const before = await strip.evaluate(node => node.scrollLeft);
   await page.mouse.move(bounds.x + 35, bounds.y + 16);
@@ -54,7 +93,8 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await page.mouse.move(grip.x + grip.width / 2 - 72, grip.y + 80, { steps: 5 });
   await page.mouse.up();
   expect((await panel.boundingBox())!.width).toBeGreaterThan(width + 50);
-  await panel.getByRole('button', { name: 'Close side panel', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'Hide side panel', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Hide side panel', exact: true }).click();
   await expect(panel).toBeHidden();
   await page.getByRole('button', { name: 'Open side panel', exact: true }).click();
   await expect(panel.getByRole('tabpanel', { name: 'Article 6' })).toBeVisible();
@@ -76,6 +116,7 @@ test('the mobile right drawer restores focus and supports browser links with the
   await link.click();
   const drawer = page.getByRole('dialog', { name: 'Side panel' });
   await expect(drawer).toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByRole('button', { name: 'Hide side panel', exact: true })).toHaveCount(1);
   await expect.poll(async () => Math.round((await drawer.boundingBox())!.x)).toBe(31);
   await expect.poll(() => page.locator('#workspace-content').evaluate(node => (node as HTMLElement).inert)).toBe(true);
   await page.screenshot({ path: info.outputPath('mobile-sources.png') });

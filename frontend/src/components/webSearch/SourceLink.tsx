@@ -1,7 +1,8 @@
-import { ExternalLink, Globe } from 'lucide-react';
-import type { AnchorHTMLAttributes } from 'react';
-import { buttonStyles } from '../ui/Button';
-import { useSidePanelActions } from '../workspace/sidePanelState';
+import { ArrowLeft, ExternalLink, Globe } from 'lucide-react';
+import { useContext, useEffect, useState, type AnchorHTMLAttributes } from 'react';
+import { apiRequest } from '../../services/api';
+import { buttonStyles, IconButton } from '../ui';
+import { PanelTabScope, useSidePanelActions } from '../workspace/sidePanelState';
 import { openSourcesInMentra } from './sourcePreference';
 
 // Frame only public HTTPS hosts, with no credentials, custom ports or app routes.
@@ -16,33 +17,58 @@ function previewUrl(href: string) {
   return undefined;
 }
 
-function WebSourcePreview({ url, title, excerpt }: { url: URL; title: string; excerpt?: string }) {
+interface PreviewResult { status: 'available' | 'blocked' | 'unavailable'; url?: string }
+
+function WebSourcePreview({ url, title }: { url: URL; title: string }) {
+  const panel = useSidePanelActions();
+  const tab = useContext(PanelTabScope);
+  const [result, setResult] = useState<PreviewResult>();
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestUrl = new URL(url);
+    requestUrl.hash = '';
+    const timer = setTimeout(() => {
+      setResult({ status: 'unavailable' });
+      controller.abort();
+    }, 6000);
+    void apiRequest<PreviewResult>('/api/v1/web/preview', {
+      method: 'POST', body: JSON.stringify({ url: requestUrl.href }), signal: controller.signal,
+    }).then(value => {
+      if (!controller.signal.aborted) setResult(value);
+    }).catch(() => {
+      if (!controller.signal.aborted) setResult({ status: 'unavailable' });
+    }).finally(() => clearTimeout(timer));
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [url]);
+  const frame = result?.status === 'available' && result.url ? previewUrl(result.url) : undefined;
+  if (frame && !frame.hash) frame.hash = url.hash;
   return <div className="workspace-web-preview">
-    <header className="space-y-2 px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="min-w-0 break-all text-xs text-muted">{url.hostname}</span>
-        <a href={url.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
-          className={buttonStyles({ size: 'sm', variant: 'secondary' })}>Open in browser <ExternalLink size={14} aria-hidden="true" /></a>
-      </div>
-      {excerpt && <p className="text-sm leading-6 text-body">{excerpt}</p>}
-      <p className="text-xs text-muted">If the publisher blocks this preview, use Open in browser.</p>
+    <header className="workspace-web-toolbar">
+      {panel && tab && <IconButton size="sm" aria-label="Back" title="Back to previous panel view" onClick={() => panel.back(tab)}><ArrowLeft size={16} aria-hidden="true" /></IconButton>}
+      <span className="min-w-0 flex-1 truncate text-xs text-muted" title={url.hostname}>{url.hostname}</span>
+      <a href={url.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
+        className={buttonStyles({ size: 'sm', variant: 'ghost' })}>Open in browser <ExternalLink size={14} aria-hidden="true" /></a>
     </header>
-    <iframe src={url.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
+    {frame ? <iframe src={frame.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
       allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'"
-      {...{ credentialless: '' }} />
+      {...{ credentialless: '' }} /> : <div className="workspace-web-status" role="status">
+      <Globe size={24} strokeWidth={1.5} aria-hidden="true" />
+      <p className="text-sm font-medium text-heading">{!result ? 'Checking preview…' : result.status === 'blocked' ? 'This publisher restricts embedded previews' : 'Preview unavailable'}</p>
+      {result && <p className="text-xs text-muted">Use Open in browser to visit the original page.</p>}
+    </div>}
   </div>;
 }
 
 interface SourceLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'> {
   href: string;
   sourceTitle?: string;
-  excerpt?: string;
   onPreview?: () => void;
 }
 
 /** A real link preserves the browser's modifier, middle-click and context-menu actions. */
-export function SourceLink({ href, sourceTitle, excerpt, onPreview, children, ...props }: SourceLinkProps) {
+export function SourceLink({ href, sourceTitle, onPreview, children, ...props }: SourceLinkProps) {
   const panel = useSidePanelActions();
+  const parentId = useContext(PanelTabScope);
   const external = /^https?:\/\//i.test(href);
   return <a {...props} href={href} target={external ? '_blank' : props.target} rel="noopener noreferrer" referrerPolicy="no-referrer"
     onClick={event => {
@@ -52,7 +78,7 @@ export function SourceLink({ href, sourceTitle, excerpt, onPreview, children, ..
       event.preventDefault();
       onPreview?.();
       const title = sourceTitle?.trim() || event.currentTarget.textContent?.trim() || url.hostname;
-      panel.open({ title, icon: <Globe size={14} aria-hidden="true" />, content: <WebSourcePreview url={url} title={title} excerpt={excerpt} /> });
+      panel.open({ title, parentId, icon: <Globe size={14} aria-hidden="true" />, content: <WebSourcePreview url={url} title={title} /> });
     }}>{children}</a>;
 }
 

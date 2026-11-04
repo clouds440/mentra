@@ -139,18 +139,18 @@ test('an indexed source with missing passages reports a load inconsistency', asy
 
 test('unsaved title edits cannot freeze source processing progress', async ({page}) => {
   const state=await sourceFixture(page);
-  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
+  await page.getByRole('button',{name:'Hide side panel',exact:true}).click();
   await page.getByLabel('Title',{exact:true}).fill('My unsaved lecture title');
   await page.getByRole('button',{name:'Open source version',exact:true}).click();
   state.state='ready';
   await expect(page.getByRole('tabpanel',{name:'scanned.pdf'})).toContainText('Scanned body alpha was recovered with OCR.',{timeout:12000});
-  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
+  await page.getByRole('button',{name:'Hide side panel',exact:true}).click();
   await expect(page.getByLabel('Title',{exact:true})).toHaveValue('My unsaved lecture title');
 });
 
 test('one OCR notice appears only for the selected upload and disappears after acceptance', async ({page}) => {
   await sourceFixture(page,'ready');
-  await page.getByRole('button',{name:'Close side panel',exact:true}).click();
+  await page.getByRole('button',{name:'Hide side panel',exact:true}).click();
   await expect(page.getByRole('status',{name:'OCR upload notice'})).toHaveCount(0);
   await expect(page.getByText(/Extraction notes|may be inaccurate or missing/)).toHaveCount(0);
   await page.getByLabel('File',{exact:true}).setInputFiles({name:'scan.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF synthetic')});

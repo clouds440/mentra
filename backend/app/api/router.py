@@ -15,6 +15,7 @@ from app.api.routes.learning import router as learning_router
 from app.api.routes.assessments import router as assessments_router
 from app.api.routes.speech import router as speech_router
 from app.api.routes.files import router as files_router
+from app.api.routes.web_preview import router as web_preview_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(files_router)
@@ -32,3 +33,4 @@ api_router.include_router(health_router)
 api_router.include_router(auth_router)
 api_router.include_router(profile_router)
 api_router.include_router(rag_router)
+api_router.include_router(web_preview_router)

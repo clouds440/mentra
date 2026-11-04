@@ -13,7 +13,7 @@ export function safeSource(source: WebSource): boolean {
 
 export function WebCitation({ source, children }: { source: WebSource; children?: ReactNode }) {
   if (!safeSource(source)) return <span>{children ?? `[${source.token}]`}</span>;
-  return <SourceLink href={source.url} sourceTitle={source.title} excerpt={source.excerpt}
+  return <SourceLink href={source.url} sourceTitle={source.title}
     title={`${source.title} · ${source.domain}`} aria-label={`Open web source ${source.token}: ${source.title} on ${source.domain}`}
     className="inline-flex max-w-full items-center gap-1 rounded-md px-1 text-accent underline decoration-accent/40 underline-offset-2 hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
     <WebsiteIcon website={source} /><span>{children ?? `[${source.token}]`}</span>

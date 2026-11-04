@@ -18,7 +18,7 @@ for (const width of [390, 1280]) test(`side panel close control stays fixed whil
   const opener = page.getByRole('button', { name: 'Open source version', exact: true });
   await opener.click();
   const dialog = page.getByRole('tabpanel', { name: 'notes.txt' });
-  const close = page.getByRole('button', { name: 'Close side panel', exact: true });
+  const close = page.getByRole('button', { name: 'Hide side panel', exact: true });
   await expect(dialog.getByText('Section 5', { exact: false })).toBeVisible();
   await expect(close).toHaveCount(1);
   const before = await close.boundingBox();
@@ -29,7 +29,7 @@ for (const width of [390, 1280]) test(`side panel close control stays fixed whil
   expect(await page.locator('#workspace-side-panel').evaluate(node => node.scrollTop)).toBe(0);
   await close.click();
   await expect(dialog).toHaveCount(0);
-  await expect(opener).toBeFocused();
+  await expect(width < 1200 ? opener : page.getByRole('button', { name: 'Open side panel', exact: true })).toBeFocused();
 });
 
 test('chat reference opens in the side panel and its fullscreen diagram closes independently', async ({ page }) => {
@@ -43,7 +43,9 @@ test('chat reference opens in the side panel and its fullscreen diagram closes i
   const opener = page.getByRole('button', { name: 'Open history reference H1' });
   await opener.click();
   const parent = page.getByRole('tabpanel', { name: 'Earlier notes' });
-  const close = page.getByRole('button', { name: 'Close side panel', exact: true });
+  const close = page.getByRole('button', { name: 'Hide side panel', exact: true });
+  await expect(close).toBeVisible();
+  await expect.poll(async () => Math.round((await page.locator('#workspace-side-panel').boundingBox())!.width)).toBe(410);
   const bounds = await close.boundingBox();
   await parent.evaluate(node => { node.scrollTop = node.scrollHeight; });
   await expect(close).toBeInViewport();
@@ -56,5 +58,5 @@ test('chat reference opens in the side panel and its fullscreen diagram closes i
   await expect(parent).toBeVisible();
   await close.click();
   await expect(parent).toHaveCount(0);
-  await expect(opener).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Open side panel', exact: true })).toBeFocused();
 });
