@@ -8,7 +8,7 @@ import 'katex/dist/katex.min.css';
 import { normalizeMathDelimiters, remarkMathCurrency } from '../../lib/mathMarkdown';
 import { CodeBlock } from './CodeBlock';
 import remarkDirective from 'remark-directive';
-import { remarkRichContent, usesRichDirectives } from '../../lib/richMarkdown';
+import { remarkRichContent, usesInlineTypography, usesRichDirectives } from '../../lib/richMarkdown';
 import { ColorText } from './ColorText';
 import { InlineIcon } from './InlineIcon';
 import { DeferredVisual } from './DeferredVisual';
@@ -68,7 +68,8 @@ function FormattedContent({ content, linkComponent, plugins = noPlugins, preview
   const directives = usesRichDirectives(content);
   const diagrams = /(?:```|~~~)\s*(?:mermaid|recharts)/i.test(content);
   const images = /!\[/.test(content);
-  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(plugins ?? noPlugins), ...(directives || diagrams || images ? [remarkRichContent] : [])], [directives, diagrams, images, plugins]);
+  const typography = usesInlineTypography(content);
+  const remarkPlugins = useMemo(() => [remarkGfm, remarkMath, remarkMathCurrency, ...(directives ? [remarkDirective] : []), ...(plugins ?? noPlugins), ...(directives || diagrams || images || typography ? [remarkRichContent] : [])], [directives, diagrams, images, typography, plugins]);
   return <div className="markdown-content"><ReactMarkdown remarkPlugins={remarkPlugins}
     rehypePlugins={[[rehypeKatex, { trust: false, maxExpand: 500, maxSize: 20, throwOnError: false }]]} components={components}>{markdown}</ReactMarkdown></div>;
 }

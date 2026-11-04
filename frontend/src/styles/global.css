@@ -53,7 +53,7 @@
   --overlay: 2 6 23;
   --shadow: 15 23 42;
   --code: 241 245 249;
-  --code-surface: 248 250 253;
+  --code-surface: 239 244 250;
   --code-header: 241 245 250;
   --syntax-comment: 91 107 129;
   --syntax-keyword: 109 40 217;
@@ -95,7 +95,7 @@
   --rich-danger: 254 205 211;
   --rich-accent: 125 211 252;
   --code: 9 13 21;
-  --code-surface: 10 17 30;
+  --code-surface: 15 22 33;
   --code-header: 16 25 42;
   --syntax-comment: 148 163 184;
   --syntax-keyword: 196 181 253;
@@ -339,8 +339,7 @@
   gap: 12px;
   min-height: 40px;
   padding: 4px 8px 4px 14px;
-  border-bottom: 1px solid rgb(var(--border));
-  background: rgb(var(--code-header));
+  background: transparent;
 }
 .code-identity, .code-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .code-identity { color: rgb(var(--muted)); }
@@ -660,11 +659,14 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .rich-icon svg { display: block; width: 100%; height: 100%; }
 .rich-icon-asset, .rich-icon-asset img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .rich-icon-placeholder { display: block; width: 1em; height: 1em; border: 1px solid currentColor; border-radius: 0.2em; opacity: 0.35; }
+.markdown-content small { font-size: .82em; color: rgb(var(--muted)); }
+.markdown-content sub, .markdown-content sup { font-size: .72em; }
+.mermaid-figure .mermaid-svg svg { min-width: var(--diagram-readable-width, 0px); }
 .mermaid-svg svg { display: block; max-width: 100%; height: auto; margin-inline: auto; }
 .mermaid-fullscreen[open], .visual-fullscreen[open] { display: flex; flex-direction: column; width: 100dvw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; }
 .mermaid-fullscreen .mermaid-svg { max-height: none; padding: 1rem 0; }
 .mermaid-fullscreen .mermaid-svg svg { width: 100%; height: auto; max-height: 78dvh; }
-.mermaid-fullscreen.diagram-zoomed .mermaid-svg svg { width: max(100%, 70rem); max-width: none !important; max-height: none; }
+.mermaid-fullscreen.diagram-zoomed .mermaid-svg svg { width: max(100%, 70rem, var(--diagram-readable-width, 0px)); max-width: none !important; max-height: none; }
 .chart-plot { height: clamp(16rem, 52vw, 23rem); min-width: 0; }
 .chart-placeholder { min-height: 24rem; }
 .chart-viewer .chart-plot { flex: 1 0 20rem; height: auto; }
@@ -685,7 +687,16 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .visual-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .125rem .25rem; }
 .chat-visual-actions { justify-content: flex-end; margin-block-start: .25rem; }
 .visual-actions .ui-button { font-size: .75rem; }
-.chat-visual-actions .ui-button { color: rgb(var(--muted)); }
+.chat-visual-actions .ui-button, :is(.chart-viewer, .mermaid-fullscreen) .visual-actions .ui-button { color: rgb(var(--muted)); font-size: .72rem; text-decoration: underline; text-decoration-color: rgb(var(--muted) / .45); text-underline-offset: .2em; }
+.chat-visual-actions .ui-button:hover, .chat-visual-actions .ui-button:focus-visible { color: rgb(var(--heading)); }
+.chat-search-dialog[open] { height: min(35rem, 84dvh); }
+.chat-search-fields { flex: none; display: grid; gap: .55rem; padding: .875rem clamp(.75rem, 3vw, 1.25rem); border-bottom: 1px solid rgb(var(--border) / .65); }
+.chat-search-input { position: relative; }
+.chat-search-input input { width: 100%; padding-inline-end: 2.75rem; }
+.chat-search-input > .ui-button { position: absolute; inset-inline-end: .25rem; top: 50%; transform: translateY(-50%); }
+.chat-search-input input::-webkit-search-cancel-button { display: none; }
+.chat-search-results { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .375rem clamp(.5rem, 2vw, 1rem) .75rem; }
+@media (max-width: 639px) { .chat-search-dialog[open] { height: min(34rem, 82dvh); } }
 .chart-model { color: rgb(var(--muted)); font-size: .8125rem; margin-block: .65rem; }
 .chart-model p { overflow-wrap: anywhere; }
 .interaction-question { padding-block: .5rem; }

@@ -3,11 +3,12 @@ import { ArrowRight } from 'lucide-react';
 import { Button, Select } from '../ui';
 import { FormField } from '../ui/FormField';
 import type { ProfileDetails } from '../../types/studentProfile';
-import { preferences, depths, participationOptions, visualOptions, purposeOptions } from './options';
+import { preferences, depths, participationOptions, visualOptions, purposeOptions, personalityOptions } from './options';
 
-type PreferenceKey = 'learning_preference' | 'explanation_depth' | 'participation' | 'visual_support' | 'learning_purpose';
+type PreferenceKey = 'learning_preference' | 'explanation_depth' | 'participation' | 'visual_support' | 'learning_purpose' | 'personality';
 type Details = Pick<ProfileDetails, PreferenceKey>;
 const controls = [
+  { key: 'personality', label: 'Mentra personality', options: personalityOptions, fallback: 'friendly' },
   { key: 'learning_purpose', label: 'Learning purpose', options: purposeOptions, fallback: 'general' },
   { key: 'learning_preference', label: 'Teaching approach', options: preferences, fallback: 'balanced' },
   { key: 'participation', label: 'Participation', options: participationOptions, fallback: 'adaptive' },

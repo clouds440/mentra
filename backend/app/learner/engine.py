@@ -361,10 +361,10 @@ class LearnerEngine:
         memberships = self.repository.skill_memberships(learner_id, ids)
         return [replace(by_id[identifier], canonical_name=memberships.get(identifier, {}).get('label', by_id[identifier].canonical_name)) for identifier in ids]
 
-    def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False):
+    def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False, all_contexts=False):
         """One consistent ranking input set for recommendations and verification."""
         request = StudyRecommendationsRequest(learner_id=learner_id, context_ids=context_ids, limit=limit)
-        data = self.retrieval.ranking_data(request)
+        data = self.retrieval.ranking_data(request, all_contexts=all_contexts)
         return dict(recommendations=self.retrieval.recommend(request, data=data),
                     verification=self.retrieval.recommend(request, verification=True, data=data, supported_only=supported_verification))
 

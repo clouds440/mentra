@@ -13,25 +13,25 @@ router = APIRouter(prefix='/learning', tags=['learning'], dependencies=[Depends(
 
 @router.get('/topics')
 async def topics(request: Request, query: str = Query('', max_length=200),
-                 context_id: str | None = Query(None, max_length=100),
+                 context_id: str | None = Query(None, max_length=100), all_contexts: bool = False,
                  limit: int = Query(10, ge=1, le=50), offset: int = Query(0, ge=0, le=100000),
                  identity=Depends(require_onboarded_identity)):
     def read():
         with request.app.state.learner_service.read_scope() as engine:
             return engine.get_learning_topics(LearningProgressRequest(learner_id=identity.learner_id,
-                context_ids=[context_id] if context_id else None, query=query, limit=limit, offset=offset))
+                context_ids=[context_id] if context_id else None, all_contexts=all_contexts, query=query, limit=limit, offset=offset))
     return await run_in_threadpool(read)
 
 
 @router.get('/topics/{identifier}/subskills')
 async def subskills(identifier: str, request: Request, query: str = Query('', max_length=200),
-                    context_id: str | None = Query(None, max_length=100),
+                    context_id: str | None = Query(None, max_length=100), all_contexts: bool = False,
                     limit: int = Query(10, ge=1, le=50), offset: int = Query(0, ge=0, le=100000),
                     identity=Depends(require_onboarded_identity)):
     def read():
         with request.app.state.learner_service.read_scope() as engine:
             return engine.get_topic_subskills(LearningProgressRequest(learner_id=identity.learner_id,
-                context_ids=[context_id] if context_id else None, query=query, limit=limit, offset=offset), identifier)
+                context_ids=[context_id] if context_id else None, all_contexts=all_contexts, query=query, limit=limit, offset=offset), identifier)
     return await run_in_threadpool(read)
 
 
@@ -92,11 +92,11 @@ class LearningOverview(BaseModel):
     verification: list[VerificationCandidate]
 
 
-def read_overview(engine, owner, context_id=None):
+def read_overview(engine, owner, context_id=None, *, all_contexts=False):
     ids = [context_id] if context_id else None
     if ids:
         engine.get_context_summaries(owner, ids)
-    targets = engine.get_study_targets(owner, ids, supported_verification=True)
+    targets = engine.get_study_targets(owner, ids, supported_verification=True, **({"all_contexts": True} if all_contexts else {}))
     return LearningOverview(
         learner=engine.get_relevant_context(LearnerContextRequest(learner_id=owner,
             query='current learning progress', context_ids=ids, max_concepts=12, include_related=False)),
@@ -104,16 +104,16 @@ def read_overview(engine, owner, context_id=None):
 
 
 @router.get('/page')
-async def progress_page(request: Request, context_id: str | None = Query(None, min_length=1, max_length=100),
+async def progress_page(request: Request, context_id: str | None = Query(None, min_length=1, max_length=100), all_contexts: bool = False,
                         identity=Depends(require_onboarded_identity)):
     def read():
         with request.app.state.learner_service.read_scope() as engine:
             owner = identity.learner_id
-            return dict(overview=read_overview(engine, owner, context_id),
+            return dict(overview=read_overview(engine, owner, context_id, all_contexts=all_contexts),
                 contexts=sorted(engine.get_context_summaries(owner), key=lambda value: value.context_id),
                 candidates=engine.get_pending_concepts(owner),
                 understanding=engine.get_learning_progress(LearningProgressRequest(learner_id=owner,
-                    context_ids=[context_id] if context_id else None, limit=10)))
+                    context_ids=[context_id] if context_id else None, all_contexts=all_contexts, limit=10)))
     return await run_in_threadpool(read)
 
 class ConceptReview(BaseModel):

@@ -13,7 +13,7 @@ import { ProgressEvidence } from './ProgressEvidence';
 import { MoveSubskill, type SkillMove } from './MoveSubskill';
 import { invalidatePageCache } from '../../services/pageCache';
 
-export function TopicProgress({ context, reload, onTotal }: { context: string; reload: number; onTotal: (value: number) => void }) {
+export function TopicProgress({ context, allContexts, reload, onTotal }: { context: string; allContexts: boolean; reload: number; onTotal: (value: number) => void }) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -30,11 +30,11 @@ export function TopicProgress({ context, reload, onTotal }: { context: string; r
   useEffect(() => { if (search.trim() === query) return; const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => clearTimeout(timer); }, [search, query]);
   useEffect(() => {
     const controller = new AbortController(); setData(undefined); setError('');
-    void learningTopics(controller.signal, context, query, (page - 1) * 10).then(value => {
+    void learningTopics(controller.signal, context, query, (page - 1) * 10, allContexts).then(value => {
       if (!controller.signal.aborted) { setData(value); onTotal(value.total); }
     }).catch(() => { if (!controller.signal.aborted) setError('Couldn’t load your topics. Please try again.'); });
     return () => controller.abort();
-  }, [context, query, page, reload, version, onTotal]);
+  }, [context, allContexts, query, page, reload, version, onTotal]);
   async function organize() {
     if (!context || organizing) return;
     const controller = new AbortController(); operation.current = controller; setOrganizing(true); setError('');
@@ -55,7 +55,7 @@ export function TopicProgress({ context, reload, onTotal }: { context: string; r
     finally { if (!controller.signal.aborted) { setOrganizing(false); operation.current = undefined; } }
   }
   return <PageSection aria-labelledby="understanding-title" className="workspace-panel space-y-4">
-    {selected && <TopicDetail key={`${context}:${selected}`} id={selected} context={context} initialQuery={selectedQuery} onClose={() => setSelected(undefined)} />}
+    {selected && <TopicDetail key={`${context}:${selected}`} id={selected} context={context} allContexts={allContexts} initialQuery={selectedQuery} onClose={() => setSelected(undefined)} />}
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 id="understanding-title" className="flex items-center gap-2 text-lg font-medium text-heading"><BookOpen size={19} aria-hidden="true" />Your understanding</h2><p className="mt-1 max-w-xl text-sm text-muted">Explore broader topics, then open the specific skills inside. Checked skills describe your practice so far, not coverage of a whole syllabus.</p></div>
       <Input type="search" className="w-full sm:max-w-xs" aria-label="Search topics and subskills" placeholder="Search topics or subskills…" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} />
     </div>
@@ -72,13 +72,13 @@ export function TopicProgress({ context, reload, onTotal }: { context: string; r
   </PageSection>;
 }
 
-function TopicDetail({ id, context, initialQuery, onClose }: { id: string; context: string; initialQuery: string; onClose: () => void }) {
+function TopicDetail({ id, context, allContexts, initialQuery, onClose }: { id: string; context: string; allContexts: boolean; initialQuery: string; onClose: () => void }) {
   const [search, setSearch] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<TopicSkillsPage>();
   const [error, setError] = useState('');
-  const [evidence, setEvidence] = useState<string>();
+  const [evidence, setEvidence] = useState<{ concept: string; context: string }>();
   const [retry, setRetry] = useState(0);
   const [lastMove, setLastMove] = useState<SkillMove>();
   const [saving, setSaving] = useState(false);
@@ -94,12 +94,12 @@ function TopicDetail({ id, context, initialQuery, onClose }: { id: string; conte
   useEffect(() => { if (search.trim() === query) return; const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => clearTimeout(timer); }, [search, query]);
   useEffect(() => {
     const controller = new AbortController(); setData(undefined); setError('');
-    void topicSubskills(id, controller.signal, context, query, (page - 1) * 10).then(value => { if (!controller.signal.aborted) setData(value); })
+    void topicSubskills(id, controller.signal, context, query, (page - 1) * 10, allContexts).then(value => { if (!controller.signal.aborted) setData(value); })
       .catch(() => { if (!controller.signal.aborted) setError('Couldn’t load these subskills. Please retry.'); });
     return () => controller.abort();
-  }, [id, context, query, page, retry]);
+  }, [id, context, allContexts, query, page, retry]);
   return <Dialog closeLabel="Close subskills" open onDismiss={onClose} aria-label="Topic subskills" layout="viewer" className="max-w-2xl">
-    {evidence && <ProgressEvidence concept={evidence} context={context} onClose={() => setEvidence(undefined)} />}
+    {evidence && <ProgressEvidence concept={evidence.concept} context={evidence.context} onClose={() => setEvidence(undefined)} />}
     <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-5"><div><h2 className="text-lg font-medium text-heading">{data?.topic.name ?? 'Subskills'}</h2><p className="mt-1 text-sm text-muted">{data?.topic.scope}</p></div></header>
     <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5" data-skill-scroll>
       <Input type="search" aria-label="Search subskills" placeholder="Search inside this topic…" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} />
@@ -109,7 +109,7 @@ function TopicDetail({ id, context, initialQuery, onClose }: { id: string; conte
       {!data && !error && <Skeleton variant="list" rows={3} />}
       {data && <>{id !== 'ungrouped' && <Link className={buttonStyles({ variant: 'secondary', size: 'sm' })} to={practiceLink({ context_id: context || data.topic.context_id || undefined, topic_id: id, topic: data.topic.name })}>Practise a sample of this topic</Link>}
         {!data.items.length && <p className="text-sm text-muted">No matching subskills. Clear the search to see this topic.</p>}
-        <ul className="divide-y divide-border">{data.items.map(skill => <li key={skill.concept_id} className="space-y-2 py-3"><div className="flex flex-wrap items-start justify-between gap-2"><p className="font-medium text-heading">{skill.name}</p><span className="text-xs text-muted">{progressStatus(skill.knowledge_status)}</span></div>{skill.ability && <p className="text-sm text-muted">{skill.ability}</p>}<div className="flex flex-wrap gap-2"><Button variant="ghost" size="sm" onClick={() => setEvidence(skill.concept_id)}>What is this based on?</Button><Link className={buttonStyles({ variant: 'secondary', size: 'sm' })} to={practiceLink({ context_id: context || skill.context_id || data.topic.context_id || undefined, topic_id: id === 'ungrouped' ? undefined : id, concept_ids: [skill.concept_id], topic: skill.name })}>Practise this skill</Link></div>{id !== 'ungrouped' && <MoveSubskill topic={data.topic} skill={skill.concept_id} context={context} onMoved={value => { setLastMove(value); setRetry(count => count + 1); invalidatePageCache(['learning'], true); }} />}</li>)}</ul>
+        <ul className="divide-y divide-border">{data.items.map(skill => <li key={skill.concept_id} className="space-y-2 py-3"><div className="flex flex-wrap items-start justify-between gap-2"><p className="font-medium text-heading">{skill.name}</p><span className="text-xs text-muted">{progressStatus(skill.knowledge_status)}</span></div>{skill.ability && <p className="text-sm text-muted">{skill.ability}</p>}<div className="flex flex-wrap gap-2"><Button variant="ghost" size="sm" onClick={() => setEvidence({ concept: skill.concept_id, context: context || skill.context_id || data.topic.context_id || '' })}>What is this based on?</Button><Link className={buttonStyles({ variant: 'secondary', size: 'sm' })} to={practiceLink({ context_id: context || skill.context_id || data.topic.context_id || undefined, topic_id: id === 'ungrouped' ? undefined : id, concept_ids: [skill.concept_id], topic: skill.name })}>Practise this skill</Link></div>{id !== 'ungrouped' && <MoveSubskill topic={data.topic} skill={skill.concept_id} context={context || skill.context_id || data.topic.context_id || ''} onMoved={value => { setLastMove(value); setRetry(count => count + 1); invalidatePageCache(['learning'], true); }} />}</li>)}</ul>
         {data.total > 10 && <Pagination page={Math.floor(data.offset / data.limit) + 1} pages={Math.ceil(data.total / data.limit)} onChange={setPage} label="Topic subskills" />}
       </>}
     </div>

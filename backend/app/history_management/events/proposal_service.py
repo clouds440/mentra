@@ -71,8 +71,8 @@ class EventProposalService:
                 return await run_in_threadpool(self._prepare_result, owner, dict(outcome='awaiting_confirmation', proposal=latest.model_dump(mode='json')))
         return await run_in_threadpool(self._prepare_result, owner, result)
 
-    def list(self, owner, conversation_id=None, *, resolved_only=False, offset=0, limit=30):
-        return self.repository.list(owner, conversation_id, resolved_only=resolved_only, offset=offset, limit=limit)
+    def list(self, owner, conversation_id=None, *, resolved_only=False, exclude_saved=False, offset=0, limit=30):
+        return self.repository.list(owner, conversation_id, resolved_only=resolved_only, offset=offset, limit=limit, **({"exclude_saved": True} if exclude_saved else {}))
     def detail(self, owner, identifier): return self.repository.detail(owner, identifier)
 
     def decide(self, owner, identifier, body):

@@ -20,8 +20,8 @@ class RetrievalService:
         self.retention, self.ranking, self.clock = retention, ranking, clock
         self.states = states
 
-    def ranking_data(self, request):
-        contexts = self.contexts.select(request.learner_id, request.context_ids)
+    def ranking_data(self, request, *, all_contexts=False):
+        contexts = self.contexts.select(request.learner_id, request.context_ids, all_contexts=all_contexts)
         cache = getattr(self, '_ranking_cache', None)
         key = (request.learner_id, tuple((c.id, c.relevance_score) for c in contexts))
         if cache is not None and key in cache:
@@ -143,7 +143,7 @@ class RetrievalService:
                 [included_contexts[key] for key in context_ids]), generated_at=self.clock())
 
     def progress(self, request):
-        contexts = self.contexts.select(request.learner_id, request.context_ids)
+        contexts = self.contexts.select(request.learner_id, request.context_ids, all_contexts=request.all_contexts)
         concepts, total, total_concepts, offset = self.repository.progress_concepts(
             request.learner_id, [c.id for c in contexts], normalize(request.query), request.limit, request.offset)
         return LearningProgressPage(items=self.project(request.learner_id, concepts, contexts),

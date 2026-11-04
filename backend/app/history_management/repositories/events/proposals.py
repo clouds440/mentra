@@ -105,9 +105,11 @@ class EventProposalRepository:
         # Resolved decisions remain user history until their source is explicitly
         # deleted. Expiry retires review authority, not the historical record.
 
-    def list(self, owner, conversation_id=None, *, resolved_only=False, offset=0, limit=30):
+    def list(self, owner, conversation_id=None, *, resolved_only=False, exclude_saved=False, offset=0, limit=30):
         query = select(p).where(p.c.learner_id == owner)
         query = query.where(p.c.state.not_in(['pending', 'deciding']) if resolved_only else p.c.state.in_(['pending', 'deciding']))
+        if exclude_saved:
+            query = query.where(p.c.state != 'approved')
         if conversation_id:
             query = query.where(p.c.conversation_id == conversation_id)
         with self.sessions() as session:

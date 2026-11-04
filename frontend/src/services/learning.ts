@@ -1,13 +1,14 @@
 import { apiRequest } from './api';
 import type { ProgressExplanation } from '../types/learning';
 import type { LearningTopicsPage, TopicSkillsPage } from '../types/learning';
-function topicParams(context: string, query: string, offset: number) {
+function topicParams(context: string, query: string, offset: number, allContexts: boolean) {
   const params = new URLSearchParams({ query, offset: String(offset), limit: '10' });
   if (context) params.set('context_id', context);
+  else if (allContexts) params.set('all_contexts', 'true');
   return params;
 }
-export const learningTopics = (signal: AbortSignal, context = '', query = '', offset = 0) => apiRequest<LearningTopicsPage>(`/api/v1/learning/topics?${topicParams(context, query, offset)}`, { signal });
-export const topicSubskills = (id: string, signal: AbortSignal, context = '', query = '', offset = 0) => apiRequest<TopicSkillsPage>(`/api/v1/learning/topics/${encodeURIComponent(id)}/subskills?${topicParams(context, query, offset)}`, { signal });
+export const learningTopics = (signal: AbortSignal, context = '', query = '', offset = 0, allContexts = false) => apiRequest<LearningTopicsPage>(`/api/v1/learning/topics?${topicParams(context, query, offset, allContexts)}`, { signal });
+export const topicSubskills = (id: string, signal: AbortSignal, context = '', query = '', offset = 0, allContexts = false) => apiRequest<TopicSkillsPage>(`/api/v1/learning/topics/${encodeURIComponent(id)}/subskills?${topicParams(context, query, offset, allContexts)}`, { signal });
 export interface TopicGroupingPreview { proposal_id?: number; organized?: number; unresolved?: number; placements?: { topic_name: string; subskill_name: string; scope: string }[] }
 export const organizeLearningTopics = (context: string, signal: AbortSignal) => apiRequest<TopicGroupingPreview>('/api/v1/learning/topics/organize', { method: 'POST', signal, body: JSON.stringify({ context_id: context }) });
 export const applyTopicGrouping = (id: number, signal: AbortSignal, undo = false) => apiRequest<{ organized: number }>(`/api/v1/learning/topics/organize/${id}/${undo ? 'undo' : 'apply'}`, { method: 'POST', signal });
@@ -24,7 +25,7 @@ export interface ProgressPageData {
   candidates: PendingConcept[];
   understanding: LearningProgressPage;
 }
-export const progressPage = (signal: AbortSignal, context?: string) => apiRequest<ProgressPageData>(`/api/v1/learning/page${context ? `?context_id=${encodeURIComponent(context)}` : ''}`, { signal });
+export const progressPage = (signal: AbortSignal, context?: string, allContexts = true) => apiRequest<ProgressPageData>(`/api/v1/learning/page${context ? `?context_id=${encodeURIComponent(context)}` : allContexts ? '?all_contexts=true' : ''}`, { signal });
 export const learningOverview = (signal: AbortSignal, context?: string) => apiRequest<LearningOverview>(`/api/v1/learning${context ? `?context_id=${encodeURIComponent(context)}` : ''}`, { signal });
 export const learningProgress = (signal: AbortSignal, query: string, offset: number, context?: string) => {
   const params = new URLSearchParams({query, offset:String(offset), limit:'10'});

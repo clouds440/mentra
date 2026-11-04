@@ -199,6 +199,7 @@ class LearnerContextPacket(LearnerSchema):
 
 class LearningProgressRequest(LearnerSchema):
     learner_id: LearnerId
+    all_contexts: bool = False
     context_ids: list[str] | None = Field(default=None, max_length=20)
     query: str = Field(default='', max_length=200)
     limit: int = Field(default=10, ge=1, le=50)

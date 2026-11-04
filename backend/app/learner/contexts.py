@@ -109,8 +109,10 @@ class ContextService:
         return contexts
 
     def select(self, learner_id: str, context_ids: list[str] | None = None,
-               query: str | None = None, include_related=True) -> list[LearningContext]:
+               query: str | None = None, include_related=True, *, all_contexts=False) -> list[LearningContext]:
         contexts = self.expire_inactive(learner_id)
+        if all_contexts and context_ids is None:
+            return contexts
         if context_ids is not None:
             owned = {c.id: c for c in contexts}
             for key in context_ids:

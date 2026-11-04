@@ -5,7 +5,7 @@ import { Button, Dialog } from '../ui';
 import { useStudentProfile } from './StudentProfileProvider';
 import { ProfileForm } from './ProfileForm';
 import { ProfileEstimates } from './ProfileEstimates';
-import { educationLevels, preferences, depths, participationOptions, visualOptions, purposeOptions, editableDetails } from './options';
+import { educationLevels, preferences, depths, participationOptions, visualOptions, purposeOptions, personalityOptions, editableDetails } from './options';
 
 export function ProfileSettings() {
   const { profile, error } = useStudentProfile();
@@ -17,6 +17,7 @@ export function ProfileSettings() {
     ['Education level', educationLevels.find((option) => option.value === details.education_level)?.label],
     ['Background or interests', details.field_of_study], ['Primary learning goal', details.learning_goal],
     ['Learning purpose', purposeOptions.find(option => option.value === details.learning_purpose)?.label],
+    ['Mentra personality', personalityOptions.find(option => option.value === details.personality)?.label],
     ['Teaching approach', preferences.find((option) => option.value === details.learning_preference)?.label],
     ['Participation', participationOptions.find(option => option.value === details.participation)?.label],
     ['Explanation detail', depths.find((option) => option.value === details.explanation_depth)?.label],

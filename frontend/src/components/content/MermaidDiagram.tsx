@@ -59,6 +59,11 @@ function namespaceSvg(raw: string, prefix: string, title?: string) {
       node.textContent = rewriteCss(node.textContent ?? '');
     }
   }
+  const [, , width, height] = (svg.getAttribute('viewBox') ?? '').trim().split(/\s+/).map(Number);
+  if (Number.isFinite(width) && height > 0 && width / height > 2.8) {
+    // Keep wide graphs readable in the inline scroller.
+    svg.style.setProperty('--diagram-readable-width', Math.ceil(width * .85) + 'px');
+  }
   svg.setAttribute('role', 'img');
   if (title) {
     svg.removeAttribute('aria-labelledby');

@@ -384,3 +384,27 @@ test('long code expands in place while preserving wrap and source text', async (
   await block.getByRole('button', { name: 'Limit code height' }).click();
   await expect(scroll).not.toHaveClass(/code-full-height/);
 });
+
+test('subscript, superscript and subtle notes render without allowing other HTML', async ({ page }) => {
+  await richChat(page, 'Water is H<sub>2</sub>O and area is x<sup>2</sup>. <small>Tip: **units** matter.</small>\n\n`<sub>literal</sub>`\n\n<sub onclick="alert(1)">unsafe attribute</sub>');
+  await page.goto('/chat/polish-chat');
+  const content = page.locator('.markdown-content');
+  await expect(content.locator('sub')).toHaveText(['2']);
+  await expect(content.locator('sup')).toHaveText(['2']);
+  await expect(content.locator('small strong')).toHaveText('units');
+  await expect(content.locator('code')).toHaveText('<sub>literal</sub>');
+  await expect(content.locator('[onclick]')).toHaveCount(0);
+});
+
+test('wide Mermaid graphs scroll within the message on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const diagram = Array.from({ length: 12 }, (_, index) => 'N' + index + '[Learning milestone ' + index + ']').join(' --> ');
+  await richChat(page, '\x60\x60\x60mermaid\nflowchart LR\n' + diagram + '\n\x60\x60\x60');
+  await page.goto('/chat/polish-chat');
+  const scroller = page.locator('.mermaid-figure .mermaid-svg');
+  await expect(scroller.locator('svg text').first()).toBeVisible();
+  expect(await scroller.evaluate(node => node.scrollWidth > node.clientWidth * 2)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await scroller.evaluate(node => { node.scrollLeft = node.scrollWidth; });
+  expect(await scroller.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
+});

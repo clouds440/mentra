@@ -64,3 +64,24 @@ test('search aborts stale results and retries a failure without clearing the phr
   await expect(dialog).not.toContainText('Old private hit');
   await expect(input).toHaveValue('new');
 });
+
+test('recent chats collapse independently and search can clear its query', async ({ page }) => {
+  await workspace(page);
+  await page.goto('/chat/polish-chat');
+  const toggle = page.getByRole('button', { name: 'Recent chats' });
+  const listId = await toggle.getAttribute('aria-controls');
+  const list = page.locator('[id=' + JSON.stringify(listId) + ']');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(list).toBeHidden();
+  await page.getByRole('button', { name: 'Search saved chats' }).click();
+  const search = page.getByRole('dialog', { name: 'Search your chats' });
+  const input = search.getByRole('searchbox');
+  await input.fill('motion');
+  await search.getByRole('button', { name: 'Clear chat search' }).click();
+  await expect(input).toBeEmpty();
+  await expect(input).toBeFocused();
+  await page.keyboard.press('Escape');
+  await toggle.click();
+  await expect(list).toBeVisible();
+});

@@ -56,6 +56,8 @@ class EventProposalTests(unittest.TestCase):
         body = ProposalDecision(expected_revision=proposal['revision'], decision='approve')
         result = self.service.decide(self.owner, proposal['id'], body)
         self.assertEqual(result.state, 'approved')
+        self.assertEqual(self.service.list(self.owner, resolved_only=True)[0].event_id, result.event_id)
+        self.assertEqual(self.service.list(self.owner, resolved_only=True, exclude_saved=True), [])
         restarted = create_event_proposals(self.db.sessions, self.events)
         self.assertEqual(restarted.decide(self.owner, proposal['id'], body).event_id, result.event_id)
         with self.db.sessions() as session:

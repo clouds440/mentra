@@ -16,14 +16,14 @@ class TopicService:
         self.engine, self.repository, self.resolver = engine, engine.repository, resolver
 
     def page(self, request):
-        contexts = self.engine.contexts.select(request.learner_id, request.context_ids)
+        contexts = self.engine.contexts.select(request.learner_id, request.context_ids, all_contexts=request.all_contexts)
         rows, total, ungrouped, offset = self.repository.topic_page(request.learner_id,
             [context.id for context in contexts], normalize(request.query), request.limit, request.offset)
         return TopicPage(items=[LearningTopic(**row) for row in rows], total=total,
             ungrouped_count=ungrouped, limit=request.limit, offset=offset, generated_at=self.engine.clock())
 
     def skills(self, request, topic_id):
-        contexts = self.engine.contexts.select(request.learner_id, request.context_ids)
+        contexts = self.engine.contexts.select(request.learner_id, request.context_ids, all_contexts=request.all_contexts)
         from .exceptions import LearnerError
         try:
             topic, concepts, total, offset = self.repository.topic_skills(request.learner_id,

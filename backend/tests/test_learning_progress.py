@@ -46,6 +46,17 @@ class LearningProgressTests(unittest.TestCase):
             self.assertEqual(body['understanding'], client.get('/api/v1/learning/understanding').json())
             self.assertEqual(body['candidates'], client.get('/api/v1/learning/concept-candidates').json())
 
+    def test_all_progress_includes_archived_owned_contexts(self):
+        archived = self.concept('Earlier learning')
+        from app.learner.schemas import ContextTransitionRequest
+        self.learner.transition_context_state(ContextTransitionRequest(
+            learner_id=self.owner, context_id=self.context.context_id, status='ARCHIVED'))
+        foreign = self.learner.register_concept('Private learning')
+        area = self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.other, name='Private area', activate=True))
+        self.learner.link_context_concept(self.other, area.context_id, foreign.id)
+        self.assertEqual(self.page().items, [])
+        self.assertEqual([item.concept_id for item in self.page(all_contexts=True).items], [archived.id])
+
     def test_exact_practice_targets_require_membership_in_the_owned_context(self):
         from app.core.exceptions import AppError
         owned = self.concept('Owned practice identity')

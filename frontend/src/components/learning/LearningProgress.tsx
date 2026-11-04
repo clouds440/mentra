@@ -25,7 +25,9 @@ export function LearningProgress() { const { identity } = useAuth(); return <Pro
 function Progress() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'events' ? 'events' : 'learning';
-  const [context, setContext] = useState('');
+  const [selection, setSelection] = useState('all');
+  const allContexts = selection === 'all';
+  const context = allContexts ? '' : selection;
   const [contexts, setContexts] = useState<LearningContext[]>([]);
   const [learning, setLearning] = useState<LearningOverview | null>(null);
   const [bootstrap, setBootstrap] = useState<ProgressPageData | null>(null);
@@ -40,19 +42,19 @@ function Progress() {
   usePageRefresh(() => setReload(value => value + 1), true, ['learning', 'learning-contexts', 'event-proposals']);
   useEffect(() => {
     const controller = new AbortController(); setError('');
-    if (tab === 'learning') { void progressPage(controller.signal, context || undefined).then(data => { if (!controller.signal.aborted) { setLearning(data.overview); setContexts(data.contexts); setBootstrap(data); } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load learning progress.'); }); }
+    if (tab === 'learning') { void progressPage(controller.signal, context || undefined, allContexts).then(data => { if (!controller.signal.aborted) { setLearning(data.overview); setContexts(data.contexts); setBootstrap(data); } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load learning progress.'); }); }
     return () => controller.abort();
-  }, [tab, context, reload]);
+  }, [tab, context, allContexts, reload]);
   return <PageShell>
     <WorkspaceHeader title="Progress" description="Your learning, practice and plans. A clear view of what comes next." icon={tab === 'events' ? CalendarDays : TrendingUp} />
     <Tabs label="Progress sections" value={tab} onChange={value => { const next = new URLSearchParams(params); next.set('tab', value); if(value !== 'events') next.delete('event'); setParams(next); }} options={(['learning', 'events'] as const).map(value => ({ value, label: value === 'learning' ? 'Learning' : 'Events', id: `progress-${value}`, panel: `progress-panel-${value}` }))} />
     {error && <p role="alert" className="text-sm text-danger">{error} <Button variant="ghost" size="sm" onClick={() => refreshPage(() => setReload(value => value + 1))}>Retry</Button></p>}
     <section role="tabpanel" id="progress-panel-learning" aria-labelledby="progress-learning" hidden={tab !== 'learning'} className="space-y-6">
-      <PageToolbar><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={context} onChange={event => { setLearning(null); setTotalConcepts(null); setContext(event.target.value); }}><option value="">Active learning contexts</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></PageToolbar>
+      <PageToolbar><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={selection} onChange={event => { setLearning(null); setTotalConcepts(null); setSelection(event.target.value); }}><option value="all">All learning areas</option><option value="">Active learning areas</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></PageToolbar>
       {tab==='learning' && bootstrap && <ConceptReview initial={bootstrap.candidates} contexts={contexts} onReviewed={() => setReload(value => value+1)} />}
       {!learning && !error && <PageSkeleton layout="table" />}
       {learning && <><QuickReview learning={learning} context={context} /><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
-        {tab === 'learning' && <TopicProgress key={context} context={context} reload={reload} onTotal={setTotalConcepts} />}
+        {tab === 'learning' && <TopicProgress key={selection} context={context} allContexts={allContexts} reload={reload} onTotal={setTotalConcepts} />}
         <LearningSuggestions learning={learning} context={context} />
       </>}
     </section>

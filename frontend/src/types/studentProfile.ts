@@ -7,6 +7,7 @@ export interface ProfileDetails {
   learning_preference: 'balanced' | 'concise' | 'examples_first' | 'step_by_step' | 'conceptual' | 'interactive';
   explanation_depth: 'brief' | 'standard' | 'deep';
   participation?: 'adaptive' | 'interactive' | 'mostly_explanations';
+  personality?: 'friendly' | 'playful' | 'direct' | 'professional' | 'flirty' | 'empathetic' | 'witty';
   visual_support?: 'adaptive' | 'prefer_visuals' | 'mostly_text';
   learning_purpose?: 'general' | 'fundamentals' | 'apply' | 'exam' | 'explore';
 }

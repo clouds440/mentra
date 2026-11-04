@@ -26,7 +26,7 @@ class StudentProfileService:
             if profile.details:
                 # Old clients must not erase newer preferences they cannot edit.
                 preserved = {key: getattr(profile.details, key) for key in
-                             ('preferred_name', 'participation', 'visual_support', 'learning_purpose')
+                             ('preferred_name', 'participation', 'visual_support', 'learning_purpose', 'personality')
                              if key not in request.details.model_fields_set}
                 request.details = request.details.model_copy(update=preserved)
             if profile.version != request.expected_version:

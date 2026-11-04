@@ -70,11 +70,49 @@ test('dismissed suggestions remain visible after reload without per-card request
   await workspace(page);
   let detailRequests = 0;
   await page.route('**/api/v1/event-proposals/dismissed-1', route => { detailRequests++; return route.fulfill({ json: {} }); });
-  await page.route('**/api/v1/event-proposals?*', route => route.fulfill({ json: [{ id: 'dismissed-1', revision: 2, state: 'dismissed', action: 'create', candidate: { title: 'Earlier event suggestion', timezone: 'UTC', local_date: '2020-01-01' }, uncertainty: 'Suggested from your conversation', quote: 'A useful historical source' }] }));
+  await page.route('**/api/v1/event-proposals?*', route => route.fulfill({ json: [{ id: 'dismissed-1', revision: 2, state: 'dismissed', action: 'create', candidate: { title: 'Earlier event suggestion', timezone: 'UTC', local_date: '2020-01-01' }, uncertainty: 'Suggested from your conversation', quote: 'A useful historical source' }, { id: 'saved-1', state: 'approved', event_id: 'event-1', candidate: { title: 'Already in the agenda' } }] }));
   await page.goto('/progress?tab=events');
   await expect(page.getByRole('heading', { name: 'Earlier event suggestion', exact: true })).toBeVisible();
   await expect(page.getByText('Proposal dismissed.', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText('Proposal dismissed.', { exact: true })).toBeVisible();
   expect(detailRequests).toBe(0);
+  await expect(page.getByRole('heading', { name: 'Already in the agenda' })).toHaveCount(0);
+});
+
+test('Learning defaults to all areas and can narrow to active areas', async ({ page }) => {
+  await workspace(page, false, true);
+  const all = page.waitForRequest(request => new URL(request.url()).searchParams.get('all_contexts') === 'true' && request.url().includes('/learning/topics'));
+  await page.goto('/progress');
+  await all;
+  const filter = page.getByRole('combobox', { name: 'Learning context' });
+  await expect(filter).toHaveText('All learning areas');
+  await filter.click();
+  const active = page.waitForRequest(request => request.url().includes('/learning/topics?') && !request.url().includes('all_contexts='));
+  await page.getByRole('option', { name: 'Active learning areas' }).click();
+  await active;
+  await expect(filter).toHaveText('Active learning areas');
+});
+
+test('profile settings show Friendly by default and save the selected personality', async ({ page }) => {
+  await workspace(page);
+  const profileRequest = page.waitForResponse(response => response.url().endsWith('/api/v1/student-profile') && response.ok());
+  await page.goto('/settings');
+  const profile = await (await profileRequest).json();
+  let saved: string | undefined;
+  await page.route('**/api/v1/student-profile/details', route => {
+    const payload = route.request().postDataJSON();
+    saved = payload.details.personality;
+    return route.fulfill({ json: { ...profile, details: payload.details, version: profile.version + 1 } });
+  });
+  await page.getByRole('button', { name: 'Edit profile' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit learning profile' });
+  const personality = dialog.getByRole('combobox', { name: 'Mentra personality' });
+  await expect(personality).toHaveText('Friendly');
+  await personality.click();
+  await page.getByRole('option', { name: 'Casual & witty' }).click();
+  await dialog.getByRole('button', { name: /save/i }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(saved).toBe('witty');
+  await expect(page.getByRole('region', { name: 'Student profile settings' })).toContainText('Casual & witty');
 });

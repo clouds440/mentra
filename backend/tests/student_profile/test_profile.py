@@ -39,6 +39,19 @@ def details(**changes):
 
 
 class StudentProfileTests(unittest.TestCase):
+    def test_personality_defaults_and_survives_an_older_profile_client(self):
+        from app.langchain.prompts.chat import PERSONALITIES, personality_instruction
+        initial = self.fill_details()
+        self.assertEqual(initial.details.personality, 'friendly')
+        saved = self.service.update_details(A, ProfileUpdate(expected_version=initial.version,
+            details=details(personality='witty')))
+        legacy = self.service.update_details(A, ProfileUpdate(expected_version=saved.version, details=details()))
+        self.assertEqual(legacy.details.personality, 'witty')
+        self.assertEqual(legacy.context_version, saved.context_version)
+        self.assertIn(PERSONALITIES['witty'], personality_instruction(self.service.prompt_context(A).model_dump(mode='json')))
+        self.assertIn(PERSONALITIES['friendly'], personality_instruction(None))
+        self.assertEqual(len(set(PERSONALITIES.values())), 7)
+
     def test_profile_cache_reuses_content_until_another_repository_updates_it(self):
         from sqlalchemy import event
         initial = self.fill_details()

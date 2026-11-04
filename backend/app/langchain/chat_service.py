@@ -8,6 +8,7 @@ from app.core.exceptions import AppError
 from app.langchain.llm import MentraLLM
 from app.langchain.model_factory import ModelConfigurationError, ModelFactory
 from app.langchain.prompts import PromptSource
+from app.langchain.prompts.chat import personality_instruction
 from app.learner.schemas import LearnerContextPacket
 
 logger = logging.getLogger("mentra")
@@ -101,7 +102,8 @@ class ChatService:
                 response = await self._llm.ainvoke_messages(
                     PromptSource.CHAT, conversation,
                     additional_sources=tuple(sources),
-                    system_context=json.dumps(context, ensure_ascii=False, separators=(',', ':')) if context else None)
+                    system_context=personality_instruction(profile_context) + '\n\n' +
+                    json.dumps(context, ensure_ascii=False, separators=(',', ':')))
         except ModelConfigurationError as exc:
             raise AppError(
                 "AI_CONFIGURATION_ERROR",

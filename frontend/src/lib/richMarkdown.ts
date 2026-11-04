@@ -56,6 +56,28 @@ function groupImages(children: RootContent[], catalogue: { source?: string }[]) 
   }
   flush(); return result;
 }
+// Convert exact, paired inline tags without enabling raw HTML.
+function inlineTypography(children: RootContent[]): RootContent[] {
+  const result: RootContent[] = [];
+  const stack: { tag: string; index: number }[] = [];
+  for (const child of children) {
+    const match = child.type === 'html' && /^<(\/?)(sub|sup|small)>$/i.exec(child.value);
+    if (match) {
+      const tag = match[2].toLowerCase();
+      const opening = stack[stack.length - 1];
+      if (!match[1]) stack.push({ tag, index: result.length });
+      else if (opening?.tag === tag) {
+        stack.pop();
+        const content = result.splice(opening.index + 1);
+        result[opening.index] = { type: 'emphasis', data: { hName: tag }, children: content } as RootContent;
+        continue;
+      }
+    }
+    result.push(child);
+  }
+  return result;
+}
+export const usesInlineTypography = (content: string) => /<(?:sub|sup|small)>/i.test(content);
 export const usesRichDirectives = (content: string) => /:(?:color|icon)\[|:{2,3}(?:bar|progress|details|callout)[{\s[]/.test(content);
 
 /** Recognize a tiny vocabulary; never spread model attributes into DOM props. */
@@ -78,7 +100,7 @@ export function remarkRichContent(options: { imageLayout?: boolean } = {}) {
       : child.type === 'imageReference' && definitions.has(identifier(child.identifier)) ? { src: definitions.get(identifier(child.identifier))!.url, alt: child.alt ?? '', label: definitions.get(identifier(child.identifier))!.title || child.alt || 'Image' } : null;
     const containsImage = (node: RootContent): boolean => node.type === 'image' || node.type === 'imageReference' || 'children' in node && node.children.some(child => containsImage(child as RootContent));
     function visit(parent: { children?: RootContent[] }) {
-      parent.children = parent.children?.map(child => {
+      parent.children = parent.children && inlineTypography(parent.children).map(child => {
         const node = child as DirectiveNode;
         if (child.type === 'paragraph' && containsImage(child)) child.data = { ...child.data, hName: 'div' };
         // A linked image retains its source link in the caption; avoid nested

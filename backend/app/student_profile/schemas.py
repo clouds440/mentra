@@ -31,6 +31,7 @@ class ProfileDetails(Contract):
     learning_preference: Literal['balanced', 'concise', 'examples_first', 'step_by_step', 'conceptual', 'interactive']
     explanation_depth: Literal['brief', 'standard', 'deep']
     participation: Literal['adaptive', 'interactive', 'mostly_explanations'] = 'adaptive'
+    personality: Literal['friendly', 'playful', 'direct', 'professional', 'flirty', 'empathetic', 'witty'] = 'friendly'
     visual_support: Literal['adaptive', 'prefer_visuals', 'mostly_text'] = 'adaptive'
     learning_purpose: Literal['general', 'fundamentals', 'apply', 'exam', 'explore'] = 'general'
     preferred_name: str | None = Field(default=None, max_length=80)

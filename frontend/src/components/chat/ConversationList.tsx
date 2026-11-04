@@ -3,7 +3,7 @@ import { useLongPress } from '../../hooks/useLongPress';
 import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { Spinner } from '../ui/Spinner';
-import { Check, Pencil, Trash2, X, MoreVertical } from 'lucide-react';
+import { Check, Pencil, Trash2, X, MoreVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router-dom';
 import { chatStore, useChatList } from '../../stores/chatStore';
@@ -74,9 +74,11 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
 
 export function ConversationList({ onOpen }: { onOpen: () => void }) {
   const view = useChatList();
+  const listId = useId();
+  const [expanded, setExpanded] = useState(true);
   return <section aria-label="Conversation history" className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden px-3">
-    <div className="mb-1 flex shrink-0 items-center justify-between gap-2 pl-3"><h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Recent chats</h2><ChatSearch onOpen={onOpen} /></div>
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+    <div className="mb-1 flex shrink-0 items-center justify-between gap-2 pl-3"><h2><Button size="sm" variant="ghost" aria-expanded={expanded} aria-controls={listId} className="gap-1 px-1 text-[11px] uppercase tracking-[0.12em] text-subtle" onClick={() => setExpanded(value => !value)}>{expanded ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronRight size={13} aria-hidden="true" />}Recent chats</Button></h2><ChatSearch onOpen={onOpen} /></div>
+    <div id={listId} hidden={!expanded} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
     {view.items.map(chat => <ConversationRow key={chat.id} chat={chat} onOpen={onOpen} />)}
     {!view.items.length && (view.loading ? <Skeleton variant="list" rows={5} className="px-3 py-3" /> : <p className="px-3 py-3 text-xs leading-5 text-subtle">Your conversations will appear here.</p>)}
     {view.error && <div className="px-3 py-2 text-xs text-danger" role="alert"><p>{view.error}</p><button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mt-1' })} onClick={() => void chatStore.sync()}>Try again</button></div>}

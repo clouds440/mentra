@@ -22,6 +22,15 @@ export const participationOptions: Option<NonNullable<ProfileDetails['participat
   { value: 'interactive', label: 'Interactive', description: 'Learn by doing: make predictions, answer short questions and try small exercises when useful.' },
   { value: 'mostly_explanations', label: 'Mostly explanations', description: 'Prefer explanations without unsolicited exercises or comprehension checks.' },
 ];
+export const personalityOptions: Option<NonNullable<ProfileDetails['personality']>>[] = [
+  { value: 'friendly', label: 'Friendly', description: 'Warm, approachable, and encouraging when it fits.' },
+  { value: 'playful', label: 'Playful', description: 'Lively language and imaginative analogies.' },
+  { value: 'direct', label: 'Direct', description: 'Gets to the point and keeps the focus on the task.' },
+  { value: 'professional', label: 'Professional', description: 'Precise, composed, and clearly organized.' },
+  { value: 'flirty', label: 'Flirty', description: 'Light charm and cheeky, non-romantic banter.' },
+  { value: 'empathetic', label: 'Empathetic', description: 'Patient and attentive when something feels difficult.' },
+  { value: 'witty', label: 'Casual & witty', description: 'Relaxed, with the occasional pun or well-timed joke.' },
+];
 export const visualOptions: Option<NonNullable<ProfileDetails['visual_support']>>[] = [
   { value: 'adaptive', label: 'Adaptive', description: 'Use visuals when they make the answer clearer.' },
   { value: 'prefer_visuals', label: 'Prefer visuals', description: 'Prefer useful diagrams, comparison bars and charts alongside explanations.' },
@@ -41,6 +50,7 @@ export function editableDetails(details: ProfileDetails): ProfileDetails {
     learning_preference: ['concise', 'interactive'].includes(details.learning_preference) ? 'balanced' : details.learning_preference,
     explanation_depth: details.learning_preference === 'concise' ? 'brief' : details.explanation_depth,
     participation: details.learning_preference === 'interactive' && (!details.participation || details.participation === 'adaptive') ? 'interactive' : details.participation ?? 'adaptive',
+    personality: details.personality ?? 'friendly',
     visual_support: details.visual_support ?? 'adaptive', learning_purpose: details.learning_purpose ?? 'general',
   };
 }

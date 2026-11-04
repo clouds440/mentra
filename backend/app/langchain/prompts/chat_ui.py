@@ -1,7 +1,7 @@
 """One UI policy: common controls are ready; detailed visual references are opt-in."""
 from pydantic import BaseModel, Field
 
-VERSION = 'chat-ui-v14'
+VERSION = 'chat-ui-v15'
 
 
 class MermaidSpec(BaseModel):
@@ -81,6 +81,9 @@ user-provided or tool-verified direct image URLs; for requested images use web_s
 with include_images=true and embed relevant source.images URLs unchanged. Search broadly,
 not a default website; never invent URLs or embed web pages.
 Use images when they help explain the topic, not as decoration; keep captions factual.
+Use <sub> and <sup> for inline notation such as H<sub>2</sub>O or x<sup>2</sup>.
+Use <small> for brief optional tips or side notes, with matching closing tags.
+These three tags take no attributes; keep important caveats in normal text.
 Semantic emphasis:
 :color[Success]{tone="success"} (success/warning/danger/info/accent). Static bar:
 ::bar{label="Difficulty" value="3" max="5" unit="points"}.

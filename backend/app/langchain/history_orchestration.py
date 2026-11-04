@@ -9,6 +9,7 @@ from .token_policy import count_messages as count_tokens_approximately
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.langchain.prompts import PromptSource, get_system_prompt
+from app.langchain.prompts.chat import personality_instruction
 from app.history_management.budgets import ToolBudget
 from app.history_management.tools import create_history_tools
 from pydantic import ValidationError
@@ -107,7 +108,8 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         assessment = any(domains.get(name) == 'assessment' for name in used)
         external = any(domains.get(name) == 'web' for name in used) or bool(scope.get('web_sources') or scope.get('web_searches'))
         return tuple(dict.fromkeys((*ui_sources, *additional_sources, *([PromptSource.WEB_SEARCH] if external else []), *([PromptSource.CHAT_ASSESSMENT] if assessment else []), *([PromptSource.RAG_CONTEXT] if rag else []), *([PromptSource.HISTORY_MANAGEMENT] if personal or scope['history_references'] or scope['memory_references'] else []))))
-    instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
+    personality = personality_instruction(context.get('student_profile')) + '\n\n'
+    instructions = personality + '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(selected())))
     from .token_policy import schema_tokens
     from .decision_schemas import FinishResponse
     from .task_outcomes import finalize, record_receipt, receipt_id
@@ -189,7 +191,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         candidate_tools = [*new_tools, discovery, *([answer_schema] if answer_schema else [])]
         candidate_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *prompt_sources(candidate_tools)))
         candidate_context = dict(context, missing_context=scope.get('tool_warnings', []))
-        total = count_tokens_approximately([SystemMessage(content=candidate_instructions + json.dumps(candidate_context, ensure_ascii=False, default=str, separators=(',', ':'))), *conversation]) + schema_tokens(candidate_tools)
+        total = count_tokens_approximately([SystemMessage(content=candidate_instructions + personality + json.dumps(candidate_context, ensure_ascii=False, default=str, separators=(',', ':'))), *conversation]) + schema_tokens(candidate_tools)
         # Fitting schemas alone is insufficient: discovery must leave room for
         # its receipt and a real lookup, rather than forcing the next round final.
         required = total + 1024 + min(1024, result_token_ceiling)
@@ -258,7 +260,7 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         if scope.get('attempt',1)>1:
             context['recovery'] = dict(attempt=scope['attempt'],kind='resume' if scope.get('resume') else 'retry',
                 prior_outcome=scope.get('response_outcome'))
-        runtime_context = json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
+        runtime_context = personality + json.dumps(context, ensure_ascii=False, default=str, separators=(',', ':'))
         sources = prompt_sources(available_tools)
         round_instructions = '\n\n'.join(get_system_prompt(x) for x in (PromptSource.CHAT, *sources))
         round_cost = count_tokens_approximately([SystemMessage(content=round_instructions + runtime_context)]) + schema_tokens(available_tools)
