@@ -177,7 +177,7 @@ class RAGService:
     def search_assessment(self, owner: str, request: AssessmentGroundingRequest) -> RetrievalResult:
         result = self.search(owner, SearchRequest(query=request.query, mode='SOURCE_SPECIFIC',
             document_ids=request.approved_document_ids, context_ids=request.context_ids,
-            include_archived=request.include_archived, limit=request.limit))
+            include_archived=request.include_archived, limit=request.limit), interactive=True)
         result.mode = 'ASSESSMENT_GROUNDING'
         return result
 
@@ -285,7 +285,7 @@ class RAGService:
         contexts, documents = self._eligible(owner, request)
         return dict(context_count=len(contexts), document_count=len(documents))
 
-    def search(self, owner: str, request: SearchRequest) -> RetrievalResult:
+    def search(self, owner: str, request: SearchRequest, *, interactive=False) -> RetrievalResult:
         request = request.model_copy(deep=True)
         request.query = normalized_query(request.query)
         started = checkpoint = time.monotonic()
@@ -415,7 +415,8 @@ class RAGService:
                 counts[row['document_id']] = counts.get(row['document_id'], 0) + 1
                 if len(candidates) >= self.settings.rag_reranker_max_candidates:
                     break
-            scores = self.reranker.rank(request.query, [rows[key]['content'] for key, _ in candidates]) if candidates else []
+            scores = self.reranker.rank(request.query, [rows[key]['content'] for key, _ in candidates],
+                **({'timeout_seconds': 2.0} if interactive else {})) if candidates else []
             import math
             if scores is not None and len(scores) == len(candidates) and all(math.isfinite(s) for s in scores):
                 reranked_ids = {key for key, _ in candidates}

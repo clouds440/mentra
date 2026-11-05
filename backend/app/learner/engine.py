@@ -104,6 +104,24 @@ class LearnerEngine:
             if label.casefold() in names: result[label] = names[label.casefold()]
         return result
 
+    async def prepare_assessment_concept_labels(self, request: GeneratedConceptsRequest) -> dict[str, str]:
+        """Stable scoped skills now; semantic grouping can follow publication.
+
+        Exact accepted bindings win. Uncertain labels never merge identities or
+        acquire mastery merely because a generator mentioned them.
+        """
+        from starlette.concurrency import run_in_threadpool
+        if not hasattr(self.generated_concepts.resolver, 'organize'):
+            return await self.resolve_generated_concept_labels(request)
+        known = await run_in_threadpool(self.repository.known_topic_labels,
+            request.learner_id, request.context_id, request.labels, request.topic)
+        missing = [label for label in request.labels if label not in known]
+        if missing:
+            values = await self.topics._ungrouped(request.model_copy(update={'labels': missing}),
+                {}, assessment_scope=True)
+            known.update(dict(zip(missing, values, strict=True)))
+        return {label: known[label].id for label in request.labels}
+
     async def resolve_encountered_concept(self, request: ConceptResolutionRequest) -> ConceptResolution:
         """A chat-mentioned skill may be organized, but never scored by mention."""
         from starlette.concurrency import run_in_threadpool
@@ -123,6 +141,7 @@ class LearnerEngine:
         return self.topics.skills(request, topic_id)
 
     async def organize_learning_topics(self, owner, context_id, *, preview=False):
+        self.topics.resolver = self.generated_concepts.resolver
         return await self.topics.organize_existing(owner, context_id, preview=preview)
 
     def apply_topic_organization(self, owner, identifier, *, undo=False):
@@ -147,12 +166,17 @@ class LearnerEngine:
                     raise AppError('ASSESSMENT_TARGET_CHANGED', 'A selected subskill moved to another topic. Refresh your targets before generating again.', 409)
             repository.publish_topic_skills(owner, ids)
             memberships = repository.skill_memberships(owner, ids)
+            organization_contexts = set()
             for identifier, membership in memberships.items():
                 target_context = context_id or membership['context_id']
                 if target_context is None:
                     continue
                 self.contexts.require(owner, target_context, repository)
                 repository.add_context_concept(target_context, identifier, learner_id=owner)
+                if membership['topic_id'] is None and hasattr(self.generated_concepts.resolver, 'organize'):
+                    organization_contexts.add(target_context)
+            for target_context in organization_contexts:
+                repository.enqueue_maintenance(owner, target_context)
 
     def get_skill_topics(self, owner, ids):
         return self.repository.skill_memberships(owner, ids)

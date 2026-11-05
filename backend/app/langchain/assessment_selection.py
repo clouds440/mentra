@@ -11,11 +11,14 @@ from .prompts import PromptSource
 async def resolve_assessment_intent(workflows, owner, intent):
     learner = workflows.learner
     selected = None
+    from app.assessments.structure import small_practice
+    standard = bool(intent.topic and intent.context_id and small_practice(intent.model_copy(update={
+        'question_format': 'mixed' if intent.question_format == 'auto' else intent.question_format})))
     if intent.context_id:
         await run_in_threadpool(learner.get_context_summaries, owner, [intent.context_id])
     # Resolve omitted presentation preferences in the existing selection call.
-    if intent.topic and intent.question_format != 'auto' and intent.result_style is not None:
-        topic, context_id, kind, labels = intent.topic, intent.context_id, intent.question_format, intent.concept_names
+    if standard or (intent.topic and intent.question_format != 'auto' and intent.result_style is not None):
+        topic, context_id, kind, labels = intent.topic, intent.context_id, ('mixed' if intent.question_format == 'auto' else intent.question_format), intent.concept_names
     else:
         tools = {tool.name: tool for tool in create_learner_tools(learner, owner)}
         contexts = (await tools['get_active_learning_contexts'].ainvoke({}))['contexts']
@@ -77,7 +80,7 @@ async def resolve_assessment_intent(workflows, owner, intent):
             if material_ids and context_id not in material_ids: context_id = material_ids[0]
         kind = selected.question_format if intent.question_format == 'auto' else intent.question_format
         labels = intent.concept_names or (selected.concept_names if not intent.topic else [])
-    settings = {}
+    settings = dict(result_style=intent.result_style or 'marks')
     if selected is not None:
         settings = dict(level=intent.level or selected.level, result_style=intent.result_style or selected.result_style)
     if context_id is None:

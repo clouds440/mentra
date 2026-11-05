@@ -1,6 +1,6 @@
 from app.core.exceptions import AppError
-from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatch, GradedAssessment, AssessmentTargets
-from app.learner.schemas import EvidenceSubmissionRequest, LearnerContextRequest
+from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatch, GradedAssessment
+from app.learner.schemas import EvidenceSubmissionRequest
 from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
 from .generation_recovery import invoke_generated, validate_questions, GenerationMismatch
@@ -57,30 +57,25 @@ class AssessmentWorkflows:
                 concepts = [concept.id for concept in exact]
         elif not revision:
             labels = [label.strip() for label in request.concept_names if label.strip()]
-            inferred = not labels
-            if inferred and not compact:
-                known_names = [item.name for item in learner_context.concepts] if learner_context else []
-                try:
-                    plan = await invoke_generated(self.llm, PromptSource.ASSESSMENT_TARGETS,
-                        dict(topic=request.topic, count=request.count, purpose=request.purpose,
-                             grounded=request.grounded, sources=prompt_sources, existing_concepts=known_names), output_schema=AssessmentTargets)
-                    labels = plan.concept_names
-                except AppError as error:
-                    if error.code != 'ASSESSMENT_INVALID_GENERATION': raise
-                    # A malformed optional topic plan cannot veto a valid request.
-                    # Use the requested topic itself; questions still need full
-                    # validation and grounded requests still require their sources.
-                    workflow_logger.event('assessment.target_fallback', strategy='requested_topic')
-                    labels = [request.topic]
+            # Discover unspecified subskills from the validated question content.
+            # A separate target LLM call added latency and staged unused skills
+            # even when generation later failed. Exact caller targets stay fenced.
             from app.learner.schemas import GeneratedConceptsRequest
             from .assessment_concepts import concept_label
             labels = list(dict.fromkeys(concept_label(label) for label in labels))
             concepts = []
             for offset in range(0, len(labels), 5):
-                resolved = await self.learner.resolve_generated_concepts(GeneratedConceptsRequest(
-                    learner_id=owner, context_id=request.context_id, topic=request.topic, labels=labels[offset:offset+5], permissive=True))
-                target_concepts.update({value.id: value for value in resolved})
-                concepts.extend(concept.id for concept in resolved)
+                target_request = GeneratedConceptsRequest(learner_id=owner, context_id=request.context_id,
+                    topic=request.topic, labels=labels[offset:offset+5], permissive=True)
+                if hasattr(self.learner, 'prepare_assessment_concept_labels'):
+                    bindings = await self.learner.prepare_assessment_concept_labels(target_request)
+                    concepts.extend(bindings.values())
+                    from app.learner.models import Concept
+                    target_concepts.update({identifier: Concept(identifier, label) for label, identifier in bindings.items()})
+                else:
+                    resolved = await self.learner.resolve_generated_concepts(target_request)
+                    target_concepts.update({value.id: value for value in resolved})
+                    concepts.extend(concept.id for concept in resolved)
             concepts = list(dict.fromkeys(concepts))
         # The packet already supplies challenge support, uncertainty and
         # verification flags. Do not compute the entire registry ranking twice
@@ -90,8 +85,8 @@ class AssessmentWorkflows:
         if missing:
             target_concepts.update(await run_in_threadpool(self.learner.get_concepts, missing))
         targets = [dict(id=identifier, name=target_concepts[identifier].canonical_name) for identifier in concepts]
-        if hasattr(self.learner, 'get_skill_topics'):
-            memberships = await run_in_threadpool(self.learner.get_skill_topics, owner, concepts)
+        if concepts and hasattr(self.learner, 'get_skill_topics'):
+            memberships = preparation.memberships if preparation and all(identifier in preparation.memberships for identifier in concepts) else await run_in_threadpool(self.learner.get_skill_topics, owner, concepts)
             for target in targets:
                 if target['id'] in memberships:
                     membership = memberships[target['id']]

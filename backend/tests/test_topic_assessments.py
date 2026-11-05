@@ -90,7 +90,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         first = await self.service.generate(self.owner, GenerationRequest(client_request_id=uuid4(), context_id=context.context_id,
             topic='Linear equations', concept_names=['Linear equations'], count=1, question_format='written'))
         identifier = first.questions[0].concept_ids[0]
-        self.assertTrue(self.learner.get_concept(identifier).canonical_name.startswith('skill-'))
+        self.assertTrue(self.learner.get_concept(identifier).canonical_name.startswith(('skill-', 'unclassified-')))
         self.assertEqual(self.learner.get_practice_concepts(self.owner, context.context_id, [identifier])[0].canonical_name, 'Linear equations')
         again = await self.service.generate(self.owner, GenerationRequest(client_request_id=uuid4(), context_id=context.context_id,
             topic='Linear equations', count=5, question_format='written'))
@@ -275,7 +275,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([p['question_offset'] for p in calls], [0, 0])
         self.assertIn('repair_feedback', calls[1])
 
-    async def test_malformed_topic_plan_falls_back_to_requested_topic(self):
+    async def test_standard_quiz_does_not_call_optional_topic_planner(self):
         from app.langchain.prompts import PromptSource
         from unittest.mock import patch
         invoke = self.service.workflows.llm.ainvoke
@@ -288,7 +288,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.service.workflows.llm, 'ainvoke', side_effect=model):
             result = await self.service.generate_chat_from_topic(self.owner, self.conversation(),
                 client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
-        self.assertEqual(len(plans), 2)
+        self.assertEqual(len(plans), 0)
         self.assertEqual(len(result['assessment']['questions']), 5)
         self.assertEqual(self.db.repository.list_concepts(10)[0].canonical_name, 'AI basics')
 

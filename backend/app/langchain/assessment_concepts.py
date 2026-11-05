@@ -43,8 +43,9 @@ async def resolve_question_concepts(learner, owner, request, questions, targets)
     # candidate promotion, canonical identity and context membership.
     for start in range(0, len(labels), 5):
         batch = labels[start:start+5]
-        if hasattr(learner, 'resolve_generated_concept_labels'):
-            bindings = await learner.resolve_generated_concept_labels(GeneratedConceptsRequest(
+        resolve = getattr(learner, 'prepare_assessment_concept_labels', None) or getattr(learner, 'resolve_generated_concept_labels', None)
+        if resolve:
+            bindings = await resolve(GeneratedConceptsRequest(
                 learner_id=owner, context_id=request.context_id, topic=request.topic, labels=batch, permissive=True))
             by_name.update({label.casefold():identifier for label,identifier in bindings.items()})
             continue

@@ -55,7 +55,7 @@ class TopicService:
                 workflow_logger.event('topic.organization_unavailable', error_type=type(error).__name__)
         return None
 
-    async def _ungrouped(self, request, existing, published=False):
+    async def _ungrouped(self, request, existing, published=False, *, assessment_scope=False):
         from starlette.concurrency import run_in_threadpool
         def save():
             from .models import Concept
@@ -68,7 +68,8 @@ class TopicService:
                     if identifier:
                         concept = repository.get_concept(identifier)
                     else:
-                        key = sha256(f'{request.learner_id}:{request.context_id}:{normalize(label)}'.encode()).hexdigest()[:24]
+                        subject = normalize(request.topic) + ':' if assessment_scope else ''
+                        key = sha256(f'{request.learner_id}:{request.context_id}:{subject}{normalize(label)}'.encode()).hexdigest()[:24]
                         name = f'unclassified-{key}'
                         concept = repository.get_concept_by_normalized_name(name)
                         if not concept:

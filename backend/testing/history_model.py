@@ -77,9 +77,9 @@ class HistoryChatFactory(TestChatFactory):
                         questions.append(dict(prompt=f'{"Explain simply" if revised else "Explain"} {target["name"]} ({data.get("question_offset", 0)+index+1}).', **concepts, difficulty=.2 if revised else .4, marks=plan.get('marks', 2), model_answer='A supported explanation.', rubric='Award partial credit for an accurate explanation.', source_tokens=[data['sources'][0]['token']] if data.get('sources') else [], **options))
                     return schema(title=('Revised: ' if revised else 'Practice: ')+data['topic'], questions=questions)
                 if schema.__name__ == 'GradedAssessment':
-                    return schema(questions=[dict(question_id=question['id'], score=1, confidence=.95,
+                    return schema(questions=[dict(question_id=question['id'], score=question['marks']/2, confidence=.95,
                         feedback='A useful partial explanation. Add the missing detail.',
-                        concept_grades={concept:dict(score=1,max_score=question['marks'],confidence=.95) for concept in question['concept_ids']}) for question in data['questions']])
+                        concept_grades={concept:dict(score=question['marks']/2,max_score=question['marks'],confidence=.95) for concept in question['concept_ids']}) for question in data['questions']])
                 text = data['user_message'].lower()
                 conflicts = [x['id'] for x in data.get('existing', []) if 'favorite color' in text and 'favorite color' in x['content'].lower() and x['content'] != data['claim']]
                 return schema(supported=not any(x in text for x in ['if i', 'someone said', 'do not remember']),

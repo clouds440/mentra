@@ -1,6 +1,7 @@
 # Backend Engineering Standards
 
 - Assessment skill attribution reuses verified target IDs. New labels resolve through batch label-to-ID bindings; canonical renaming must never trigger per-label model repair. Accepted aliases are owner/context/subject scoped, cannot silently change identity, and create no mastery evidence. Topic discovery and descriptions obey bounded candidate packets; truncation must be explicit. Existing descriptions are server-owned on ID-only reuse.
+- Standard assessment requests use a deterministic outline and one content call. Unknown labels receive stable owner/context/subject-scoped ungrouped IDs; publication atomically queues semantic organization afterward. Background grouping preserves those IDs, immutable evidence and frozen question labels. Exact targets still require fresh ownership/membership checks. Optional assessment reranking shares a two-second cold/warm deadline and falls back only to authorized retrieved chunks.
 
 > **Build for the requirements we have, while leaving clean boundaries for the requirements we expect. Do not implement future features before they exist.**
 

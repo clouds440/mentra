@@ -4,6 +4,7 @@ from .contexts import learning_context, context_concept
 from .states import learner_concept_state
 from .evidence import learning_evidence, evidence_decision, misconception, learner_audit
 from .topics import learning_topic, topic_skill
+from .maintenance import maintenance_jobs
 
 __all__ = [
     'metadata', 'concept', 'concept_alias', 'concept_relation', 'concept_redirect',

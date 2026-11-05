@@ -26,8 +26,10 @@ def queue_status(sessions,clock=lambda:datetime.now(timezone.utc)):
     from app.chat.repositories.tables import summary_jobs as chat
     from app.history_management.repositories.events.tables import reminders
     from app.files.tables import assets
+    from app.learner.repositories.tables.maintenance import maintenance_jobs
     stamp=clock()
     specs=[
+        ('learner.maintenance',maintenance_jobs,(maintenance_jobs.c.attempts<3) & (maintenance_jobs.c.state.in_(['queued','running']) | maintenance_jobs.c.retry_at.is_not(None)),maintenance_jobs.c.created_at,maintenance_jobs.c.claim_until),
         ('assessment.grading',attempts,attempts.c.state.in_(['submitted','grading']) | ((attempts.c.state=='failed') & attempts.c.retry_at.is_not(None)),attempts.c.created_at,attempts.c.claim_until),
         ('assessment.generation',generation_jobs,generation_jobs.c.state.in_(['queued','running']),generation_jobs.c.created_at,generation_jobs.c.claim_until),
         ('assessment.source',source_jobs,source_jobs.c.state.in_(['queued','running']) | source_jobs.c.retry_at.is_not(None),source_jobs.c.created_at,source_jobs.c.claim_until),

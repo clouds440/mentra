@@ -91,10 +91,12 @@ async def serve():
     from .generation_worker import AssessmentGenerationWorker
     from .evidence_worker import AssessmentEvidenceWorker
     from .source_worker import SourceWorker
+    from app.learner.maintenance_worker import LearnerMaintenanceWorker
     try:
         await asyncio.gather(consume(worker,'assessment.grading'), consume(evidence_worker,'chat.evidence'),
             consume(AssessmentGenerationWorker(worker.service),'assessment.generation'),
-            consume(AssessmentEvidenceWorker(worker.service),'assessment.evidence'),consume(SourceWorker(worker.service),'assessment.source'))
+            consume(AssessmentEvidenceWorker(worker.service),'assessment.evidence'),consume(SourceWorker(worker.service),'assessment.source'),
+            consume(LearnerMaintenanceWorker(learner, worker.service.admission), 'learner.maintenance'))
     finally:
         rag.close(); vectors.close(); embedding.close(); files.close()
 

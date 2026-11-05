@@ -123,7 +123,7 @@ class LocalReranker:
                 self.winning_spans[owner]=span
         return merged
 
-    def rank(self, query, passages):
+    def rank(self, query, passages, *, timeout_seconds=None):
         if not self._lock.acquire(blocking=False):
             self.last_reason = 'busy'
             return None
@@ -159,7 +159,10 @@ class LocalReranker:
                 self._spawn()
             from app.rag.process_ipc import exchange
             from app.core.inference_device import retry_worker_on_cpu
-            deadline=started+(self.cold_timeout if cold else self.timeout)
+            budget = self.cold_timeout if cold else self.timeout
+            if timeout_seconds is not None:
+                budget = min(budget, max(0, timeout_seconds))
+            deadline=started+budget
             try:
                 for attempt in range(2):
                     try:

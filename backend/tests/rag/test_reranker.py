@@ -8,6 +8,16 @@ from app.rag.reranker import LocalReranker
 
 
 class RerankerTests(unittest.TestCase):
+    def test_interactive_deadline_caps_cold_start_without_changing_global_budget(self):
+        import time
+        ranker = LocalReranker('unused', 5, worker_target=nonreading_worker, cold_timeout=30)
+        self.addCleanup(ranker.close)
+        start = time.monotonic()
+        self.assertIsNone(ranker.rank('query', ['passage'], timeout_seconds=.1))
+        self.assertLess(time.monotonic()-start, 3)
+        self.assertEqual(ranker.cold_timeout, 30)
+        self.assertEqual(ranker.last_reason, 'cold_timeout')
+
     def test_busy_caller_cannot_overwrite_another_threads_diagnostics(self):
         from concurrent.futures import ThreadPoolExecutor
         ranker=LocalReranker('unused',1)
