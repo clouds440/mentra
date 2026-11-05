@@ -26,7 +26,7 @@ class RefinementTests(unittest.IsolatedAsyncioTestCase):
         rag.search.side_effect = [result(1), result(2)]
         scope = dict(rag_service=rag, retrieval_selection=ChatSelection(mode='SOURCE_SPECIFIC',
             document_ids=['document']), _initial_search=('same query', result(3)))
-        tool = create_workflow_tools('owner', scope, ToolBudget())[0]
+        tool = next(tool for tool in create_workflow_tools('owner', scope, ToolBudget()) if tool.name == 'search_study_material')
         first = await tool.ainvoke({'query':'same query'})
         second = await tool.ainvoke({'query':'same query'})
         self.assertEqual(rag.search.call_count, 2)
@@ -42,9 +42,10 @@ class RefinementTests(unittest.IsolatedAsyncioTestCase):
         selection = ChatSelection(mode='SOURCE_SPECIFIC', document_ids=['document'])
         scope = dict(rag_service=rag, retrieval_selection=selection, study_sources=[source(1)])
         budget = ToolBudget(max_calls=8, max_result_tokens=4800, max_result_bytes=19200)
-        tool = create_workflow_tools('owner', scope, budget)[0]
+        tool = next(tool for tool in create_workflow_tools('owner', scope, budget) if tool.name == 'search_study_material')
         first = await tool.ainvoke({'query': 'first focused lookup'})
-        self.assertEqual(first['sources'][0], dict(token='S1', already_provided=True))
+        self.assertEqual(first['sources'][0]['token'], 'S1')
+        self.assertTrue(first['sources'][0]['already_provided'])
         self.assertEqual(first['sources'][1]['excerpt'], source(2).excerpt)
         budget.consume(json.dumps(first))
         for index in range(3):
@@ -76,10 +77,10 @@ class RefinementTests(unittest.IsolatedAsyncioTestCase):
         rag.search.return_value = RetrievalResult(status='ok', chunks=[
             RetrievedChunk(content=item.excerpt, score=1, score_type='test', source=item)])
         scope = dict(rag_service=rag, retrieval_selection=ChatSelection())
-        tool = create_workflow_tools('owner', scope, ToolBudget())[0]
+        tool = next(tool for tool in create_workflow_tools('owner', scope, ToolBudget()) if tool.name == 'search_study_material')
         for _ in range(2):
             receipt = await tool.ainvoke({'query': 'equation'})
-            self.assertEqual(receipt['sources'][0]['warnings'], item.warnings)
+            self.assertEqual(receipt['extraction_notes'], item.warnings)
 
     def test_extended_budget_still_rejects_oversized_results_and_ninth_call(self):
         budget = ToolBudget(max_calls=8, max_result_tokens=4800, max_result_bytes=19200)

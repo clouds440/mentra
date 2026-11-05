@@ -1,10 +1,9 @@
 """Planner-directed catalog and sequential source reads, without inference."""
 
 from collections import OrderedDict
-from sqlalchemy import select, or_
 from app.core.exceptions import AppError
 from .schemas import SearchRequest, SourceReference, RetrievedChunk, RetrievalResult
-from .repositories.tables import documents, chunks, generations
+from .repositories.document_reads import DocumentReadStore
 from .errors import not_found
 from .visuals import Visuals
 
@@ -12,6 +11,10 @@ from .visuals import Visuals
 class DocumentReads:
     def __init__(self, service):
         self.service = service
+
+    @property
+    def store(self):
+        return DocumentReadStore(self.service.repository.sessions)
 
     def eligible(self, owner, selection, identifier=None):
         request = SearchRequest(query="Library source access", **selection.model_dump())
@@ -32,63 +35,13 @@ class DocumentReads:
         if not docs:
             return dict(items=[], has_more=False)
         terms = query.split()[:8]
-        with self.service.repository.sessions() as session:
-            statement = select(
-                documents.c.id, documents.c.title, documents.c.filename
-            ).where(
-                documents.c.learner_id == owner,
-                documents.c.id.in_([doc["id"] for doc in docs]),
-            )
-            for term in terms:
-                statement = statement.where(
-                    or_(
-                        documents.c.title.icontains(term, autoescape=True),
-                        documents.c.filename.icontains(term, autoescape=True),
-                    )
-                )
-            rows = [
-                dict(row)
-                for row in session.execute(
-                    statement.order_by(
-                        documents.c.updated_at.desc(), documents.c.id
-                    ).limit(13)
-                ).mappings()
-            ]
+        rows = self.store.find(owner, [doc["id"] for doc in docs], terms)
         return dict(items=rows[:12], has_more=len(rows) > 12)
 
     def read(self, owner, identifier, selection, offset=0, max_tokens=4000):
         contexts, docs = self.eligible(owner, selection, identifier)
         doc = next(row for row in docs if row["id"] == identifier)
-        with self.service.repository.sessions() as session:
-            source = (
-                session.execute(
-                    select(
-                        generations.c.version_id,
-                        generations.c.warnings,
-                        documents.c.title,
-                        documents.c.filename,
-                    )
-                    .join(documents, generations.c.document_id == documents.c.id)
-                    .where(
-                        generations.c.id == doc["active_generation_id"],
-                        generations.c.learner_id == owner,
-                    )
-                )
-                .mappings()
-                .one()
-            )
-            rows = [
-                dict(row)
-                for row in session.execute(
-                    select(chunks)
-                    .where(
-                        chunks.c.learner_id == owner,
-                        chunks.c.generation_id == doc["active_generation_id"],
-                    )
-                    .order_by(chunks.c.ordinal)
-                    .limit(5001)
-                ).mappings()
-            ]
+        source, rows = self.store.read(owner, doc["active_generation_id"])
         if len(rows) > 5000:
             raise AppError(
                 "RAG_SCOPE_TOO_LARGE",

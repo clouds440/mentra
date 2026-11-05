@@ -15,9 +15,38 @@ def record(name, value=1):
 
 
 def instrument_engine(engine):
+    original_connect = engine.raw_connection
+    @wraps(original_connect)
+    def acquire(*args, **kwargs):
+        started = monotonic()
+        outcome = 'success'
+        try:
+            return original_connect(*args, **kwargs)
+        except Exception:
+            outcome = 'failed'
+            raise
+        finally:
+            elapsed = (monotonic() - started) * 1000
+            record('pool_acquire_count')
+            record('pool_acquire_ms', elapsed)
+            if outcome == 'failed':
+                record('pool_acquire_failures')
+            emit('db.pool_acquired', level=logging.DEBUG if outcome == 'success' else logging.WARNING,
+                 duration_ms=round(elapsed, 3), outcome=outcome)
+    engine.raw_connection = acquire
+
     @event.listens_for(engine, 'checkout')
-    def checkout(*args):
+    def checkout(connection, connection_record, proxy):
         record('checkouts')
+        connection_record.info['mentra_checkout_at'] = monotonic()
+
+    @event.listens_for(engine, 'checkin')
+    def checkin(connection, connection_record):
+        started = connection_record.info.pop('mentra_checkout_at', None)
+        if started is not None:
+            elapsed = (monotonic() - started) * 1000
+            record('connection_hold_ms', elapsed)
+            emit('db.connection_released', level=logging.DEBUG, duration_ms=round(elapsed, 3))
 
     # These driver calls are outside cursor execution and used to be invisible.
     for name, label in [('do_ping', 'ping'), ('do_commit', 'commit'), ('do_rollback', 'rollback'), ('connect', 'connect')]:

@@ -11,6 +11,17 @@ from testing.postgres import PostgresSandbox
 
 
 class DatabaseBudgetTests(unittest.TestCase):
+    def test_pool_timeout_is_distinct_from_async_deadline_and_statement_timeout(self):
+        import asyncio
+        from sqlalchemy.exc import OperationalError
+        from app.db.errors import database_failure_code
+        self.assertEqual(database_failure_code(TimeoutError('private detail')), 'DATABASE_POOL_TIMEOUT')
+        self.assertIsNone(database_failure_code(asyncio.TimeoutError()))
+        for state, expected in [('57014', 'DATABASE_STATEMENT_TIMEOUT'), ('55P03', 'DATABASE_LOCK_TIMEOUT')]:
+            original = Exception('private query')
+            original.sqlstate = state
+            self.assertEqual(database_failure_code(OperationalError(None, None, original)), expected)
+
     def test_database_busy_read_can_retry_but_write_retains_unknown_outcome(self):
         from sqlalchemy.exc import OperationalError
         from app.langchain.tool_execution import failure

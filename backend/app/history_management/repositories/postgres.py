@@ -26,6 +26,13 @@ def source_fingerprint(message_id):
     return fingerprint('source:' + str(message_id))
 
 
+def response_sources_current(engine, owner, payload):
+    """Reauthorize checkpoint sources through the owning persistence adapter."""
+    from sqlalchemy.orm import Session
+    with Session(engine) as session:
+        return MemoryRepository.references_current(session, owner, payload)
+
+
 def conflict():
     return AppError('MEMORY_CONFLICT', 'This memory changed. Reload it before saving your draft.', 409)
 

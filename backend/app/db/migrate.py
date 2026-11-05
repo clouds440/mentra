@@ -17,7 +17,7 @@ def migration_config(connection=None) -> Config:
     return config
 
 
-def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
+def _migrate(engine=None, *, revision='head', direction='upgrade', lock_timeout: float = 300) -> None:
     if engine is None:
         from app.db.database import build_engine
         from app.core.config import settings
@@ -42,11 +42,24 @@ def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
                 raise RuntimeError('Timed out waiting for the database migration lock.')
             sleep(0.05)
         try:
-            command.upgrade(migration_config(connection), 'head')
+            getattr(command, direction)(migration_config(connection), revision)
         finally:
             connection.rollback()
             connection.execute(text('SELECT pg_advisory_unlock(17483, 1)'))
             connection.commit()
+
+
+def upgrade(engine=None, *, lock_timeout: float = 300) -> None:
+    _migrate(engine, lock_timeout=lock_timeout)
+
+
+def downgrade(engine, revision, *, lock_timeout: float = 300) -> None:
+    """Own transaction boundaries so concurrent-index DDL can autocommit safely.
+
+    A caller-owned ``engine.begin()`` cannot encompass a concurrent-index
+    migration. Share the operational migration lock and connection lifecycle.
+    """
+    _migrate(engine, revision=revision, direction='downgrade', lock_timeout=lock_timeout)
 
 
 if __name__ == '__main__':

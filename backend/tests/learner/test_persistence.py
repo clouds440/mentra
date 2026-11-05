@@ -7,7 +7,7 @@ from alembic import command
 from sqlalchemy import inspect, text, update, delete
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
-from app.db.migrate import upgrade, migration_config
+from app.db.migrate import upgrade, downgrade, migration_config
 from app.learner.models import Concept, LearnerConceptState, LearningContext, LearningEvidence
 from app.learner.exceptions import LearnerError
 from app.learner import LearnerEngine, ConceptResolutionRequest, EvidenceSubmissionRequest, LearningContextNotFoundError
@@ -46,8 +46,7 @@ class LearnerPersistenceTests(unittest.TestCase):
             command.check(migration_config(connection))
 
     def test_migration_downgrade_and_fresh_upgrade(self):
-        with self.db.engine.begin() as connection:
-            command.downgrade(migration_config(connection), 'base')
+        downgrade(self.db.engine, 'base')
         self.assertEqual(inspect(self.db.engine).get_table_names(), ['alembic_version'])
         upgrade(self.db.engine)
         self.assertIn('learning_evidence', inspect(self.db.engine).get_table_names())

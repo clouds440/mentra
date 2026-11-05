@@ -6,20 +6,16 @@ from time import monotonic
 import numpy as np
 from app.rag.text_windows import token_windows
 from app.core.logging import workflow_logger
-from sqlalchemy import or_, select, delete
-from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
-from app.db.owner_transactions import lock_owner
+from ..repositories.memory_vectors import MemoryVectorRepository
 
-from ..repositories.tables import memories as m
-from ..repositories.tables import memory_vectors as v
-from ..repositories.tables import preferences as p
 
 
 class MemorySemanticLookup:
     def __init__(self, sessions, embedding=None):
         self.sessions, self.embedding = sessions, embedding
+        self.repository = MemoryVectorRepository(sessions)
         self.lock = Lock()
         self.retry_after = 0
 
@@ -40,28 +36,7 @@ class MemorySemanticLookup:
                     self.embedding = ProcessEmbeddingService(settings)
                 engine = self.embedding
                 key = f"{engine.model_name}:{engine.model_version}:{engine.dimension}:symmetric-v2"
-                with self.sessions() as session:
-                    missing = list(
-                        session.execute(
-                            select(m.c.id, m.c.revision, m.c.content)
-                            .outerjoin(
-                                v,
-                                (v.c.learner_id == m.c.learner_id)
-                                & (v.c.memory_id == m.c.id),
-                            )
-                            .where(
-                                m.c.learner_id == owner,
-                                m.c.status == "active",
-                                or_(
-                                    v.c.memory_id.is_(None),
-                                    v.c.revision != m.c.revision,
-                                    v.c.model_key != key,
-                                ),
-                            )
-                            .order_by(m.c.pinned.desc(), m.c.updated_at.desc())
-                            .limit(32)
-                        ).mappings()
-                    )
+                missing = self.repository.missing(owner, key)
                 if missing:
                     ready, spans, flattened = [], [], []
                     for row in missing:
@@ -81,74 +56,16 @@ class MemorySemanticLookup:
                         raise ValueError('Incomplete memory embedding batch')
                     vectors=[encoded[start:end].mean(axis=0) for start,end in spans]
                     missing = ready
-                    with self.sessions.begin() as session:
-                        lock_owner(session, owner)
-                        pref = session.scalar(
-                            select(p.c.automatic_memory).where(p.c.learner_id == owner)
-                        )
-                        if pref is False:
-                            return [], False
-                        current = dict(
-                            session.execute(
-                                select(m.c.id, m.c.revision).where(
-                                    m.c.learner_id == owner,
-                                    m.c.id.in_([row["id"] for row in missing]),
-                                    m.c.status == "active",
-                                )
-                            ).all()
-                        )
-                        entries = []
-                        for row, vector in zip(missing, vectors, strict=True):
-                            if current.get(row["id"]) != row["revision"]:
-                                continue
-                            data = np.asarray(vector, dtype="<f4")
-                            if (
-                                data.shape != (engine.dimension,)
-                                or not np.isfinite(data).all()
-                                or not np.linalg.norm(data)
-                            ):
-                                raise ValueError("Invalid local embedding")
-                            entries.append(
-                                dict(
-                                    learner_id=owner,
-                                    memory_id=row["id"],
-                                    revision=row["revision"],
-                                    model_key=key,
-                                    dimension=engine.dimension,
-                                    vector=data.tobytes(),
-                                )
-                            )
-                        if entries:
-                            stmt = insert(v).values(entries)
-                            session.execute(
-                                stmt.on_conflict_do_update(
-                                    index_elements=["learner_id", "memory_id"],
-                                    set_={
-                                        name: getattr(stmt.excluded, name)
-                                        for name in (
-                                            "revision",
-                                            "model_key",
-                                            "dimension",
-                                            "vector",
-                                        )
-                                    },
-                                )
-                            )
-                with self.sessions() as session:
-                    rows = list(
-                        session.execute(
-                            select(m, v.c.vector, v.c.dimension)
-                            .outerjoin(
-                                v,
-                                (v.c.learner_id == m.c.learner_id)
-                                & (v.c.memory_id == m.c.id)
-                                & (v.c.revision == m.c.revision)
-                                & (v.c.model_key == key),
-                            )
-                            .where(m.c.learner_id == owner, m.c.status == "active")
-                            .limit(1001)
-                        ).mappings()
-                    )
+                    entries = []
+                    for row, vector in zip(missing, vectors, strict=True):
+                        data = np.asarray(vector, dtype="<f4")
+                        if data.shape != (engine.dimension,) or not np.isfinite(data).all() or not np.linalg.norm(data):
+                            raise ValueError("Invalid local embedding")
+                        entries.append(dict(learner_id=owner, memory_id=row['id'], revision=row['revision'],
+                            model_key=key, dimension=engine.dimension, vector=data.tobytes()))
+                    if not self.repository.save(owner, entries):
+                        return [], False
+                rows = self.repository.rows(owner, key)
                 if len(rows) > 1000 or any(row["vector"] is None for row in rows):
                     workflow_logger.event('memory.semantic_incomplete', reason='overflow' if len(rows) > 1000 else 'backfill')
                     return [], False
@@ -179,10 +96,7 @@ class MemorySemanticLookup:
                         or not np.isfinite(vector).all()
                         or not np.linalg.norm(vector)
                     ):
-                        with self.sessions.begin() as session:
-                            lock_owner(session, owner)
-                            session.execute(delete(v).where(v.c.learner_id==owner,
-                                v.c.memory_id==row['id'],v.c.revision==row['revision'],v.c.model_key==key))
+                        self.repository.invalidate(owner, row['id'], row['revision'], key)
                         workflow_logger.event('memory.semantic_incomplete',reason='invalid_vector_rebuild')
                         return [], False
                     score = float(

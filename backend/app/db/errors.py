@@ -22,3 +22,19 @@ async def handle_database_error(request, error):
 def register_database_handlers(app):
     app.add_exception_handler(DBAPIError, handle_database_error)
     app.add_exception_handler(TimeoutError, handle_database_error)
+
+
+from sqlalchemy.exc import TimeoutError as PoolTimeout, DBAPIError
+
+
+def database_failure_code(error):
+    if isinstance(error, PoolTimeout):
+        return 'DATABASE_POOL_TIMEOUT'
+    if isinstance(error, DBAPIError):
+        state = getattr(error.orig, 'sqlstate', None)
+        if state == '57014':
+            return 'DATABASE_STATEMENT_TIMEOUT'
+        if state == '55P03':
+            return 'DATABASE_LOCK_TIMEOUT'
+        return 'DATABASE_UNAVAILABLE'
+    return None

@@ -33,10 +33,36 @@ class LatencyObservabilityTests(unittest.IsolatedAsyncioTestCase):
             with patch('app.db.timing.emit') as emit, engine.connect() as connection:
                 connection.execute(text('SELECT :value'), {'value': 'private-content'})
                 with self.assertRaises(Exception): connection.execute(text('SELECT missing_private_column'))
-            records = [call.kwargs for call in emit.call_args_list]
+            records = [call.kwargs for call in emit.call_args_list if call.args[0] == 'db.query']
             self.assertEqual([r['outcome'] for r in records], ['success', 'failed'])
             self.assertTrue(all(r['duration_ms'] >= 0 for r in records))
             self.assertNotIn('private', json.dumps(records))
+        finally:
+            engine.dispose()
+
+    def test_pool_acquisition_failure_and_hold_are_visible_without_content(self):
+        from sqlalchemy import create_engine, text
+        from sqlalchemy.pool import QueuePool
+        from sqlalchemy.exc import TimeoutError
+        from app.db.timing import instrument_engine
+        engine = instrument_engine(create_engine('sqlite://', poolclass=QueuePool,
+            pool_size=1, max_overflow=0, pool_timeout=.03))
+        try:
+            with patch('app.db.timing.emit') as emit:
+                with engine.connect() as connection:
+                    connection.execute(text('SELECT 1'))
+                    with self.assertRaises(TimeoutError):
+                        engine.connect()
+                records = [(call.args[0], call.kwargs) for call in emit.call_args_list]
+                failures = [value for name, value in records if name == 'db.pool_acquired' and value['outcome'] == 'failed']
+                self.assertEqual(len(failures), 1)
+                self.assertGreaterEqual(failures[0]['duration_ms'], 25)
+                self.assertTrue(any(name == 'db.connection_released' and value['duration_ms'] >= 25 for name, value in records))
+                self.assertNotIn('SELECT', json.dumps(records))
+                engine.dispose()
+                with engine.connect():
+                    pass
+                self.assertEqual(sum(call.args[0] == 'db.pool_acquired' for call in emit.call_args_list), 3)
         finally:
             engine.dispose()
 

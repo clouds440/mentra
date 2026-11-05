@@ -25,15 +25,11 @@ class ResponseRuntime:
             return
         checkpoint = self.scope.get('_response_checkpoint')
         if checkpoint:
-            from sqlalchemy.orm import Session
-            from app.history_management.repositories.postgres import MemoryRepository
+            from app.history_management.repositories.postgres import response_sources_current
             from app.core.observability.timing import run_in_threadpool
             from app.core.exceptions import AppError
             engine,owner,_ = checkpoint
-            def check():
-                with Session(engine) as session:
-                    return MemoryRepository.references_current(session,owner,self.scope)
-            if not await run_in_threadpool(check):
+            if not await run_in_threadpool(response_sources_current, engine, owner, self.scope):
                 raise AppError('CHAT_RESUME_CONTEXT_CHANGED','Saved sources changed. Retry with the current information.',409)
             rag = self.scope.get('rag_service')
             if rag:
