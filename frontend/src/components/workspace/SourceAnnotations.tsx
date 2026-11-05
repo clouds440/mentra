@@ -1,4 +1,4 @@
-import { Quote, X } from 'lucide-react';
+import { Globe, Quote, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router';
@@ -12,7 +12,10 @@ const MAX_LENGTH = 1600;
 const empty: SourceAnnotation[] = [];
 const Drafts = createContext<Record<string, SourceAnnotation[]>>({});
 const Update = createContext<React.Dispatch<React.SetStateAction<Record<string, SourceAnnotation[]>>>>(() => {});
-const keyOf = ({ source, text }: SourceAnnotation) => (source.kind === 'chat' ? source.title : resourceKey(source)) + ':' + text;
+const keyOf = (annotation: SourceAnnotation) => {
+  const { source } = annotation;
+  return JSON.stringify([source.kind === 'chat' ? source.title : resourceKey(source), annotation.mode === 'page' ? null : annotation.text]);
+};
 
 export function AnnotationDraftProvider({ children }: { children: ReactNode }) {
   const [drafts, update] = useState<Record<string, SourceAnnotation[]>>({});
@@ -55,40 +58,61 @@ export function useAnnotationDraft() {
     } };
 }
 
+export function useStageSource() {
+  const panel = useSidePanelActions();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const target = pathname === '/' || pathname.startsWith('/chat/') ? pathname : '/';
+  const existing = useContext(Drafts)[target] ?? empty;
+  const update = useContext(Update);
+  function unavailable(annotation: SourceAnnotation) {
+    if (existing.some(item => keyOf(item) === keyOf(annotation))) return 'Already added to chat';
+    if (existing.length >= LIMIT) return 'Up to 4 references per message';
+  }
+  function stage(annotation: SourceAnnotation, origin: HTMLElement | null) {
+    if (unavailable(annotation)) return false;
+    update(current => {
+      const items = current[target] ?? empty;
+      return items.length >= LIMIT || items.some(item => keyOf(item) === keyOf(annotation))
+        ? current : { ...current, [target]: [...items, annotation] };
+    });
+    if (origin?.closest('.workspace-side-panel[aria-modal="true"]')) panel?.hide();
+    if (target !== pathname) void navigate(target);
+    return true;
+  }
+  return { stage, unavailable };
+}
+
 export function SourceAnnotationChips({ annotations, remove, disabled }: {
   annotations?: SourceAnnotation[]; remove?: (index: number) => void; disabled?: boolean;
 }) {
   if (!annotations?.length) return null;
-  return <ul aria-label={remove ? 'Draft excerpts' : 'Referenced excerpts'} className={'source-annotation-list' + (remove ? ' px-2.5 pb-1 pt-2' : '')}>
+  const containsPage = annotations.some(item => item.mode === 'page');
+  return <ul aria-label={remove ? containsPage ? 'Draft references' : 'Draft excerpts' : containsPage ? 'Referenced sources' : 'Referenced excerpts'} className={'source-annotation-list' + (remove ? ' px-2.5 pb-1 pt-2' : '')}>
     {annotations.map((annotation, index) => <li key={keyOf(annotation)} className="source-annotation-chip">
       <details className="min-w-0" data-no-excerpt>
         <summary className="flex min-w-0 cursor-pointer items-center gap-1.5">
-          <Quote size={13} className="shrink-0" aria-hidden="true" />
-          <span className="truncate">{annotation.text}</span>
-          <span className="sr-only"> · {annotation.source.title}</span>
+          {annotation.mode === 'page' ? <Globe size={13} className="shrink-0" aria-hidden="true" /> : <Quote size={13} className="shrink-0" aria-hidden="true" />}
+          <span className="truncate">{annotation.mode === 'page' ? annotation.source.title : annotation.text}</span>
+          <span className="sr-only"> · {annotation.mode === 'page' ? 'Web page' : annotation.source.title}</span>
         </summary>
-        <blockquote dir="auto" className="mt-1 whitespace-pre-wrap break-words text-foreground">{annotation.text}</blockquote>
+        {annotation.mode !== 'page' && <blockquote dir="auto" className="mt-1 whitespace-pre-wrap break-words text-foreground">{annotation.text}</blockquote>}
         <cite className="text-xs not-italic text-muted">{annotation.source.kind === 'web'
           ? <SourceLink href={annotation.source.url} className="underline underline-offset-2">{annotation.source.title}</SourceLink>
           : annotation.source.title}</cite>
       </details>
       {remove && <IconButton size="sm" className="h-6 min-h-6 w-6 shrink-0 p-0" disabled={disabled}
-        aria-label={'Remove excerpt ' + (index + 1)} onClick={() => remove(index)}><X size={12} aria-hidden="true" /></IconButton>}
+        aria-label={(annotation.mode === 'page' ? 'Remove page ' : 'Remove excerpt ') + (index + 1)} onClick={() => remove(index)}><X size={12} aria-hidden="true" /></IconButton>}
     </li>)}
   </ul>;
 }
 
-type Selected = { annotation: SourceAnnotation; x: number; y: number };
+type Selected = { annotation: Extract<SourceAnnotation, { text: string }>; x: number; y: number };
 const element = (node: Node) => node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement;
 
 export function SourceSelection({ scope, source, onStage }: { scope: RefObject<HTMLElement | null>; source?: PanelResource; onStage?: () => void }) {
   const [selected, setSelected] = useState<Selected>();
-  const panel = useSidePanelActions();
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const target = pathname === '/' || pathname.startsWith('/chat/') ? pathname : '/';
-  const drafts = useContext(Drafts);
-  const update = useContext(Update);
+  const { stage, unavailable } = useStageSource();
   const frame = useRef(0);
   const read = useCallback(() => {
     const selection = window.getSelection();
@@ -136,24 +160,15 @@ export function SourceSelection({ scope, source, onStage }: { scope: RefObject<H
   }, [read]);
   if (!selected) return null;
   const { annotation, x, y } = selected;
-  const existing = drafts[target] ?? empty;
-  const error = [...annotation.text].length > MAX_LENGTH ? 'Select a shorter excerpt' :
-    existing.some(item => keyOf(item) === keyOf(annotation)) ? 'Excerpt already added' :
-    existing.length >= LIMIT ? 'Up to 4 excerpts per message' : undefined;
+  const error = [...annotation.text].length > MAX_LENGTH ? 'Select a shorter excerpt' : unavailable(annotation);
   return createPortal(<div className="source-selection" data-no-excerpt style={{ left: x, top: y }}>
     {error ? <span role="status">{error}</span> :
       <button type="button" className={buttonStyles({ size: 'sm', variant: 'secondary' })} onPointerDown={event => event.preventDefault()}
         onClick={() => {
-          update(current => {
-            const items = current[target] ?? empty;
-            return items.length >= LIMIT || items.some(item => keyOf(item) === keyOf(annotation))
-              ? current : { ...current, [target]: [...items, annotation] };
-          });
+          if (!stage(annotation, scope.current)) return;
           window.getSelection()?.removeAllRanges();
           setSelected(undefined);
-          if (scope.current?.closest('.workspace-side-panel[aria-modal="true"]')) panel?.hide();
           onStage?.();
-          if (target !== pathname) void navigate(target);
         }}><Quote size={13} aria-hidden="true" /> Send to chat</button>}
   </div>, scope.current?.closest('dialog[open], [aria-modal="true"]') ?? document.body);
 }

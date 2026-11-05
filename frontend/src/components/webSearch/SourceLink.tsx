@@ -1,12 +1,10 @@
-import { BookOpen, ExternalLink, Globe } from 'lucide-react';
-import { useContext, useEffect, useState, type AnchorHTMLAttributes, type ReactNode } from 'react';
-import { apiRequest } from '../../services/api';
-import { buttonStyles } from '../ui';
-import { PanelEntryScope, PanelResourceScope, PanelTabScope, useSidePanelActions } from '../workspace/sidePanelState';
+import { Globe } from 'lucide-react';
+import { useContext, type AnchorHTMLAttributes } from 'react';
+import { PanelResourceScope, PanelTabScope, useSidePanelActions } from '../workspace/sidePanelState';
 import { openSourcesInMentra } from './sourcePreference';
 
 // Frame only public HTTPS hosts, with no credentials, custom ports or app routes.
-function previewUrl(href: string) {
+export function previewUrl(href: string) {
   try {
     const url = new URL(href);
     const host = url.hostname.replace(/\.$/, '');
@@ -15,82 +13,6 @@ function previewUrl(href: string) {
         && !/(?:^|\.)(?:localhost|local|internal|test|invalid|example|onion|lan|corp|home\.arpa)$/i.test(host)) return url;
   } catch { /* Relative links stay in their normal navigation path. */ }
   return undefined;
-}
-
-interface PreviewResult { status: 'available' | 'blocked' | 'unavailable'; url?: string }
-
-interface ReaderResult { url: string; blocks: string[]; links: { url: string; title: string }[] }
-
-const readerHistory = new WeakMap<object, { reading: boolean; reader?: ReaderResult | null }>();
-
-export function WebSourcePreview({ href, title, navigation, pin }: { href: string; title: string; navigation: ReactNode; pin: ReactNode }) {
-  const url = new URL(href);
-  const entry = useContext(PanelEntryScope);
-  const previous = entry && readerHistory.get(entry);
-  const [reading, setReading] = useState(previous?.reading ?? false);
-  const [reader, setReader] = useState<ReaderResult | null | undefined>(previous?.reader);
-  useEffect(() => {
-    if (entry) readerHistory.set(entry, { reading, reader });
-  }, [entry, reading, reader]);
-  useEffect(() => {
-    if (!reading || reader !== undefined) return;
-    const controller = new AbortController();
-    void apiRequest<ReaderResult | null>('/api/v1/web/reader', {
-      method: 'POST', body: JSON.stringify({ url: href }), signal: controller.signal,
-    }).then(value => { if (!controller.signal.aborted) setReader(value); })
-      .catch(() => { if (!controller.signal.aborted) setReader(null); });
-    return () => controller.abort();
-  }, [href, reading, reader]);
-  const [result, setResult] = useState<PreviewResult>();
-  useEffect(() => {
-    if (reading || result !== undefined) return;
-    const controller = new AbortController();
-    const requestUrl = new URL(href);
-    requestUrl.hash = '';
-    const timer = setTimeout(() => {
-      setResult({ status: 'unavailable' });
-      controller.abort();
-    }, 6000);
-    void apiRequest<PreviewResult>('/api/v1/web/preview', {
-      method: 'POST', body: JSON.stringify({ url: requestUrl.href }), signal: controller.signal,
-    }).then(value => {
-      if (!controller.signal.aborted) setResult(value);
-    }).catch(() => {
-      if (!controller.signal.aborted) setResult({ status: 'unavailable' });
-    }).finally(() => clearTimeout(timer));
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [href, reading, result]);
-  const frame = result?.status === 'available' && result.url ? previewUrl(result.url) : undefined;
-  if (frame && !frame.hash) frame.hash = url.hash;
-  return <div className="workspace-web-preview">
-    <header className="workspace-resource-toolbar workspace-web-toolbar" data-no-excerpt>
-      {navigation}
-      <span className="min-w-0 flex-1 truncate px-1 text-xs text-muted" dir="ltr" title={url.hostname}>{url.hostname}</span>
-      <button type="button" aria-label="Reader" aria-pressed={reading} title={reading ? 'Return to website preview' : 'Open Reader to select and quote text'}
-        className={buttonStyles({ size: 'sm', variant: 'ghost', className: 'workspace-web-action' })} onClick={() => setReading(value => !value)}>
-        <BookOpen size={15} aria-hidden="true" /><span>Reader</span>
-      </button>
-      <a href={url.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label="Open in browser" title="Open in browser"
-        className={buttonStyles({ size: 'sm', variant: 'ghost', className: 'workspace-web-action' })}>
-        <ExternalLink size={15} aria-hidden="true" /><span>Open in browser</span>
-      </a>
-      {pin}
-    </header>
-    {reading ? reader ? <div data-reader-url={reader.url} className="space-y-3 p-4 text-sm leading-relaxed">
-      {reader.blocks.map((block, index) => <p key={index} dir="auto" className="break-words">{block}</p>)}
-      {!!reader.links.length && <ul className="space-y-2 border-t border-border pt-3">{reader.links.map(link => <li key={link.url}>
-        <SourceLink href={link.url} sourceTitle={link.title} className="text-accent hover:underline">{link.title}</SourceLink>
-      </li>)}</ul>}
-    </div> : <div className="workspace-web-status" role="status">{reader === null ? <>Readable text is unavailable for this page.
-      <button type="button" className={buttonStyles({ size: 'sm', variant: 'ghost' })} onClick={() => setReader(undefined)}>Retry Reader</button></> : 'Loading readable text…'}</div>
-    : frame ? <iframe src={frame.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
-      allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'"
-      {...{ credentialless: '' }} /> : <div className="workspace-web-status" role="status">
-      <Globe size={24} strokeWidth={1.5} aria-hidden="true" />
-      <p className="text-sm font-medium text-heading">{!result ? 'Checking preview…' : result.status === 'blocked' ? 'This publisher restricts embedded previews' : 'Preview unavailable'}</p>
-      {result && <p className="text-xs text-muted">Try Reader for selectable text, or open the original page in your browser.</p>}
-    </div>}
-  </div>;
 }
 
 interface SourceLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'> {

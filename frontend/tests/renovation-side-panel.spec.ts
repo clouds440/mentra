@@ -1,6 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { richChat } from './renovation-rich-fixtures';
 import { workspace } from './renovation-fixtures';
+
+const websiteActions = (page: Page) => page.getByRole('menu', { name: 'Website actions' });
+async function openWebsiteActions(page: Page, preview: Locator) {
+  await preview.getByRole('button', { name: 'Website actions' }).click();
+  return websiteActions(page);
+}
 
 const date = '2026-11-05T00:00:00Z';
 const web = (index: number) => ({ token: 'W' + index, url: 'https://example.org/article/' + index,
@@ -17,6 +23,7 @@ async function citations(page: Page) {
     const { url } = route.request().postDataJSON();
     return route.fulfill({ json: url === web(2).url ? { status: 'blocked' } : { status: 'available', url } });
   });
+  return fixture;
 }
 
 test('opening the desktop panel animates without shifting the workspace', async ({ page }) => {
@@ -79,14 +86,16 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await expect(first).toHaveAttribute('target', '_blank');
   await first.click();
   const preview = panel.getByRole('tabpanel', { name: 'Article 1' });
-  await expect(preview.getByRole('link', { name: 'Open in browser' })).toHaveAttribute('href', web(1).url);
   const toolbar = preview.locator('.workspace-web-toolbar');
-  await expect(toolbar.locator('button, a')).toHaveCount(5);
+  await expect(toolbar.locator('button, a')).toHaveCount(3);
   expect(await toolbar.locator('button, a').evaluateAll(controls => controls.map(control => control.getAttribute('aria-label'))))
-    .toEqual(['Back', 'Forward', 'Reader', 'Open in browser', 'Pin source']);
+    .toEqual(['Back', 'Forward', 'Website actions']);
   await expect(toolbar.getByText('example.org', { exact: true })).toBeVisible();
-  await expect(toolbar.getByText('Open in browser', { exact: true })).toBeHidden();
-  await expect(toolbar.getByText('Reader', { exact: true })).toBeHidden();
+  const menu = await openWebsiteActions(page, preview);
+  await expect(menu.getByRole('menuitem', { name: 'Open in browser' })).toHaveAttribute('href', web(1).url);
+  await expect(menu.getByRole('menuitem', { name: 'Add to chat' })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
   await expect(preview.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');
   const publisher = preview.frameLocator('iframe').getByRole('heading', { name: 'Publisher preview' });
   await expect(publisher).toBeVisible();
@@ -120,7 +129,9 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
       const blocked = panel.getByRole('tabpanel', { name: 'Article 2' });
       await expect(blocked.getByRole('status')).toContainText('This publisher restricts embedded previews');
       await expect(blocked.locator('iframe')).toHaveCount(0);
-      await expect(blocked.getByRole('link', { name: 'Open in browser' })).toHaveAttribute('href', web(2).url);
+      const blockedMenu = await openWebsiteActions(page, blocked);
+      await expect(blockedMenu.getByRole('menuitem', { name: 'Open in browser' })).toHaveAttribute('href', web(2).url);
+      await page.keyboard.press('Escape');
     }
   }
   const strip = panel.getByRole('tablist');
@@ -159,12 +170,11 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await page.mouse.up();
   expect((await panel.boundingBox())!.width).toBeGreaterThan(width + 50);
   const wideToolbar = panel.getByRole('tabpanel', { name: 'Article 6' }).locator('.workspace-web-toolbar');
-  await expect(wideToolbar.getByText('Open in browser', { exact: true })).toBeVisible();
-  await expect(wideToolbar.getByText('Reader', { exact: true })).toBeVisible();
+  await expect(wideToolbar.getByRole('button', { name: 'Website actions' })).toBeVisible();
   await handle.press('Home');
   await expect(handle).toHaveAttribute('aria-valuenow', '340');
   await expect(panel).toHaveCSS('width', '340px');
-  await expect(wideToolbar.getByText('Reader', { exact: true })).toBeHidden();
+  await expect(wideToolbar.getByRole('button', { name: 'Website actions' })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Hide side panel', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Hide side panel', exact: true }).click();
   await expect(panel).toBeHidden();
@@ -318,7 +328,7 @@ test('Browse keeps account pins across reloads and Reader follows independent ta
   await page.getByRole('link', { name: /Open web source W1:/ }).click();
   await page.getByRole('link', { name: /Open web source W2:/ }).click();
   const blocked = panel.getByRole('tabpanel', { name: 'Article 2' });
-  await blocked.getByRole('button', { name: 'Reader' }).click();
+  await (await openWebsiteActions(page, blocked)).getByRole('menuitem', { name: 'Reader' }).click();
   await blocked.getByText('An exact reader excerpt.').evaluate(node => {
     const range = document.createRange();
     range.selectNodeContents(node);
@@ -328,8 +338,9 @@ test('Browse keeps account pins across reloads and Reader follows independent ta
   await expect(page.getByRole('list', { name: 'Draft excerpts' })).toContainText('An exact reader excerpt.');
   await page.getByRole('button', { name: 'Remove excerpt 1' }).click();
   await expect(page.getByRole('list', { name: 'Draft excerpts' })).toHaveCount(0);
-  await blocked.getByRole('button', { name: 'Pin source', exact: true }).click();
-  await expect(blocked.getByRole('button', { name: 'Unpin source', exact: true })).toBeEnabled();
+  await (await openWebsiteActions(page, blocked)).getByRole('menuitem', { name: 'Pin source', exact: true }).click();
+  await expect((await openWebsiteActions(page, blocked)).getByRole('menuitem', { name: 'Unpin source', exact: true })).toBeEnabled();
+  await page.keyboard.press('Escape');
   await blocked.getByRole('link', { name: 'Related page' }).click();
   const related = panel.getByRole('tabpanel', { name: 'Related page' });
   await expect(related).toBeVisible();
@@ -349,7 +360,39 @@ test('Browse keeps account pins across reloads and Reader follows independent ta
   await expect(browse.getByRole('tab', { name: 'Pinned', exact: true })).toHaveAttribute('aria-selected', 'true');
   await browse.getByRole('button', { name: 'Article 2', exact: true }).click();
   await expect(blocked).toBeVisible();
-  await blocked.getByRole('button', { name: 'Unpin source', exact: true }).click();
-  await expect(blocked.getByRole('button', { name: 'Pin source', exact: true })).toBeEnabled();
+  await (await openWebsiteActions(page, blocked)).getByRole('menuitem', { name: 'Unpin source', exact: true }).click();
+  await expect((await openWebsiteActions(page, blocked)).getByRole('menuitem', { name: 'Pin source', exact: true })).toBeEnabled();
   expect(saved).toHaveLength(0);
+});
+
+test('mobile adds the whole publisher page from the menu without selecting text', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  const fixture = await citations(page);
+  await page.goto('/chat/polish-chat');
+  const composer = page.getByRole('form', { name: 'Message Mentra' });
+  const textbox = composer.getByRole('textbox', { name: 'Ask Mentra anything' });
+  await expect(textbox).toHaveAttribute('placeholder', 'Ask Mentra anything…');
+  const buttons = composer.locator('.composer-control');
+  await expect(buttons).toHaveCount(3);
+  const shape = await buttons.evaluateAll(nodes => nodes.map(node => {
+    const style = getComputedStyle(node);
+    const highlight = getComputedStyle(node, '::before');
+    return [style.width, style.height, highlight.inset, highlight.borderRadius];
+  }));
+  expect(shape).toEqual(Array(3).fill(['44px', '44px', '6px', '50%']));
+
+  await page.getByRole('link', { name: /Open web source W1:/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Side panel' });
+  const preview = panel.getByRole('tabpanel', { name: 'Article 1' });
+  await expect(preview.frameLocator('iframe').getByRole('heading', { name: 'Publisher preview' })).toBeVisible();
+  await (await openWebsiteActions(page, preview)).getByRole('menuitem', { name: 'Add to chat' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(composer.getByRole('list', { name: 'Draft references' })).toContainText('Article 1');
+  await expect(textbox).toHaveValue('');
+  await composer.getByRole('button', { name: 'Send message' }).click();
+  await expect.poll(() => fixture.submissions.length).toBe(1);
+  expect(fixture.submissions[0]).toMatchObject({ content: '', source_annotations: [
+    { mode: 'page', source: { kind: 'web', title: 'Article 1', url: web(1).url } },
+  ] });
+  await expect(page.getByRole('list', { name: 'Referenced sources' })).toContainText('Article 1');
 });

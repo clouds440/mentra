@@ -5,7 +5,9 @@ export type PanelResource =
   | { kind: 'history'; title: string; conversation_id: string; sequence: number }
   | { kind: 'memory'; title: string; memory_id: string; revision: number };
 
-export interface SourceAnnotation { source: PanelResource | { kind: 'chat'; title: 'Mentra response' | 'Your message' }; text: string }
+export type SourceAnnotation =
+  | { mode?: never; source: PanelResource | { kind: 'chat'; title: 'Mentra response' | 'Your message' }; text: string }
+  | { mode: 'page'; source: Extract<PanelResource, { kind: 'web' }> };
 export interface PinnedSource { id: string; source: PanelResource }
 
 export function resourceKey(source: PanelResource) {

@@ -63,7 +63,16 @@ class ChatExcerptSource(BaseModel):
     title: Literal['Mentra response', 'Your message']
 
 
-class SourceAnnotation(BaseModel):
+class SourceExcerpt(BaseModel):
     model_config = ConfigDict(extra='forbid')
     source: PanelResource | ChatExcerptSource
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1600)]
+
+
+class WebPageAnnotation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    mode: Literal['page']
+    source: WebResource
+
+
+SourceAnnotation = SourceExcerpt | WebPageAnnotation

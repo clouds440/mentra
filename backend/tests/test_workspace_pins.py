@@ -49,8 +49,9 @@ class WorkspacePersistenceTests(unittest.TestCase):
     def test_annotation_is_saved_on_the_user_turn_and_part_of_its_idempotency(self):
         owner = learner_id('alice')
         source = {'kind': 'chat', 'title': 'Mentra response'}
+        page = {'mode': 'page', 'source': {'kind': 'web', 'title': 'Article', 'url': 'https://example.org/article'}}
         turn = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='',
-            source_annotations=[{'source': source, 'text': 'Exact words.'}])
+            source_annotations=[{'source': source, 'text': 'Exact words.'}, page])
         self.repository.begin_turn(owner, turn)
         changed = SendTurn(**{**turn.model_dump(), 'source_annotations': [{'source': source, 'text': 'Changed.'}]})
         with self.assertRaises(AppError):
@@ -58,6 +59,7 @@ class WorkspacePersistenceTests(unittest.TestCase):
         conversation = str(turn.conversation_id)
         [message] = self.repository.history(owner, conversation)['items']
         self.assertEqual(message['content'], '')
-        self.assertEqual(message['source_annotations'], [{'source': source, 'text': 'Exact words.'}])
+        self.assertEqual(message['source_annotations'], [{'source': source, 'text': 'Exact words.'}, page])
         exchange = ChatReadFacade(self.repository).saved_exchange(owner, conversation, message['id'])
         self.assertEqual(exchange.messages[0].source_annotations[0].text, 'Exact words.')
+        self.assertEqual(exchange.messages[0].source_annotations[1].model_dump(mode='json'), page)

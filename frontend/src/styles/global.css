@@ -619,9 +619,8 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   .composer-entry > textarea { grid-column: 2; grid-row: 1; padding: 10px 2px; min-height: 44px; }
   .composer-entry > textarea:placeholder-shown { white-space: pre; text-overflow: ellipsis; overflow-x: hidden; }
   .composer-toolbar { display: contents; }
-  .composer-attach { grid-column: 1; grid-row: 1; width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .composer-attach { grid-column: 1; grid-row: 1; }
   .composer-actions { grid-column: 3; grid-row: 1; gap: 0; }
-  .composer-actions .icon-control { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   .composer-entry:has(textarea:focus) .composer-mic { display: none; }
   .composer-voice { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
   .composer-voice:empty { display: none; }
@@ -629,17 +628,21 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   .composer-voice-active .composer-attach, .composer-voice-active .composer-actions { grid-row: 2; }
 }
 
+.chat-composer .composer-control { width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 50%; }
+.chat-composer .composer-control svg { width: 17px; height: 17px; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 639px) {
-  .composer-actions .composer-send { isolation: isolate; border: 0; background: transparent; }
-  .composer-send::before {
-    content: ''; position: absolute; inset: 7px; z-index: -1; border-radius: 9px;
-    background: rgb(var(--primary));
+  .chat-composer .composer-control { isolation: isolate; width: 44px; min-width: 44px; height: 44px; min-height: 44px; border: 0; background: transparent; }
+  .composer-control::before {
+    content: ''; position: absolute; inset: 6px; z-index: -1; border-radius: 50%; background: transparent;
+    transition: background-color 150ms;
   }
-  .composer-send:hover::before { background: rgb(var(--primary-hover)); }
-  .composer-send[data-response-action="pause"]::before { background: rgb(var(--warning) / .18); }
-  .composer-send[data-response-action="resume"]::before { background: rgb(var(--success) / .18); }
-  .composer-send[data-response-action="retry"]::before { background: rgb(var(--danger) / .18); }
-  .composer-send svg { width: 15px; height: 15px; }
+  .composer-control:is(:hover, :focus-visible)::before, .composer-attach[aria-expanded="true"]::before { background: rgb(var(--hover)); }
+  .composer-send::before { background: rgb(var(--primary)); }
+  .composer-send:is(:hover, :focus-visible)::before { background: rgb(var(--primary-hover)); }
+  .composer-send[data-response-action="pause"]::before, .composer-send[data-response-action="retry"].text-warning::before { background: rgb(var(--warning) / .2); }
+  .composer-send[data-response-action="resume"]::before { background: rgb(var(--success) / .2); }
+  .composer-send[data-response-action="retry"].text-danger::before { background: rgb(var(--danger) / .2); }
+  @media (prefers-reduced-motion: reduce) { .composer-control::before { transition: none; } }
 }
 
 /* Main-chat reading preferences never scale the application shell or shared pages. */
@@ -732,14 +735,8 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .workspace-source-row:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: -2px; }
 .workspace-panel-content > .source-header { padding-inline: 1rem; }
 .workspace-panel-content > .source-reader { min-height: 0; padding-inline: 1rem; }
-.workspace-web-preview { display: flex; flex: 1; flex-direction: column; min-width: 0; container: web-preview / inline-size; }
-.workspace-web-toolbar .workspace-web-action { color: rgb(var(--muted)); white-space: nowrap; }
-.workspace-web-toolbar .workspace-web-action:hover { color: rgb(var(--heading)); }
-.workspace-web-toolbar .workspace-web-action[aria-pressed='true'] { background: rgb(var(--accent) / .1); color: rgb(var(--accent)); }
-@container web-preview (max-width: 420px) {
-  .workspace-web-toolbar .workspace-web-action { width: 2rem; padding-inline: 0; }
-  .workspace-web-action > span { display: none; }
-}
+.workspace-web-preview { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.workspace-web-menu-trigger[aria-expanded='true'] { background: rgb(var(--hover)); color: rgb(var(--heading)); }
 .workspace-web-status { display: grid; flex: 1; align-content: center; justify-items: center; gap: .5rem; padding: 1.25rem; color: rgb(var(--muted)); text-align: center; }
 .workspace-web-preview iframe { display: block; flex: 1; width: 100%; min-height: 15rem; border: 0; background: rgb(var(--background)); color-scheme: inherit; }
 .markdown-content .chat-visual-description { color: rgb(var(--muted)); font-size: .875rem; line-height: 1.55; margin: .25rem 0 .625rem; overflow-wrap: anywhere; }

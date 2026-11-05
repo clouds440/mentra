@@ -175,7 +175,7 @@ class ConversationService:
                 summary = None
             if summary and summary['through_sequence'] >= job['user_sequence']:
                 summary = None  # Never give a retried older turn future context.
-            rows = [dict(row, content='Help me understand the selected source excerpts.')
+            rows = [dict(row, content='Help me understand the sources I attached.')
                     if row['role'] == 'user' and not row['content'].strip() and row.get('metadata', {}).get('source_annotations')
                     else row for row in rows]
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]

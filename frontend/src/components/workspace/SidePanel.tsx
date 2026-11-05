@@ -6,7 +6,7 @@ import { IconButton } from '../ui/IconButton';
 import { Popover } from '../ui/Popover';
 import { Tabs } from '../ui/Tabs';
 import { PinSourceButton, PinnedSourceList, usePinnedSources } from './PinnedSources';
-import { WebSourcePreview } from '../webSearch/SourceLink';
+import { WebSourcePreview } from '../webSearch/WebSourcePreview';
 import { SourceSelection } from './SourceAnnotations';
 import type { PanelResource } from '../../types/sourceAnnotations';
 import { PanelEntryScope, PanelResourceScope, PanelTabScope, useSidePanelActions, useSidePanelState } from './sidePanelState';
@@ -200,7 +200,7 @@ export function SidePanel() {
             <IconButton size="sm" aria-label="Back" title="Back" disabled={!tab.cursor} onClick={() => actions.go(tab.id, -1)}><ArrowLeft size={15} aria-hidden="true" /></IconButton>
             <IconButton size="sm" aria-label="Forward" title="Forward" disabled={tab.cursor === tab.entries.length - 1} onClick={() => actions.go(tab.id, 1)}><ArrowRight size={15} aria-hidden="true" /></IconButton>
           </>;
-          const pin = source && <PinSourceButton source={source} />;
+          const pin = source && source.kind !== 'web' && <PinSourceButton source={source} />;
           return <section key={tab.id} id={contentId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)}
             className="workspace-panel-content" tabIndex={0} hidden={tab.id !== active}>
             {source?.kind !== 'web' && (source || tab.entries.length > 1) && <div className="workspace-resource-toolbar" data-no-excerpt>
@@ -209,7 +209,7 @@ export function SidePanel() {
             <PanelTabScope.Provider value={tab.id}><PanelResourceScope.Provider value={source}>
               <PanelEntryScope.Provider value={tab.entries[tab.cursor]}>
                 <ResourceContent key={tab.entryId} enabled={tab.id === active && visible} source={source}>
-                  {source?.kind === 'web' ? <WebSourcePreview href={source.url} title={source.title} navigation={navigation} pin={pin} /> : tab.content}
+                  {source?.kind === 'web' ? <WebSourcePreview source={source} navigation={navigation} /> : tab.content}
                   {source && pinError && <p role="alert" className="px-3 py-1 text-xs text-danger" data-no-excerpt>{pinError}</p>}
                 </ResourceContent>
               </PanelEntryScope.Provider>

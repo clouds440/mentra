@@ -48,12 +48,17 @@ export function PinnedSourcesProvider({ children }: { children: ReactNode }) {
 
 export const usePinnedSources = () => useContext(Pins);
 
-export function PinSourceButton({ source }: { source: PanelResource }) {
+export function usePinSource(source: PanelResource) {
   const { items, change, busy } = usePinnedSources();
   const pin = items.find(item => resourceKey(item.source) === resourceKey(source));
-  const label = pin ? 'Unpin source' : 'Pin source';
-  const Icon = pin ? PinOff : Pin;
-  return <IconButton size="sm" aria-label={label} title={label} disabled={busy} onClick={() => void change(source, pin)}>
+  return { pinned: !!pin, busy, toggle: () => void change(source, pin) };
+}
+
+export function PinSourceButton({ source }: { source: PanelResource }) {
+  const { pinned, busy, toggle } = usePinSource(source);
+  const label = pinned ? 'Unpin source' : 'Pin source';
+  const Icon = pinned ? PinOff : Pin;
+  return <IconButton size="sm" aria-label={label} title={label} disabled={busy} onClick={toggle}>
     <Icon size={15} aria-hidden="true" />
   </IconButton>;
 }

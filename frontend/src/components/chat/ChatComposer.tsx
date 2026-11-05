@@ -1,5 +1,5 @@
 import { ArrowUp, Play, Pause, RotateCcw, Paperclip, Mic, Square, LoaderCircle, BookOpenText, Camera, Plus } from 'lucide-react';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
 import { SourceSelector, type SourcePickerHandle } from './SourceSelector';
 import type { ChatSelection } from '../../types/rag';
@@ -9,6 +9,13 @@ import { ComposerCamera } from './ComposerCamera';
 import { useVoiceInput } from './useVoiceInput';
 import { VoiceInput } from './VoiceInput';
 import { useAssessmentEvaluation } from '../../stores/assessmentSession';
+
+const mobileComposer = '(max-width: 639px)';
+function subscribeToComposerWidth(callback: () => void) {
+  const query = matchMedia(mobileComposer);
+  query.addEventListener('change', callback);
+  return () => query.removeEventListener('change', callback);
+}
 
 interface ChatComposerProps {
   materialPickerRequest?: number;
@@ -48,6 +55,7 @@ export function ChatComposer({
   materialPickerRequest,
   onResize,
 }: ChatComposerProps) {
+  const compact = useSyncExternalStore(subscribeToComposerWidth, () => matchMedia(mobileComposer).matches);
   const evaluation = useAssessmentEvaluation();
   const pause = !!canStop && (isThinking || (!value.trim() && !hasAttachments));
   const resume = !!canResume && !value.trim() && !hasAttachments && !isThinking;
@@ -218,7 +226,7 @@ export function ChatComposer({
         }}
         onSelect={event => { if (picker !== 'browse') updateMention(event.currentTarget.value, event.currentTarget.selectionStart); }}
         onKeyDown={handleKeyDown}
-        placeholder="Ask Mentra anything... Type @ to choose study material"
+        placeholder={compact ? 'Ask Mentra anything…' : 'Ask Mentra anything… Type @ to choose study material'}
         ref={textareaRef}
         rows={1}
         value={value}
@@ -229,9 +237,9 @@ export function ChatComposer({
           onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; requestAnimationFrame(() => textareaRef.current?.focus()); }} />
         <IconButton ref={menuAnchor} aria-label="Add to message" title="Add to message" aria-haspopup="menu"
           aria-expanded={menuVisible} aria-controls={menuVisible ? menuId : undefined}
-          className="composer-attach text-muted" disabled={isThinking || voice.busy}
+          className="composer-attach composer-control text-muted" disabled={isThinking || voice.busy}
           onClick={() => { closePicker(); setMenuOpen(value => !value); }}>
-          <Plus size={19} aria-hidden="true" className={menuVisible ? 'rotate-45 motion-safe:transition-transform motion-safe:duration-150' : 'motion-safe:transition-transform motion-safe:duration-150'} />
+          <Plus size={17} aria-hidden="true" className={menuVisible ? 'rotate-45 motion-safe:transition-transform motion-safe:duration-150' : 'motion-safe:transition-transform motion-safe:duration-150'} />
         </IconButton>
         <ActionMenu anchor={menuAnchor} open={menuVisible} onClose={() => setMenuOpen(false)}
           id={menuId} label="Add to message" placement="above" className="composer-add-menu" items={[
@@ -246,7 +254,7 @@ export function ChatComposer({
           <Button
             aria-label={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
             title={voice.phase === 'recording' ? 'Stop recording' : 'Record voice message'}
-            className="composer-mic icon-control h-8 min-h-8 w-8 rounded-control p-0"
+            className="composer-mic composer-control"
             disabled={isThinking || voice.phase === 'permission' || voice.phase === 'processing'}
             size="sm" variant="ghost" type="button"
             onClick={() => voice.phase === 'recording' ? voice.stop() : void voice.start()}
@@ -259,13 +267,13 @@ export function ChatComposer({
             data-response-action={pause ? 'pause' : resume ? 'resume' : retry ? 'retry' : 'send'}
             aria-label={pause ? 'Pause response' : resume ? 'Resume response' : retry ? 'Retry response' : 'Send message'}
             title={pause ? 'Pause this response' : resume ? 'Resume paused response' : retry ? retryPartial ? 'Finish the missing part' : 'Retry the failed step' : 'Send message'}
-            className={`composer-send icon-control h-8 min-h-8 w-8 rounded-control p-0 ${pause || retry && retryPartial ? 'bg-warning/15 text-warning hover:bg-warning/25' : resume ? 'bg-success/15 text-success hover:bg-success/25' : retry ? 'bg-danger/15 text-danger hover:bg-danger/25' : ''}`}
+            className={`composer-send composer-control ${pause || retry && retryPartial ? 'bg-warning/15 text-warning hover:bg-warning/25' : resume ? 'bg-success/15 text-success hover:bg-success/25' : retry ? 'bg-danger/15 text-danger hover:bg-danger/25' : ''}`}
             disabled={pause ? stopping : (!resume && !retry && !value.trim() && !hasAttachments) || isThinking || voice.busy}
             size="sm"
             type={pause ? 'button' : 'submit'}
             onClick={pause ? onStop : undefined}
           >
-            {pause ? <Pause aria-hidden="true" size={16} fill="currentColor" /> : resume ? <Play aria-hidden="true" size={16} fill="currentColor" /> : retry ? <RotateCcw aria-hidden="true" size={17} /> : <ArrowUp aria-hidden="true" size={17} strokeWidth={2.2} />}
+            {pause ? <Pause aria-hidden="true" size={16} fill="currentColor" /> : resume ? <Play aria-hidden="true" size={16} fill="currentColor" /> : retry ? <RotateCcw aria-hidden="true" size={17} /> : <ArrowUp strokeLinecap="round" aria-hidden="true" size={17} strokeWidth={2.2} />}
           </Button>
         </div>
       </div>
