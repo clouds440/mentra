@@ -744,6 +744,12 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .chat-visual-actions .ui-button, :is(.chart-viewer, .mermaid-fullscreen) .visual-actions .ui-button { color: rgb(var(--muted)); font-size: .72rem; text-decoration: underline; text-decoration-color: rgb(var(--muted) / .45); text-underline-offset: .2em; }
 .chat-visual-actions .ui-button:hover, .chat-visual-actions .ui-button:focus-visible { color: rgb(var(--heading)); }
 .chat-search-dialog[open] { height: min(35rem, 84dvh); }
+.recents-list-reveal { display: grid; flex: 1; min-height: 0; grid-template-rows: 1fr; }
+.recents-list-reveal[data-expanded='false'] { grid-template-rows: 0fr; visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .recents-list-reveal { transition: grid-template-rows 160ms ease-out, visibility 0s; }
+  .recents-list-reveal[data-expanded='false'] { transition-delay: 0s, 160ms; }
+}
 .chat-search-fields { flex: none; display: grid; gap: .55rem; padding: .875rem clamp(.75rem, 3vw, 1.25rem); border-bottom: 1px solid rgb(var(--border) / .65); }
 .chat-search-input { position: relative; }
 .chat-search-input input { width: 100%; padding-inline-end: 2.75rem; }

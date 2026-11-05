@@ -3,8 +3,8 @@ import {
   BookOpen,
   Brain,
   ChevronDown,
-  CircleHelp,
   CircleUserRound,
+  ClipboardCheck,
   LayoutGrid,
   MessageSquareText,
   Settings2,
@@ -24,7 +24,7 @@ const primaryNavigation = [
   { label: 'Chat', to: '/', icon: MessageSquareText },
   { label: 'Library', to: '/library', icon: BookOpen },
   { label: 'Progress', to: '/progress', icon: LayoutGrid },
-  { label: 'Assessments', to: '/assessments', icon: CircleHelp },
+  { label: 'Assessments', to: '/assessments', icon: ClipboardCheck },
 ];
 
 interface AppSidebarProps {

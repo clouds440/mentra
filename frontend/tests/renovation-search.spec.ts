@@ -65,16 +65,44 @@ test('search aborts stale results and retries a failure without clearing the phr
   await expect(input).toHaveValue('new');
 });
 
-test('recent chats collapse independently and search can clear its query', async ({ page }) => {
+test('Recents shares the navigation hover, animates independently, and keeps search available', async ({ page }) => {
   await workspace(page);
   await page.goto('/chat/polish-chat');
-  const toggle = page.getByRole('button', { name: 'Recent chats' });
+  const toggle = page.getByRole('button', { name: 'Recents', exact: true });
+  const searchButton = page.getByRole('button', { name: 'Search saved chats' });
+  const row = toggle.locator('../..');
+  const library = page.getByRole('link', { name: 'Library', exact: true });
+  const [hover, active] = await row.evaluate(element => ['--hover', '--active'].map(token =>
+    `rgb(${getComputedStyle(element).getPropertyValue(token).trim().split(/\s+/).join(', ')})`));
+  await library.hover();
+  await expect(library).toHaveCSS('background-color', hover);
+  await toggle.hover();
+  await expect(row).toHaveCSS('background-color', hover);
+  await searchButton.hover();
+  await expect(row).toHaveCSS('background-color', hover);
+  await expect(searchButton).toHaveCSS('background-color', active);
+  await expect(page.getByRole('link', { name: 'Assessments' }).locator('svg')).toHaveClass(/lucide-clipboard-check/);
   const listId = await toggle.getAttribute('aria-controls');
   const list = page.locator('[id=' + JSON.stringify(listId) + ']');
-  await toggle.click();
+  const toggleHeights = () => toggle.evaluate(async (button, id) => {
+    const list = document.getElementById(id!)!;
+    const height = () => list.getBoundingClientRect().height;
+    const start = height();
+    (button as HTMLButtonElement).click();
+    const frames = [];
+    const until = performance.now() + 230;
+    do {
+      await new Promise(requestAnimationFrame);
+      frames.push(height());
+    } while (performance.now() < until);
+    return { start, frames, end: height() };
+  }, listId);
+  const closing = await toggleHeights();
+  expect(closing.frames.some(height => height > closing.end && height < closing.start)).toBe(true);
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(list).toBeHidden();
-  await page.getByRole('button', { name: 'Search saved chats' }).click();
+  expect(await list.evaluate(element => (element as HTMLElement).inert)).toBe(true);
+  await searchButton.click();
   const search = page.getByRole('dialog', { name: 'Search your chats' });
   const input = search.getByRole('searchbox');
   await input.fill('motion');
@@ -82,6 +110,7 @@ test('recent chats collapse independently and search can clear its query', async
   await expect(input).toBeEmpty();
   await expect(input).toBeFocused();
   await page.keyboard.press('Escape');
-  await toggle.click();
+  const opening = await toggleHeights();
+  expect(opening.frames.some(height => height > opening.start && height < opening.end)).toBe(true);
   await expect(list).toBeVisible();
 });

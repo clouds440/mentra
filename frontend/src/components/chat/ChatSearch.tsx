@@ -44,7 +44,7 @@ export function ChatSearch({ onOpen }: { onOpen: () => void }) {
     setParams(next, { replace: true });
   }
   return <>
-    <IconButton size="sm" aria-label="Search saved chats" title="Search saved chats" onClick={() => { const next = new URLSearchParams(params); next.set('search_open','1'); next.delete('message'); setParams(next); }}><Search size={15} aria-hidden="true" /></IconButton>
+    <IconButton size="sm" aria-label="Search saved chats" title="Search saved chats" className="mr-1 text-inherit" onClick={() => { const next = new URLSearchParams(params); next.set('search_open','1'); next.delete('message'); setParams(next); }}><Search size={15} aria-hidden="true" /></IconButton>
     {open && <Dialog open onDismiss={close} aria-labelledby="chat-search-title" aria-describedby="chat-search-description" layout="viewer" className="chat-search-dialog max-w-2xl" heading={<h2 id="chat-search-title" className="flex items-center gap-2"><Search size={17} aria-hidden="true" />Search your chats</h2>}>
       <div className="chat-search-fields">
         <p id="chat-search-description" className="text-xs text-muted">Find a phrase in your saved messages or chat titles.</p>
