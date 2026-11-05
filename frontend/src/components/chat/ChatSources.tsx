@@ -128,6 +128,7 @@ export function ChatSourceCatalog({ messages, conversationId, before }: {
     {!!web.length && <SourceList title="Web sources">{web.map(item => <li key={item.url}>
       <SourceLink href={item.url} sourceTitle={item.title} className="workspace-source-row block">
         <span className="block">{item.title}</span><span className="text-xs text-muted">{item.domain}</span>
+        {item.excerpt && <span className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{item.excerpt}</span>}
       </SourceLink>
     </li>)}</SourceList>}
     {!!study.length && <SourceList title="Study sources">{study.map(item => <li key={[item.document_id, item.version_id, item.generation_id, item.chunk_id].join(':')}>

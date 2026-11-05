@@ -62,7 +62,9 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await expect(trigger.locator('svg')).toHaveClass(/lucide-panel-right/);
   expect((await trigger.boundingBox())!.x).toBeGreaterThan((await page.getByRole('link', { name: 'Notifications' }).boundingBox())!.x);
   await trigger.click();
-  await expect(page.getByRole('tabpanel', { name: 'Chat sources' })).toBeVisible();
+  const catalogTab = page.getByRole('tabpanel', { name: 'Chat sources' });
+  await expect(catalogTab.getByRole('link', { name: /Article 1/ })).toBeVisible();
+  await expect(catalogTab.getByText('Publisher excerpt 1', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close tab: Chat sources' }).click();
   const open = page.getByRole('button', { name: 'Web sources (8)', exact: true });
   await expect(open).toHaveAttribute('title', 'Open in side panel');
@@ -70,6 +72,7 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   const panel = page.getByRole('complementary', { name: 'Side panel' });
   await expect(panel).toHaveCSS('transition-property', 'width, visibility');
   const list = panel.getByRole('tabpanel', { name: 'Web sources' });
+  await expect(list.getByText('Publisher excerpt 1', { exact: true })).toBeVisible();
   await expect(panel.getByRole('tab', { name: 'Web sources' }).locator('svg')).toHaveClass(/lucide-list-tree/);
   const first = list.getByRole('link', { name: /Open web source W1:/ });
   await expect(first).toHaveAttribute('href', web(1).url);
@@ -216,6 +219,7 @@ test('the panel dropdown browses sources from earlier messages without changing 
   const catalog = page.getByRole('region', { name: 'From this chat' });
   await expect(catalog.getByRole('link', { name: /Article 1/ })).toBeVisible();
   await catalog.getByRole('button', { name: 'Load earlier sources' }).click();
+  await expect(catalog.getByText('Publisher excerpt 2', { exact: true })).toBeVisible();
   await catalog.getByRole('link', { name: /Article 2/ }).click();
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
   await expect(catalog).toHaveCount(0);
