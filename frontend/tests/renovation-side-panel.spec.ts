@@ -19,6 +19,40 @@ async function citations(page: Page) {
   });
 }
 
+test('opening the desktop panel animates without shifting the workspace', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await citations(page);
+  await page.goto('/chat/polish-chat');
+  const trigger = page.getByRole('button', { name: 'Open side panel', exact: true });
+  const openAndMeasure = () => trigger.evaluate(async button => {
+    const panel = document.getElementById('workspace-side-panel')!;
+    const sidebar = document.getElementById('main-sidebar')!;
+    const measure = () => ({ width: panel.getBoundingClientRect().width, sidebarX: sidebar.getBoundingClientRect().x,
+      workspaceScroll: panel.parentElement!.scrollLeft });
+    const before = measure();
+    const frames = [];
+    button.click();
+    const until = performance.now() + 250;
+    do {
+      await new Promise(requestAnimationFrame);
+      frames.push(measure());
+    } while (performance.now() < until);
+    return { before, frames };
+  });
+  for (const reopening of [false, true]) {
+    if (reopening) {
+      await page.getByRole('button', { name: 'Hide side panel', exact: true }).click();
+      await expect(page.locator('#workspace-side-panel')).toHaveCSS('width', '0px');
+    }
+    const { before, frames } = await openAndMeasure();
+    const finalWidth = frames.at(-1)!.width;
+    expect(finalWidth).toBeGreaterThan(300);
+    expect(frames.some(frame => frame.width > 0 && frame.width < finalWidth)).toBe(true);
+    expect(frames.every(frame => frame.sidebarX === before.sidebarX && frame.workspaceScroll === 0)).toBe(true);
+  }
+  await expect(page.getByRole('tab', { name: 'Chat sources' })).toBeFocused();
+});
+
 test('sources open new tabs, retain previews, resize and scroll without losing chat position', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: null });
@@ -51,6 +85,16 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
       key: 'mentra-theme', newValue: next, storageArea: localStorage,
     })), theme);
     await expect(publisher).toHaveCSS('color', color);
+    const bell = page.getByRole('link', { name: 'Notifications' });
+    const bellColor = await bell.locator('svg').evaluate(icon => getComputedStyle(icon).color);
+    await bell.hover();
+    const bellHover = await bell.evaluate(control => getComputedStyle(control).backgroundColor);
+    for (const name of ['Collapse sidebar', 'Hide side panel']) {
+      const control = page.getByRole('button', { name, exact: true });
+      await expect(control.locator('svg')).toHaveCSS('color', bellColor);
+      await control.hover();
+      await expect(control).toHaveCSS('background-color', bellHover);
+    }
   }
   await expect(preview.getByText('Publisher excerpt 1')).toHaveCount(0);
   await preview.getByRole('button', { name: 'Back', exact: true }).click();

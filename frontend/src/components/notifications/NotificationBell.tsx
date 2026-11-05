@@ -29,5 +29,5 @@ export function NotificationBell({ quiet = false }: { quiet?: boolean }) {
     return () => { stop(); controller.abort(); window.removeEventListener('mentra:notifications-changed', refresh); };
   }, [owner]);
   const count = badge?.owner === owner ? badge?.count ?? 0 : 0;
-  return <Link to="/notifications" aria-label={`Notifications${count ? `, ${count} unread` : ''}`} className={`${quiet ? 'quiet-notification ' : ''}icon-control ml-auto flex min-h-8 items-center justify-center gap-1 rounded-control px-2 text-muted hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}><Bell aria-hidden="true" size={18} />{count > 0 && <span aria-hidden="true" className="notification-count text-xs text-accent">{count > 99 ? '99+' : count}</span>}</Link>;
+  return <Link to="/notifications" aria-label={`Notifications${count ? `, ${count} unread` : ''}`} className={`${quiet ? 'quiet-notification ' : ''}workspace-chrome-control icon-control ml-auto flex min-h-8 items-center justify-center gap-1 rounded-control px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}><Bell aria-hidden="true" size={18} />{count > 0 && <span aria-hidden="true" className="notification-count text-xs text-accent">{count > 99 ? '99+' : count}</span>}</Link>;
 }

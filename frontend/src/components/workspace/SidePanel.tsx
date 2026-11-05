@@ -18,7 +18,7 @@ export function SidePanelTrigger({ inDrawer = false }: { inDrawer?: boolean }) {
   const actions = useSidePanelActions();
   if (!tabs.length && !launcher) return null;
   const label = visible ? 'Hide side panel' : 'Open side panel';
-  return <IconButton size="sm" className={inDrawer ? undefined : 'workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={actions?.toggle}>
+  return <IconButton size="sm" className={inDrawer ? 'workspace-chrome-control' : 'workspace-chrome-control workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={actions?.toggle}>
     <PanelRight size={17} aria-hidden="true" />
   </IconButton>;
 }
@@ -58,7 +58,16 @@ export function SidePanel() {
   useEffect(() => {
     if (!visible || !active) return;
     const tab = document.getElementById(tabId(active));
-    tab?.closest('.workspace-panel-tab')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const item = tab?.parentElement;
+    const row = strip.current;
+    if (item && row) {
+      // The drawer is partly outside the viewport while opening. Scroll only
+      // its tab strip so the browser cannot pull the workspace sideways.
+      const bounds = item.getBoundingClientRect();
+      const viewport = row.getBoundingClientRect();
+      if (bounds.left < viewport.left) row.scrollLeft += bounds.left - viewport.left;
+      else if (bounds.right > viewport.right) row.scrollLeft += bounds.right - viewport.right;
+    }
     if (!document.querySelector('dialog[open]')) tab?.focus({ preventScroll: true });
   }, [visible, active, desktop]);
   useEffect(() => { setBrowsing(false); }, [active, visible]);
@@ -99,13 +108,13 @@ export function SidePanel() {
     } else if (next >= 0) {
       event.preventDefault();
       actions.select(tabs[next].id);
-      document.getElementById(tabId(tabs[next].id))?.focus();
+      document.getElementById(tabId(tabs[next].id))?.focus({ preventScroll: true });
     }
   }
   function closeTab(id: string) {
     const index = tabs.findIndex(tab => tab.id === id);
     const next = active !== id ? active : (tabs[index + 1] ?? tabs[index - 1])?.id;
-    if (next) document.getElementById(tabId(next))?.focus();
+    if (next) document.getElementById(tabId(next))?.focus({ preventScroll: true });
     actions.close(id);
   }
   return <>

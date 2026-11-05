@@ -56,7 +56,7 @@ function AppWorkspace() {
           <div className="flex min-w-0 items-center gap-3">
             <IconButton
               aria-label="Open navigation menu"
-              className="pointer-events-auto bg-background text-muted lg:hidden"
+              className="workspace-chrome-control pointer-events-auto bg-background lg:hidden"
               onClick={() => setMobileOpen(true)}
               type="button"
             >
@@ -64,7 +64,7 @@ function AppWorkspace() {
             </IconButton>
             <IconButton
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="pointer-events-auto hidden bg-background text-muted lg:inline-flex"
+              className="workspace-chrome-control pointer-events-auto hidden bg-background lg:inline-flex"
               onClick={sidebar.toggle}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               type="button"
