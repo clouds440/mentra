@@ -135,7 +135,8 @@ test('failed model fallback remains downloadable and visible in fullscreen', asy
   await page.getByRole('button', { name: 'Download SVG', exact: true }).click();
   const download = await pending; expect(await download.path()).toBeTruthy();
   await page.getByRole('button', { name: 'Expand', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('status')).toHaveText('Equation controls are unavailable. Showing the supplied data.');
+  const notice = page.getByRole('dialog').getByRole('status').filter({ hasText: 'Equation controls are unavailable.' });
+  await expect(notice).toHaveText('Equation controls are unavailable. Showing the supplied data.');
   await expect(page.getByRole('dialog').locator('.recharts-wrapper')).toBeVisible();
   await expect(page.getByRole('slider')).toHaveCount(0);
 });
