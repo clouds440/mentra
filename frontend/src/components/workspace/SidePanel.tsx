@@ -1,10 +1,14 @@
-import { ChevronDown, ChevronLeft, ChevronRight, List, PanelRight, X } from 'lucide-react';
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, List, PanelRight, X } from 'lucide-react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type KeyboardEvent } from 'react';
 import { useMobileNavigation } from '../../hooks/useMobileNavigation';
 import { useResizableSidebar } from '../../hooks/useResizableSidebar';
 import { IconButton } from '../ui/IconButton';
 import { Popover } from '../ui/Popover';
-import { PanelTabScope, useSidePanelActions, useSidePanelState } from './sidePanelState';
+import { Tabs } from '../ui/Tabs';
+import { PinSourceButton, PinnedSourceList, usePinnedSources } from './PinnedSources';
+import { SourceSelection } from './SourceAnnotations';
+import type { PanelResource } from '../../types/sourceAnnotations';
+import { PanelEntryScope, PanelResourceScope, PanelTabScope, useSidePanelActions, useSidePanelState } from './sidePanelState';
 
 const panelId = 'workspace-side-panel';
 const desktopQuery = '(min-width: 1200px)';
@@ -16,9 +20,10 @@ const drawerOptions = { desktopQuery, inertIds: ['workspace-content', 'main-side
 export function SidePanelTrigger({ inDrawer = false }: { inDrawer?: boolean }) {
   const { tabs, visible, launcher } = useSidePanelState();
   const actions = useSidePanelActions();
-  if (!tabs.length && !launcher) return null;
+  const { items } = usePinnedSources();
+  if (!tabs.length && !launcher && !items.length && !visible) return null;
   const label = visible ? 'Hide side panel' : 'Open side panel';
-  return <IconButton size="sm" className={inDrawer ? 'workspace-chrome-control' : 'workspace-chrome-control workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={actions?.toggle}>
+  return <IconButton size="sm" className={inDrawer ? 'workspace-chrome-control' : 'workspace-chrome-control workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={() => actions?.toggle(!!items.length || visible)}>
     <PanelRight size={17} aria-hidden="true" />
   </IconButton>;
 }
@@ -33,6 +38,9 @@ export function SidePanel() {
   const browseButton = useRef<HTMLButtonElement>(null);
   const browseId = useId();
   const [browsing, setBrowsing] = useState(false);
+  const [browseSection, setBrowseSection] = useState<'chat' | 'pinned'>('chat');
+  const section = launcher ? browseSection : 'pinned';
+  const { error: pinError } = usePinnedSources();
   const [hasBrowsed, setHasBrowsed] = useState(false);
   const drag = useRef<{ pointer: number; start: number; scroll: number; moved: boolean }>(undefined);
   const opener = useRef<HTMLElement | null>(null);
@@ -163,21 +171,50 @@ export function SidePanel() {
             </div>
             {edges.overflow && <IconButton size="sm" className="workspace-panel-chevron" aria-label="Scroll tabs right" disabled={!edges.right} onClick={() => scrollTabs(1)}><ChevronRight size={14} aria-hidden="true" /></IconButton>}
           </div>
-          {launcher && <>
-            <IconButton ref={browseButton} size="sm" aria-label="From this chat" aria-expanded={browsing} aria-controls={browsing ? browseId : undefined}
-              title="From this chat" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
-            <Popover anchor={browseButton} open={browsing && visible} onClose={() => setBrowsing(false)} id={browseId} role="region" label="From this chat"
+          <IconButton ref={browseButton} size="sm" aria-label="Browse" aria-expanded={browsing} aria-controls={browsing ? browseId : undefined}
+              title="Browse sources" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
+            <Popover anchor={browseButton} open={browsing && visible} onClose={() => setBrowsing(false)} id={browseId} role="region" label="Browse sources"
               width={340} maxHeight={450} focusOnOpen keepMounted={hasBrowsed} portalContainer={panel}>
-              <PanelTabScope.Provider value={active || undefined}>{launcher.menuContent}</PanelTabScope.Provider>
+              <div className="workspace-browse-tabs">
+                <Tabs label="Browse categories" value={section} onChange={setBrowseSection} options={[
+                  { value: 'chat', label: 'From this chat', id: browseId + '-chat', panel: browseId + '-chat-content', disabled: !launcher },
+                  { value: 'pinned', label: 'Pinned', id: browseId + '-pinned', panel: browseId + '-pinned-content' },
+                ]} />
+              </div>
+              <div role="tabpanel" aria-labelledby={browseId + '-chat'} id={browseId + '-chat-content'} hidden={section !== 'chat'}>
+                <PanelTabScope.Provider value={active || undefined}>{launcher?.menuContent}</PanelTabScope.Provider>
+              </div>
+              <div role="tabpanel" aria-labelledby={browseId + '-pinned'} id={browseId + '-pinned-content'} hidden={section !== 'pinned'}>
+                {section === 'pinned' && <PinnedSourceList onChoose={() => setBrowsing(false)} />}
+              </div>
             </Popover>
-          </>}
           {!desktop && visible && <SidePanelTrigger inDrawer />}
         </header>
         {tabs.map(tab => <section key={tab.id} id={contentId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)}
           className="workspace-panel-content" tabIndex={0} hidden={tab.id !== active}>
-          <PanelTabScope.Provider value={tab.id}>{tab.content}</PanelTabScope.Provider>
+          {(tab.resource || tab.entries.length > 1) && <div className="workspace-resource-toolbar" data-no-excerpt>
+            <IconButton size="sm" aria-label="Back" title="Back" disabled={!tab.cursor} onClick={() => actions.go(tab.id, -1)}><ArrowLeft size={15} aria-hidden="true" /></IconButton>
+            <IconButton size="sm" aria-label="Forward" title="Forward" disabled={tab.cursor === tab.entries.length - 1} onClick={() => actions.go(tab.id, 1)}><ArrowRight size={15} aria-hidden="true" /></IconButton>
+            <span className="flex-1" />
+            {tab.resource && <PinSourceButton source={tab.resource} />}
+          </div>}
+          {tab.resource && pinError && <p role="alert" className="px-3 py-1 text-xs text-danger">{pinError}</p>}
+          <PanelTabScope.Provider value={tab.id}><PanelResourceScope.Provider value={tab.resource}>
+            <PanelEntryScope.Provider value={tab.entries[tab.cursor]}>
+              <ResourceContent key={tab.entryId} enabled={tab.id === active && visible} source={tab.resource}>{tab.content}</ResourceContent>
+            </PanelEntryScope.Provider>
+          </PanelResourceScope.Provider></PanelTabScope.Provider>
         </section>)}
+        {!tabs.length && visible && <PinnedSourceList />}
       </div>
     </aside>
   </>;
+}
+
+function ResourceContent({ enabled, source, children }: { enabled: boolean; source?: PanelResource; children: ReactNode }) {
+  const content = useRef<HTMLDivElement>(null);
+  return <div ref={content} className="workspace-resource-content">
+    {children}
+    {enabled && <SourceSelection scope={content} source={source} />}
+  </div>;
 }

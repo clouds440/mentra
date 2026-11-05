@@ -101,8 +101,10 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   }
   await expect(preview.getByText('Publisher excerpt 1')).toHaveCount(0);
   await preview.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(list).toBeVisible();
-  await expect(panel.getByRole('tab', { name: 'Article 1' })).toBeVisible();
+  const returned = panel.getByRole('tabpanel').filter({ has: page.getByRole('button', { name: 'Forward', exact: true }) });
+  await expect(returned).toHaveAccessibleName('Web sources');
+  await returned.getByRole('button', { name: 'Forward', exact: true }).click();
+  await expect(preview).toBeVisible();
   await page.screenshot({ path: info.outputPath('desktop-sources.png') });
   for (let i = 2; i <= 6; i++) {
     await panel.getByRole('tab', { name: 'Web sources' }).click();
@@ -224,8 +226,8 @@ test('the panel dropdown browses sources from earlier messages without changing 
   await page.goto('/chat/polish-chat');
   await page.getByRole('link', { name: /Open web source W1:/ }).click();
   const panel = page.getByRole('complementary', { name: 'Side panel' });
-  await panel.getByRole('button', { name: 'From this chat' }).click();
-  const catalog = page.getByRole('region', { name: 'From this chat' });
+  await panel.getByRole('button', { name: 'Browse', exact: true }).click();
+  const catalog = page.getByRole('region', { name: 'Browse sources' });
   await expect(catalog.getByRole('link', { name: /Article 1/ })).toBeVisible();
   await expect(catalog.getByText('Publisher excerpt 1', { exact: true })).toHaveCount(0);
   await catalog.getByRole('button', { name: 'Load earlier sources' }).click();
@@ -236,10 +238,92 @@ test('the panel dropdown browses sources from earlier messages without changing 
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
   await expect(catalog).toHaveCount(0);
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(1);
-  await panel.getByRole('button', { name: 'From this chat' }).click();
+  await panel.getByRole('button', { name: 'Browse', exact: true }).click();
   await expect(catalog.getByRole('link', { name: /Article 2/ })).toBeVisible();
   await expect(catalog.getByRole('button', { name: 'Load earlier sources' })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(catalog).toHaveCount(0);
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
+});
+
+test('quotes only the selected text from chat and keeps it as an annotation after sending', async ({ page }) => {
+  const fixture = await richChat(page, 'First line. Quote this part. Leave this out.');
+  await page.goto('/chat/polish-chat');
+  const answer = page.getByText('First line. Quote this part. Leave this out.', { exact: true });
+  await answer.evaluate(node => {
+    const range = document.createRange();
+    range.setStart(node.firstChild!, 12);
+    range.setEnd(node.firstChild!, 28);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await page.getByRole('button', { name: 'Send to chat', exact: true }).click();
+  const draft = page.getByRole('list', { name: 'Draft excerpts' });
+  await expect(draft).toContainText('Quote this part.');
+  await expect(draft).not.toContainText('Leave this out.');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await expect.poll(() => fixture.submissions.length).toBe(1);
+  expect(fixture.submissions[0]).toMatchObject({ content: '', source_annotations: [
+    { source: { kind: 'chat', title: 'Mentra response' }, text: 'Quote this part.' },
+  ] });
+  expect((fixture.submissions[0].source_annotations as { source: object }[])[0].source).toEqual({ kind: 'chat', title: 'Mentra response' });
+  await expect(page.getByRole('list', { name: 'Referenced excerpts' })).toContainText('Quote this part.');
+  await expect(draft).toHaveCount(0);
+});
+
+test('Browse keeps account pins across reloads and Reader follows independent tab history', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await citations(page);
+  const saved: { id: string; source: { title: string } }[] = [];
+  await page.route('**/api/v1/workspace/pins', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: saved });
+    saved.push({ id: 'pin-1', source: route.request().postDataJSON() });
+    return route.fulfill({ json: saved.at(-1) });
+  });
+  await page.route('**/api/v1/workspace/pins/pin-1', route => {
+    saved.length = 0;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route('**/api/v1/web/reader', route => route.fulfill({ json: { url: web(2).url,
+    blocks: ['An exact reader excerpt.'], links: [{ url: web(3).url, title: 'Related page' }] } }));
+  await page.goto('/chat/polish-chat');
+  const panel = page.getByRole('complementary', { name: 'Side panel' });
+  await page.getByRole('link', { name: /Open web source W1:/ }).click();
+  await page.getByRole('link', { name: /Open web source W2:/ }).click();
+  const blocked = panel.getByRole('tabpanel', { name: 'Article 2' });
+  await blocked.getByRole('button', { name: 'Reader' }).click();
+  await blocked.getByText('An exact reader excerpt.').evaluate(node => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    window.getSelection()!.addRange(range);
+  });
+  await page.getByRole('button', { name: 'Send to chat', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Draft excerpts' })).toContainText('An exact reader excerpt.');
+  await page.getByRole('button', { name: 'Remove excerpt 1' }).click();
+  await expect(page.getByRole('list', { name: 'Draft excerpts' })).toHaveCount(0);
+  await blocked.getByRole('button', { name: 'Pin source', exact: true }).click();
+  await expect(blocked.getByRole('button', { name: 'Unpin source', exact: true })).toBeEnabled();
+  await blocked.getByRole('link', { name: 'Related page' }).click();
+  const related = panel.getByRole('tabpanel', { name: 'Related page' });
+  await expect(related).toBeVisible();
+  await expect(panel.getByRole('tab')).toHaveCount(2);
+  await related.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(blocked.getByText('An exact reader excerpt.')).toBeVisible();
+  await panel.getByRole('tab', { name: 'Article 1' }).click();
+  await expect(panel.getByRole('tabpanel', { name: 'Article 1' }).getByRole('button', { name: 'Forward', exact: true })).toBeDisabled();
+  await panel.getByRole('tab', { name: 'Article 2' }).click();
+  await blocked.getByRole('button', { name: 'Forward', exact: true }).click();
+  await expect(related).toBeVisible();
+
+  await page.goto('/library');
+  await page.getByRole('button', { name: 'Open side panel', exact: true }).click();
+  await panel.getByRole('button', { name: 'Browse', exact: true }).click();
+  const browse = page.getByRole('region', { name: 'Browse sources' });
+  await expect(browse.getByRole('tab', { name: 'Pinned', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await browse.getByRole('button', { name: 'Article 2', exact: true }).click();
+  await expect(blocked).toBeVisible();
+  await blocked.getByRole('button', { name: 'Unpin source', exact: true }).click();
+  await expect(blocked.getByRole('button', { name: 'Pin source', exact: true })).toBeEnabled();
+  expect(saved).toHaveLength(0);
 });

@@ -320,12 +320,12 @@ class ChatStore {
     try { const page = await api.getMessages(id, view.before, signal); if (this.alive(signal)) await this.applyPage({ ...page, turn: view.turn }, true); }
     catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, error: this.error(error) }); }
   }
-  async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = [], interactionResponse?: import('../types/interactions').InteractionResponse) {
-    if (!this.owner || this.view(id).busy) return;
+  async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = [], interactionResponse?: import('../types/interactions').InteractionResponse, sourceAnnotations: import('../types/sourceAnnotations').SourceAnnotation[] = []) {
+    if (!this.owner || this.view(id).busy) return false;
     if (this.view(id).olderWindow) {
       const signal = this.controller.signal;
       await this.open(id, true);
-      if (!this.alive(signal) || this.view(id).busy) return;
+      if (!this.alive(signal) || this.view(id).busy) return false;
     }
     const view = this.view(id), signal = this.controller.signal, cache = this.cache!;
     if (retry && ['generation_retry','grading_retry'].includes(view.turn?.control_action?.kind ?? '')) {
@@ -355,22 +355,22 @@ class ChatStore {
       return;
     }
     let body = this.pending.get(id);
-    if (body && !retry && (body.content !== content || !sameData(body.interaction_response, interactionResponse) || !sameData(body.retrieval, retrieval) || !sameData(body.attachment_ids, attachments.map(file => file.id)))) {
+    if (body && !retry && (body.content !== content || !sameData(body.source_annotations ?? [], sourceAnnotations) || !sameData(body.interaction_response, interactionResponse) || !sameData(body.retrieval, retrieval) || !sameData(body.attachment_ids, attachments.map(file => file.id)))) {
       this.setView(id, { error: 'Retry the original message before sending a different answer.' });
-      return;
+      return false;
     }
     if (retry && !body && (view.turn?.can_retry ?? view.turn?.state === 'FAILED')) {
       const message = view.messages.find(item => item.sequence === view.turn!.user_sequence);
       if (!message) return;
-      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
+      body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, source_annotations: message.source_annotations, interaction_response: message.interaction_response, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
-    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, interaction_response: interactionResponse, attachment_ids: attachments.map(file => file.id) };
+    body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, interaction_response: interactionResponse, source_annotations: sourceAnnotations.length ? sourceAnnotations : undefined, attachment_ids: attachments.map(file => file.id) };
     body = { ...body, retry, resume_from: body.resume_from ?? (!retry && (view.turn?.can_resume || view.turn?.can_retry) ? view.turn.id : undefined) };
     this.pending.set(id, body);
     const started = performance.now();
     this.responseStarts.set(id, started);
     const optimistic: StoredMessage = { id: body.client_turn_id, conversation_id: id, sequence: (this.chats.get(id)?.message_count ?? 0) + 1,
-      role: 'user', content: body.content, attachments, created_at: new Date().toISOString() };
+      role: 'user', content: body.content, attachments, source_annotations: body.source_annotations, created_at: new Date().toISOString() };
     // Publish the new exchange and its pending indicator together. Publishing
     // busy first mounted activity under the previous exchange, then removed it.
     this.setView(id, { busy: true, error: null, unsent: null, turn: null, olderWindow: false, messages: retry ? view.messages : [...view.messages, optimistic].slice(-200) });
@@ -414,6 +414,7 @@ class ChatStore {
         this.pending.delete(id); await this.persist(() => cache.pending(null, id));
         this.setView(id, { busy: false, error: this.error(error), messages: view.messages, unsent: body.content });
         void this.sync();
+        return false;
       } else {
         this.setView(id, { busy: false, error: 'The connection was interrupted.' });
         void this.open(id, true);

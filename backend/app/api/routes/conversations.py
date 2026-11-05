@@ -50,7 +50,7 @@ async def send(body: SendTurn, request: Request, stream: bool = False, identity=
     async def generate(messages, selection, scope):
         response = await generate_reply(messages, ChatSelection(**selection), request, identity, service(request).policy, scope)
         return response.model_dump(mode='json')
-    if body.resume_from and not body.attachment_ids and not body.interaction_response:
+    if body.resume_from and not body.attachment_ids and not body.source_annotations and not body.interaction_response:
         page = await run_in_threadpool(service(request).repository.status, identity.learner_id, str(body.conversation_id))
         turn = page.get('turn')
         source = turn

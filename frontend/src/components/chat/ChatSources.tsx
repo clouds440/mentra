@@ -32,12 +32,15 @@ export const hasChatSources = (message: ChatMessageData) => !!message.attachment
 export function useSourceTabs() {
   const panel = useSidePanelActions();
   const openSource = useCallback((source: SourceReference) => {
-    panel?.open({ title: source.title, icon: <BookOpen size={14} aria-hidden="true" />,
+    panel?.open({ title: source.title, resource: { kind: 'library', title: source.title, document_id: source.document_id,
+      version_id: source.version_id, generation_id: source.generation_id, chunk_id: source.chunk_id }, icon: <BookOpen size={14} aria-hidden="true" />,
       content: <SourceReader source={source} includeArchived={source.include_archived ?? false} /> });
   }, [panel]);
   const openReference = useCallback((reference: HistoryReference | MemoryReference) => {
     const Icon = 'memory_id' in reference ? Brain : History;
-    panel?.open({ title: referenceTitle(reference), icon: <Icon size={14} aria-hidden="true" />,
+    panel?.open({ title: referenceTitle(reference), resource: 'memory_id' in reference
+      ? { kind: 'memory', title: referenceTitle(reference), memory_id: reference.memory_id, revision: reference.revision }
+      : { kind: 'history', title: reference.title, conversation_id: reference.conversation_id, sequence: reference.sequence }, icon: <Icon size={14} aria-hidden="true" />,
       content: <Suspense fallback={<Skeleton variant="text" className="p-4" />}><ReferenceContent reference={reference} onClose={panel.hide} /></Suspense> });
   }, [panel]);
   return { openSource, openReference };
@@ -128,7 +131,7 @@ export function ChatSourceCatalog({ messages, conversationId, before, compact = 
     {!!web.length && <SourceList title="Web sources">{web.map(item => <li key={item.url}>
       <SourceLink href={item.url} sourceTitle={item.title} className="workspace-source-row block">
         <span className="block">{item.title}</span><span className="text-xs text-muted">{item.domain}</span>
-        {!compact && item.excerpt && <span className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{item.excerpt}</span>}
+        {!compact && item.excerpt && <span data-web-excerpt={item.url.startsWith('https:') ? item.url : undefined} data-source-title={item.title} className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{item.excerpt}</span>}
       </SourceLink>
     </li>)}</SourceList>}
     {!!study.length && <SourceList title="Study sources">{study.map(item => <li key={[item.document_id, item.version_id, item.generation_id, item.chunk_id].join(':')}>
@@ -140,6 +143,7 @@ export function ChatSourceCatalog({ messages, conversationId, before, compact = 
     })}</SourceList>}
     {!!files.length && <SourceList title="Attachments">{files.map(({ file, conversation }) => <li key={file.id}>
       <button type="button" className="workspace-source-row" onClick={() => panel?.open({ title: file.filename,
+        resource: { kind: 'attachment', title: file.filename, conversation_id: conversation, file_id: file.id },
         reuseKey: 'attachment:' + conversation + ':' + file.id, icon: <FileText size={14} aria-hidden="true" />,
         content: <ChatAttachmentPreview filename={file.filename} fileId={file.id} conversationId={conversation} /> })}>{file.filename}</button>
     </li>)}</SourceList>}

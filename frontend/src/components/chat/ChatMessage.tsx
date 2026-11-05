@@ -1,5 +1,6 @@
 import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
+import { SourceAnnotationChips } from '../workspace/SourceAnnotations';
 import { MarkdownContent } from '../content/MarkdownContent';
 import { MentraLogo } from '../brand/MentraLogo';
 import type { ChatMessageData } from '../../types/chat';
@@ -96,7 +97,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
       >
         {isAssistant ? (
           <div className="markdown-content">
-            <MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} />
+            <div data-chat-excerpt="Mentra response"><MarkdownContent content={message.content} plugins={markdownPlugins} linkComponent={markdownComponents.a} /></div>
             {['partial','failed'].includes(message.response_outcome?.state ?? '') && <p role="status" className={`mt-3 text-sm ${message.response_outcome?.state === 'partial' ? 'text-warning' : 'text-danger'}`}>{message.response_outcome?.state === 'partial' ? 'This response is partly complete. Completed results are saved.' : 'This response failed.'} {message.response_outcome?.retryable ? 'You can retry the unfinished step.' : 'See the response or card for what to do next.'}</p>}
             {message.conversation_id && grouped && <ConversationalQuestionnaire cards={inputCards} messageId={message.id} conversationId={message.conversation_id} />}
             {message.conversation_id && message.interactions?.filter(card => !grouped || !inputCards.some(input => input.id === card.id)).map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
@@ -109,7 +110,8 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
           </div>
         ) : (
           <>{message.conversation_id && !!message.attachments?.length && <div className="flex max-w-full flex-wrap justify-end gap-3">{message.attachments.map(file => <ChatAttachmentCard key={file.id} file={file} conversationId={message.conversation_id!} />)}</div>}
-          {!!message.content.trim() && <><div className="max-w-full rounded-2xl border border-border bg-message px-4 py-3"><MarkdownContent content={message.content} /></div><CopyResponse content={message.content} subject="message" /></>}</>
+          <SourceAnnotationChips annotations={message.source_annotations} />
+          {!!message.content.trim() && <><div data-chat-excerpt="Your message" className="max-w-full rounded-2xl border border-border bg-message px-4 py-3"><MarkdownContent content={message.content} /></div><CopyResponse content={message.content} subject="message" /></>}</>
         )}
       </div>
     </article>

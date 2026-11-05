@@ -987,3 +987,21 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .question-card-preview .markdown-content :where(p, h1, h2, h3, h4, ul, ol, pre, blockquote) { margin-block: 0; font-size: inherit; line-height: inherit; }
 .question-card-preview .markdown-content pre { white-space: pre-wrap; }
 .question-card-preview .markdown-content .katex { font-size: 1em; }
+
+.workspace-resource-toolbar {
+  position: sticky; top: 0; z-index: 2; display: flex; flex: none; align-items: center; gap: .15rem;
+  padding: .125rem .625rem; border-bottom: 1px solid rgb(var(--border) / .55); background: rgb(var(--background));
+}
+.workspace-resource-content { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.workspace-resource-content > .source-header, .workspace-resource-content > .source-reader { padding-inline: 1rem; }
+.workspace-web-preview { min-height: 0; }
+.workspace-browse-tabs { @apply sticky top-0 z-10 border-b border-border bg-popover; }
+.workspace-browse-tabs .workspace-tabs-track { gap: .15rem; padding: .25rem; }
+.workspace-browse-tabs .workspace-tabs-track > button { min-height: 1.875rem; padding: .25rem .625rem; font-size: .75rem; }
+.source-annotation-list { @apply flex max-w-full flex-wrap gap-1.5; }
+.source-annotation-chip { @apply flex min-w-0 max-w-full items-start gap-1 rounded-control border border-accent/20 bg-accent/[.06] px-2 py-1 text-xs text-accent; }
+.source-annotation-chip summary { list-style: none; min-height: 1.5rem; }
+.source-annotation-chip summary::-webkit-details-marker { display: none; }
+.source-annotation-chip details[open] summary > span.truncate { display: none; }
+.source-selection { position: fixed; z-index: 80; transform: translateX(-50%); white-space: nowrap; user-select: none; }
+.source-selection > span { @apply block rounded-control border border-border bg-popover px-2 py-1.5 text-xs text-muted shadow-overlay; }

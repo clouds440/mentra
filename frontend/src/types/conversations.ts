@@ -9,6 +9,7 @@ export interface StoredMessage extends ChatMessageData {
   conversation_id: string; sequence: number; created_at: string;
 }
 export interface PendingTurn {
+  source_annotations?: import('./sourceAnnotations').SourceAnnotation[];
   timezone?: string;
   interaction_response?: import('./interactions').InteractionResponse;
   conversation_id: string; client_turn_id: string; expected_revision: number;
@@ -42,5 +43,5 @@ export interface ChatSearchHit {
 export interface ChatSearchPage { items: ChatSearchHit[]; next_offset: number | null; truncated: boolean }
 export interface SavedExchange {
   conversation_id: string; title: string; matched_message_id: string;
-  messages: { id: string; role: 'user' | 'assistant'; content: string; created_at: string }[];
+  messages: { id: string; role: 'user' | 'assistant'; content: string; created_at: string; source_annotations?: import('./sourceAnnotations').SourceAnnotation[] }[];
 }

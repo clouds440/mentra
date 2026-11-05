@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 
 from app.student_profile.dependencies import require_onboarded_identity
-from app.web_search.preview import PreviewResult, check_preview
+from app.web_search.preview import PreviewResult, check_preview, read_publisher
 
 router = APIRouter(prefix='/web', tags=['web sources'])
 
@@ -15,3 +15,9 @@ class PreviewRequest(BaseModel):
 async def preview(body: PreviewRequest, response: Response, _identity=Depends(require_onboarded_identity)):
     response.headers['Cache-Control'] = 'no-store'
     return await check_preview(body.url)
+
+
+@router.post('/reader')
+async def reader(body: PreviewRequest, response: Response, _identity=Depends(require_onboarded_identity)):
+    response.headers['Cache-Control'] = 'no-store'
+    return await read_publisher(body.url)

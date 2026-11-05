@@ -7,11 +7,13 @@ import { IconButton } from '../components/ui/IconButton';
 import { useResizableSidebar } from '../hooks/useResizableSidebar';
 import { useAuth } from '../components/auth/AuthProvider';
 import { SidePanel, SidePanelTrigger } from '../components/workspace/SidePanel';
+import { PinnedSourcesProvider } from '../components/workspace/PinnedSources';
+import { AnnotationDraftProvider, useResetNewChatExcerpts } from '../components/workspace/SourceAnnotations';
 import { SidePanelProvider } from '../components/workspace/sidePanelState';
 
 export function AppLayout() {
   const { identity } = useAuth();
-  return <SidePanelProvider key={identity?.learner_id}><AppWorkspace /></SidePanelProvider>;
+  return <SidePanelProvider key={identity?.learner_id}><PinnedSourcesProvider><AnnotationDraftProvider><AppWorkspace /></AnnotationDraftProvider></PinnedSourcesProvider></SidePanelProvider>;
 }
 
 function AppWorkspace() {
@@ -33,7 +35,9 @@ function AppWorkspace() {
     main?.focus({ preventScroll: true });
   }, [location.pathname]);
 
+  const resetExcerpts = useResetNewChatExcerpts();
   function startNewChat() {
+    resetExcerpts();
     setNewChatPending(true);
     setNewChatKey((key) => key + 1);
     navigate('/');

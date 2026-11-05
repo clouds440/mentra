@@ -132,6 +132,9 @@ class ChatRepository:
         attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))
         # Retain fingerprints for existing clients/turns without attachments.
         fingerprint = sha256(json.dumps([conversation_id, content, selection] + ([attachment_ids] if attachment_ids else []), sort_keys=True).encode()).hexdigest()
+        annotations = [item.model_dump(mode='json', exclude_none=True) for item in request.source_annotations]
+        if annotations:
+            fingerprint = sha256((fingerprint + json.dumps(annotations, sort_keys=True)).encode()).hexdigest()
         if request.interaction_response:
             reply = request.interaction_response
             # Empty additive fields must not invalidate pre-upgrade pending sends.
@@ -171,6 +174,7 @@ class ChatRepository:
         selection = request.retrieval.model_dump(mode='json')
         attachment_ids = list(dict.fromkeys(str(value) for value in request.attachment_ids))
         fingerprint = self._request_hash(request)
+        annotations = [item.model_dump(mode='json', exclude_none=True) for item in request.source_annotations]
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             existing = session.execute(select(t).where(t.c.id == turn_id)).mappings().first()
@@ -236,7 +240,7 @@ class ChatRepository:
             from .attachments import AttachmentRepository
             attachment_metadata = AttachmentRepository.bind(session, owner, attachment_ids, conversation_id)
             session.execute(m.insert().values(id=str(uuid4()), learner_id=owner, conversation_id=conversation_id, sequence=sequence,
-                role='user', content=content, metadata={**interaction_metadata, **({'timezone':request.timezone} if request.timezone else {}), **({'attachments': attachment_metadata} if attachment_metadata else {})}, created_at=now()))
+                role='user', content=content, metadata={**interaction_metadata, **({'timezone':request.timezone} if request.timezone else {}), **({'attachments': attachment_metadata} if attachment_metadata else {}), **({'source_annotations': annotations} if annotations else {})}, created_at=now()))
             session.execute(t.insert().values(id=turn_id, learner_id=owner, conversation_id=conversation_id, request_hash=fingerprint,
                 user_sequence=sequence, state='RUNNING', orchestration_policy='semantic-v3', attempt=1, selection=selection, attachment_ids=attachment_ids, lease_until=now()+timedelta(seconds=settings.chat_turn_timeout_seconds + 30), created_at=now(),log_context=log_context))
             session.execute(update(c).where(c.c.id == conversation_id).values(message_count=sequence, revision=conversation['revision']+1, selection=selection, updated_at=now()))

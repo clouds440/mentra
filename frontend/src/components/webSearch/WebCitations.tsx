@@ -1,5 +1,5 @@
 import type { WebSource, WebSearchRecord } from '../../types/webSearch';
-import { WebCitation } from './WebCitation';
+import { safeSource, WebCitation } from './WebCitation';
 
 function civilDate(value: string | null | undefined): string | undefined {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
@@ -26,7 +26,7 @@ export function WebCitations({ sources = [], citations = [], searches = [] }: {
           {source.updated_date && ` · Updated ${civilDate(source.updated_date) ?? 'date unavailable'}`}
           {source.data_as_of && ` · Data as of ${source.data_as_of}`}</p>
         <p className="text-xs text-subtle">Searched {instant(source.searched_at, zone)} ({zone})</p>
-        {source.excerpt && <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{source.excerpt}</p>}
+        {source.excerpt && <p data-web-excerpt={safeSource(source) && source.url.startsWith('https:') ? source.url : undefined} data-source-title={source.title} className="mt-1 line-clamp-2 break-words text-xs leading-5 text-muted">{source.excerpt}</p>}
       </li>)}</ol>
   </div>;
 }

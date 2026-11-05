@@ -9,6 +9,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router';
 import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
+import { SourceAnnotationChips, SourceSelection, useAnnotationDraft } from '../components/workspace/SourceAnnotations';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { ChatSourceCatalog, hasChatSources } from '../components/chat/ChatSources';
@@ -160,8 +161,10 @@ export function ChatPage() {
     if (answers.length) setRevealing(current => new Set([...current, ...answers.map(message => message.id)]));
   }, [id, view.messages, view.busy, view.loading]);
 
+  const { annotations, remove, clear, restore } = useAnnotationDraft();
+
   async function sendMessage(prompt?: string) {
-    const content = prompt ?? (draft.trim() || (files.length ? 'Please help me understand the attached files.' : '')); if (!content || newChatPending || view.busy || sending.current || view.loading) return;
+    const content = prompt ?? (draft.trim() || (files.length ? 'Please help me understand the attached files.' : '')); if ((!content && !annotations.length) || newChatPending || view.busy || sending.current || view.loading) return;
     if (selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
@@ -178,9 +181,10 @@ export function ChatPage() {
       setDraft(''); scroll.anchorNextSend();
       staged.current.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
       staged.current = []; setFiles([]);
-      const request = chatStore.send(id, content, selection, false, saved);
+      const request = chatStore.send(id, content, selection, false, saved, undefined, annotations);
+      clear();
       if (!conversationId) navigate(`/chat/${id}`, { replace: true });
-      await request;
+      if (await request === false) restore('/chat/' + id);
     } catch (error) {
       if (!signal.aborted) setValidation(error instanceof ApiError ? error.message : 'Could not upload this file. Your message is still staged; try again.');
     } finally {
@@ -200,7 +204,7 @@ export function ChatPage() {
       {conversationId && matchedMessage && <Suspense fallback={null}><SavedChatExchange key={`${identity?.learner_id}:${conversationId}:${matchedMessage}`} conversation={conversationId} message={matchedMessage} onClose={closeExchange} /></Suspense>}
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
-      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState disabled={newChatPending || view.busy || uploading || !!draft.trim() || !!files.length || !!selection.document_ids?.length} onChooseSuggestion={prompt => {
+      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState disabled={newChatPending || view.busy || uploading || !!draft.trim() || !!files.length || !!annotations.length || !!selection.document_ids?.length} onChooseSuggestion={prompt => {
         if (prompt === 'study-material') { setMaterialPickerRequest(value => value + 1); return; }
         void sendMessage(prompt);
       }} /></div> : (
@@ -230,6 +234,7 @@ export function ChatPage() {
           </div>
         </div>
       )}
+      <SourceSelection scope={scroll.container} />
       <div className="chat-composer-region relative shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
         {scroll.showScrollToBottom && <div className="pointer-events-none absolute inset-x-0 -top-11 z-20 flex justify-center"><IconButton type="button" aria-label="Scroll to bottom" title="Scroll to bottom" className="pointer-events-auto rounded-full border border-border-strong bg-surface text-muted shadow-sm hover:bg-hover hover:text-heading" onClick={() => {
           if (view.olderWindow) { scroll.showLatest(); void chatStore.open(id, true); }
@@ -241,8 +246,9 @@ export function ChatPage() {
             {view.unsent && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
             {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
           </div>}
-          <ChatComposer onResize={scroll.onComposerResize} key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionBlocked={setValidation} onSelectionChange={changeSelection} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && !!(view.turn?.can_stop ?? (view.busy && view.turn?.state === 'RUNNING'))} canResume={!!view.turn?.can_resume && (!view.turn.resume_until || Date.parse(view.turn.resume_until) > Date.now())} onResume={() => void chatStore.resumeResponse(id)} canRetry={(view.turn?.can_retry ?? (view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.')) || !!view.error && chatStore.hasPending(id)} retryPartial={view.turn?.response_outcome?.state === 'partial'} onRetry={() => void chatStore.send(id, '', selection, true)} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+          <ChatComposer onResize={scroll.onComposerResize} key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionBlocked={setValidation} onSelectionChange={changeSelection} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && !!(view.turn?.can_stop ?? (view.busy && view.turn?.state === 'RUNNING'))} canResume={!!view.turn?.can_resume && (!view.turn.resume_until || Date.parse(view.turn.resume_until) > Date.now())} onResume={() => void chatStore.resumeResponse(id)} canRetry={(view.turn?.can_retry ?? (view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.')) || !!view.error && chatStore.hasPending(id)} retryPartial={view.turn?.response_outcome?.state === 'partial'} onRetry={() => void chatStore.send(id, '', selection, true)} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length || !!annotations.length}
             attachments={<>
+              <SourceAnnotationChips annotations={annotations} remove={remove} disabled={uploading} />
               {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="staged-file relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
                 {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />
                   : <div className="flex h-16 w-32 items-center gap-2 px-2.5 pr-7"><FileText className="h-5 w-5 shrink-0" aria-hidden="true" /><span className="line-clamp-2 break-all">{item.file.name}</span></div>}

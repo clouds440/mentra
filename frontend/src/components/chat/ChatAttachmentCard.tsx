@@ -107,6 +107,7 @@ export function ChatAttachmentCard({ file, conversationId }: { file: ChatAttachm
   return <div ref={card} className={`flex max-w-full flex-col items-end gap-1 text-sm ${choosing ? 'w-72' : 'w-fit'}`} aria-label={`Attachment ${file.filename}`}>
     <div className="relative w-fit max-w-full self-end">
       <button type="button" aria-label={`Open ${file.filename}`} style={original?.image && !imageFailed ? {width:imageWidth ?? 320} : undefined} className="flex max-w-full justify-end overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background" onClick={() => panel?.open({ title: file.filename, reuseKey: 'attachment:' + conversationId + ':' + file.id, icon: <FileText size={14} aria-hidden="true" />,
+        resource: { kind: 'attachment', title: file.filename, conversation_id: conversationId, file_id: file.id },
         content: <ChatAttachmentPreview filename={file.filename} fileId={file.id} conversationId={conversationId} cached={source.current.original?.blob} /> })}>
         {original?.image && !imageFailed ? <img src={original.url} alt={file.filename} className="block h-auto max-h-72 w-auto max-w-full" onLoad={event => {
           const image = event.currentTarget;

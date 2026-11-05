@@ -19,7 +19,7 @@ export async function richChat(page: Page, content = '', interactions: Record<st
       Object.assign(card, { ...reply, submitted_turn_id: body.client_turn_id });
     }
     conversation.revision++; conversation.message_count++;
-    items.push({ id: 'answer-' + conversation.message_count, conversation_id: conversation.id, sequence: conversation.message_count, role: 'user', content: body.content, created_at: conversation.created_at });
+    items.push({ id: 'answer-' + conversation.message_count, conversation_id: conversation.id, sequence: conversation.message_count, role: 'user', content: body.content, source_annotations: body.source_annotations, created_at: conversation.created_at });
     turn = { id: body.client_turn_id, state: 'SUCCEEDED', attempt: 1, user_sequence: conversation.message_count, selection: conversation.selection, error: null };
     return route.fulfill({ json: snapshot() });
   });

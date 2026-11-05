@@ -79,7 +79,7 @@ export function MaterialDetailPage() {
   function openVersion(version: MaterialVersion) {
     const initial = latestDocument.current?.id === doc?.id ? latestDocument.current : doc;
     if (!initial) return;
-    panel?.open({ title: version.filename, icon: <FileText size={14} aria-hidden="true" />,
+    panel?.open({ title: version.filename, resource: { kind: 'library', title: version.filename, document_id: initial.id, version_id: version.id }, icon: <FileText size={14} aria-hidden="true" />,
       content: <MaterialSourceTab initial={initial} version={version} allowArchived={consent}
         archivedContext={contexts.some(item => initial.context_ids.includes(item.context_id) && item.status === 'ARCHIVED')} /> });
   }

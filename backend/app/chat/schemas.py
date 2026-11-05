@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.rag.schemas import ChatSelection
+from app.workspace.schemas import SourceAnnotation
 
 
 from .interactions import InteractionResponse
@@ -12,7 +13,8 @@ class SendTurn(BaseModel):
     conversation_id: UUID
     client_turn_id: UUID
     expected_revision: int = Field(ge=0)
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(max_length=4000)
+    source_annotations: list[SourceAnnotation] = Field(default_factory=list, max_length=4)
     retrieval: ChatSelection = Field(default_factory=ChatSelection)
     interaction_response: InteractionResponse | None = None
     retry: bool = False
@@ -62,6 +64,7 @@ class ChatSearchPage(BaseModel):
 
 
 class SavedExchangeMessage(BaseModel):
+    source_annotations: list[SourceAnnotation] = Field(default_factory=list, max_length=4)
     id: UUID
     role: Literal['user', 'assistant']
     content: str

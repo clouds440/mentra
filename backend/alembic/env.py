@@ -20,6 +20,8 @@ from app.db import admission as admission_tables  # noqa: F401 - Register domain
 from app.db import health as health_tables  # noqa: F401 - Register domain tables.
 from app.files import tables as file_tables  # noqa: F401 - Register file registry.
 
+from app.workspace import tables as workspace_tables  # noqa: F401 - Register pinned sources.
+
 config = context.config
 
 

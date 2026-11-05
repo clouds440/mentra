@@ -13,6 +13,7 @@ export interface ResponseOutcome {
   control_action?: { kind: 'generation_retry' | 'generation_resume' | 'grading_retry'; id: string; revision: number } | null;
 }
 export interface ChatMessageData {
+  source_annotations?: import('./sourceAnnotations').SourceAnnotation[];
   response_outcome?: ResponseOutcome;
   timezone?: string;
   web_sources?: import('./webSearch').WebSource[];

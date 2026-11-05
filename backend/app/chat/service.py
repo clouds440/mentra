@@ -48,7 +48,7 @@ class ConversationService:
             task.exception()  # Observe failures even when the caller disconnected.
 
     async def _send(self, owner, request, generate, *, with_scope=False, wait=True, log_context=None):
-        if not request.content.strip():
+        if not request.content.strip() and not request.source_annotations:
             raise AppError('CHAT_EMPTY_MESSAGE', 'Enter a message.', 422)
         reservation = None
         if self.admission:
@@ -175,6 +175,9 @@ class ConversationService:
                 summary = None
             if summary and summary['through_sequence'] >= job['user_sequence']:
                 summary = None  # Never give a retried older turn future context.
+            rows = [dict(row, content='Help me understand the selected source excerpts.')
+                    if row['role'] == 'user' and not row['content'].strip() and row.get('metadata', {}).get('source_annotations')
+                    else row for row in rows]
             history = [(row['role'], row['content']) for row in rows if row['role'] in ('user', 'assistant')]
             if job.get('resume_instruction'):
                 history[-1] = ('user', history[-1][1] + '\n\nRequested changes while paused:\n' + job['resume_instruction'])

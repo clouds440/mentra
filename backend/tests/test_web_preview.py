@@ -2,7 +2,7 @@ import unittest
 
 import httpx
 
-from app.web_search.preview import check_preview
+from app.web_search.preview import check_preview, read_publisher
 
 
 class WebPreviewTests(unittest.IsolatedAsyncioTestCase):
@@ -47,3 +47,22 @@ class WebPreviewTests(unittest.IsolatedAsyncioTestCase):
 
                 result = await check_preview('https://example.org/start', transport=httpx.MockTransport(remote))
                 self.assertEqual(result.status, 'unavailable')
+
+    async def test_reader_returns_only_plain_text_and_public_links_from_blocked_page(self):
+        def remote(request):
+            if request.url.path == '/start':
+                return httpx.Response(302, headers={'location': '/article'})
+            return httpx.Response(200, headers={'content-type': 'text/html', 'x-frame-options': 'DENY'}, text="""
+                <nav>Publisher navigation</nav>
+                <article><h1>Selected heading</h1><p>A useful <strong>excerpt</strong>.</p>
+                <script>window.run()</script><p hidden>Invisible text</p>
+                <a href="/next">Related page</a><a href="https://127.0.0.1/">Private</a></article>""")
+
+        result = await read_publisher('https://example.org/start', transport=httpx.MockTransport(remote))
+        self.assertEqual(result, dict(url='https://example.org/article', blocks=['Selected heading', 'A useful excerpt.'],
+            links=[dict(url='https://example.org/next', title='Related page')]))
+
+    async def test_reader_rejects_compressed_and_nontext_documents(self):
+        for headers in ({'content-type': 'text/html', 'content-encoding': 'gzip'}, {'content-type': 'application/pdf'}):
+            transport = httpx.MockTransport(lambda _: httpx.Response(200, headers=headers))
+            self.assertIsNone(await read_publisher('https://example.org/file', transport=transport))

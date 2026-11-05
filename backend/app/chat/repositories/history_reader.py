@@ -81,7 +81,7 @@ class ChatReadFacade:
         anchor = select(m.c.sequence).join(c, and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(
             m.c.learner_id==owner, m.c.conversation_id==conversation_id, m.c.id==message_id,
             c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant'])).cte('anchor')
-        statement = select(m.c.id, m.c.role, m.c.content, m.c.created_at, c.c.title).join(c,
+        statement = select(m.c.id, m.c.role, m.c.content, m.c.created_at, m.c.metadata['source_annotations'].label('source_annotations'), c.c.title).join(c,
             and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(m.c.learner_id==owner,
             m.c.conversation_id==conversation_id, c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant']),
             m.c.sequence.between(func.greatest(1, select(anchor.c.sequence).scalar_subquery()-1),
@@ -92,7 +92,8 @@ class ChatReadFacade:
         if not rows or not any(row['id']==message_id for row in rows):
             raise AppError('CHAT_MESSAGE_UNAVAILABLE', 'This saved exchange is unavailable.', 404)
         return SavedExchange(conversation_id=conversation_id, title=rows[0]['title'], matched_message_id=message_id,
-            messages=[{key:row[key] for key in ('id','role','content','created_at')} for row in rows])
+            messages=[{**{key: row[key] for key in ('id', 'role', 'content', 'created_at')},
+                'source_annotations': row['source_annotations'] or []} for row in rows])
 
     def evidence(self, owner, identifier):
         with self.repository.sessions() as session:
