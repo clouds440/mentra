@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Literal
 from fastapi import APIRouter, Depends, Request, Response, Query
 from app.files.schemas import FileReference
 from pydantic import Field
@@ -15,6 +16,20 @@ from app.assessments.schemas import MistakePracticeRequest
 
 def private_response(response: Response): response.headers['Cache-Control'] = 'no-store'
 router = APIRouter(prefix='/assessments', tags=['assessments'], dependencies=[Depends(private_response)])
+
+
+class ItemReport(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    expected_revision: int=Field(ge=1)
+    client_request_id: UUID
+    reason: Literal['wrong_answer','ambiguous','answer_leak']
+
+
+@router.post('/{identifier}/items/{question_id}/report',response_model=Assessment)
+async def report_item(identifier: UUID,question_id: UUID,body: ItemReport,request: Request,
+        identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.repository.review_item,
+        identity.learner_id,str(identifier),str(question_id),body.expected_revision,str(body.client_request_id),body.reason)
 
 
 @router.get('/page')

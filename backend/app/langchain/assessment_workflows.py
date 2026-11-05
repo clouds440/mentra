@@ -234,6 +234,8 @@ class AssessmentWorkflows:
 
     async def grade(self, job, *, checkpoint=None):
         assessment, attempt = job['assessment'], job['attempt']
+        from app.assessments.quality import answerable
+        answerable(assessment)
         from app.assessments.grading_progress import grading_signature
         from app.assessments.schemas import QuestionGrade, ConceptGrade
         progress = attempt.get('grading_progress') or {}
@@ -306,6 +308,10 @@ class AssessmentWorkflows:
         withdraw = []
         for grade in grades.questions:
             question = questions[grade.question_id]
+            if question.get('validation',{}).get('state')=='invalidated':
+                withdraw.extend(receipt['evidence_id'] for receipt in (attempt.get('evidence_receipt') or [])
+                    if receipt.get('question_id')==grade.question_id and receipt.get('accepted'))
+                continue
             provenance = lineage.get('question_sources', {}).get(grade.question_id, lineage)
             for concept, value in grade.concept_grades.items():
                 if min(grade.confidence, value.confidence) < .8:

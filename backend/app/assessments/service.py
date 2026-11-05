@@ -17,6 +17,7 @@ class AssessmentService:
     def __init__(self, repository, workflows, reader=None, admission=None, files=None):
         self.repository, self.workflows = repository, workflows
         self.repository.publish_skills = getattr(workflows.learner, 'publish_topic_skills_in_transaction', None)
+        self.repository.withdraw_item_evidence = getattr(workflows.learner, 'withdraw_assessment_evidence_in_transaction', None)
         self.admission = admission
         self.files=files or repository.files
         self.reader = reader or create_document_reader(isolated=True)
@@ -149,6 +150,9 @@ class AssessmentService:
             source = await run_in_threadpool(self.repository.revision_source, owner, str(request.revision_assessment_id))
         if source and source['context_id'] != request.context_id:
             raise AppError('ASSESSMENT_CONTEXT_MISMATCH', 'Revise within the original learning context.', 422)
+        if source:
+            from .quality import answerable
+            answerable(source)
         return source
 
     def submit(self, owner, identifier, body):

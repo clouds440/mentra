@@ -105,11 +105,12 @@ class ChatAssessmentRepository:
                 raise AppError('ASSESSMENT_GENERATION_EXPIRED', 'Retry this assessment request.', 409)
             if session.scalar(select(func.count()).select_from(chat_drafts).where(chat_drafts.c.learner_id == owner)) >= 200:
                 raise AppError('ASSESSMENT_DRAFT_CAPACITY', 'Remove unused chats before generating more practice.', 409)
+            from ..quality import stored_question
             payload = dict(id=str(uuid4()), learner_id=owner, context_id=request.context_id, title=generated.title,
                 purpose=request.purpose, revision=1, created_at=self.repository.clock().isoformat(),
                 paper=generated.paper.model_dump(mode='json') if generated.paper else None,
                 preferences=dict(level=request.level, result_style=request.result_style, delivery=request.delivery),
-                questions=[dict(q.model_dump(mode='json'), id=str(uuid4())) for q in generated.questions],
+                questions=[stored_question(q,str(uuid4())) for q in generated.questions],
                 sources=sources, operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage
             payload['practice_lineage'] = inherit_practice_lineage(self.repository, session, owner, request, payload['questions'], payload['id'])

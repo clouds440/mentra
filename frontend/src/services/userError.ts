@@ -54,6 +54,8 @@ export function errorMessage(status: number, code: string): string {
   if (code === 'CHAT_SEARCH_BUSY') return 'This search took too long. Try a more specific phrase.';
   if (code === 'CHAT_SEARCH_QUERY_INVALID') return 'Use a search phrase of at most 200 characters.';
   if (code === 'ASSESSMENT_PRACTICE_DELETED') return 'This follow-up was deleted. Refresh the results before choosing new practice.';
+  if (code === 'ASSESSMENT_REVIEW_REQUIRED') return 'A question needs review. Your saved answers are preserved.';
+  if (code === 'ASSESSMENT_REVIEW_REASON') return 'Choose a reason for reviewing this question.';
   if (code === 'AUTHENTICATION_FAILED') return 'That username or password isn’t correct.';
   if (code === 'PASSWORD_CHANGE_FAILED') return 'Your current password is incorrect.';
   if (['USERNAME_TAKEN', 'ACCOUNT_EXISTS'].includes(code)) return 'That username is already registered.';

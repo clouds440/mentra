@@ -151,15 +151,14 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(question.concept_ids)
             self.assertEqual(self.learner.get_concepts(question.concept_ids)[question.concept_ids[0]].canonical_name,'Science: a newly introduced relationship')
 
-    async def test_migration_preserves_existing_questions_attempts_and_grading_keys(self):
+    async def test_current_quality_phase_rollback_preserves_questions_attempts_and_keys(self):
         value = await self.service.generate(self.owner,self.request(count=2,question_format='written'))
         attempt = self.service.repository.start(self.owner,str(value.id),StartAttempt(client_request_id=uuid4()))
         with self.db.sessions() as session:
             before = session.execute(select(assessments.c.questions).where(assessments.c.id==str(value.id))).scalar_one()
         from alembic import command
-        from app.db.migrate import migration_config, upgrade
-        with self.db.engine.connect() as connection:
-            command.downgrade(migration_config(connection),'20261014_0022')
+        from app.db.migrate import downgrade, upgrade
+        downgrade(self.db.engine, '20261106_0043')
         upgrade(self.db.engine)
         with self.db.sessions() as session:
             after = session.execute(select(assessments.c.questions).where(assessments.c.id==str(value.id))).scalar_one()

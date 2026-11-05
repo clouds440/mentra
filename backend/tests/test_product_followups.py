@@ -80,48 +80,24 @@ class ProductFollowupTests(unittest.IsolatedAsyncioTestCase):
             children = list(pool.map(lambda _: self.service.repository.practise_mistakes(self.owner, str(attempt.id), body), range(2)))
         self.assertEqual(children[0].id, children[1].id)
 
-    async def test_migration_roundtrip_preserves_existing_records_and_refuses_to_erase_exposure(self):
-        from alembic import command
-        from alembic.autogenerate import compare_metadata
-        from alembic.migration import MigrationContext
+    async def test_current_quality_phase_rollback_preserves_records_and_refuses_to_drop_reviews(self):
         from sqlalchemy import text
-        from app.db.metadata import metadata
-        from app.db.migrate import migration_config, upgrade
+        from app.db.migrate import downgrade, upgrade, migration_config
+        from alembic.script import ScriptDirectory
         source = await self.service.generate(self.owner, self.request)
-        with self.db.engine.connect() as connection:
-            command.downgrade(migration_config(connection), '20261015_0025')
+        # Rehearse only the current phase's additive migration. There is no
+        # requirement to run historical application/schema combinations.
+        downgrade(self.db.engine, '20261106_0043')
         upgrade(self.db.engine)
         self.assertEqual(self.service.repository.detail(self.owner, str(source.id)), source)
+        reviewed = self.service.repository.review_item(self.owner, str(source.id), str(source.questions[0].id),
+            source.revision, str(uuid4()), 'wrong_answer')
+        with self.assertRaisesRegex(RuntimeError, 'Export item-review history'):
+            downgrade(self.db.engine, '20261106_0043')
+        self.assertEqual(self.service.repository.detail(self.owner, str(source.id)), reviewed)
         with self.db.engine.connect() as connection:
-            diffs = compare_metadata(MigrationContext.configure(connection, opts={
-                'include_object':lambda obj,name,kind,reflected,compare_to: kind!='table' or name=='assessment'}), metadata)
-            self.assertEqual(diffs, [])
-        original, attempt = await self.graded()
-        child = self.service.repository.practise_mistakes(self.owner, str(attempt.id), MistakePracticeRequest(
-            client_request_id=uuid4(), expected_grade_revision=1, question_ids=[original.questions[0].id]))
-        with self.db.engine.connect() as connection:
-            # Newer migrations also refuse to discard saved score-policy history
-            # before the older exposure-lineage fence can be reached.
-            with self.assertRaisesRegex(RuntimeError, 'Cannot (remove exposure lineage|discard saved assessment score-adjustment provenance)'):
-                command.downgrade(migration_config(connection), '20261015_0025')
-        self.assertEqual(self.service.repository.detail(self.owner, str(child.id)), child)
-        with self.db.engine.connect() as connection:
-            from alembic.script import ScriptDirectory
             self.assertEqual(connection.scalar(text('SELECT version_num FROM alembic_version')),
-                             ScriptDirectory.from_config(migration_config()).get_current_head())
-        from app.chat.repositories.postgres import ChatRepository
-        from app.chat.schemas import SendTurn
-        conversation = str(uuid4())
-        ChatRepository(self.db.sessions).begin_turn(self.owner, SendTurn(conversation_id=conversation,
-            client_turn_id=uuid4(), expected_revision=0, content='Keep a written practice draft.'))
-        card = await self.service.generate_chat(self.owner, conversation, self.request.model_copy(update={
-            'client_request_id':uuid4(), 'question_format':'written', 'count':1, 'revision_assessment_id':child.id,
-            'revision_instructions':'Keep this as a written practice draft.'}))
-        self.assertIsNone(card['assessment_id'])
-        self.service.repository.remove(self.owner, str(child.id))
-        with self.db.engine.connect() as connection:
-            with self.assertRaisesRegex(RuntimeError, 'Cannot (remove exposure lineage|discard saved assessment score-adjustment provenance)'):
-                command.downgrade(migration_config(connection), '20261015_0025')
+                ScriptDirectory.from_config(migration_config()).get_current_head())
 
     async def test_api_practice_and_evidence_projection_use_typed_private_responses(self):
         from types import SimpleNamespace

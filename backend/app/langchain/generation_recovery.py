@@ -53,6 +53,8 @@ def validate_questions(result: GeneratedAssessment, *, count: int, question_form
         raise GenerationMismatch('wrong_question_count')
     seen = {prompt.casefold().strip() for prompt in previous}
     for index, question in enumerate(result.questions):
+        from app.assessments.quality import check_question
+        check_question(question, planned_context=plan[index].get('context','') if plan else '')
         expected = plan[index]['question_type'] if plan else question_format
         choice = plan[index].get('answer_mode') in ('single_choice', 'multiple_choice') if plan and 'answer_mode' in plan[index] else expected in ('mcq', 'true_false')
         if bool(question.options) != choice:

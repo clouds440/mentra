@@ -52,6 +52,8 @@ def create_practice(repository, owner, identifier, body):
         if attempt['state'] != 'graded' or attempt['grade_revision'] != body.expected_grade_revision:
             raise AppError('REVISION_CONFLICT', 'Results changed. Reload before choosing practice questions.', 409)
         source = repository._assessment(session, owner, attempt['assessment_id'])
+        from ..quality import answerable
+        answerable(source)
         grades = {grade['question_id']:grade for grade in attempt['grades'] or []}
         eligible = {q['id'] for q in source['questions'] if q['id'] in grades and grades[q['id']]['score'] < q['marks']}
         selected = set(map(str, body.question_ids))

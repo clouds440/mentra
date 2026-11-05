@@ -313,6 +313,7 @@ class SubmitAnswers(Contract):
     assistance: AssessmentAssistance = AssessmentAssistance.unknown
 
 class PublicQuestion(Contract):
+    validation: dict = Field(default_factory=lambda: dict(state='legacy',semantic_review='unverified'))
     learning_targets: list[dict[str, str]] = Field(default_factory=list)
     question_type: str | None = None
     answer_mode: Literal['text', 'single_choice', 'multiple_choice'] | None = None

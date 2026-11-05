@@ -7,14 +7,14 @@ from app.assessments.repositories.revision_practice import list_mistakes, enqueu
 from app.assessments.repositories.tables import attempts, generation_jobs
 from app.assessments.generation_worker import AssessmentGenerationWorker
 from app.core.exceptions import AppError
-from tests.test_assessments import AssessmentTests
-from tests.test_product_followups import ProductFollowupTests
+from tests import test_assessments as assessments_fixture
+from tests import test_product_followups as product_fixture
 
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'Requires dedicated PostgreSQL')
 class RevisionPracticeTests(unittest.IsolatedAsyncioTestCase):
-    setUp = AssessmentTests.setUp
-    graded = ProductFollowupTests.graded
+    setUp = assessments_fixture.AssessmentTests.setUp
+    graded = product_fixture.ProductFollowupTests.graded
 
     async def test_recent_pages_and_context_filters_keep_owned_resolution(self):
         source, _ = await self.graded()

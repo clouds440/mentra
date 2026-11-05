@@ -65,6 +65,8 @@ class AssessmentEvidenceJobs:
             if attempt['grade_revision'] != job['grade_revision'] or attempt['state'] != 'graded':
                 tx._session.execute(update(j).where(key).values(state='skipped', claim_id=None, claim_until=None))
                 return
+            job['assessment'] = repo._assessment(tx._session,job['owner'],attempt['assessment_id'])
+            job['attempt'] = attempt
             receipt = apply(tx)
             expected = sum(len(grade['concept_grades']) for grade in attempt['grades'])
             accepted = sum(bool(item.get('accepted')) for item in receipt or [])

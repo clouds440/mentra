@@ -4,6 +4,17 @@ from app.db.metadata import metadata
 
 assistance_kind = ENUM('unknown', 'independent', 'assisted', name='assessment_assistance_kind', create_type=False)
 
+item_reviews = Table('assessment_item_review', metadata,
+    Column('id', Uuid(as_uuid=False), primary_key=True),
+    Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id'), nullable=False),
+    Column('assessment_id', Uuid(as_uuid=False), nullable=False), Column('question_id', Uuid(as_uuid=False), nullable=False),
+    Column('revision', BigInteger, nullable=False), Column('reason', Text, nullable=False),
+    Column('decision', Text, nullable=False), Column('previous_question', JSONB, nullable=False),
+    Column('fingerprint', Text, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    ForeignKeyConstraint(['learner_id','assessment_id'],['assessment.learner_id','assessment.id'],ondelete='CASCADE'),
+    CheckConstraint("decision IN ('invalidated','corrected')", name='assessment_item_review_decision'),
+    Index('idx_assessment_item_review_owner','learner_id','assessment_id','question_id','revision'))
+
 practice_operations = Table('assessment_practice_operation', metadata,
     Column('learner_id', Uuid(as_uuid=False), ForeignKey('learner.id', ondelete='CASCADE'), primary_key=True),
     Column('operation_id', Uuid(as_uuid=False), primary_key=True),

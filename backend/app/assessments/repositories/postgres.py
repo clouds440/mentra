@@ -6,6 +6,7 @@ from app.db.owner_transactions import OwnerTransactions
 from app.history_management.repositories.events.postgres import request_hash
 from app.assessments.schemas import Assessment, Attempt, AttemptSummary, PublicQuestion, PracticeSource
 from .tables import assessments as a, attempts as t, generation_claims as g, source_jobs as sj
+from ..quality import public_validation
 
 # Upload bytes are only needed when explicitly reading the original artifact.
 # Polling, claiming and corrections must not download them from PostgreSQL.
@@ -30,6 +31,7 @@ class AssessmentRepository:
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.files=files
         self.publish_skills = None
+        self.withdraw_item_evidence = None
 
     def _assessment(self, session, owner, identifier):
         row = session.execute(select(a).where(a.c.learner_id == owner, a.c.id == identifier)).mappings().first()
@@ -51,7 +53,12 @@ class AssessmentRepository:
             source_assessment_ids=lineage.get('source_assessment_ids', []) if lineage else [],
             practice_source={key:value for key,value in lineage.items() if key in PracticeSource.model_fields} if lineage else None,
             paper=row.get('paper'), preferences=row.get('preferences') or {}, **{key:row[key] for key in ('id','context_id','title','purpose','revision','created_at','sources')},
-            questions=[PublicQuestion.model_validate({key:value for key,value in question.items() if key not in ('model_answer','rubric','correct_option_id','correct_option_ids','concept_names')}) for question in row['questions']])
+            questions=[PublicQuestion.model_validate(dict({key:value for key,value in question.items() if key in PublicQuestion.model_fields and key!='validation'},
+                validation=public_validation(question))) for question in row['questions']])
+
+    def review_item(self, owner, identifier, question_id, expected_revision, operation_id, reason, *, correction=None):
+        from .quality import review_item
+        return review_item(self,owner,identifier,question_id,expected_revision,operation_id,reason,correction=correction)
 
     def attempt_public(self, row):
         return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3),source_pending=bool(row.get('source_pending')),source_error=row.get('source_error'))
@@ -117,7 +124,8 @@ class AssessmentRepository:
                     raise AppError('ASSESSMENT_GENERATION_EXPIRED', 'Generation ownership expired. Retry the same request.', 409)
             if session.scalar(select(func.count()).select_from(a).where(a.c.learner_id == owner)) >= 200:
                 raise AppError('ASSESSMENT_CAPACITY', 'Delete unused assessments before adding more.', 409)
-            questions = [dict(question.model_dump(mode='json'), id=str(uuid4())) for question in generated.questions]
+            from ..quality import stored_question
+            questions = [stored_question(question,str(uuid4())) for question in generated.questions]
             row = dict(id=str(uuid4()), learner_id=owner, context_id=request.context_id, title=generated.title,
                 purpose=request.purpose, revision=1, created_at=self.clock(), questions=questions, sources=sources,
                 paper=generated.paper.model_dump(mode='json') if generated.paper else None,
@@ -176,6 +184,8 @@ class AssessmentRepository:
         with self.transactions.write(owner) as tx:
             session = tx._session
             assessment = self._assessment(session, owner, identifier)
+            from ..quality import answerable
+            answerable(assessment)
             existing = session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner, t.c.operation_id == str(body.client_request_id))).mappings().first()
             if existing:
                 if existing['assessment_id'] != identifier: raise AppError('OPERATION_CONFLICT', 'Request ID belongs to another assessment.', 409)
@@ -301,6 +311,8 @@ class AssessmentRepository:
             questions = assessment['questions']
             if set(body.answers) != {q['id'] for q in questions} or any(not answer.strip() for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE', 'Answer every question or part.', 422)
+            from ..quality import answerable
+            answerable(assessment)
             answers = self.normalize_answers(questions, body.answers)
             self.validate_mcq_answers(questions, answers)
             values = dict(answers=answers, state='submitted', revision=row['revision']+1, submitted_at=self.clock(),
@@ -356,6 +368,8 @@ class AssessmentRepository:
             if row['state']!='graded' or row['revision']!=body.expected_revision:
                 raise AppError('REVISION_CONFLICT','Only the current graded attempt can be corrected.',409)
             assessment=self._assessment(session,owner,row['assessment_id'])
+            from ..quality import answerable
+            answerable(assessment)
             questions=assessment['questions']
             if set(body.answers)!={question['id'] for question in questions} or any(not answer.strip() for answer in body.answers.values()):
                 raise AppError('ASSESSMENT_INCOMPLETE','Review every answer before submitting a correction.',422)

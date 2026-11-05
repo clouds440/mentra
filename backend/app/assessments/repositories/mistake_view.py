@@ -23,6 +23,7 @@ WITH expanded AS (
     CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(r.grades)='array'
         THEN r.grades ELSE '[]'::jsonb END) WITH ORDINALITY g(value, position)
     WHERE a.learner_id=:owner AND r.state='graded' AND g.value->>'question_id'=q.value->>'id'
+      AND coalesce(q.value->'validation'->>'state','legacy')<>'invalidated'
 ), ranked AS (
     SELECT *, row_number() OVER (ORDER BY submitted_at ASC NULLS LAST, created_at, attempt_id, position) encounter_order,
         sum((score < marks)::integer) OVER (PARTITION BY root) occurrences,

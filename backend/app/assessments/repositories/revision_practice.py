@@ -26,7 +26,7 @@ def collect(session, owner):
         questions = {q['id']: q for q in source['questions']}
         for grade in result['grades'] or []:
             question = questions.get(grade['question_id'])
-            if not question: continue
+            if not question or question.get('validation',{}).get('state')=='invalidated': continue
             root = lineage.get('question_items', {}).get(question['id'], f"{source['id']}:{question['id']}")
             wrong = grade['score'] < question['marks']
             latest[root] = not wrong
