@@ -134,6 +134,15 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await expect(panel.getByRole('tab', { name: 'Article 6' })).toHaveAttribute('aria-selected', 'true');
   const handle = panel.getByRole('separator', { name: 'Resize side panel' });
   const grip = (await handle.boundingBox())!;
+  const chat = (await page.getByRole('log', { name: 'Conversation' }).boundingBox())!;
+  const shell = (await panel.locator('.workspace-panel-shell').boundingBox())!;
+  expect(grip.width).toBe(6);
+  expect(grip.x).toBeGreaterThanOrEqual(chat.x + chat.width);
+  expect(shell.x).toBeGreaterThanOrEqual(grip.x + grip.width);
+  await page.mouse.move(chat.x + chat.width - 1, grip.y + 80);
+  await page.mouse.down();
+  await expect(panel).toHaveAttribute('data-resizing', 'false');
+  await page.mouse.up();
   const width = (await panel.boundingBox())!.width;
   await page.mouse.move(grip.x + grip.width / 2, grip.y + 80);
   await page.mouse.down();

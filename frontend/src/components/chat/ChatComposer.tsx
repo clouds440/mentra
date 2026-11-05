@@ -86,6 +86,7 @@ export function ChatComposer({
     onChange(value + (value && !/\s$/.test(value) ? ' ' : '') + text);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, isThinking);
+  const menuVisible = menuOpen && !isThinking && !voice.busy;
 
   function resizeTextarea() {
     const textarea = textareaRef.current;
@@ -227,12 +228,12 @@ export function ChatComposer({
         <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload chat files" disabled={isThinking}
           onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ''; requestAnimationFrame(() => textareaRef.current?.focus()); }} />
         <IconButton ref={menuAnchor} aria-label="Add to message" title="Add to message" aria-haspopup="menu"
-          aria-expanded={menuOpen && !isThinking && !voice.busy} aria-controls={menuOpen && !isThinking && !voice.busy ? menuId : undefined}
+          aria-expanded={menuVisible} aria-controls={menuVisible ? menuId : undefined}
           className="composer-attach text-muted" disabled={isThinking || voice.busy}
           onClick={() => { closePicker(); setMenuOpen(value => !value); }}>
-          <Plus size={19} aria-hidden="true" />
+          <Plus size={19} aria-hidden="true" className={menuVisible ? 'rotate-45 motion-safe:transition-transform motion-safe:duration-150' : 'motion-safe:transition-transform motion-safe:duration-150'} />
         </IconButton>
-        <ActionMenu anchor={menuAnchor} open={menuOpen && !isThinking && !voice.busy} onClose={() => setMenuOpen(false)}
+        <ActionMenu anchor={menuAnchor} open={menuVisible} onClose={() => setMenuOpen(false)}
           id={menuId} label="Add to message" placement="above" className="composer-add-menu" items={[
             { id: 'files', label: 'Attach files', icon: Paperclip, onSelect: () => fileRef.current?.click() },
             { id: 'material', label: 'Reference material', icon: BookOpenText, onSelect: openPicker },

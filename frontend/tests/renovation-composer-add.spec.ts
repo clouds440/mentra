@@ -24,6 +24,12 @@ for (const width of [390, 1440]) test('composer plus stages multiple removable r
   await expect(form.getByRole('button', { name: 'Attach files' })).toHaveCount(0);
   await plus.click();
   const menu = page.getByRole('menu', { name: 'Add to message' });
+  await expect(plus.locator('svg')).toHaveClass(/rotate-45/);
+  await expect(menu).toHaveCSS('box-shadow', 'none');
+  await page.keyboard.press('Escape');
+  await expect(plus.locator('svg')).not.toHaveClass(/rotate-45/);
+  await expect(plus).toBeFocused();
+  await plus.click();
   await expect(menu.getByRole('menuitem')).toHaveText(['Attach files', 'Reference material', 'Camera']);
   await expect(menu.getByRole('menuitem', { name: 'Attach files' })).toBeFocused();
   await page.keyboard.press('ArrowDown');

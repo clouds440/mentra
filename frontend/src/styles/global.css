@@ -697,9 +697,9 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   .workspace-side-panel { transition: transform 155ms ease-out, visibility 155ms; }
 }
 @media (min-width: 1200px) {
-  .workspace-side-panel { --panel-width: min(var(--right-panel-width), 42vw); position: relative; z-index: 20; flex: none; width: var(--panel-width); }
+  .workspace-side-panel { --panel-width: min(var(--right-panel-width), 42vw); --panel-gutter: 6px; position: relative; z-index: 20; flex: none; width: var(--panel-width); }
   .workspace-side-panel[data-open='false'] { width: 0; transform: none; }
-  .workspace-side-panel > .workspace-panel-shell { position: absolute; inset: 0 auto 0 0; width: var(--panel-width); }
+  .workspace-side-panel > .workspace-panel-shell { position: absolute; inset: 0 auto 0 var(--panel-gutter); width: calc(var(--panel-width) - var(--panel-gutter)); border-inline-start: 0; }
 }
 @media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
   .workspace-side-panel { transition: width 175ms ease-out, visibility 0s; }
@@ -707,8 +707,8 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
   .workspace-side-panel[data-resizing='true'] { transition: none; }
 }
 .workspace-panel-shell { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: rgb(var(--background)); border-inline-start: 1px solid rgb(var(--border) / .8); }
-.workspace-panel-resize { position: absolute; inset: 0 auto 0 -5px; z-index: 1; width: 9px; cursor: col-resize; touch-action: none; outline: none; }
-.workspace-panel-resize::after { content: ''; position: absolute; inset: 0 3px; }
+.workspace-panel-resize { position: absolute; inset: 0 auto 0 0; z-index: 1; width: var(--panel-gutter); cursor: col-resize; touch-action: none; outline: none; }
+.workspace-panel-resize::after { content: ''; position: absolute; inset: 0 auto 0 2px; width: 1px; background: rgb(var(--border) / .7); }
 .workspace-panel-resize:is(:hover, :focus-visible)::after, .workspace-side-panel[data-resizing='true'] .workspace-panel-resize::after { background: rgb(var(--accent) / .55); }
 .workspace-side-panel[data-resizing='true'] { user-select: none; }
 .workspace-panel-tabs { display: flex; align-items: center; gap: .25rem; min-width: 0; padding: .45rem .625rem; border-bottom: 1px solid rgb(var(--border) / .65); }
@@ -747,6 +747,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .recents-header:has(.recents-toggle:hover) { background: rgb(var(--hover)); color: rgb(var(--foreground)); }
 .recents-list-reveal { display: grid; flex: 1; min-height: 0; grid-template-rows: 1fr; }
 .recents-list-reveal[data-expanded='false'] { grid-template-rows: 0fr; visibility: hidden; }
+.overlay-panel.composer-add-menu { box-shadow: none; }
 @media (prefers-reduced-motion: no-preference) {
   .composer-add-menu { transform-origin: bottom left; animation: composer-add-reveal 135ms ease-out both; }
   .recents-list-reveal { transition: grid-template-rows 160ms ease-out, visibility 0s; }
