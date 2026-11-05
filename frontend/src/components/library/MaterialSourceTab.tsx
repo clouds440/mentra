@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useSidePanelActions } from '../workspace/sidePanelState';
 import { usePageRefresh } from '../../hooks/usePageRefresh';
 import { invalidatePageCache } from '../../services/pageCache';

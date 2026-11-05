@@ -5,7 +5,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { Spinner } from '../ui/Spinner';
 import { Check, Pencil, Trash2, X, MoreVertical, ChevronRight } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate, useParams } from 'react-router-dom';
+import { NavLink, useNavigate, useParams } from 'react-router';
 import { chatStore, useChatList } from '../../stores/chatStore';
 import type { Conversation } from '../../types/conversations';
 import { cn } from '../../utils/cn';

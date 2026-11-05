@@ -18,7 +18,7 @@ export function MaterialUpload({ contexts, capabilities, replacement, onAccepted
   const [createdContext, setCreatedContext] = useState<LearningContext>();
   const availableContexts = createdContext && !contexts.some(context => context.context_id === createdContext.context_id) ? [...contexts, createdContext] : contexts;
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
-  const controller = useRef<AbortController>(); const key = useRef(crypto.randomUUID()); const input = useRef<HTMLInputElement>(null);
+  const controller = useRef<AbortController>(undefined); const key = useRef(crypto.randomUUID()); const input = useRef<HTMLInputElement>(null);
   useEffect(() => () => controller.current?.abort(), []);
   function chooseFiles(files: File[]) {
     if (!files.length) { setFile(null); setError(''); return; }

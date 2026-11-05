@@ -15,7 +15,7 @@ export function MaterialPicker({ value, onChange, contextId, disabled = false, o
   const [known, setKnown] = useState<Record<string, MaterialDocument>>({});
   const [error, setError] = useState(''), [loading, setLoading] = useState(false), [retry, setRetry] = useState(0);
   const [selectionError, setSelectionError] = useState('');
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   const selectedIds = useRef(value); selectedIds.current = value;
   const nextOffset = useRef(0);
   const hydratedRetry = useRef(0);

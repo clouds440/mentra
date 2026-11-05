@@ -67,17 +67,16 @@ test('wide conversation grows while composer retains its original width', async 
   await page.screenshot({path:info.outputPath('wide-chat.png')});
 });
 
-test('Concepts shares compact pagination and retains working page navigation', async ({page}) => {
+test('Learning topics share compact pagination and retain working page navigation', async ({page}) => {
   await workspace(page, false, true);
-  const result = (offset = 0) => ({items:[{concept_id:`concept-${offset}`,name:`Concept ${offset+1}`,knowledge_status:'developing',mastery:.5,estimate_confidence:.5,retention_confidence:.5}],total:23,total_concepts:23,limit:10,offset,generated_at:'2026-10-21T10:00:00Z'});
-  await page.route('**/api/v1/learning/page**', route => route.fulfill({json:{overview:{learner:{concepts:[],context_ids:[]},recommendations:[],verification:[]},contexts:[],candidates:[],understanding:result()}}));
-  await page.route('**/api/v1/learning/understanding?**', route => route.fulfill({json:result(Number(new URL(route.request().url()).searchParams.get('offset')))}));
+  const result = (offset = 0) => ({items:[{id:`topic-${offset}`,name:`Topic ${offset+1}`,scope:'Practice skills',subskill_count:2,checked_count:1}],total:23,ungrouped_count:0,limit:10,offset});
+  await page.route('**/api/v1/learning/topics?**', route => route.fulfill({json:result(Number(new URL(route.request().url()).searchParams.get('offset')))}));
   await page.goto('/progress');
-  const pagination = page.getByRole('navigation',{name:'Understanding pages'});
+  const pagination = page.getByRole('navigation',{name:'Learning topics'});
   await expect(pagination).toBeVisible();
   expect(await pagination.innerText()).not.toMatch(/Previous|Next/);
   await pagination.getByRole('button',{name:'Next page'}).click();
-  await expect(page.getByText('Concept 11',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Explore Topic 11',exact:true})).toBeVisible();
   await expect(pagination.getByRole('button',{name:'Page 2',exact:true})).toHaveAttribute('aria-current','page');
   expect(await pagination.getByRole('button').evaluateAll(buttons => new Set(buttons.map(button => button.getBoundingClientRect().height)).size)).toBe(1);
 });
@@ -87,8 +86,9 @@ for (const theme of ['light','dark']) test(`empty chat and account menu remain u
   await page.addInitScript(value => localStorage.setItem('mentra-theme', value), theme);
   await workspace(page);
   await page.goto('/');
+  const sent = page.waitForRequest(request => request.url().endsWith('/conversations/turns') && request.method() === 'POST');
   await page.getByRole('button',{name:'Explain a concept',exact:true}).click();
-  await expect(page.getByRole('textbox',{name:'Ask Mentra anything'})).toHaveValue('Help me understand a concept: ');
+  expect((await sent).postDataJSON().content).toBe('Help me understand a concept. Ask me which topic to explore.');
   await page.getByRole('button',{name:'Account menu for learner'}).click();
   await expect(page.getByRole('link',{name:'Settings',exact:true})).toBeVisible();
   await page.screenshot({path:info.outputPath(`account-${theme}.png`), animations:'disabled'});

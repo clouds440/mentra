@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router';
 import { LearningProgress } from '../components/learning/LearningProgress';
 
 export function ProgressPage() {

@@ -1,5 +1,5 @@
 import { PageSection } from '../workspace/PageShell';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { buttonStyles } from '../ui/Button';
 import { practiceLink } from '../../services/practiceIntent';
 import type { LearningOverview } from '../../types/learning';

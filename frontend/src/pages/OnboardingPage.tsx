@@ -1,6 +1,6 @@
 import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { MentraLogo } from '../components/brand/MentraLogo';
 import { Button, Card, Spinner } from '../components/ui';

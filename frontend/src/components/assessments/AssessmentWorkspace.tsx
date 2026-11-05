@@ -19,7 +19,7 @@ import { AssessmentGenerationCard } from './AssessmentGenerationCard';
 import { ChoiceOptions } from '../interactions/ChoiceOptions';
 import { Toggle } from '../ui/Toggle';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, Textarea } from '../ui';
 import { MarkdownContent } from '../content/MarkdownContent';
@@ -67,7 +67,7 @@ function Workspace({owner}: {owner:string}) {
   const active = useRef<AbortController | null>(null);
   const startOperation = useRef(crypto.randomUUID());
   const generating = useRef(false);
-  const generationOperation = useRef<{ payload: string; id: string }>();
+  const generationOperation = useRef<{ payload: string; id: string }>(undefined);
   usePageRefresh(() => setReload(value => value + 1), !busy && !attempt, ['assessments']);
   useEffect(() => {
     if (tab === 'mistakes') { setLoading(false); return; }

@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 const navigation = { desktopQuery: '(min-width: 1024px)', inertIds: ['workspace-content'],
   closeOnDesktop: true, opener: '#workspace-content button[aria-label="Open navigation menu"]', fallbackFocus: '#workspace-main' };
 
-export function useMobileNavigation(panel: RefObject<HTMLElement>, open: boolean, dismiss: () => void, options = navigation) {
+export function useMobileNavigation(panel: RefObject<HTMLElement | null>, open: boolean, dismiss: () => void, options = navigation) {
   const [desktop, setDesktop] = useState(() => matchMedia(options.desktopQuery).matches);
   const close = useRef(dismiss); close.current = dismiss;
   useLayoutEffect(() => {

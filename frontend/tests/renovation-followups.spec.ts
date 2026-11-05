@@ -12,6 +12,7 @@ const result: AssessmentAttempt = { id:'original-attempt', assessment_id:source.
   created_at:created, answers:{q1:'b',q2:'b',q3:'a'}, grades:source.questions.map((q,i) => ({question_id:q.id, score:i,
     confidence:1, feedback:'Review the definition.', concept_grades:{}, misconceptions:[], outcome:i===0?'wrong':i===1?'partial':'correct'})),
   extraction:null, error:null, evidence_status:'applied', grade_revision:1, grade_history:[] };
+const resultsPage = { items: [], next_offset: null, contexts: [], detail: source, attempts: [result] };
 
 test('material search preserves a lost-response operation and payload edits receive a new ID', async ({page}) => {
   await workspace(page);
@@ -61,6 +62,7 @@ test('assessment results link to the dedicated filtered mistake workspace', asyn
   await workspace(page);
   await page.route('**/api/v1/assessments/**', route => {
     const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/assessments/page')) return route.fulfill({json:resultsPage});
     if (path.endsWith('/original-paper/attempts')) return route.fulfill({json:[result]});
     if (path.endsWith('/original-paper')) return route.fulfill({json:source});
     if (path.endsWith('/mistakes')) return route.fulfill({json:{items:[],total:0,active_count:0,next_offset:null,assessments:[],topics:[]}});
@@ -69,13 +71,17 @@ test('assessment results link to the dedicated filtered mistake workspace', asyn
   await page.goto(`/assessments?assessment=${source.id}&attempt=${result.id}`);
   await page.getByRole('link',{name:'Review these mistakes'}).click();
   await expect(page).toHaveURL(/tab=mistakes&mistake_assessment=original-paper/);
-  await expect(page.getByRole('heading',{name:'Turn mistakes into progress'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Your mistake history'})).toBeVisible();
 });
 
 for (const variant of [{width:360,height:740,theme:'light'},{width:390,height:844,theme:'dark'},{width:1440,height:1000,theme:'light'}] as const) test(`progress evidence at ${variant.width} ${variant.theme} opens the specific owned attempt`, async ({page},info) => {
   await workspace(page,false,true);
   await page.setViewportSize(variant);
   await page.addInitScript(theme=>localStorage.setItem('mentra-theme',theme),variant.theme);
+  await page.route('**/api/v1/learning/topics/motion-topic/subskills?**', route => route.fulfill({ json: {
+    topic: { id: 'motion-topic', name: 'Motion and forces', context_id: 'context-1', subskill_count: 1, checked_count: 1 },
+    items: [{ concept_id: 'forces', name: 'Forces', context_id: 'context-1', knowledge_status: 'developing' }], total: 1, offset: 0, limit: 10,
+  } }));
   await page.route('**/api/v1/learning/understanding/forces*', route => route.fulfill({json:{concept_id:'forces',context_id:'context-1',name:'Forces',knowledge_status:'developing',mastery:.6,
     mastery_lower_bound:.25,mastery_upper_bound:.85,independent_item_count:3,evidence_count:8,last_practice_at:created,last_independent_at:created,recommended_difficulty:.4,
     next_check:'Try new questions without hints.',difficulty_coverage:[{band:'easy',independent_items:3},{band:'medium',independent_items:0},{band:'hard',independent_items:0}],
@@ -83,9 +89,11 @@ for (const variant of [{width:360,height:740,theme:'light'},{width:390,height:84
       {occurred_at:created,source_type:'QUIZ',result:'CORRECT',difficulty:.4,independent:false,participation:'assisted',assessment_id:'deleted',attempt_id:'deleted-attempt',grade_revision:1,source_available:false}],generated_at:created}}));
   await page.route('**/api/v1/assessments/original-paper/attempts', route => route.fulfill({json:[result]}));
   await page.route('**/api/v1/assessments/original-paper', route => route.fulfill({json:source}));
+  await page.route('**/api/v1/assessments/page?**', route => route.fulfill({json:resultsPage}));
   await page.goto('/progress');
-  await page.getByRole('button',{name:"What is Forces's estimate based on?",exact:true}).click();
-  const dialog=page.getByRole('dialog',{name:'What is this estimate based on?'});
+  await page.getByRole('button',{name:'Explore Motion and forces',exact:true}).click();
+  await page.getByRole('tabpanel',{name:'Motion and forces'}).getByRole('button',{name:'What is this based on?',exact:true}).click();
+  const dialog=page.getByRole('tabpanel',{name:'Forces evidence'});
   await expect(dialog.getByText('Repeated / answer-exposed practice · Correct')).toBeVisible();
   await expect(dialog.getByText('Assisted practice · Correct')).toBeVisible();
   await expect(dialog.getByText(/Source unavailable or has newer results/)).toBeVisible();

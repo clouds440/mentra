@@ -1,7 +1,7 @@
 import { buttonStyles } from '../ui/Button';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button } from '../ui/Button';
 import { EventEditor } from './EventEditor';
 import { eventProposals } from '../../services/eventProposals';

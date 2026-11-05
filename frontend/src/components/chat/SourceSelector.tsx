@@ -1,6 +1,6 @@
 import { BookOpenText, X } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button, Input, buttonStyles } from '../ui';
 import { getMaterial, libraryPage, materialError } from '../../services/rag';
 import type { ChatSelection, MaterialDocument } from '../../types/rag';
@@ -16,7 +16,7 @@ const maxReferences = 20;
 
 export const SourceSelector = forwardRef<SourcePickerHandle, {
   selection: ChatSelection; onChange: (value: ChatSelection) => void; disabled: boolean;
-  picker: 'mention' | 'browse' | null; anchor: RefObject<HTMLElement>; onClose: (restoreFocus?: boolean) => void; onPick: () => void;
+  picker: 'mention' | 'browse' | null; anchor: RefObject<HTMLElement | null>; onClose: (restoreFocus?: boolean) => void; onPick: () => void;
   query: string; onQueryChange: (value: string) => void; onActiveOptionChange: (id: string | undefined) => void;
 }>(function SourceSelector({ selection, onChange, disabled, picker, anchor, onClose, onPick, query, onQueryChange, onActiveOptionChange }, ref) {
   const open = !!picker && !disabled;
@@ -30,7 +30,7 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
   const [busy, setBusy] = useState(false);
   const [settledQuery, setSettledQuery] = useState<string>();
   const [error, setError] = useState('');
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   const results = useRef<HTMLDivElement>(null);
   const normalized = query.trim().slice(0, 200);
   const pendingQuery = settledQuery !== normalized;

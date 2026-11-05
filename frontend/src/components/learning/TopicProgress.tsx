@@ -1,6 +1,6 @@
 import { PageSection } from '../workspace/PageShell';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Activity, BookOpen, ChevronRight } from 'lucide-react';
 import { Button, Input, Pagination } from '../ui';
 import { buttonStyles } from '../ui/Button';
@@ -29,7 +29,7 @@ export function TopicProgress({ context, allContexts, reload, onTotal }: { conte
   const [organizing, setOrganizing] = useState(false);
   const [preview, setPreview] = useState<TopicGroupingPreview>();
   const [lastGrouping, setLastGrouping] = useState<number>();
-  const operation = useRef<AbortController>();
+  const operation = useRef<AbortController>(undefined);
   useEffect(() => () => operation.current?.abort(), []);
   useEffect(() => { if (search.trim() === query) return; const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => clearTimeout(timer); }, [search, query]);
   useEffect(() => {
@@ -85,7 +85,7 @@ function TopicDetail({ id, context, allContexts, initialQuery }: { id: string; c
   const [retry, setRetry] = useState(0);
   const [lastMove, setLastMove] = useState<SkillMove>();
   const [saving, setSaving] = useState(false);
-  const mutation = useRef<AbortController>();
+  const mutation = useRef<AbortController>(undefined);
   useEffect(() => () => mutation.current?.abort(), []);
   async function save(change: (signal: AbortSignal) => Promise<unknown>) {
     if (saving) return;

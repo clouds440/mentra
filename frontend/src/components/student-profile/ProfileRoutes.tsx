@@ -1,5 +1,5 @@
 import { PageLoader } from '../ui/Skeleton';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router';
 import { Button } from '../ui';
 import { useStudentProfile } from './StudentProfileProvider';
 import { LogoutButton } from '../auth/LogoutButton';

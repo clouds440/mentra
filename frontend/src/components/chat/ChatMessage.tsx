@@ -10,7 +10,7 @@ import { ChatAttachmentCard } from './ChatAttachmentCard';
 import { EventProposalCard } from '../events/EventProposalCard';
 import { ChoiceCard } from './ChoiceCard';
 import { ConversationalQuestionnaire } from './ConversationalQuestionnaire';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { WebCitation } from '../webSearch/WebCitation';
 import { CopyResponse } from './CopyResponse';
 import { ChatSourceButtons, useSourceTabs } from './ChatSources';

@@ -12,8 +12,8 @@ export function AnswerSheetUpload({attempt, onStart, onChange, disabled = false,
   attempt: AssessmentAttempt | null; onStart?: (signal: AbortSignal) => Promise<AssessmentAttempt>;
   onChange: (attempt: AssessmentAttempt) => void; disabled?: boolean; draftAnswers?: Record<string,string>; onBusyChange?: (busy: boolean) => void; assistance?: AssessmentAssistance;
 }) {
-  const input = useRef<HTMLInputElement>(null), active = useRef<AbortController>();
-  const working = useRef(attempt), lock = useRef(false), retry = useRef<File>();
+  const input = useRef<HTMLInputElement>(null), active = useRef<AbortController>(undefined);
+  const working = useRef(attempt), lock = useRef(false), retry = useRef<File>(undefined);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   useEffect(() => { working.current = attempt; }, [attempt]);
   useEffect(() => () => active.current?.abort(), []);

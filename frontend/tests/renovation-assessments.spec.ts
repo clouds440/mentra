@@ -218,7 +218,7 @@ test('results use compact two-column grids with full review and list views', asy
   await cards.nth(1).getByRole('button',{name:'Review result'}).click();
   const dialog=page.getByRole('dialog');
   const wrong=dialog.getByRole('region',{name:'Question 2 feedback',exact:true});
-  await expect(wrong).toHaveClass(/bg-danger/);
+  await expect(dialog.getByRole('button', { name: 'Question 2: incorrect' })).toHaveAttribute('aria-current', 'step');
   await expect(wrong.getByRole('group',{name:'Your answer'})).toContainText('False');
   await dialog.getByRole('button',{name:'Next result',exact:true}).click();
   await expect(dialog.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();

@@ -5,7 +5,7 @@ import { BookOpen, FileText, FolderOpen, Plus, MessageSquare, ClipboardCheck, Ar
 import { WorkspaceHeader, WorkspaceEmpty } from '../components/workspace/WorkspaceHeader';
 import { usePendingWork, usePageRefresh, refreshPage } from '../hooks/usePageRefresh';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Input, Select, Pagination, buttonStyles } from '../components/ui';
 import { libraryPage, pendingJob, materialError, transitionContext } from '../services/rag';
 import { MaterialSourceTab } from '../components/library/MaterialSourceTab';
@@ -33,7 +33,7 @@ export function LibraryPage() {
     : params.get('uploaded') === 'accepted' ? 'Upload accepted. Your material is now processing.' : '';
   const [reload, setReload] = useState(0);
   const processing = useRef(false);
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   const refresh = useCallback(() => setReload(v => v + 1), []);
   usePageRefresh(() => { if (!request.current) refresh(); }, true, ['documents', 'learning-contexts']);
   usePendingWork(() => { if (!request.current) refresh(); }, !!list?.items.some(pendingJob));

@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router';
 import { MentraLogo } from '../brand/MentraLogo';
 import { ThemeSelector } from '../theme/ThemeSelector';
 import { LogoutButton } from '../auth/LogoutButton';

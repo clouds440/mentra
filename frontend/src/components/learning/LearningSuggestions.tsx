@@ -1,7 +1,7 @@
 import { PageSection } from '../workspace/PageShell';
 import { buttonStyles } from '../ui/Button';
 import { ArrowUpRight, Compass } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { LearningOverview } from '../../types/learning';
 import { practiceLink } from '../../services/practiceIntent';
 import { progressReason, supportedReview } from './progressLabels';

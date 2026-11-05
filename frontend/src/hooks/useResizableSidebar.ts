@@ -20,7 +20,7 @@ export function useResizableSidebar(options = navigation) {
   const direction = side === 'left' ? 1 : -1;
   const [layout, setLayout] = useState(() => savedLayout(options));
   const [resizing, setResizing] = useState(false);
-  const drag = useRef<{ pointer: number; x: number; width: number; original: Layout; handle: HTMLElement }>();
+  const drag = useRef<{ pointer: number; x: number; width: number; original: Layout; handle: HTMLElement }>(undefined);
   useEffect(() => {
     if (!resizing) try { localStorage.setItem(storageKey, JSON.stringify(layout)); } catch { /* Optional preference. */ }
   }, [layout, resizing, storageKey]);

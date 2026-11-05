@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Activity, ArrowUpRight, BookOpen, CheckCircle2 } from 'lucide-react';
 import { useSidePanelActions } from '../workspace/sidePanelState';
 import { Button, buttonStyles } from '../ui';

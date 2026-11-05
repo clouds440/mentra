@@ -6,7 +6,7 @@ import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, Dialog, Input, Select } from '../ui';
 import { EventEditor } from './EventEditor';

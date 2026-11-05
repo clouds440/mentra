@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { Search, MessageSquare, ArrowUpRight, X } from 'lucide-react';
 import { Button, IconButton, Input } from '../ui';
 import { Dialog } from '../ui/Dialog';

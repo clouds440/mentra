@@ -34,7 +34,7 @@ export function SidePanel() {
   const browseId = useId();
   const [browsing, setBrowsing] = useState(false);
   const [hasBrowsed, setHasBrowsed] = useState(false);
-  const drag = useRef<{ pointer: number; start: number; scroll: number; moved: boolean }>();
+  const drag = useRef<{ pointer: number; start: number; scroll: number; moved: boolean }>(undefined);
   const opener = useRef<HTMLElement | null>(null);
   const sidebar = useResizableSidebar(resizeOptions);
   const desktop = useMobileNavigation(panel, visible, actions.hide, drawerOptions);

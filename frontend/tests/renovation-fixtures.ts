@@ -61,10 +61,10 @@ export async function workspace(page: Page, running = false, populated = false, 
     fail() { state='FAILED'; error='Mentra could not finish this response. Retry to continue.'; conversation.revision++; },
     keepLastMessages(count: number) { items.splice(0, items.length - count); },
     startWithAnswer() { items.shift(); },
-    complete(content: string, warnings: Record<string, unknown>[] = []) {
+    complete(content: string, warnings: Record<string, unknown>[] = [], withInteraction = true) {
       state = 'SUCCEEDED'; conversation.revision++; conversation.message_count++;
       items.push({id:`formatted-answer-${conversation.message_count}`, conversation_id:conversation.id, sequence:conversation.message_count, role:'assistant', content, created_at:conversation.created_at, tool_warnings:warnings,
-        ...(userSequence === 39 ? {interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]} : {})});
+        ...(withInteraction && userSequence === 39 ? {interactions:[{id:'choice-1',kind:'single_choice',question:'Which example next?',options:[{id:'python',label:'Python'},{id:'javascript',label:'JavaScript'}],selected:[],submitted_turn_id:null}]} : {})});
     },
   };
 }

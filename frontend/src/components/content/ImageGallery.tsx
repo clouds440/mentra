@@ -25,7 +25,7 @@ export function ImageGallery({ images, children }: { images: GalleryImage[]; chi
   const context = useMemo(() => ({ open }), [open]);
   const index = selected === null ? null : Math.min(selected, images.length - 1);
   const image = index !== null ? images[index] : undefined;
-  const start = useRef<{ x: number; y: number; pointer: number }>();
+  const start = useRef<{ x: number; y: number; pointer: number }>(undefined);
   const stage = useRef<HTMLDivElement>(null);
   const move = (offset: number) => { direction.current = Math.sign(offset); setSelected(current => current === null ? null : Math.max(0, Math.min(images.length - 1, current + offset))); stage.current?.focus({ preventScroll: true }); };
   const source = image?.source ? publicImageUrl(image.source, true) : null;
@@ -66,7 +66,7 @@ export function ImageGallery({ images, children }: { images: GalleryImage[]; chi
 /** Native scrolling keeps touch/trackpad input off React's rendering path. */
 export function ImageReel({ children }: { children: ReactNode }) {
   const track = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ pointer: number; x: number; left: number }>();
+  const drag = useRef<{ pointer: number; x: number; left: number }>(undefined);
   const dragged = useRef(false);
   const [edges, setEdges] = useState({ previous: false, next: false });
   useEffect(() => {

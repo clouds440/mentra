@@ -4,7 +4,7 @@ import { cn } from '../../utils/cn';
 
 /** One anchored surface for listboxes and account menus, including modal dialogs. */
 export function Popover({ anchor, open, onClose, children, className, id, role, label, placement = 'below', matchWidth = false, contentWidth = false, width = 280, multiselectable, focusOnOpen = false, viewportPadding = 12, maxHeight = 320, keepMounted = false, portalContainer }: {
-  anchor: RefObject<HTMLElement>; open: boolean; onClose: () => void; children: ReactNode;
+  anchor: RefObject<HTMLElement | null>; open: boolean; onClose: () => void; children: ReactNode;
   className?: string; id?: string; role?: string; label?: string;
   placement?: 'below' | 'above'; matchWidth?: boolean; multiselectable?: boolean; focusOnOpen?: boolean;
   viewportPadding?: number;
@@ -12,7 +12,7 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
   width?: number;
   contentWidth?: boolean;
   keepMounted?: boolean;
-  portalContainer?: RefObject<HTMLElement>;
+  portalContainer?: RefObject<HTMLElement | null>;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const close = useRef(onClose); close.current = onClose;

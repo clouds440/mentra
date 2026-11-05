@@ -7,11 +7,12 @@ for (const theme of ['light', 'dark']) for (const width of [320, 390, 768, 1440]
     await page.addInitScript(value => localStorage.setItem('mentra-theme', value), theme);
     await workspace(page, false, true);
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-    for (const [route, title] of [['/chat/polish-chat', ''], ['/library', 'Library'], ['/library/new', 'Add material'], ['/assessments', 'Assessments'], ['/assessments?tab=create', 'Create assessment'], ['/progress', 'Progress'], ['/progress?tab=events', 'Events'], ['/notifications', 'Notifications'], ['/settings', 'Settings']]) {
+    for (const [route, title, tab] of [['/chat/polish-chat', ''], ['/library', 'Library'], ['/library/new', 'Add material'], ['/assessments', 'Assessments'], ['/assessments?tab=create', 'Assessments', 'Create new'], ['/progress', 'Progress'], ['/progress?tab=events', 'Progress', 'Events'], ['/notifications', 'Notifications'], ['/settings', 'Settings']]) {
       await page.goto(route);
       await expect(page.getByRole('main')).toBeVisible();
       if (route.startsWith('/chat')) await expect(page.getByLabel('Ask Mentra anything')).toBeVisible();
       else { await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible(); await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1); }
+      if (tab) await expect(page.getByRole('tab', { name: tab, exact: true })).toHaveAttribute('aria-selected', 'true');
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: info.outputPath(route.replace(/[^a-z0-9]/gi, '-') + '.png'), animations: 'disabled' });
     }

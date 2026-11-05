@@ -3,7 +3,7 @@ import { buttonStyles } from '../components/ui/Button';
 import { ArrowLeft, FilePlus2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { MaterialUpload, MaterialUploadSkeleton } from '../components/library/MaterialUpload';
 import { Button } from '../components/ui';
 import { getCapabilities, listContexts, materialError } from '../services/rag';

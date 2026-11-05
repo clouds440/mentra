@@ -2,7 +2,7 @@ import { buttonStyles } from '../ui/Button';
 import { Button } from '../ui/Button';
 import { useEffect, useRef, useState } from 'react';
 import { memoryApi } from '../../services/memories';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { MemoryRevision, UserMemory } from '../../types/memories';
 
 export function MemoryDetails({ memory, busy = false, onRestore }: { memory: UserMemory; busy?: boolean; onRestore?: (revision: number) => void }) {

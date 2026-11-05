@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { buttonStyles } from '../ui/Button';
 import type { Assessment, AssessmentQuestion } from '../../types/assessments';
 import { Clock3, FileText } from 'lucide-react';

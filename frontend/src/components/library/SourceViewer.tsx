@@ -36,10 +36,10 @@ export function SourceReader({ source, filename, includeArchived = false, status
   const [fileError, setFileError] = useState('');
   const [reload, setReload] = useState(0);
   const [accessDenied, setAccessDenied] = useState(false);
-  const controllerRef = useRef<AbortController>();
-  const fileController = useRef<AbortController>();
-  const originalUrl = useRef<string>();
-  const originalRequest = useRef<Promise<OriginalFile>>();
+  const controllerRef = useRef<AbortController>(undefined);
+  const fileController = useRef<AbortController>(undefined);
+  const originalUrl = useRef<string>(undefined);
+  const originalRequest = useRef<Promise<OriginalFile>>(undefined);
   const displayFilename = filename ?? source.filename ?? chunks[0]?.filename;
   const passages = useMemo(() => [...(citedChunk ? [citedChunk] : []), ...groupPassages(chunks.filter(chunk => chunk.id !== citedChunk?.id))], [chunks, citedChunk]);
   usePageRefresh(() => setReload(value => value + 1), !status, ['documents', 'learning-contexts']);

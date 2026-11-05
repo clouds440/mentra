@@ -15,8 +15,8 @@ export function AssessmentGenerationCard({ id, title, onComplete }: { id: string
   const [reload, setReload] = useState(0);
   const [unavailable, setUnavailable] = useState(false);
   const completed = useRef(false), callback = useRef(onComplete); callback.current = onComplete;
-  const retryController = useRef<AbortController>();
-  const observedState = useRef<string>();
+  const retryController = useRef<AbortController>(undefined);
+  const observedState = useRef<string>(undefined);
   useEffect(() => {
     const changed = (event: Event) => {
       if ((event as CustomEvent).detail?.jobId === id) setReload(value => value+1);

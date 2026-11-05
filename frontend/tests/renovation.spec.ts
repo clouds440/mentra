@@ -70,7 +70,7 @@ for (const long of [false, true]) test(`completed Markdown reveals in one downwa
       if (answer) samples.push({ formatted: !!answer.querySelector('h2 strong'), raw: /## Reveal|\*\*ready\*\*|```/.test(answer.textContent ?? '') });
     }).observe(document.body, { childList: true, subtree: true });
   });
-  state.complete('## Reveal **ready**\n\nA [formatted link](https://example.com).\n\n```python\nprint("ready")\n```\n\n' + (long ? 'A complete paragraph, already formatted.\n\n'.repeat(80) : 'A short answer.'));
+  state.complete('## Reveal **ready**\n\nA [formatted link](https://example.com).\n\n```python\nprint("ready")\n```\n\n' + (long ? 'A complete paragraph, already formatted.\n\n'.repeat(80) : 'A short answer.'), [], false);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   const answer = page.locator('[data-message-id="formatted-answer-41"]');
   await expect(answer).toHaveClass(/chat-response-reveal/);
@@ -153,6 +153,18 @@ test('guest entry does not download unrelated workspace or Markdown chunks', asy
   expect(scripts.filter(path => /\/(ChatPage|LibraryPage|AssessmentWorkspace|MarkdownContent|OnboardingPage)-/.test(path))).toEqual([]);
 });
 
+test('a failed route chunk leaves the workspace navigation usable', async ({ page }) => {
+  await workspace(page, false, true);
+  await page.route(/\/LibraryPage(?:-[^/]+\.js|\.tsx)(?:\?|$)/, route => route.abort());
+  await page.goto('/chat/polish-chat');
+  const nav = page.getByRole('navigation', { name: 'Workspace' });
+  await nav.getByRole('link', { name: 'Library' }).click();
+  await expect(page.getByRole('heading', { name: 'This page couldn’t open' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reload page' })).toBeVisible();
+  await nav.getByRole('link', { name: 'Progress' }).click();
+  await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
+});
+
 test.describe('touch controls', () => {
   test.use({ hasTouch: true, isMobile: true });
   test('composer icons keep small glyphs and usable touch targets', async ({ page }) => {
@@ -212,7 +224,7 @@ test('shared tabs preserve assessment drafts, URL history and keyboard focus', a
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('A draft to preserve');
 });
 
-test('relevant writes keep understanding rows and coalesce invalidation events', async ({ page }) => {
+test('relevant writes refresh learning topics and coalesce invalidation events', async ({ page }) => {
   await workspace(page, false, true);
   let requests = 0;
   await page.route('**/api/v1/learning/page*', async route => {
@@ -221,7 +233,7 @@ test('relevant writes keep understanding rows and coalesce invalidation events',
     await route.fallback();
   });
   await page.goto('/progress');
-  const row = page.getByRole('row').filter({ hasText: 'Forces' });
+  const row = page.getByRole('button', { name: 'Explore Motion and forces', exact: true });
   await expect(row).toBeVisible();
   const count = requests;
   await page.evaluate(() => { const changes = new BroadcastChannel('mentra-pages-polish-user'); changes.postMessage(['learning']); changes.postMessage(['learning']); changes.close(); });
@@ -242,10 +254,11 @@ test('reduced motion and touch-sized targets retain compact desktop geometry', a
   expect(await page.locator('main').evaluate(node => getComputedStyle(node).transitionDuration)).toBe('1e-05s');
 });
 
-test('material refresh protects dirty details and source dialogs remain open until dismissed', async ({ page }) => {
+test('material refresh protects dirty details and the source panel closes independently', async ({ page }) => {
   await workspace(page, false, true);
   let document: MaterialDocument = { id: 'material-1', title: 'Saved title', filename: 'notes.txt', context_ids: ['context-1'], archived: false, revision: 1, active_generation_id: 'generation-1', version_count: 1, versions: [{ id: 'version-1', filename: 'notes.txt', media_type: 'text/plain', size_bytes: 100, created_at: '2026-10-14T00:00:00Z' }], generations: [{ id: 'generation-1', version_id: 'version-1', state: 'READY', warnings: [], chunk_count: 0 }], jobs: [] };
   await page.route('**/api/v1/documents/material-1', route => route.fulfill({ json: document }));
+  await page.route('**/api/v1/documents/material-1/versions/version-1/chunks?**', route => route.fulfill({ json: [] }));
   await page.goto('/library/material-1');
   await page.getByLabel('Title', { exact: true }).fill('Unsent draft');
   document = { ...document, revision: 2, title: 'Changed elsewhere' };
@@ -257,9 +270,9 @@ test('material refresh protects dirty details and source dialogs remain open unt
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Changed elsewhere');
   const source = page.getByRole('button', { name: 'Open source version' });
   await source.click();
-  const dialog = page.getByRole('dialog', { name: 'Source: Changed elsewhere' });
-  await expect(dialog.getByText('No extracted passages are available', { exact: false })).toBeVisible();
+  const panel = page.getByRole('tabpanel', { name: 'notes.txt' });
+  await expect(panel.getByRole('heading', { name: 'Changed elsewhere' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
+  await expect(panel).toHaveCount(0);
   await expect(source).toBeFocused();
 });

@@ -1,6 +1,6 @@
 import { PanelLeft } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
 import { IconButton } from '../components/ui/IconButton';

@@ -13,7 +13,7 @@ export function EventHistory({ revision }: { revision: string }) {
   const [nextOffset, setNextOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   async function load(offset = 0) {
     request.current?.abort(); const controller = new AbortController(); request.current = controller;
     setLoading(true); setError('');

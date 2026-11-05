@@ -4,7 +4,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Database, Settings2 } from 'lucide-react';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { ProfileSettings } from '../components/student-profile/ProfileSettings';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
 import { AssessmentSettings } from '../components/assessments/AssessmentSettings';

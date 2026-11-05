@@ -42,7 +42,7 @@ function ValueEditor({ spec, original, row, field, onEdit, mode }: { mode: 'slid
   const rowInput = row >= 0 ? spec.model?.inputs.find(item => item.dataKey === field) : undefined;
   const value = parameter?.value ?? spec.data[row]?.[field]; const [text, setText] = useState(value === null ? '' : String(value));
   const [invalid, setInvalid] = useState(false); const frame = useRef(0);
-  const pending = useRef<number>();
+  const pending = useRef<number>(undefined);
   useEffect(() => { setText(value === null ? '' : String(value)); setInvalid(false); }, [value]);
   useLayoutEffect(() => () => cancelAnimationFrame(frame.current), []);
   useLayoutEffect(() => { if (mode === 'slider') { setText(value === null ? '' : String(value)); setInvalid(false); } if (mode === 'number' && frame.current) { cancelAnimationFrame(frame.current); frame.current = 0; if (pending.current !== undefined) setInvalid(!onEdit(row, field, pending.current)); pending.current = undefined; } }, [mode]);

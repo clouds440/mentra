@@ -3,7 +3,7 @@ import { PageSection } from '../workspace/PageShell';
 import { AnswerContent } from '../content/AnswerContent';
 import { selectedAnswer } from './AssessmentPaper';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowUpRight, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button, Select, Dialog, Pagination, buttonStyles } from '../ui';
 import { ViewToggle } from '../ui/ViewToggle';
@@ -36,8 +36,8 @@ export function MistakesPractice() {
   function setOffset(value: number) { const next = new URLSearchParams(params); next.set('mistake_offset', String(value)); setParams(next); }
   const queryKey = JSON.stringify([key, offset]);
   const [count, setCount] = useState('5');
-  const active = useRef<AbortController>();
-  const lock = useRef(false), operation = useRef<{ payload: string; id: string }>();
+  const active = useRef<AbortController>(undefined);
+  const lock = useRef(false), operation = useRef<{ payload: string; id: string }>(undefined);
   const job = params.get('revision_job');
   useEffect(() => () => active.current?.abort(), []);
   usePageRefresh(() => setReload(value => value + 1), !busy && !job, ['assessments']);

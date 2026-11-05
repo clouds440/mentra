@@ -3,7 +3,7 @@ import { useEffect, useRef, type PointerEvent, type MouseEvent } from 'react';
 /** Preserve normal taps and scrolling; consume only the click after a long press. */
 export function useLongPress(onLongPress: () => void) {
   const latest = useRef(onLongPress); latest.current = onLongPress;
-  const gesture = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> }>();
+  const gesture = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> }>(undefined);
   const consumed = useRef(false);
   function cancel() { if (gesture.current) clearTimeout(gesture.current.timer); gesture.current = undefined; }
   useEffect(() => {

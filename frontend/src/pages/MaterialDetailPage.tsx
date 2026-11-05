@@ -9,7 +9,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { Button, Input, Select, FormField, buttonStyles } from '../components/ui';
 import { MaterialUpload } from '../components/library/MaterialUpload';
 import { MaterialSourceTab } from '../components/library/MaterialSourceTab';
@@ -26,14 +26,14 @@ export function MaterialDetailPage() {
   const [reload, setReload] = useState(0); const [consent, setConsent] = useState(false);
   const [conceptLabels, setConceptLabels] = useState(''); const [tagNotice, setTagNotice] = useState('');
   const [olderVersions, setOlderVersions] = useState<MaterialVersion[]>([]); const [loadingVersions, setLoadingVersions] = useState(false);
-  const controllerRef = useRef<AbortController>();
+  const controllerRef = useRef<AbortController>(undefined);
   const deleteDialog = useRef<HTMLDialogElement>(null); const revision = useRef('');
   const dirty = useRef(false);
-  const latestDocument = useRef<MaterialDocument>();
+  const latestDocument = useRef<MaterialDocument>(undefined);
   const [conflict, setConflict] = useState(false);
   const [activeAction, setActiveAction] = useState('');
   const processing = useRef(false);
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   const refresh = useCallback(() => setReload(v => v + 1), []);
   usePageRefresh(() => { if (!request.current) refresh(); }, true, ['documents', 'learning-contexts']);
   usePendingWork(() => { if (!request.current) refresh(); }, !busy && !!doc && !!pendingJob(doc));

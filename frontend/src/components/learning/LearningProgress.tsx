@@ -8,7 +8,7 @@ import { ApiError } from '../../services/api';
 import { EventAgenda } from '../events/EventAgenda';
 import { ConceptReview } from './ConceptReview';
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, Select } from '../ui';
 import { EventProposalCard } from '../events/EventProposalCard';

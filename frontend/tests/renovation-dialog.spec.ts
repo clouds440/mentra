@@ -47,7 +47,7 @@ test('chat reference opens in the side panel and its fullscreen diagram closes i
   await expect(close).toBeVisible();
   await expect.poll(async () => Math.round((await page.locator('#workspace-side-panel').boundingBox())!.width)).toBe(410);
   const bounds = await close.boundingBox();
-  await parent.evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await parent.locator('[data-visual-kind="diagram"]').scrollIntoViewIfNeeded();
   await expect(close).toBeInViewport();
   expect(await close.boundingBox()).toEqual(bounds);
   await parent.getByRole('button', { name: 'Expand', exact: true }).click();

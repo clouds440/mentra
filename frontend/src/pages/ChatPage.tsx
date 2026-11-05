@@ -6,7 +6,7 @@ import { ApiError } from '../services/api';
 import { chatErrorMessage } from '../services/userError';
 import { ArrowDown, FileText, Layers, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router';
 import { useAuth } from '../components/auth/AuthProvider';
 import type { ChatSelection } from '../types/rag';
 import { ChatComposer } from '../components/chat/ChatComposer';
@@ -62,7 +62,7 @@ export function ChatPage() {
     return () => window.removeEventListener('mentra:assessment-generation', changed);
   }, [id]);
   const [selection, setSelection] = useState<ChatSelection>({ mode: 'STANDARD' });
-  const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>();
+  const selectionTurn = useRef<{ key: string; chat: string; turn?: string; state?: string }>(undefined);
   const [draft, setDraft] = useState('');
   const [materialPickerRequest, setMaterialPickerRequest] = useState(0);
   useEffect(() => { if (practice) setDraft(`Help me practice ${practice.slice(0, 200)}. Ask one question at a time.`); }, [practice]);

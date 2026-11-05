@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { ArrowUpRight, RotateCcw } from 'lucide-react';
 import { buttonStyles } from '../ui';
 import type { Assessment, AssessmentAttempt } from '../../types/assessments';

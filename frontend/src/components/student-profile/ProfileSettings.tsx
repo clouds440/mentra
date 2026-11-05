@@ -1,6 +1,6 @@
 import { PageSection } from '../workspace/PageShell';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button, Dialog } from '../ui';
 import { useStudentProfile } from './StudentProfileProvider';
 import { ProfileForm } from './ProfileForm';

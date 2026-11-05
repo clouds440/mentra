@@ -13,8 +13,8 @@ export function MoveSubskill({ topic, skill, context, onMoved }: { topic: Learni
   const [data, setData] = useState<LearningTopicsPage>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const operation = useRef<AbortController>();
-  const receipt = useRef<{ target: string; id: string }>();
+  const operation = useRef<AbortController>(undefined);
+  const receipt = useRef<{ target: string; id: string }>(undefined);
   useEffect(() => () => operation.current?.abort(), []);
   useEffect(() => { if (search.trim() === query) return; const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => clearTimeout(timer); }, [search, query]);
   useEffect(() => {

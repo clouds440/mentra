@@ -2,7 +2,7 @@ import { buttonStyles } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Button } from '../ui';
 import { assessments } from '../../services/assessments';
 import type { AssessmentAttempt, ChatAssessmentCardData } from '../../types/assessments';

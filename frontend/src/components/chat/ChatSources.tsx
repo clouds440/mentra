@@ -93,7 +93,7 @@ export function ChatSourceCatalog({ messages, conversationId, before, compact = 
   const [next, setNext] = useState<number | null>();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController>(undefined);
   useEffect(() => () => request.current?.abort(), []);
   const cursor = next === undefined ? before : next;
   async function loadEarlier() {

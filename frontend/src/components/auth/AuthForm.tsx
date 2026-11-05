@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 import { Button, Card, Input } from '../ui';
 import { useAuth } from './AuthProvider';
 import { ApiError } from '../../services/api';

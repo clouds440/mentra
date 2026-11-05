@@ -14,8 +14,10 @@ for (const width of [320, 390, 430]) for (const theme of ['light', 'dark']) {
     expect(Math.abs(bounds!.x - (width - bounds!.x - bounds!.width))).toBeLessThanOrEqual(2);
     const menu = page.getByRole('button', { name: 'Open navigation menu' });
     const bell = page.getByRole('link', { name: /^Notifications/ });
-    const left = await menu.boundingBox(); const right = await bell.boundingBox();
-    expect(left!.width).toBe(44); expect(right!.width).toBe(44);
+    const panel = page.getByRole('button', { name: 'Open side panel', exact: true });
+    const rightmost = await panel.count() ? panel : bell;
+    const left = await menu.boundingBox(); const right = await rightmost.boundingBox();
+    expect(left!.width).toBe(44); expect((await bell.boundingBox())!.width).toBe(44); expect(right!.width).toBe(44);
     expect(left!.x).toBeLessThanOrEqual(8);
     expect(width - right!.x - right!.width).toBeLessThanOrEqual(8);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -3,7 +3,7 @@ import { SourceMarkdownLink } from '../webSearch/SourceLink';
 import { ApiError } from '../../services/api';
 import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { memoryApi } from '../../services/memories';
 import type { HistoryReference, MemoryReference, HistoryWindow, UserMemory } from '../../types/memories';
 

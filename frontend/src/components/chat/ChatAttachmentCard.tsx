@@ -1,7 +1,7 @@
 import { Skeleton } from '../ui/Skeleton';
 import { ApiError } from '../../services/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { BookPlus, FileText, Image as ImageIcon, LibraryBig } from 'lucide-react';
 import { getChatAttachment, getChatAttachmentSource, saveChatAttachment } from '../../services/chatAttachments';
 import type { AttachmentDetail, ChatAttachment } from '../../services/chatAttachments';

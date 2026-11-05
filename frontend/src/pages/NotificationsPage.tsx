@@ -6,7 +6,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { ApiError } from '../services/api';
 import { Toggle } from '../components/ui/Toggle';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useAuth } from '../components/auth/AuthProvider';
 import { Button, buttonStyles } from '../components/ui/Button';
 import { notifications, notificationChanged } from '../services/notifications';

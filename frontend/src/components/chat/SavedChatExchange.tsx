@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { MessageSquare, ArrowUpRight } from 'lucide-react';
 import { savedExchange } from '../../services/conversations';
 import { ApiError } from '../../services/api';

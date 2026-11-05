@@ -6,7 +6,7 @@ import type { Assessment } from '../../types/assessments';
 
 export function PrintPaperButton({ assessment }: { assessment: Assessment }) {
   const [busy,setBusy]=useState(false), [error,setError]=useState('');
-  const active = useRef<AbortController>();
+  const active = useRef<AbortController>(undefined);
   const [downloading, setDownloading] = useState(false);
   useEffect(() => () => active.current?.abort(), []);
   async function download() {
