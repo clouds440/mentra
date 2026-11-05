@@ -48,10 +48,10 @@ class EvidenceStore(PostgresRepositoryBase):
                                    order_by=misconceptions.c.confidence.desc()).label('position')).where(
             misconceptions.c.learner_id == learner_id, misconceptions.c.concept_id.in_(concept_ids),
             misconceptions.c.status == 'ACTIVE', misconceptions.c.confidence >= 0.8).subquery()
+        from sqlalchemy import literal, union_all, Text
+        from sqlalchemy.dialects.postgresql import JSONB
         result = {}
         with self._session() as session:
-            for row in session.execute(select(ranked).where(ranked.c.position <= 3)).mappings():
-                result.setdefault(row['concept_id'], []).append(row['description'])
             # Grade misconceptions follow accepted evidence, so corrections and
             # uncertain regrades automatically remove obsolete observations.
             canonical = func.coalesce(redirects.c.target_id, evidence.c.concept_id)
@@ -63,9 +63,21 @@ class EvidenceStore(PostgresRepositoryBase):
                     decisions.c.status == 'ACCEPTED', evidence.c.evidence_confidence >= .8,
                     canonical.in_(concept_ids), evidence.c.result != 'CORRECT',
                     evidence.c.metadata_json.has_key('misconceptions')).subquery()
-            for row in session.execute(select(observed).where(observed.c.position <= 3)).mappings():
+            # Both channels share one round trip. Manual observations retain
+            # precedence, then accepted grade evidence fills remaining slots.
+            manual = select(literal(0).label('channel'), ranked.c.concept_id,
+                ranked.c.description, literal(None, JSONB).label('metadata_json'), ranked.c.position
+                ).where(ranked.c.position <= 3)
+            graded = select(literal(1).label('channel'), observed.c.concept_id,
+                literal(None, Text).label('description'), observed.c.metadata_json, observed.c.position
+                ).where(observed.c.position <= 3)
+            combined = union_all(manual, graded).subquery()
+            for row in session.execute(select(combined).order_by(combined.c.channel, combined.c.position)).mappings():
                 descriptions = result.setdefault(row['concept_id'], [])
-                for description in row['metadata_json'].get('misconceptions', [])[:3]:
-                    if isinstance(description, str) and description.strip() and description not in descriptions and len(descriptions) < 3:
-                        descriptions.append(description[:1000])
+                if row['channel'] == 0:
+                    descriptions.append(row['description'])
+                else:
+                    for description in row['metadata_json'].get('misconceptions', [])[:3]:
+                        if isinstance(description, str) and description.strip() and description not in descriptions and len(descriptions) < 3:
+                            descriptions.append(description[:1000])
         return result

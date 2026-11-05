@@ -31,6 +31,10 @@ class AssessmentWorkflows:
         from app.assessments.revision import reusable_revision
         reuse = reusable_revision(request, revision)
         concepts = list(dict.fromkeys(identifier for question in revision['questions'] for identifier in question['concept_ids'])) if revision else []
+        from .assessment_context import optional_context
+        preparation, profile_context = await run_in_threadpool(optional_context, self, owner, request, reuse=bool(reuse))
+        learner_context = preparation.packet if preparation else None
+        target_concepts = dict(preparation.concepts) if preparation else {}
         sources = []
         if request.grounded:
             if self.rag is None:
@@ -44,17 +48,18 @@ class AssessmentWorkflows:
                 sources = revision_sources(revision.get('sources', []), sources)
         prompt_sources = [{key:source[key] for key in ('token','title','excerpt')} for source in sources]
         if not revision and request.concept_ids:
-            exact = await run_in_threadpool(self.learner.get_practice_concepts, owner, request.context_id,
-                                           [str(identifier) for identifier in request.concept_ids])
-            concepts = [concept.id for concept in exact]
+            if preparation:
+                concepts = [str(identifier) for identifier in request.concept_ids]
+            else:
+                exact = await run_in_threadpool(self.learner.get_practice_concepts, owner, request.context_id,
+                                               [str(identifier) for identifier in request.concept_ids])
+                target_concepts.update({value.id: value for value in exact})
+                concepts = [concept.id for concept in exact]
         elif not revision:
             labels = [label.strip() for label in request.concept_names if label.strip()]
             inferred = not labels
             if inferred and not compact:
-                ranked = await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
-                known = list(dict.fromkeys(item.concept_id for item in [*ranked['recommendations'], *ranked['verification']]))[:10]
-                known_labels = {item.concept_id: item.name for item in [*ranked['recommendations'], *ranked['verification']]}
-                known_names = [known_labels[identifier] for identifier in known]
+                known_names = [item.name for item in learner_context.concepts] if learner_context else []
                 try:
                     plan = await invoke_generated(self.llm, PromptSource.ASSESSMENT_TARGETS,
                         dict(topic=request.topic, count=request.count, purpose=request.purpose,
@@ -74,23 +79,16 @@ class AssessmentWorkflows:
             for offset in range(0, len(labels), 5):
                 resolved = await self.learner.resolve_generated_concepts(GeneratedConceptsRequest(
                     learner_id=owner, context_id=request.context_id, topic=request.topic, labels=labels[offset:offset+5], permissive=True))
+                target_concepts.update({value.id: value for value in resolved})
                 concepts.extend(concept.id for concept in resolved)
             concepts = list(dict.fromkeys(concepts))
-        from .concurrent_reads import gather_reads
-        async def read_profile():
-            return await run_in_threadpool(self.profile.prompt_context, owner) if self.profile else None
-        async def read_ranked():
-            return dict(recommendations=[], verification=[]) if reuse else await run_in_threadpool(self.learner.get_study_targets, owner, [request.context_id])
-        async def read_learner_context():
-            return None if reuse else await run_in_threadpool(self.learner.get_relevant_context,
-                LearnerContextRequest(learner_id=owner, query=request.topic, context_ids=[request.context_id], max_concepts=8))
-        ranked, target_concepts, profile_context, learner_context = await gather_reads([
-            read_ranked,
-            lambda: run_in_threadpool(self.learner.get_concepts, concepts),
-            read_profile,
-            read_learner_context,
-        ])
-        recommendations, verification = ranked['recommendations'], ranked['verification']
+        # The packet already supplies challenge support, uncertainty and
+        # verification flags. Do not compute the entire registry ranking twice
+        # or duplicate the same state in three prompt sections.
+        recommendations, verification = [], []
+        missing = [identifier for identifier in concepts if identifier not in target_concepts]
+        if missing:
+            target_concepts.update(await run_in_threadpool(self.learner.get_concepts, missing))
         targets = [dict(id=identifier, name=target_concepts[identifier].canonical_name) for identifier in concepts]
         if hasattr(self.learner, 'get_skill_topics'):
             memberships = await run_in_threadpool(self.learner.get_skill_topics, owner, concepts)
@@ -121,7 +119,7 @@ class AssessmentWorkflows:
             from .assessment_design import design_assessment
             question_plan, paper = await design_assessment(self.llm, request, prompt_sources,
                 profile_context.model_dump(mode='json') if profile_context else None, original=revision,
-                learner_context=learner_context.model_dump(mode='json'))
+                learner_context=learner_context.model_dump(mode='json') if learner_context else None)
         else:
             question_plan, paper = blueprint(request)
         if not paper: question_plan = question_plan[:min(request.count or 20,20)]

@@ -18,6 +18,10 @@ class StudentProfileService:
     def get(self, learner_id):
         return self.repository.read_profile(learner_id)
 
+    def prompt_snapshot(self, learner_id):
+        profile = self.repository.read_profile_snapshot(learner_id)
+        return context_packet(profile) if profile else None
+
     def update_details(self, learner_id, request: ProfileUpdate):
         request = ProfileUpdate.model_validate(request.model_dump(exclude_unset=True))
         with self.repository.transaction(learner_id) as store:

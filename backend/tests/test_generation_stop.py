@@ -50,6 +50,11 @@ class GenerationStopTests(unittest.IsolatedAsyncioTestCase):
         with self.db.sessions.begin() as session:
             session.execute(update(generation_jobs).where(generation_jobs.c.id == job['id']).values(resume_until=self.service.repository.clock()-timedelta(seconds=1)))
         self.assertFalse(self.service.generation_jobs.get(self.owner, job['id'])['can_resume'])
+        # Status reads project expiry without maintenance writes. The worker
+        # sweep (also run before retry/claim) owns private checkpoint cleanup.
+        with self.db.sessions() as session:
+            self.assertIn('questions', session.scalar(select(generation_jobs.c.progress).where(generation_jobs.c.id == job['id'])))
+        self.service.generation_jobs.expire_stopped(self.owner)
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(generation_jobs.c.progress).where(generation_jobs.c.id == job['id'])), {})
         # A late Stop must return the already-published result, even before the

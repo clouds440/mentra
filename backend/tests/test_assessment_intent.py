@@ -76,11 +76,12 @@ class IntentContractTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'Requires isolated test database')
 class AssessmentIntentTests(unittest.IsolatedAsyncioTestCase):
-    async def test_selection_reads_shared_ranking_once(self):
-        with patch.object(self.learner,'get_study_targets',wraps=self.learner.get_study_targets) as ranking:
+    async def test_explicit_topic_uses_one_compact_selection_without_global_ranking(self):
+        with patch.object(self.learner,'get_study_targets',side_effect=AssertionError('Explicit topic needs no global ranking')), \
+                patch.object(self.learner,'get_assessment_selection_context',wraps=self.learner.get_assessment_selection_context) as preparation:
             request=await resolve_assessment_intent(self.service.workflows,self.owner,
                 AssessmentIntent(client_request_id=uuid4(),topic='Motion'))
-        self.assertEqual(ranking.call_count,1)
+        self.assertEqual(preparation.call_count,1)
         self.assertEqual(request.topic,'Motion')
 
     async def test_exact_practice_target_survives_generation_and_foreign_target_is_rejected_before_queue(self):

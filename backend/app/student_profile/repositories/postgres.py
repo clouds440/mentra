@@ -10,6 +10,15 @@ from app.core.logging import workflow_logger
 
 @workflow_logger.connect_module(default_outcome='success', policies={'transaction': {'kind':'contextmanager'}})
 class PostgresStudentProfileRepository:
+    def read_profile_snapshot(self, learner_id):
+        """One fresh read for optional context; never create a profile on reads."""
+        from .tables import student_profile
+        from ..schemas import StudentProfile
+        with self.sessions() as session:
+            row = session.execute(select(student_profile).where(
+                student_profile.c.learner_id == canonical_learner_id(learner_id))).mappings().first()
+            return StudentProfile.model_validate(dict(row)) if row else None
+
     def __init__(self, session_factory):
         self.sessions = session_factory
         from app.core.read_cache import ReadCache

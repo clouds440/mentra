@@ -13,6 +13,8 @@ class GenerationJobs:
     def public(self, row):
         progress = row['progress'] or {}
         expires = row.get('resume_until')
+        if row['state'] == 'stopped' and expires and expires <= self.repository.clock():
+            progress = {}  # Project expiry without writing from a status GET.
         return dict(id=row['id'], state=row['state'], title=(progress.get('resolved_request') or row['request']).get('topic') or 'Your assessment',
             conversation_id=row.get('conversation_id'), source_turn_id=row.get('source_turn_id'),
             completed_parts=len(progress.get('questions', [])), total_parts=len(progress.get('plan', [])) or None,
@@ -58,14 +60,13 @@ class GenerationJobs:
         return self.get(owner, row['id'])
 
     def get(self, owner, identifier):
-        self.expire_stopped(owner)
         with self.repository.sessions() as session:
-            row = session.execute(select(jobs).where(jobs.c.id==identifier, jobs.c.learner_id==owner)).mappings().first()
+            from app.chat.repositories.tables import conversations
+            visible = select(conversations.c.id).where(conversations.c.id == jobs.c.conversation_id,
+                conversations.c.learner_id == owner, conversations.c.deleted_at.is_(None)).exists()
+            row = session.execute(select(jobs).where(jobs.c.id==identifier, jobs.c.learner_id==owner,
+                or_(jobs.c.conversation_id.is_(None), visible))).mappings().first()
             if not row: raise AppError('ASSESSMENT_JOB_NOT_FOUND', 'Assessment generation unavailable.', 404)
-            if row['conversation_id']:
-                from app.chat.repositories.tables import conversations
-                if not session.scalar(select(conversations.c.id).where(conversations.c.id==row['conversation_id'], conversations.c.learner_id==owner, conversations.c.deleted_at.is_(None))):
-                    raise AppError('ASSESSMENT_JOB_NOT_FOUND', 'Assessment generation unavailable.', 404)
             value = self.public(row)
             if row['state'] == 'completed' and row['result']:
                 result = row['result']

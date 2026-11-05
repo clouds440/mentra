@@ -49,6 +49,8 @@ class LearnerEngine:
             engine.states._read_states = {}
             engine.retrieval._ranking_cache = {}
             engine.retrieval._projection_cache = {}
+            engine.retrieval._membership_cache = {}
+            engine.retrieval._topic_parent_cache = {}
             yield engine
 
     def __init__(self, repository: LearnerRepository, *, mastery_policy: MasteryPolicy | None = None,
@@ -336,6 +338,31 @@ class LearnerEngine:
 
     def get_relevant_context(self, request: LearnerContextRequest) -> LearnerContextPacket:
         return self.retrieval.packet(request)
+
+    def get_assessment_context(self, learner_id: str, context_id: str, query: str, concept_ids=()):
+        from .preparation import prepare
+        return prepare(self, learner_id, context_id, query, concept_ids)
+
+    def get_assessment_selection_context(self, learner_id, context_ids=None, query=None):
+        with self.read_scope() as scoped:
+            scoped.states._read_only = True
+            scoped.contexts._read_only = True
+            ranked = dict(recommendations=[], verification=[])
+            if query:
+                scoped.retrieval._allow_ranked_fallback = False
+                packet = scoped.get_relevant_context(LearnerContextRequest(learner_id=learner_id,
+                    context_ids=context_ids, query=query, max_concepts=8, include_related=False))
+            else:
+                ranked = scoped.get_study_targets(learner_id, context_ids)
+                ids = list(dict.fromkeys(item.concept_id for item in
+                    [*ranked['recommendations'], *ranked['verification']]))[:8]
+                concepts = scoped.repository.canonical_concepts(ids) if ids else {}
+                contexts = scoped.contexts.select(learner_id, context_ids)
+                packet = LearnerContextPacket(context_ids=[value.id for value in contexts],
+                    active_contexts=[value.name for value in contexts if value.status == 'ACTIVE'],
+                    concepts=scoped.retrieval.project(learner_id, [concepts[key] for key in ids], contexts) if ids else [],
+                    generated_at=self.clock())
+            return ranked, packet
 
     def get_study_recommendations(self, request: StudyRecommendationsRequest) -> list[StudyRecommendation]:
         return self.retrieval.recommend(request)

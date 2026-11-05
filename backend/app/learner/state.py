@@ -29,6 +29,10 @@ class StateService:
             states.update({key: cache[(learner_id, key)] for key in concept_ids
                            if (learner_id, key) in cache and cache[(learner_id, key)] is not None})
         stale = [key for key, state in states.items() if not self.current(state)]
+        if stale and getattr(self, '_read_only', False):
+            workflow_logger.event('learner.policy_refresh_deferred', concepts=len(stale))
+            states = {key: state for key, state in states.items() if key not in stale}
+            stale = []  # Preserve canonical evidence; stale estimates are unknown.
         for start in range(0, len(stale), 32):
             batch = stale[start:start + 32]
             with self.repository.transaction(learner_ids=[learner_id]) as repository:

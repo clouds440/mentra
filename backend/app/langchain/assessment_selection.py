@@ -25,15 +25,28 @@ async def resolve_assessment_intent(workflows, owner, intent):
         identifiers = [intent.context_id] if intent.context_id else [row['context_id'] for row in contexts[:20]]
         scope = dict(context_ids=identifiers) if identifiers else {}
         async def read_profile():
-            return await run_in_threadpool(workflows.profile.prompt_context, owner) if workflows.profile else None
+            from .assessment_context import optional_read
+            if not workflows.profile: return None
+            read = getattr(workflows.profile, 'prompt_snapshot', None) or workflows.profile.prompt_context
+            return await run_in_threadpool(optional_read, 'profile', lambda: read(owner))
         # Recommendations and verification use the same ranking inputs. Read
         # them once through the existing owner-bound domain contract; do not
         # retain this snapshot across later concept mutations or responses.
-        ranked, learner_context, profile = await asyncio.gather(
-            run_in_threadpool(learner.get_study_targets, owner, identifiers or None),
-            tools['get_relevant_learner_context'].ainvoke(dict(
-                query=intent.topic or intent.instructions or 'Choose useful assessment practice', **scope)),
-            read_profile())
+        from .assessment_context import optional_read
+        prepare = getattr(learner, 'get_assessment_selection_context', None)
+        if prepare:
+            prepared = await run_in_threadpool(optional_read, 'selection',
+                lambda: prepare(owner, identifiers or None, intent.topic))
+            if prepared:
+                ranked, packet = prepared
+                learner_context = packet.model_dump(mode='json')
+            else:
+                ranked, learner_context = dict(recommendations=[], verification=[]), dict(availability='unavailable')
+        else:
+            ranked = await run_in_threadpool(learner.get_study_targets, owner, identifiers or None)
+            learner_context = await tools['get_relevant_learner_context'].ainvoke(dict(
+                query=intent.topic or intent.instructions or 'Choose useful assessment practice', **scope))
+        profile = await read_profile()
         data = dict(priorities=[item.model_dump(mode='json') for item in ranked['recommendations']],
             verification=[item.model_dump(mode='json') for item in ranked['verification']],learner=learner_context)
         contexts = [row for row in contexts if row['status'] != 'ARCHIVED']

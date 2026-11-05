@@ -92,6 +92,11 @@ class ContextService:
         contexts = self.repository.list_for_learner(learner_id)
         stale = [c for c in contexts
                  if c.status in ('ACTIVE', 'RELATED') and c.last_activity_at and c.last_activity_at < cutoff]
+        if stale and getattr(self, '_read_only', False):
+            contexts = [replace(c, status='DORMANT', relevance_score=.1) if c in stale else c for c in contexts]
+            if cache is not None:
+                cache[learner_id] = contexts
+            return contexts
         if stale:
             refreshed = {}
             with self.repository.transaction(learner_ids=[learner_id]) as repository:

@@ -20,6 +20,25 @@ class RetrievalService:
         self.retention, self.ranking, self.clock = retention, ranking, clock
         self.states = states
 
+    def memberships(self, owner, ids):
+        cache = getattr(self, '_membership_cache', None)
+        if cache is None:
+            return self.repository.skill_memberships(owner, ids)
+        missing = [key for key in ids if key not in cache]
+        if missing:
+            values = self.repository.skill_memberships(owner, missing)
+            cache.update({key: values.get(key) for key in missing})
+        return {key: cache[key] for key in ids if cache.get(key) is not None}
+
+    def topic_parents(self, owner, context_ids):
+        cache = getattr(self, '_topic_parent_cache', None)
+        key = (owner, tuple(sorted(context_ids)))
+        if cache is None:
+            return self.repository.topic_parent_ids(owner, context_ids)
+        if key not in cache:
+            cache[key] = self.repository.topic_parent_ids(owner, context_ids)
+        return cache[key]
+
     def ranking_data(self, request, *, all_contexts=False):
         contexts = self.contexts.select(request.learner_id, request.context_ids, all_contexts=all_contexts)
         cache = getattr(self, '_ranking_cache', None)
@@ -76,7 +95,7 @@ class RetrievalService:
         # Group before taking the shortlist: a large weak topic must not crowd
         # out every other topic merely because it has many children.
         context_ids = list({value['context_id'] for value in factors.values() if value.get('context_id')})
-        parents = self.repository.topic_parent_ids(request.learner_id, context_ids)
+        parents = self.topic_parents(request.learner_id, context_ids)
         best = {}
         for item in ranked():
             parent = parents.get(item.concept_id, item.concept_id)
@@ -84,7 +103,7 @@ class RetrievalService:
             if previous is None or (item.priority, item.concept_id) > (previous.priority, previous.concept_id):
                 best[parent] = item
         selected = nlargest(request.limit, best.values(), key=lambda item: (item.priority, item.concept_id))
-        memberships = self.repository.skill_memberships(request.learner_id, [item.concept_id for item in selected])
+        memberships = self.memberships(request.learner_id, [item.concept_id for item in selected])
         result, seen = [], set()
         for item in selected:
             group = memberships.get(item.concept_id, {})
@@ -109,7 +128,7 @@ class RetrievalService:
         concepts = self.repository.context_concepts(request.learner_id, context_ids,
                                                     query_terms=terms, limit=request.max_concepts,
                                                     normalized_query=normalize(request.query)) if terms else []
-        if not concepts:
+        if not concepts and getattr(self, '_allow_ranked_fallback', True):
             from app.learner.schemas import StudyRecommendationsRequest
             selected = self.recommend(StudyRecommendationsRequest(learner_id=request.learner_id,
                                       context_ids=context_ids, limit=request.max_concepts))
@@ -162,7 +181,7 @@ class RetrievalService:
             if cache is not None:
                 cache[key] = misconceptions, factors
         now = self.clock()
-        memberships = self.repository.skill_memberships(learner_id, ids)
+        memberships = self.memberships(learner_id, ids)
         items = []
         for concept in concepts:
             state = states.get(concept.id)
