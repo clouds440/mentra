@@ -79,7 +79,7 @@ test('Recents shares the navigation hover, animates independently, and keeps sea
   await toggle.hover();
   await expect(row).toHaveCSS('background-color', hover);
   await searchButton.hover();
-  await expect(row).toHaveCSS('background-color', hover);
+  await expect(row).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(searchButton).toHaveCSS('background-color', active);
   await expect(page.getByRole('link', { name: 'Assessments' }).locator('svg')).toHaveClass(/lucide-clipboard-check/);
   const listId = await toggle.getAttribute('aria-controls');

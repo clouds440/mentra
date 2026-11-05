@@ -1,98 +1,112 @@
-import { buttonStyles } from '../ui/Button';
-import { Skeleton } from '../ui/Skeleton';
-import { Toggle } from '../ui/Toggle';
+import { BookOpenText, X } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Select } from '../ui';
-import { getMaterial, listMaterials, listContexts, materialError } from '../../services/rag';
-import type { MaterialDocument, LearningContext, ChatSelection } from '../../types/rag';
+import { Button, Input, buttonStyles } from '../ui';
+import { getMaterial, libraryPage, materialError } from '../../services/rag';
+import type { ChatSelection, MaterialDocument } from '../../types/rag';
 import { Popover } from '../ui/Popover';
-import { ApiError } from '../../services/api';
+import { Skeleton } from '../ui/Skeleton';
 
-export interface SourcePickerHandle { handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean }
+type PickerKey = KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>;
+export interface SourcePickerHandle {
+  handleKeyDown: (event: PickerKey) => boolean;
+  selectionIssue: () => string | undefined;
+}
+const maxReferences = 20;
 
 export const SourceSelector = forwardRef<SourcePickerHandle, {
   selection: ChatSelection; onChange: (value: ChatSelection) => void; disabled: boolean;
-  pickerOpen: boolean; anchor: RefObject<HTMLElement>; onClose: () => void; onPick: () => void;
-  query: string; onActiveOptionChange: (id: string | undefined) => void;
-}>(function SourceSelector({ selection, onChange, disabled, pickerOpen, anchor, onClose, onPick, query, onActiveOptionChange }, ref) {
+  picker: 'mention' | 'browse' | null; anchor: RefObject<HTMLElement>; onClose: (restoreFocus?: boolean) => void; onPick: () => void;
+  query: string; onQueryChange: (value: string) => void; onActiveOptionChange: (id: string | undefined) => void;
+}>(function SourceSelector({ selection, onChange, disabled, picker, anchor, onClose, onPick, query, onQueryChange, onActiveOptionChange }, ref) {
+  const open = !!picker && !disabled;
+  const ids = selection.document_ids ?? [];
+  const selectedKey = JSON.stringify(ids);
+  const [known, setKnown] = useState<Record<string, MaterialDocument | null>>({});
+  const [documents, setDocuments] = useState<MaterialDocument[]>([]);
   const [active, setActive] = useState(0);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { if (pickerOpen) setActive(0); }, [pickerOpen]);
-  const [documents, setDocuments] = useState<MaterialDocument[]>([]); const [contexts, setContexts] = useState<LearningContext[]>([]); const [error, setError] = useState('');
-  const [nextOffset, setNextOffset] = useState(0); const [total, setTotal] = useState(0); const [loadingMore, setLoadingMore] = useState(false);
-  const controllerRef = useRef<AbortController>();
-  const [notice, setNotice] = useState('');
-  function choose(value: ChatSelection) { setNotice(''); onChange(value); }
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [settledQuery, setSettledQuery] = useState<string>();
+  const [error, setError] = useState('');
+  const request = useRef<AbortController>();
+  const results = useRef<HTMLDivElement>(null);
+  const normalized = query.trim().slice(0, 200);
+  const pendingQuery = settledQuery !== normalized;
+  const matches = pendingQuery ? [] : documents;
+  const includeArchived = !!selection.include_archived;
+
   useEffect(() => {
-    if (!pickerOpen && !selection.document_ids?.length && !selection.context_ids?.length) {
-      setLoading(false);
-      return; // Ordinary chat does not need Library/context list queries.
-    }
     const controller = new AbortController();
-    controllerRef.current = controller;
-    setLoadingMore(false);
-    async function load() {
-      setLoading(true);
-      try {
-        const [list, ctx] = await Promise.all([listMaterials(0, selection.include_archived ? undefined : false, controller.signal), listContexts(controller.signal)]);
-        const items = [...list.items];
-        for (const id of selection.document_ids ?? []) if (!items.some(d => d.id === id)) {
-          try { items.push(await getMaterial(id, controller.signal)); }
-          catch (e) { if (!(e instanceof ApiError && e.status === 404)) throw e; }
-        }
-        if (!controller.signal.aborted) {
-          setDocuments(items); setContexts(ctx); setNextOffset(list.items.length); setTotal(list.total); setError('');
-          const documentIds = selection.document_ids?.filter(id => items.some(d => d.id === id && d.active_generation_id &&
-            (selection.include_archived || (!d.archived && ctx.some(c => c.status !== 'ARCHIVED' && d.context_ids.includes(c.context_id))))));
-          const contextIds = selection.context_ids?.filter(id => ctx.some(c => c.context_id === id && (selection.include_archived || c.status !== 'ARCHIVED')));
-          if (documentIds?.length !== selection.document_ids?.length || contextIds?.length !== selection.context_ids?.length) {
-            setNotice('Some selected material is unavailable or archived. Choose available sources before sending.');
-            onChange({ ...selection, document_ids: documentIds, context_ids: contextIds });
-          }
-        }
-      } catch (e) { if (!controller.signal.aborted) setError(materialError(e)); }
-      finally { if (!controller.signal.aborted) setLoading(false); }
-    }
-    void load(); return () => controller.abort();
-  }, [selection.include_archived, selection.document_ids?.join(','), selection.context_ids?.join(','), pickerOpen]);
-  async function loadMore() {
-    const controller = controllerRef.current;
-    setLoadingMore(true);
+    const missing = ids.filter(id => !(id in known));
+    if (missing.length) void Promise.all(missing.map(async id => {
+      try { return [id, await getMaterial(id, controller.signal)] as const; }
+      catch { return [id, null] as const; }
+    })).then(rows => {
+      if (!controller.signal.aborted) setKnown(previous => ({ ...previous, ...Object.fromEntries(rows) }));
+    });
+    return () => controller.abort();
+  }, [selectedKey]);
+
+  async function load(controller: AbortController, start: number, search: string) {
+    setBusy(true); setError('');
     try {
-      const list = await listMaterials(nextOffset, selection.include_archived ? undefined : false, controller?.signal);
-      if (!controller?.signal.aborted) {
-        setDocuments(previous => [...previous, ...list.items.filter(item => !previous.some(old => old.id === item.id))]);
-        setNextOffset(list.offset + list.items.length); setTotal(list.total); setError('');
-      }
-    } catch (e) { if (!controller?.signal.aborted) setError(materialError(e)); }
-    finally { if (!controller?.signal.aborted) setLoadingMore(false); }
+      const page = await libraryPage(start, false, controller.signal, undefined, search);
+      if (controller.signal.aborted) return;
+      const contexts = new Set(page.contexts.filter(context => context.status !== 'ARCHIVED').map(context => context.context_id));
+      const ready = page.items.filter(item => item.active_generation_id && !item.archived && item.context_ids.some(id => contexts.has(id)));
+      setDocuments(previous => start ? [...previous, ...ready.filter(item => !previous.some(knownItem => knownItem.id === item.id))] : ready);
+      setOffset(page.offset + page.items.length); setTotal(page.total);
+    } catch (reason) { if (!controller.signal.aborted) setError(materialError(reason)); }
+    finally {
+      if (!controller.signal.aborted) { setBusy(false); setSettledQuery(search); }
+    }
   }
-  const available = documents.filter(d => d.active_generation_id && (selection.include_archived ||
-    (!d.archived && contexts.some(c => c.status !== 'ARCHIVED' && d.context_ids.includes(c.context_id)))));
-  const matches = available.filter(d => `${d.title} ${d.filename}`.toLocaleLowerCase().includes(query.toLocaleLowerCase().trim()));
-  // The Library API is paginated; include later pages when searching.
+
   useEffect(() => {
-    if (pickerOpen && query.trim() && !loading && !loadingMore && !error && nextOffset < total) void loadMore();
-  }, [pickerOpen, query, loading, loadingMore, error, nextOffset, total]);
-  useEffect(() => { setActive(0); }, [query, matches.length]);
+    if (!open) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setActive(0); setSettledQuery(undefined); setDocuments([]); setOffset(0); setTotal(0); setError('');
+    const timer = setTimeout(() => void load(controller, 0, normalized), normalized ? 200 : 0);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [open, normalized]);
+
+  const activeId = open && matches[active] ? 'study-material-option-' + active : undefined;
+  useEffect(() => { onActiveOptionChange(activeId); }, [activeId, onActiveOptionChange]);
   useEffect(() => {
-    if (pickerOpen) document.getElementById(`study-material-option-${active}`)?.scrollIntoView({ block: 'nearest' });
-  }, [active, pickerOpen]);
-  function pick(document: MaterialDocument) {
-    choose({ mode: 'SOURCE_SPECIFIC', include_archived: selection.include_archived,
-      document_ids: [...new Set([...(selection.mode === 'SOURCE_SPECIFIC' ? selection.document_ids ?? [] : []), document.id])] });
+    const option = activeId && document.getElementById(activeId);
+    const list = results.current;
+    if (!option || !list) return;
+    const row = option.getBoundingClientRect(), bounds = list.getBoundingClientRect();
+    if (row.top < bounds.top) list.scrollTop += row.top - bounds.top;
+    else if (row.bottom > bounds.bottom) list.scrollTop += row.bottom - bounds.bottom;
+  }, [activeId]);
+
+  function pick(item: MaterialDocument) {
+    if (disabled || (!ids.includes(item.id) && ids.length >= maxReferences)) return;
+    setKnown(previous => ({ ...previous, [item.id]: item }));
+    if (!ids.includes(item.id)) onChange({ mode: 'SOURCE_SPECIFIC', document_ids: [...ids, item.id],
+      ...(includeArchived ? { include_archived: true } : {}) });
     onPick();
   }
-  useEffect(() => {
-    onActiveOptionChange(pickerOpen && matches[active] ? `study-material-option-${active}` : undefined);
-  }, [pickerOpen, active, matches[active]?.id, onActiveOptionChange]);
-  useImperativeHandle(ref, () => ({ handleKeyDown(event) {
-    if (!pickerOpen || disabled || event.nativeEvent.isComposing) return false;
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); return true; }
-    if (event.key === 'Tab') { onClose(); return false; }
+
+  function ready(id: string) {
+    return !!known[id]?.active_generation_id && (includeArchived || !known[id]?.archived);
+  }
+  function selectionIssue() {
+    if (ids.some(id => !(id in known))) return 'Wait for the referenced material to load before sending.';
+    if (ids.some(id => !ready(id))) return 'Remove or reselect unavailable material before sending.';
+  }
+  function handleKeyDown(event: PickerKey) {
+    if (!open || event.nativeEvent.isComposing) return false;
+    if (event.key === 'Escape') { event.preventDefault(); onClose(true); return true; }
+    if (event.key === 'Tab' && picker === 'mention') { onClose(); return false; }
     if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault(); if (matches[active]) pick(matches[active]); return true;
+      event.preventDefault();
+      if (matches[active]) pick(matches[active]);
+      return true;
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -100,42 +114,48 @@ export const SourceSelector = forwardRef<SourcePickerHandle, {
       return true;
     }
     return false;
-  } }));
+  }
+  useImperativeHandle(ref, () => ({ handleKeyDown, selectionIssue }));
+
   return <>
-    <Popover anchor={anchor} open={pickerOpen && !disabled} onClose={onClose} placement="above" matchWidth role="dialog" label="Choose study material">
-      <div className="p-2">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-sm font-medium text-heading">Discuss study material</p>
-          <span className="text-[10px] text-subtle">↑ ↓ to browse · Enter to select</span>
-        </div>
-        <p className="text-xs text-subtle">{query ? `Results for “${query}”` : 'Choose material below, or type @ followed by its name in your message.'}</p>
-        <div id="study-material-results" role="listbox" aria-label="Study material" className="mt-2 max-h-40 overflow-y-auto">
-          {matches.map((document, index) => <button key={document.id} id={`study-material-option-${index}`} type="button"
-            role="option" aria-selected={index === active} onClick={() => pick(document)}
-            className={`block w-full rounded-lg px-3 py-2 text-left text-sm text-heading ${index === active ? 'bg-hover' : 'hover:bg-hover'}`}>
-            <span className="block truncate">{document.title}{document.archived ? ' (archived)' : ''}</span>
-            <span className="block truncate text-xs text-subtle">{document.filename}</span>
+    {!!ids.length && <ul aria-label="Referenced materials" className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto px-2.5 pb-1 pt-1">
+      {ids.map(id => {
+        const title = known[id]?.title ?? (id in known ? 'Unavailable material' : 'Loading material…');
+        const unavailable = id in known && !ready(id);
+        return <li key={id} className="inline-flex max-w-full items-center gap-1.5 rounded-control bg-accent/10 pl-2 text-xs font-medium text-accent">
+          <BookOpenText size={13} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0 truncate" title={title}>{title}{unavailable && known[id] ? ' (unavailable)' : ''}</span>
+          <button type="button" disabled={disabled} aria-label={'Remove reference to ' + title}
+            className="grid size-8 shrink-0 place-items-center rounded-control hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+            onClick={() => { const rest = ids.filter(item => item !== id); onChange(rest.length ? { ...selection, document_ids: rest } : { mode: 'STANDARD' }); }}>
+            <X size={14} aria-hidden="true" />
+          </button>
+        </li>;
+      })}
+    </ul>}
+    <Popover anchor={anchor} open={open} onClose={() => onClose()} placement="above" matchWidth role="dialog" label="Choose study material" focusOnOpen={picker === 'browse'}>
+      <div className="space-y-2 p-2">
+        <p className="text-sm font-medium text-heading">Reference study material</p>
+        {picker === 'browse' && <Input type="search" aria-label="Search study material" placeholder="Search titles or filenames…" maxLength={200}
+          value={query} onChange={event => onQueryChange(event.target.value)} onKeyDown={handleKeyDown}
+          aria-controls="study-material-results" aria-activedescendant={activeId} />}
+        <div ref={results} id="study-material-results" role="listbox" aria-label="Study material" className="max-h-40 overflow-y-auto">
+          {matches.map((item, index) => <button key={item.id} id={'study-material-option-' + index} type="button"
+            role="option" aria-selected={index === active} disabled={!ids.includes(item.id) && ids.length >= maxReferences} onClick={() => pick(item)}
+            className={'block w-full rounded-lg px-3 py-2 text-left text-sm text-heading disabled:opacity-50 ' + (index === active ? 'bg-hover' : 'hover:bg-hover')}>
+            <span className="block truncate">{item.title}{ids.includes(item.id) ? ' · Referenced' : ''}</span>
+            <span className="block truncate text-xs text-subtle">{item.filename}</span>
           </button>)}
         </div>
-        {(loading || loadingMore) && <Skeleton variant="list" />}
-        {!loading && !loadingMore && !matches.length && !error && <p role="status" className="mt-2 text-xs text-muted">{query ? 'No matching ready material.' : 'No ready material yet. Add material in Library.'}</p>}
-        {error && <p role="alert" className="mt-2 text-xs text-danger">{error}</p>}
-        {nextOffset < total && <Button size="sm" variant="secondary" disabled={loading || loadingMore} loading={loadingMore} onClick={() => void loadMore()}>Load more material</Button>}
-        <div className="mt-2 flex flex-wrap gap-3 border-t border-border pt-2 text-xs">
-          <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} onClick={() => { choose({ mode: 'CROSS_CONTEXT', include_archived: selection.include_archived }); onPick(); }}>Choose learning contexts</button>
-          <Link to="/library" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })}>Manage Library</Link>
-        </div>
+        {ids.length >= maxReferences && <p role="status" className="text-xs text-muted">You can reference up to 20 materials.</p>}
+        {(busy || pendingQuery) && <Skeleton variant="list" rows={2} />}
+        {!busy && !pendingQuery && !matches.length && !error && <p role="status" className="text-xs text-muted">{normalized ? 'No matching ready material.' : 'No ready material on this page.'}</p>}
+        {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+        {(error || offset < total) && <Button size="sm" variant="secondary" disabled={busy || pendingQuery} onClick={() => {
+          if (request.current) void load(request.current, offset, normalized);
+        }}>{error ? 'Retry' : 'Load more material'}</Button>}
+        <Link to="/library" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>Manage Library</Link>
       </div>
     </Popover>
-    {selection.mode !== 'STANDARD' && <details className="mb-3 rounded-xl border border-border px-3 py-2 text-sm"><summary className="ui-disclosure cursor-pointer text-muted">{selection.mode === 'SOURCE_SPECIFIC' ? 'Using selected material' : selection.mode === 'CROSS_CONTEXT' ? 'Using selected learning contexts' : 'Use relevant study material automatically'}</summary>
-    <div className="mt-3 space-y-3"><label className="block">Study sources<Select aria-label="Study sources" className="mt-1" value={selection.mode} disabled={disabled} onChange={e => choose({ mode: e.target.value as ChatSelection['mode'], include_archived: e.target.value === 'STANDARD' ? false : selection.include_archived })}><option value="STANDARD">Automatic relevant material</option><option value="SOURCE_SPECIFIC">Choose material</option><option value="CROSS_CONTEXT">Choose learning contexts</option></Select></label>
-    {selection.mode === 'SOURCE_SPECIFIC' && <label className="block">Selected material<Select multiple className="mt-1" value={selection.document_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, document_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{documents.filter(d => d.active_generation_id && (selection.include_archived || (!d.archived && contexts.some(c => c.status !== 'ARCHIVED' && d.context_ids.includes(c.context_id))))).map(d => <option key={d.id} value={d.id}>{d.title}{d.archived ? ' (archived)' : ''}</option>)}</Select></label>}
-    {selection.mode === 'SOURCE_SPECIFIC' && nextOffset < total && <Button size="sm" variant="secondary" disabled={disabled || loadingMore} loading={loadingMore} onClick={() => void loadMore()}>{'Load more material'}</Button>}
-    {selection.mode === 'CROSS_CONTEXT' && <label className="block">Selected learning contexts<Select multiple className="mt-1" value={selection.context_ids ?? []} disabled={disabled} onChange={e => choose({ ...selection, context_ids: Array.from(e.target.selectedOptions, o => o.value) })}>{contexts.filter(c => c.status !== 'ARCHIVED' || selection.include_archived).map(c => <option key={c.context_id} value={c.context_id}>{c.name} ({c.status.toLowerCase()})</option>)}</Select></label>}
-    <Toggle label="Allow explicitly selected archived material" disabled={disabled} checked={selection.include_archived ?? false} onChange={e => choose({ ...selection, include_archived: e.target.checked })} />
-    {notice && <p role="status" className="text-muted">{notice}</p>}
-    {error && <p role="alert" className="text-danger">{error}</p>}<Link to="/library" className="inline-block text-accent">Add or manage material in Library</Link>
-    <p className="text-xs text-subtle">Only ready material can ground an answer. Selected sources stay within your Library.</p></div>
-  </details>}
   </>;
 });

@@ -4,10 +4,11 @@ import { Popover } from './Popover';
 
 export interface ActionMenuItem { id: string; label: string; icon: LucideIcon; onSelect: () => void; destructive?: boolean; disabled?: boolean }
 /** Add actions through data; shared placement, dismissal and keyboard behavior. */
-export function ActionMenu({ anchor, open, onClose, id, label, items }: {
+export function ActionMenu({ anchor, open, onClose, id, label, items, placement, className }: {
   anchor: RefObject<HTMLElement>; open: boolean; onClose: () => void; id: string; label: string; items: ActionMenuItem[];
+  placement?: 'above' | 'below'; className?: string;
 }) {
-  return <Popover anchor={anchor} open={open} onClose={onClose} id={id} role="menu" label={label} width={176} focusOnOpen>
+  return <Popover anchor={anchor} open={open} onClose={onClose} id={id} role="menu" label={label} width={176} placement={placement} className={className} focusOnOpen>
     <div onKeyDown={event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();

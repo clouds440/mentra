@@ -79,9 +79,9 @@ export function ConversationList({ onOpen }: { onOpen: () => void }) {
   const list = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => { if (list.current) list.current.inert = !expanded; }, [expanded]);
   return <section aria-label="Conversation history" className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden px-3">
-    <div className="mb-1 flex shrink-0 items-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-foreground">
+    <div className="recents-header mb-1 flex shrink-0 items-center rounded-lg text-muted transition-colors">
       <h2 className="min-w-0 flex-1"><button type="button" aria-expanded={expanded} aria-controls={listId}
-        className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-start text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        className="recents-toggle flex h-10 w-full items-center gap-3 rounded-lg px-3 text-start text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
         onClick={() => setExpanded(value => !value)}>
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className={cn('shrink-0 motion-safe:transition-transform motion-safe:duration-150', expanded && 'rotate-90')} />Recents
       </button></h2>

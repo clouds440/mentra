@@ -119,22 +119,35 @@ export function ChatPage() {
     else setSelection({ mode: 'STANDARD' });
   }, [conversationId]);
   useEffect(() => {
-    if (view.loading) return;
+    if (view.loading || (view.busy && !view.turn)) return;
     const turn = view.turn;
     const key = `${id}:${turn?.id}:${turn?.attempt}:${turn?.state}`;
     if (selectionTurn.current?.key === key) return;
     const previous = selectionTurn.current;
     selectionTurn.current = { key, chat: id, turn: turn?.id, state: turn?.state };
     const completed = turn?.state === 'SUCCEEDED' && previous?.chat === id && (previous.turn !== turn.id || previous.state !== 'SUCCEEDED');
-    if (turn?.state === 'RUNNING' || turn?.state === 'FAILED') setSelection(turn.selection);
+    if (turn?.state === 'RUNNING' || turn?.state === 'FAILED') {
+      // Resume and retry use the saved turn scope. The draft only exposes
+      // concrete material references that the learner can see and remove.
+      const documentIds = turn.selection.document_ids;
+      setSelection(documentIds?.length ? { mode: 'SOURCE_SPECIFIC', document_ids: documentIds,
+        include_archived: turn.selection.include_archived } : { mode: 'STANDARD' });
+    }
     else setSelection(!completed && selectedDocument ? { mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] } : { mode: 'STANDARD' });
     if (completed && selectedDocument) setParams(current => {
       const next = new URLSearchParams(current); next.delete('document'); return next;
     }, { replace: true });
-  }, [id, view.loading, view.turn?.id, view.turn?.attempt, view.turn?.state]);
+  }, [id, view.loading, view.busy, view.turn?.id, view.turn?.attempt, view.turn?.state]);
   useEffect(() => {
     if (selectedDocument) setSelection({ mode: 'SOURCE_SPECIFIC', document_ids: [selectedDocument] });
   }, [selectedDocument, newChatKey]);
+
+  function changeSelection(value: ChatSelection) {
+    setSelection(value); setValidation(null);
+    if (selectedDocument) setParams(current => {
+      const next = new URLSearchParams(current); next.delete('document'); return next;
+    }, { replace: true });
+  }
 
   useLayoutEffect(() => {
     if (knownMessages.current.id !== id) {
@@ -149,7 +162,7 @@ export function ChatPage() {
 
   async function sendMessage(prompt?: string) {
     const content = prompt ?? (draft.trim() || (files.length ? 'Please help me understand the attached files.' : '')); if (!content || newChatPending || view.busy || sending.current || view.loading) return;
-    if ((selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) || (selection.mode === 'CROSS_CONTEXT' && !selection.context_ids?.length)) {
+    if (selection.mode === 'SOURCE_SPECIFIC' && !selection.document_ids?.length) {
       setValidation('Choose study sources before sending, or use automatic material selection.'); return;
     }
     const signal = uploadController.current.signal;
@@ -187,7 +200,7 @@ export function ChatPage() {
       {conversationId && matchedMessage && <Suspense fallback={null}><SavedChatExchange key={`${identity?.learner_id}:${conversationId}:${matchedMessage}`} conversation={conversationId} message={matchedMessage} onClose={closeExchange} /></Suspense>}
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>
-      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState disabled={newChatPending || view.busy || uploading || !!draft.trim() || !!files.length} onChooseSuggestion={prompt => {
+      ) : view.messages.length === 0 ? <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"><ChatEmptyState disabled={newChatPending || view.busy || uploading || !!draft.trim() || !!files.length || !!selection.document_ids?.length} onChooseSuggestion={prompt => {
         if (prompt === 'study-material') { setMaterialPickerRequest(value => value + 1); return; }
         void sendMessage(prompt);
       }} /></div> : (
@@ -228,7 +241,7 @@ export function ChatPage() {
             {view.unsent && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => { setDraft(view.unsent!); chatStore.clearUnsent(id); }}>Restore question</button>}
             {!view.turn && view.error && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'mr-2 mt-2' })} onClick={() => void chatStore.open(id, true)}>Check saved conversation</button>}
           </div>}
-          <ChatComposer onResize={scroll.onComposerResize} key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionChange={value => { setSelection(value); if (selectedDocument) setParams({}); }} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && !!(view.turn?.can_stop ?? (view.busy && view.turn?.state === 'RUNNING'))} canResume={!!view.turn?.can_resume && (!view.turn.resume_until || Date.parse(view.turn.resume_until) > Date.now())} onResume={() => void chatStore.resumeResponse(id)} canRetry={(view.turn?.can_retry ?? (view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.')) || !!view.error && chatStore.hasPending(id)} retryPartial={view.turn?.response_outcome?.state === 'partial'} onRetry={() => void chatStore.send(id, '', selection, true)} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
+          <ChatComposer onResize={scroll.onComposerResize} key={`${identity?.learner_id}-${id}`} materialPickerRequest={materialPickerRequest} selection={selection} onSelectionBlocked={setValidation} onSelectionChange={changeSelection} isThinking={newChatPending || view.busy || view.loading || uploading} canStop={!newChatPending && !!(view.turn?.can_stop ?? (view.busy && view.turn?.state === 'RUNNING'))} canResume={!!view.turn?.can_resume && (!view.turn.resume_until || Date.parse(view.turn.resume_until) > Date.now())} onResume={() => void chatStore.resumeResponse(id)} canRetry={(view.turn?.can_retry ?? (view.turn?.state === 'FAILED' && view.turn.error !== 'Response stopped.')) || !!view.error && chatStore.hasPending(id)} retryPartial={view.turn?.response_outcome?.state === 'partial'} onRetry={() => void chatStore.send(id, '', selection, true)} stopping={stopping} onStop={() => { setStopping(true); void chatStore.stopResponse(id).finally(() => setStopping(false)); }} onChange={setDraft} onSubmit={() => void sendMessage()} value={draft} onFiles={attach} hasAttachments={!!files.length}
             attachments={<>
               {!!files.length && <ul className="flex max-h-32 items-start gap-2 overflow-y-auto px-2.5 pb-2 pt-1" aria-label="Attached files">{files.map(item => <li key={item.id} className="staged-file relative min-h-6 min-w-6 shrink-0 overflow-hidden rounded-lg border border-border bg-background text-xs text-muted" title={item.file.name}>
                 {item.preview ? <img src={item.preview} alt={`Preview of ${item.file.name}`} className="block h-auto max-h-24 w-auto max-w-32" />

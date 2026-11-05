@@ -33,7 +33,7 @@ test('study starter opens the real source picker without requiring @ syntax', as
   await expect(page.getByRole('listbox', { name: 'Study material', exact: true })).toBeVisible();
   await page.getByRole('option').filter({ hasText: 'Motion and forces' }).click();
   await expect(page.getByRole('textbox', { name: 'Ask Mentra anything' })).toHaveValue('');
-  await expect(page.getByRole('button', { name: 'Choose study material', exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Referenced materials' })).toContainText('Motion and forces');
 });
 
 test('interactive delivery makes a written question directly answerable and preserves written override', async ({ page }, info) => {
@@ -82,12 +82,14 @@ test('source practice carries current document scope', async ({ page }) => {
 test('ordinary chat does not fetch Library lists until requested', async ({ page }) => {
   await workspace(page);
   const lists: string[]=[];
-  page.on('request', request => { if (/\/api\/v1\/(?:documents|learning-contexts)(?:\?|$)/.test(request.url())) lists.push(request.url()); });
+  page.on('request', request => { if (/\/api\/v1\/(?:documents(?:\/page)?|learning-contexts)(?:\?|$)/.test(request.url())) lists.push(request.url()); });
   await page.goto('/chat/polish-chat');
   await expect(page.getByRole('textbox',{name:'Ask Mentra anything'})).toBeEnabled();
   expect(lists).toEqual([]);
-  await page.getByRole('button',{name:'Choose study material',exact:true}).click();
-  await expect.poll(() => lists.length).toBe(2);
+  await page.getByRole('button',{name:'Add to message',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Reference material',exact:true}).click();
+  await expect.poll(() => lists.length).toBe(1);
+  expect(lists[0]).toContain('/documents/page');
 });
 
 test('a durable assessment reference appears before narration completes', async ({ page }) => {

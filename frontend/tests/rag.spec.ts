@@ -1,4 +1,3 @@
-import { chooseOption } from './select-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
@@ -20,7 +19,9 @@ test('composer @ action searches material, selects with keyboard and preserves t
   await page.getByLabel('Material title', { exact: true }).fill('Decorator Notes');
   await page.getByLabel('New context name', { exact: true }).fill('Python');
   await page.getByRole('button', { name: 'Upload material', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Study in chat', exact: true })).toBeVisible({ timeout: 20_000 });
+  const study = page.getByRole('link', { name: 'Study in chat', exact: true });
+  await expect(study).toBeVisible({ timeout: 20_000 });
+  const documentId = new URL((await study.getAttribute('href'))!, page.url()).searchParams.get('document');
   await page.goto('/');
   await expect(page.getByText('Use relevant study material automatically', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Choose study material', exact: true })).toHaveCount(0);
@@ -48,9 +49,7 @@ test('composer @ action searches material, selects with keyboard and preserves t
   await expect(picker).toHaveCount(0);
   await expect(composer).toHaveValue('Explain  please');
   await expect(composer).toBeFocused();
-  await page.getByText('Using selected material', { exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Selected material', exact: true })).toContainText('Decorator Notes');
-  await page.getByText('Using selected material', { exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Referenced materials' })).toContainText('Decorator Notes');
   await page.setViewportSize({ width: 320, height: 568 });
   await composer.fill('Explain decorators @');
   await expect(picker).toBeVisible();
@@ -72,8 +71,11 @@ test('composer @ action searches material, selects with keyboard and preserves t
   await composer.fill('learner@example.com');
   await expect(picker).toHaveCount(0);
   await composer.fill('Explain decorators');
+  const submitted = page.waitForResponse(response => response.url().endsWith('/conversations/turns') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Send message' }).click();
-  await expect(page.getByRole('button', { name: 'Open cited source Decorator Notes' })).toBeVisible();
+  const response = await submitted;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON().retrieval).toMatchObject({ mode: 'SOURCE_SPECIFIC', document_ids: [documentId] });
 });
 
 test('Library accepts extensionless source files and source extension aliases', async ({ page }) => {
@@ -208,17 +210,19 @@ test('a second signed-in learner cannot fetch or ground chat with another learne
   } finally { await second.close(); }
 });
 
-test('removed source selections stay explicit and switching to automatic clears archive consent', async ({ page }) => {
+test('an unavailable source stays explicit until its reference is removed', async ({ page }) => {
   await register(page);
   await page.goto('/?document=removed-material');
-  await page.getByText('Using selected material', { exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Some selected material is unavailable');
+  const remove = page.getByRole('button', { name: 'Remove reference to Unavailable material' });
+  await expect(remove).toBeVisible();
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill('Use my selected notes');
   await page.getByRole('button', { name: 'Send message' }).click();
-  await expect(page.getByRole('alert')).toContainText('Choose study sources before sending');
+  await expect(page.getByRole('alert')).toContainText('Remove or reselect unavailable material before sending');
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(0);
-  await page.getByLabel('Allow explicitly selected archived material').check();
-  await chooseOption(page.getByLabel('Study sources', { exact: true }), 'STANDARD');
+  await remove.click();
+  const submitted = page.waitForResponse(response => response.url().endsWith('/conversations/turns') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Send message' }).click();
-  await expect(page.getByRole('article', { name: 'Mentra response' })).toContainText('No supporting Library material was found');
+  const response = await submitted;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON().retrieval).toEqual({ mode: 'STANDARD' });
 });

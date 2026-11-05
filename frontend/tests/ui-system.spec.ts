@@ -10,14 +10,8 @@ async function register(page: Page) {
   await finishOnboardingWithoutAssessment(page);
 }
 
-test('portaled dropdowns support keyboard, multiselect, anchoring and dismissal', async ({ page }) => {
+test('portaled dropdowns support keyboard navigation, anchoring and dismissal', async ({ page }) => {
   await register(page);
-  for (const name of ['Algebra', 'Physics']) {
-    const response = await page.request.post('http://127.0.0.1:18003/api/v1/learning-contexts', {
-      headers: { Origin: 'http://127.0.0.1:15173' }, data: { name, activate: true },
-    });
-    expect(response.ok()).toBeTruthy();
-  }
   await page.getByRole('button', { name: 'Account menu', exact: false }).click();
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
@@ -25,27 +19,12 @@ test('portaled dropdowns support keyboard, multiselect, anchoring and dismissal'
   await level.focus(); await level.press('ArrowDown');
   const list = page.getByRole('listbox', { name: 'Education level options' });
   await expect(list).toBeVisible();
-  expect(await list.evaluate(node => node.parentElement === document.body)).toBe(true);
+  expect(await list.evaluate(node => node.parentElement === node.closest('dialog[open]'))).toBe(true);
   const triggerBox = await level.boundingBox(); const panelBox = await list.boundingBox();
   expect(panelBox!.y).toBeGreaterThanOrEqual(triggerBox!.y + triggerBox!.height);
   await level.press('End'); await level.press('Enter'); await expect(list).toHaveCount(0);
   await level.click(); await level.press('Escape'); await expect(level).toBeFocused();
   await expect(list).toHaveCount(0);
-  await page.goto('/');
-  await page.getByRole('textbox', { name: 'Ask Mentra anything' }).press('@');
-  await page.getByRole('button', { name: 'Choose learning contexts', exact: true }).click();
-  await page.getByText('Using selected learning contexts', { exact: true }).click();
-  const contexts = page.getByRole('combobox', { name: 'Selected learning contexts', exact: true });
-  await contexts.click();
-  const choices = page.getByRole('listbox', { name: 'Selected learning contexts options' });
-  await expect(choices).toHaveAttribute('aria-multiselectable', 'true');
-  await choices.getByRole('option', { name: /Algebra/ }).click();
-  await choices.getByRole('option', { name: /Physics/ }).click();
-  await expect(contexts).toContainText('Algebra'); await expect(contexts).toContainText('Physics');
-  await choices.getByRole('option', { name: /Algebra/ }).click();
-  await expect(contexts).not.toContainText('Algebra');
-  await page.getByRole('textbox', { name: 'Ask Mentra anything' }).click();
-  await expect(choices).toHaveCount(0);
   await page.goto('/events?event=00000000-0000-0000-0000-000000000001');
   await expect(page).toHaveURL(/\/progress\?event=.*tab=events/);
   await expect(page.getByRole('tab', { name: 'Events', exact: true })).toHaveAttribute('aria-selected', 'true');
