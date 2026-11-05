@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, List, PanelRight, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, List, PanelRight, X } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type KeyboardEvent } from 'react';
 import { useMobileNavigation } from '../../hooks/useMobileNavigation';
 import { useResizableSidebar } from '../../hooks/useResizableSidebar';
@@ -6,13 +6,14 @@ import { IconButton } from '../ui/IconButton';
 import { Popover } from '../ui/Popover';
 import { Tabs } from '../ui/Tabs';
 import { PinSourceButton, PinnedSourceList, usePinnedSources } from './PinnedSources';
+import { WebSourcePreview } from '../webSearch/SourceLink';
 import { SourceSelection } from './SourceAnnotations';
 import type { PanelResource } from '../../types/sourceAnnotations';
 import { PanelEntryScope, PanelResourceScope, PanelTabScope, useSidePanelActions, useSidePanelState } from './sidePanelState';
 
 const panelId = 'workspace-side-panel';
 const desktopQuery = '(min-width: 1200px)';
-const resizeOptions = { min: 300, max: 600, initial: 410, rail: 0, side: 'right', id: panelId,
+const resizeOptions = { min: 340, max: 600, initial: 410, rail: 0, side: 'right', id: panelId,
   label: 'Resize side panel', storageKey: 'mentra.side-panel.width.v1', desktopQuery };
 const drawerOptions = { desktopQuery, inertIds: ['workspace-content', 'main-sidebar'], closeOnDesktop: false, opener: '',
   fallbackFocus: '[aria-controls="workspace-side-panel"]:is(button), #workspace-main' };
@@ -172,16 +173,19 @@ export function SidePanel() {
             {edges.overflow && <IconButton size="sm" className="workspace-panel-chevron" aria-label="Scroll tabs right" disabled={!edges.right} onClick={() => scrollTabs(1)}><ChevronRight size={14} aria-hidden="true" /></IconButton>}
           </div>
           <IconButton ref={browseButton} size="sm" aria-label="Browse" aria-expanded={browsing} aria-controls={browsing ? browseId : undefined}
-              title="Browse sources" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
+              title="Browse sources" className="workspace-browse-trigger" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={17} aria-hidden="true" /></IconButton>
             <Popover anchor={browseButton} open={browsing && visible} onClose={() => setBrowsing(false)} id={browseId} role="region" label="Browse sources"
-              width={340} maxHeight={450} focusOnOpen keepMounted={hasBrowsed} portalContainer={panel}>
+              width={Math.min(340, sidebar.width - 24)} maxHeight={450} align="end" className="workspace-browse-popover" dismissOnFocusOutside={false}
+              focusOnOpen keepMounted={hasBrowsed} portalContainer={panel}>
               <div className="workspace-browse-tabs">
                 <Tabs label="Browse categories" value={section} onChange={setBrowseSection} options={[
                   { value: 'chat', label: 'From this chat', id: browseId + '-chat', panel: browseId + '-chat-content', disabled: !launcher },
                   { value: 'pinned', label: 'Pinned', id: browseId + '-pinned', panel: browseId + '-pinned-content' },
                 ]} />
               </div>
-              <div role="tabpanel" aria-labelledby={browseId + '-chat'} id={browseId + '-chat-content'} hidden={section !== 'chat'}>
+              <div role="tabpanel" aria-labelledby={browseId + '-chat'} id={browseId + '-chat-content'} hidden={section !== 'chat'}
+                onClick={event => { if (event.target instanceof Element && event.target.closest('a[href], [data-open-panel-source]')) setBrowsing(false); }}
+                onAuxClick={event => { if (event.button === 1 && event.target instanceof Element && event.target.closest('a[href]')) setBrowsing(false); }}>
                 <PanelTabScope.Provider value={active || undefined}>{launcher?.menuContent}</PanelTabScope.Provider>
               </div>
               <div role="tabpanel" aria-labelledby={browseId + '-pinned'} id={browseId + '-pinned-content'} hidden={section !== 'pinned'}>
@@ -190,21 +194,28 @@ export function SidePanel() {
             </Popover>
           {!desktop && visible && <SidePanelTrigger inDrawer />}
         </header>
-        {tabs.map(tab => <section key={tab.id} id={contentId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)}
-          className="workspace-panel-content" tabIndex={0} hidden={tab.id !== active}>
-          {(tab.resource || tab.entries.length > 1) && <div className="workspace-resource-toolbar" data-no-excerpt>
+        {tabs.map(tab => {
+          const source = tab.resource;
+          const navigation = <>
             <IconButton size="sm" aria-label="Back" title="Back" disabled={!tab.cursor} onClick={() => actions.go(tab.id, -1)}><ArrowLeft size={15} aria-hidden="true" /></IconButton>
             <IconButton size="sm" aria-label="Forward" title="Forward" disabled={tab.cursor === tab.entries.length - 1} onClick={() => actions.go(tab.id, 1)}><ArrowRight size={15} aria-hidden="true" /></IconButton>
-            <span className="flex-1" />
-            {tab.resource && <PinSourceButton source={tab.resource} />}
-          </div>}
-          {tab.resource && pinError && <p role="alert" className="px-3 py-1 text-xs text-danger">{pinError}</p>}
-          <PanelTabScope.Provider value={tab.id}><PanelResourceScope.Provider value={tab.resource}>
-            <PanelEntryScope.Provider value={tab.entries[tab.cursor]}>
-              <ResourceContent key={tab.entryId} enabled={tab.id === active && visible} source={tab.resource}>{tab.content}</ResourceContent>
-            </PanelEntryScope.Provider>
-          </PanelResourceScope.Provider></PanelTabScope.Provider>
-        </section>)}
+          </>;
+          const pin = source && <PinSourceButton source={source} />;
+          return <section key={tab.id} id={contentId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)}
+            className="workspace-panel-content" tabIndex={0} hidden={tab.id !== active}>
+            {source?.kind !== 'web' && (source || tab.entries.length > 1) && <div className="workspace-resource-toolbar" data-no-excerpt>
+              {navigation}<span className="flex-1" />{pin}
+            </div>}
+            <PanelTabScope.Provider value={tab.id}><PanelResourceScope.Provider value={source}>
+              <PanelEntryScope.Provider value={tab.entries[tab.cursor]}>
+                <ResourceContent key={tab.entryId} enabled={tab.id === active && visible} source={source}>
+                  {source?.kind === 'web' ? <WebSourcePreview href={source.url} title={source.title} navigation={navigation} pin={pin} /> : tab.content}
+                  {source && pinError && <p role="alert" className="px-3 py-1 text-xs text-danger" data-no-excerpt>{pinError}</p>}
+                </ResourceContent>
+              </PanelEntryScope.Provider>
+            </PanelResourceScope.Provider></PanelTabScope.Provider>
+          </section>;
+        })}
         {!tabs.length && visible && <PinnedSourceList />}
       </div>
     </aside>

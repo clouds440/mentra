@@ -70,7 +70,7 @@ export function PinnedSourceList({ onChoose }: { onChoose?: () => void }) {
       return <li key={item.id} className="flex items-center gap-1">
         <button type="button" className="workspace-source-row flex min-w-0 flex-1 items-center gap-2" onClick={() => {
           panel?.open({ title: source.title, resource: source, reuseKey: 'pin:' + item.id, icon: <Icon size={14} aria-hidden="true" />,
-            content: <Suspense fallback={<Skeleton variant="text" className="p-4" />}><ReopenedSource source={source} /></Suspense> });
+            content: source.kind !== 'web' && <Suspense fallback={<Skeleton variant="text" className="p-4" />}><ReopenedSource source={source} /></Suspense> });
           onChoose?.();
         }}><Icon className="shrink-0" size={14} aria-hidden="true" /><span className="truncate">{source.title}</span></button>
         <IconButton size="sm" disabled={busy} aria-label={'Unpin ' + source.title} onClick={() => void change(source, item)}><PinOff size={14} aria-hidden="true" /></IconButton>

@@ -135,14 +135,14 @@ export function ChatSourceCatalog({ messages, conversationId, before, compact = 
       </SourceLink>
     </li>)}</SourceList>}
     {!!study.length && <SourceList title="Study sources">{study.map(item => <li key={[item.document_id, item.version_id, item.generation_id, item.chunk_id].join(':')}>
-      <button type="button" className="workspace-source-row" onClick={() => openSource(item)}>{item.title} · {sourceLocation(item)}</button>
+      <button type="button" className="workspace-source-row" data-open-panel-source onClick={() => openSource(item)}>{item.title} · {sourceLocation(item)}</button>
     </li>)}</SourceList>}
     {!!personal.length && <SourceList title="Personal context">{personal.map(item => {
       const key = 'memory_id' in item ? item.memory_id + ':' + item.revision : item.conversation_id + ':' + item.sequence;
-      return <li key={key}><button type="button" className="workspace-source-row" onClick={() => openReference(item)}>{referenceTitle(item)}</button></li>;
+      return <li key={key}><button type="button" className="workspace-source-row" data-open-panel-source onClick={() => openReference(item)}>{referenceTitle(item)}</button></li>;
     })}</SourceList>}
     {!!files.length && <SourceList title="Attachments">{files.map(({ file, conversation }) => <li key={file.id}>
-      <button type="button" className="workspace-source-row" onClick={() => panel?.open({ title: file.filename,
+      <button type="button" className="workspace-source-row" data-open-panel-source onClick={() => panel?.open({ title: file.filename,
         resource: { kind: 'attachment', title: file.filename, conversation_id: conversation, file_id: file.id },
         reuseKey: 'attachment:' + conversation + ':' + file.id, icon: <FileText size={14} aria-hidden="true" />,
         content: <ChatAttachmentPreview filename={file.filename} fileId={file.id} conversationId={conversation} /> })}>{file.filename}</button>

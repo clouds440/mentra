@@ -59,9 +59,14 @@ export function AppSidebar({
   const [accountOpen, setAccountOpen] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const accountName = identity?.username ?? 'Learner';
-  const accountMark = identity?.username?.slice(0, 1).toUpperCase();
+  const accountMark = identity?.username ? Array.from(identity.username)[0]?.toLocaleUpperCase() : undefined;
+  const accountAvatar = <span className="sidebar-account-avatar" aria-hidden="true">{accountMark ?? <CircleUserRound size={16} />}</span>;
   const sidebar = useRef<HTMLElement>(null);
   const desktop = useMobileNavigation(sidebar, mobileOpen, onCloseMobile);
+  function closeAccountNavigation() {
+    setAccountOpen(false);
+    onCloseMobile();
+  }
   useEffect(() => { setAccountOpen(false); }, [location.pathname, location.search, collapsed, mobileOpen]);
 
 
@@ -177,42 +182,20 @@ export function AppSidebar({
 
         <div className={cn('mt-auto shrink-0 p-3 pt-4', collapsed && 'lg:px-1.5')}>
           <div className="relative">
-            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" width={240} matchWidth={!collapsed || mobileOpen} viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="p-0" focusOnOpen>
-                <div className="border-b border-border px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle">Signed in as</p>
-                  <p className="mt-1 truncate text-sm font-medium text-foreground">{accountName}</p>
-                </div>
-                <div className="p-2">
-                  <Link
-                    aria-label="Settings"
-                    aria-current={location.pathname === '/settings' && !memoryActive ? 'page' : undefined}
-                    className={
-                      cn(
-                        'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                        location.pathname === '/settings' && !memoryActive
-                          ? 'bg-card font-medium text-foreground shadow-sm'
-                          : 'text-muted hover:bg-hover hover:text-foreground',
-                      )
-                    }
-                    onClick={() => {
-                      setAccountOpen(false);
-                      onCloseMobile();
-                    }}
-                    to="/settings"
-                  >
-                    <Settings2 aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} />
-                    <span>Settings</span>
-                  </Link>
-                  <Link to="/settings?tab=memories" aria-label="Memories" aria-current={memoryActive ? 'page' : undefined} className={cn('flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', memoryActive ? 'bg-card font-medium text-foreground shadow-sm' : 'text-muted hover:bg-hover hover:text-foreground')} onClick={() => { setAccountOpen(false); onCloseMobile(); }}>
-                    <Brain aria-hidden="true" className="shrink-0" size={18} strokeWidth={1.8} /><span>Memories</span>
-                  </Link>
-                </div>
-                <div className="border-t border-border px-2 pb-2">
-                  <ThemeSelector collapsed={false} vertical />
-                </div>
-                <div className="border-t border-border p-2">
-                  <LogoutButton />
-                </div>
+            <Popover anchor={accountButtonRef} open={accountOpen} onClose={() => setAccountOpen(false)} placement="above" width={240} matchWidth={!collapsed || mobileOpen} viewportPadding={8} maxHeight={480} id="sidebar-account-panel" label="Account settings" className="sidebar-account-drawer" focusOnOpen>
+              <div className="sidebar-account-heading">{accountAvatar}<span className="truncate">{accountName}</span></div>
+              <nav aria-label="Account">
+                <Link to="/settings" aria-current={location.pathname === '/settings' && !memoryActive ? 'page' : undefined}
+                  className="sidebar-account-link" onClick={closeAccountNavigation}>
+                  <Settings2 aria-hidden="true" size={16} strokeWidth={1.8} /><span>Settings</span>
+                </Link>
+                <Link to="/settings?tab=memories" aria-current={memoryActive ? 'page' : undefined}
+                  className="sidebar-account-link" onClick={closeAccountNavigation}>
+                  <Brain aria-hidden="true" size={16} strokeWidth={1.8} /><span>Memories</span>
+                </Link>
+              </nav>
+              <ThemeSelector collapsed={false} />
+              <div className="sidebar-account-signout"><LogoutButton /></div>
             </Popover>
 
             <button
@@ -220,21 +203,16 @@ export function AppSidebar({
               aria-expanded={accountOpen}
               aria-label={`Account menu for ${accountName}`}
               className={cn(
-                'flex min-h-11 w-full items-center gap-3 rounded-panel bg-card p-2.5 text-left text-sm shadow-sm transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'sidebar-account-trigger',
                 collapsed && 'lg:justify-center lg:px-0',
-                accountOpen && 'bg-hover',
               )}
               onClick={() => setAccountOpen((open) => !open)}
               ref={accountButtonRef}
               title={collapsed ? 'Account' : undefined}
               type="button"
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-active text-xs font-semibold text-accent">
-                {accountMark ?? <CircleUserRound aria-hidden="true" size={16} />}
-              </span>
-              <span className={cn('min-w-0 flex-1 text-foreground', collapsed && 'lg:hidden')}>
-                <span className="block truncate text-sm font-medium">{accountName}</span><span className="mt-0.5 block text-[11px] text-muted">Your learning space</span>
-              </span>
+              {accountAvatar}
+              <span className={cn('min-w-0 flex-1 truncate font-medium', collapsed && 'lg:hidden')}>{accountName}</span>
               <ChevronDown
                 aria-hidden="true"
                 className={cn('shrink-0 text-subtle transition-transform duration-150', accountOpen && 'rotate-180', collapsed && 'lg:hidden')}

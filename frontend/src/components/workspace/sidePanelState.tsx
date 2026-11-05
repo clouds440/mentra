@@ -3,7 +3,7 @@ import type { PanelResource } from '../../types/sourceAnnotations';
 
 export interface PanelTab {
   title: string;
-  content: ReactNode;
+  content?: ReactNode;
   icon?: ReactNode;
   reuseKey?: string;
   parentId?: string;

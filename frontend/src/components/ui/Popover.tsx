@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 
 /** One anchored surface for listboxes and account menus, including modal dialogs. */
-export function Popover({ anchor, open, onClose, children, className, id, role, label, placement = 'below', matchWidth = false, contentWidth = false, width = 280, multiselectable, focusOnOpen = false, viewportPadding = 12, maxHeight = 320, keepMounted = false, portalContainer }: {
+export function Popover({ anchor, open, onClose, children, className, id, role, label, placement = 'below', align = 'start', dismissOnFocusOutside = true, matchWidth = false, contentWidth = false, width = 280, multiselectable, focusOnOpen = false, viewportPadding = 12, maxHeight = 320, keepMounted = false, portalContainer }: {
   anchor: RefObject<HTMLElement | null>; open: boolean; onClose: () => void; children: ReactNode;
   className?: string; id?: string; role?: string; label?: string;
-  placement?: 'below' | 'above'; matchWidth?: boolean; multiselectable?: boolean; focusOnOpen?: boolean;
+  placement?: 'below' | 'above';
+  align?: 'start' | 'end'; dismissOnFocusOutside?: boolean; matchWidth?: boolean; multiselectable?: boolean; focusOnOpen?: boolean;
   viewportPadding?: number;
   maxHeight?: number;
   width?: number;
@@ -31,27 +32,27 @@ export function Popover({ anchor, open, onClose, children, className, id, role, 
       const above = placement === 'above' || (bottomEdge - rect.bottom < 100 && rect.top - topEdge > bottomEdge - rect.bottom);
       const available = Math.max(64, above ? rect.top - topEdge - 6 : bottomEdge - rect.bottom - 6);
       const height = Math.min(panel.current?.scrollHeight ?? 300, available, maxHeight);
-      const next: CSSProperties = { position: 'fixed', width: panelWidth, left: Math.max(leftEdge, Math.min(rect.left, rightEdge - panelWidth)),
+      const next: CSSProperties = { position: 'fixed', width: panelWidth, left: Math.max(leftEdge, Math.min(align === 'end' ? rect.right - panelWidth : rect.left, rightEdge - panelWidth)),
         top: above ? Math.max(topEdge, rect.top - height - 6) : rect.bottom + 6, maxHeight: Math.min(available, maxHeight), visibility: 'visible' };
       setStyle(current => current.width === next.width && current.left === next.left && current.top === next.top && current.maxHeight === next.maxHeight && current.visibility === next.visibility ? current : next);
     };
     position();
     let frame: number | undefined;
     const schedulePosition = () => { if (frame === undefined) frame = requestAnimationFrame(() => { frame = undefined; position(); }); };
-    const focusFrame = focusOnOpen ? requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled)')?.focus()) : undefined;
+    const focusFrame = focusOnOpen ? requestAnimationFrame(() => (panel.current?.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? panel.current?.querySelector<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled)'))?.focus({ preventScroll: true })) : undefined;
     const observer = new ResizeObserver(schedulePosition);
     observer.observe(anchor.current); if (panel.current) observer.observe(panel.current);
     const outside = (event: PointerEvent) => { if (!anchor.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) close.current(); };
     const leave = (event: FocusEvent) => { if (!anchor.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) close.current(); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); close.current(); anchor.current?.focus(); } };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
-    document.addEventListener('focusin', leave);
+    if (dismissOnFocusOutside) document.addEventListener('focusin', leave);
     window.addEventListener('scroll', schedulePosition, true); window.addEventListener('resize', schedulePosition);
     window.visualViewport?.addEventListener('resize', schedulePosition); window.visualViewport?.addEventListener('scroll', schedulePosition);
     return () => { if (frame !== undefined) cancelAnimationFrame(frame); if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); observer.disconnect(); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); document.removeEventListener('focusin', leave);
       window.removeEventListener('scroll', schedulePosition, true); window.removeEventListener('resize', schedulePosition);
       window.visualViewport?.removeEventListener('resize', schedulePosition); window.visualViewport?.removeEventListener('scroll', schedulePosition); };
-  }, [open, anchor, placement, matchWidth, contentWidth, width, focusOnOpen, viewportPadding, maxHeight]);
+  }, [open, anchor, placement, align, dismissOnFocusOutside, matchWidth, contentWidth, width, focusOnOpen, viewportPadding, maxHeight]);
   if (!open && !keepMounted) return null;
   return createPortal(<div ref={panel} id={id} role={role} aria-label={label} aria-multiselectable={multiselectable || undefined} hidden={!open} style={open ? style : { display: 'none' }}
     className={cn('overlay-panel z-[100] overflow-x-hidden overflow-y-auto overscroll-contain rounded-control p-1', className)}>{children}</div>, portalContainer?.current ?? anchor.current?.closest('dialog[open], [data-modal-navigation]') ?? document.body);

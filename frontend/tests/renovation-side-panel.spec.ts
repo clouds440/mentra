@@ -80,6 +80,13 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await first.click();
   const preview = panel.getByRole('tabpanel', { name: 'Article 1' });
   await expect(preview.getByRole('link', { name: 'Open in browser' })).toHaveAttribute('href', web(1).url);
+  const toolbar = preview.locator('.workspace-web-toolbar');
+  await expect(toolbar.locator('button, a')).toHaveCount(5);
+  expect(await toolbar.locator('button, a').evaluateAll(controls => controls.map(control => control.getAttribute('aria-label'))))
+    .toEqual(['Back', 'Forward', 'Reader', 'Open in browser', 'Pin source']);
+  await expect(toolbar.getByText('example.org', { exact: true })).toBeVisible();
+  await expect(toolbar.getByText('Open in browser', { exact: true })).toBeHidden();
+  await expect(toolbar.getByText('Reader', { exact: true })).toBeHidden();
   await expect(preview.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');
   const publisher = preview.frameLocator('iframe').getByRole('heading', { name: 'Publisher preview' });
   await expect(publisher).toBeVisible();
@@ -151,6 +158,13 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await page.mouse.move(grip.x + grip.width / 2 - 72, grip.y + 80, { steps: 5 });
   await page.mouse.up();
   expect((await panel.boundingBox())!.width).toBeGreaterThan(width + 50);
+  const wideToolbar = panel.getByRole('tabpanel', { name: 'Article 6' }).locator('.workspace-web-toolbar');
+  await expect(wideToolbar.getByText('Open in browser', { exact: true })).toBeVisible();
+  await expect(wideToolbar.getByText('Reader', { exact: true })).toBeVisible();
+  await handle.press('Home');
+  await expect(handle).toHaveAttribute('aria-valuenow', '340');
+  await expect(panel).toHaveCSS('width', '340px');
+  await expect(wideToolbar.getByText('Reader', { exact: true })).toBeHidden();
   await expect(panel.getByRole('button', { name: 'Hide side panel', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Hide side panel', exact: true }).click();
   await expect(panel).toBeHidden();
@@ -228,6 +242,14 @@ test('the panel dropdown browses sources from earlier messages without changing 
   const panel = page.getByRole('complementary', { name: 'Side panel' });
   await panel.getByRole('button', { name: 'Browse', exact: true }).click();
   const catalog = page.getByRole('region', { name: 'Browse sources' });
+  await expect(panel.getByRole('button', { name: 'Browse', exact: true }).locator('svg')).toHaveCount(1);
+  const fromChat = catalog.getByRole('tab', { name: 'From this chat' });
+  const pinned = catalog.getByRole('tab', { name: 'Pinned' });
+  await pinned.click();
+  await expect(pinned).toHaveAttribute('aria-selected', 'true');
+  await catalog.getByText('Pin a source to keep it here across chats.').click();
+  await expect(catalog).toBeVisible();
+  await fromChat.click();
   await expect(catalog.getByRole('link', { name: /Article 1/ })).toBeVisible();
   await expect(catalog.getByText('Publisher excerpt 1', { exact: true })).toHaveCount(0);
   await catalog.getByRole('button', { name: 'Load earlier sources' }).click();
@@ -244,6 +266,10 @@ test('the panel dropdown browses sources from earlier messages without changing 
   await page.keyboard.press('Escape');
   await expect(catalog).toHaveCount(0);
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Browse', exact: true }).click();
+  await expect(catalog).toBeVisible();
+  await panel.getByRole('tab', { name: 'Article 2', exact: true }).click();
+  await expect(catalog).toHaveCount(0);
 });
 
 test('quotes only the selected text from chat and keeps it as an annotation after sending', async ({ page }) => {

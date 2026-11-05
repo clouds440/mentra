@@ -7,13 +7,11 @@ import { HistoryReferenceContent } from '../chat/HistoryReferenceViewer';
 import { MaterialSourceTab } from '../library/MaterialSourceTab';
 import { SourceReader } from '../library/SourceViewer';
 import { Skeleton } from '../ui';
-import { WebSourcePreview } from '../webSearch/SourceLink';
 import { useSidePanelActions } from './sidePanelState';
 
-export default function ReopenedSource({ source }: { source: PanelResource }) {
+export default function ReopenedSource({ source }: { source: Exclude<PanelResource, { kind: 'web' }> }) {
   const panel = useSidePanelActions();
   switch (source.kind) {
-    case 'web': return <WebSourcePreview href={source.url} title={source.title} />;
     case 'attachment': return <ChatAttachmentPreview filename={source.title} fileId={source.file_id} conversationId={source.conversation_id} />;
     case 'history':
     case 'memory': return <HistoryReferenceContent reference={{ token: '', ...source }} onClose={() => panel?.hide()} />;

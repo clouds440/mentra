@@ -1,5 +1,5 @@
-import { ExternalLink, Globe } from 'lucide-react';
-import { useContext, useEffect, useState, type AnchorHTMLAttributes } from 'react';
+import { BookOpen, ExternalLink, Globe } from 'lucide-react';
+import { useContext, useEffect, useState, type AnchorHTMLAttributes, type ReactNode } from 'react';
 import { apiRequest } from '../../services/api';
 import { buttonStyles } from '../ui';
 import { PanelEntryScope, PanelResourceScope, PanelTabScope, useSidePanelActions } from '../workspace/sidePanelState';
@@ -23,7 +23,7 @@ interface ReaderResult { url: string; blocks: string[]; links: { url: string; ti
 
 const readerHistory = new WeakMap<object, { reading: boolean; reader?: ReaderResult | null }>();
 
-export function WebSourcePreview({ href, title }: { href: string; title: string }) {
+export function WebSourcePreview({ href, title, navigation, pin }: { href: string; title: string; navigation: ReactNode; pin: ReactNode }) {
   const url = new URL(href);
   const entry = useContext(PanelEntryScope);
   const previous = entry && readerHistory.get(entry);
@@ -63,11 +63,18 @@ export function WebSourcePreview({ href, title }: { href: string; title: string 
   const frame = result?.status === 'available' && result.url ? previewUrl(result.url) : undefined;
   if (frame && !frame.hash) frame.hash = url.hash;
   return <div className="workspace-web-preview">
-    <header className="workspace-web-toolbar">
-      <button type="button" aria-pressed={reading} title={reading ? 'Return to website preview' : 'Open Reader to select and quote text'} className={buttonStyles({ size: 'sm', variant: reading ? 'secondary' : 'ghost' })} onClick={() => setReading(value => !value)}>Reader</button>
-      <span className="min-w-0 flex-1 truncate text-xs text-muted" title={url.hostname}>{url.hostname}</span>
-      <a href={url.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
-        className={buttonStyles({ size: 'sm', variant: 'ghost' })}>Open in browser <ExternalLink size={14} aria-hidden="true" /></a>
+    <header className="workspace-resource-toolbar workspace-web-toolbar" data-no-excerpt>
+      {navigation}
+      <span className="min-w-0 flex-1 truncate px-1 text-xs text-muted" dir="ltr" title={url.hostname}>{url.hostname}</span>
+      <button type="button" aria-label="Reader" aria-pressed={reading} title={reading ? 'Return to website preview' : 'Open Reader to select and quote text'}
+        className={buttonStyles({ size: 'sm', variant: 'ghost', className: 'workspace-web-action' })} onClick={() => setReading(value => !value)}>
+        <BookOpen size={15} aria-hidden="true" /><span>Reader</span>
+      </button>
+      <a href={url.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label="Open in browser" title="Open in browser"
+        className={buttonStyles({ size: 'sm', variant: 'ghost', className: 'workspace-web-action' })}>
+        <ExternalLink size={15} aria-hidden="true" /><span>Open in browser</span>
+      </a>
+      {pin}
     </header>
     {reading ? reader ? <div data-reader-url={reader.url} className="space-y-3 p-4 text-sm leading-relaxed">
       {reader.blocks.map((block, index) => <p key={index} dir="auto" className="break-words">{block}</p>)}
@@ -107,7 +114,7 @@ export function SourceLink({ href, sourceTitle, onPreview, children, ...props }:
       onPreview?.();
       const title = (sourceTitle?.trim() || event.currentTarget.textContent?.trim() || url.hostname).slice(0, 300);
       panel.open({ title, parentId, inPlace: !!resource, resource: { kind: 'web', title, url: url.href },
-        icon: <Globe size={14} aria-hidden="true" />, content: <WebSourcePreview href={url.href} title={title} /> });
+        icon: <Globe size={14} aria-hidden="true" /> });
     }}>{children}</a>;
 }
 

@@ -195,7 +195,15 @@ test('mobile navigation is modal, restores focus, and retains history after desk
   await expect(navigation.getByRole('region', { name: 'Conversation history' })).toBeVisible();
   expect(await page.locator('#workspace-content').evaluate(node => (node as HTMLElement).inert)).toBe(true);
   await navigation.getByRole('button', { name: /Account menu/ }).click();
-  await expect(navigation.getByLabel('Account settings')).toBeVisible();
+  const account = navigation.getByLabel('Account settings');
+  await expect(account).toBeVisible();
+  await expect(account.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(account.getByRole('link', { name: 'Memories' })).toBeVisible();
+  await expect(account.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await account.getByRole('radio', { name: 'Light theme' }).check();
+  await expect(account.getByRole('radio', { name: 'Light theme' })).toBeChecked();
+  await expect(account).toBeVisible();
+  await account.getByRole('radio', { name: 'System theme' }).check();
   await page.keyboard.press('Escape');
   await expect(navigation.getByLabel('Account settings')).toHaveCount(0);
   await page.keyboard.press('Escape');
