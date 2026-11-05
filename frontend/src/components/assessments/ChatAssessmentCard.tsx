@@ -15,20 +15,44 @@ import { AssessmentPaper } from './AssessmentPaper';
 import { usesInteractiveAssessment } from './assessmentDelivery';
 import { chatStore, useConversation } from '../../stores/chatStore';
 
-export function ChatAssessmentCard({ initial, hydrated = false }: { initial: ChatAssessmentCardData; hydrated?: boolean }) {
+function handoffAttempt(card: ChatAssessmentCardData) {
+  const value = card.hydration;
+  if (value?.version !== 1 || value.attempt && value.attempt.assessment_id !== card.assessment.id
+    || card.attempt_id && value.attempt?.id !== card.attempt_id) return undefined;
+  return value.attempt;
+}
+
+export function ChatAssessmentCard({ initial, hydrated = false, receivedAt }: { initial: ChatAssessmentCardData; hydrated?: boolean; receivedAt?: number }) {
   const navigate = useNavigate();
   const { identity } = useAuth();
   const owner = identity?.learner_id;
   const chat = useConversation(initial.conversation_id);
   const [card, setCard] = useState(initial);
-  const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
+  const [attempt, setAttempt] = useState<AssessmentAttempt | null>(() => hydrated ? handoffAttempt(initial) ?? null : null);
+  const [changedElsewhere, setChangedElsewhere] = useState(false);
+  const hasLocalAnswers = () => Object.values(assessmentSession.draft(owner,
+    `${card.assessment.id}:${attempt?.id ?? 'new'}`)?.answers ?? {}).some(answer => answer.trim());
   useEffect(() => {
     if (attempt && card.conversation_id) window.dispatchEvent(new CustomEvent('mentra:assessment-generation',
       {detail:{conversationId:card.conversation_id}}));
   }, [attempt?.id, attempt?.state, attempt?.revision, card.conversation_id]);
   const latest = useLatestAssessmentAttempt(card.assessment.id);
-  useEffect(() => { if (latest && ((!initial.attempt_id && (!attempt || latest.attempt_number > attempt.attempt_number)) || latest.id === attempt?.id && latest.revision > attempt.revision)) setAttempt(latest); }, [latest, attempt, initial.attempt_id]);
-  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (latest && ((!initial.attempt_id && (!attempt || latest.attempt_number > attempt.attempt_number)) || latest.id === attempt?.id && latest.revision > attempt.revision)) {
+      if (hasLocalAnswers() && latest.id !== attempt?.id) {
+        setChangedElsewhere(true); setError('This assessment changed elsewhere. Your answers are kept. Refresh to review the saved attempt.');
+      } else setAttempt(latest);
+    }
+  }, [latest, attempt, initial.attempt_id]);
+  const [ready, setReady] = useState(() => hydrated && handoffAttempt(initial) !== undefined);
+  useEffect(() => {
+    if (!ready || receivedAt === undefined) return;
+    const frame = requestAnimationFrame(() => {
+      performance.clearMeasures('mentra.assessment.ready_to_visible');
+      performance.measure('mentra.assessment.ready_to_visible', { start: receivedAt, end: performance.now() });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [ready, receivedAt]);
   const [busy, setBusy] = useState(false);
   const [answerAction, setAnswerAction] = useState(false);
   const [error, setError] = useState('');
@@ -37,23 +61,36 @@ export function ChatAssessmentCard({ initial, hydrated = false }: { initial: Cha
   const operation = useRef(crypto.randomUUID());
   const active = useRef<AbortController | null>(null);
   useEffect(() => {
-    setReady(false); setError('');
+    setError('');
     const controller = new AbortController();
+    if (hydrated && reload === 0 && handoffAttempt(initial) !== undefined) {
+      const selected = handoffAttempt(initial);
+      if (selected && hasLocalAnswers() && selected.id !== attempt?.id) {
+        setChangedElsewhere(true); setError('This assessment changed elsewhere. Your answers are kept. Refresh to review the saved attempt.');
+      } else if (selected) {
+        assessmentSession.observe(owner, selected);
+        setAttempt(previous => previous?.id === selected.id && previous.revision > selected.revision ? previous : selected);
+      }
+      setReady(true);
+      return () => { controller.abort(); active.current?.abort(); };
+    }
+    setReady(false);
     const load = hydrated && reload === 0 ? Promise.resolve(initial) : initial.id ? assessments.draft(initial.id, controller.signal) : assessments.detail(initial.assessment_id!, controller.signal).then(assessment => ({ ...initial, assessment }));
     void load.then(async value => {
-      const candidates = !value.deleted && !initial.attempt_id && value.assessment_id
+      const supplied = handoffAttempt({ ...value, attempt_id: initial.attempt_id });
+      const candidates = supplied === undefined && !value.deleted && !initial.attempt_id && value.assessment_id
         ? await assessments.attempts(value.assessment_id, controller.signal) : [];
       // An unused retry must not hide saved feedback when reopening a chat.
       // Keep a deliberately started retry in this session, and preserve pinned
       // attempt cards rather than silently replacing historical results.
-      const selected = value.deleted ? null : initial.attempt_id ? await assessments.attempt(initial.attempt_id, controller.signal) :
+      const selected = value.deleted ? null : supplied !== undefined ? supplied : initial.attempt_id ? await assessments.attempt(initial.attempt_id, controller.signal) :
         candidates.find(item => item.state !== 'draft' || Object.keys(item.answers).length > 0
           || Object.values(assessmentSession.draft(owner, `${value.assessment_id}:${item.id}`)?.answers ?? {}).some(answer=>answer.trim())) ?? candidates[0] ?? null;
       if (selected && selected.assessment_id!==value.assessment_id) throw new Error('This attempt does not belong to this assessment.');
-      if (!controller.signal.aborted) { setCard(value); setAttempt(selected); if (selected) assessmentSession.observe(owner, selected); setReady(true); }
+      if (!controller.signal.aborted) { setCard(value); setAttempt(selected); setChangedElsewhere(false); if (selected) assessmentSession.observe(owner, selected); setReady(true); }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.message : 'Unable to load assessment.'); });
     return () => { controller.abort(); active.current?.abort(); };
-  }, [owner, initial.id, initial.assessment_id, initial.attempt_id, hydrated, reload]);
+  }, [owner, initial.id, initial.assessment_id, initial.attempt_id, initial.hydration, hydrated, reload]);
   async function save(answer = false) {
     if (lock.current) return;
     lock.current = true;
@@ -95,7 +132,7 @@ export function ChatAssessmentCard({ initial, hydrated = false }: { initial: Cha
     </div>
     <p className="text-sm text-muted">{card.deleted ? 'This assessment was deleted. Its questions remain here for reference.' : card.assessment_id ? 'Saved to your assessments.' : 'This practice stays in this chat until you add it or submit answers for evaluation.'}</p>
     {error && <p role="alert" className="text-sm text-danger">{error} <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'ml-2 mt-1' })} onClick={() => setReload(value => value+1)}>Refresh</button></p>}
-    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy} onChange={updateAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={updateAttempt} actions={actions} /> :
+    {!ready && !error ? <Skeleton variant="card" rows={1} /> : isMCQ ? <MCQAssessment key={attempt?.id ?? card.assessment.id} assessment={card.assessment} initial={attempt} onStart={beginInline} disabled={!ready || busy || changedElsewhere} onChange={updateAttempt} actions={actions} /> : attempt ? <InlineAnswers key={attempt.id} assessment={card.assessment} initial={attempt} onChange={updateAttempt} actions={actions} /> :
       <AssessmentPaper assessment={card.assessment} />}
     {ready && !card.deleted && !isMCQ && !attempt && <AnswerSheetUpload attempt={null} onStart={beginInline} disabled={busy} onChange={updateAttempt} />}
     {(!ready && !error || !isMCQ && !attempt) && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

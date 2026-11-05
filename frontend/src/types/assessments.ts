@@ -23,9 +23,10 @@ export interface AssessmentAttempt {
   grade_revision: number; grade_history: { grade_revision: number; grades: QuestionGrade[]; answers: Record<string,string>; corrected_at: string }[];
 }
 export interface AssessmentGeneration { topic_id?: string; question_formats?: string[]; concept_ids?: string[]; level?: string; result_style?: 'marks' | 'grade' | 'feedback'; instructions?: string; question_format?: QuestionFormat; duration_minutes?: number; total_marks?: number; client_request_id: string; context_id: string; topic: string; concept_names: string[]; confirm_new_concepts: boolean; count: number | null; purpose: string; grounded: boolean; document_ids: string[] }
-export interface GenerationJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'stopped'; title: string; completed_parts: number; total_parts: number | null; result: Assessment | ChatAssessmentCardData | null; error: string | null; can_retry: boolean; revision?: number; can_resume?: boolean; resume_until?: string | null; conversation_id?: string | null; source_turn_id?: string | null }
+export interface GenerationJob { hydration?: AssessmentHydration; id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'stopped'; title: string; completed_parts: number; total_parts: number | null; result: Assessment | ChatAssessmentCardData | null; error: string | null; can_retry: boolean; revision?: number; can_resume?: boolean; resume_until?: string | null; conversation_id?: string | null; source_turn_id?: string | null }
 export interface GenerationCardData { id: string; generation_job_id: string; title: string }
 export interface ChatAssessmentCardData {
+  hydration?: AssessmentHydration;
   id: string | null;
   conversation_id: string;
   assessment_id: string | null;
@@ -33,6 +34,8 @@ export interface ChatAssessmentCardData {
   attempt_id?: string;
   deleted?: boolean;
 }
+
+export interface AssessmentHydration { version: 1; attempt: AssessmentAttempt | null }
 
 export interface MistakeItem { answer: string; answer_mode?: AssessmentQuestion['answer_mode']; options?: AssessmentQuestion['options']; id: string; assessment_id: string; assessment_title: string; attempt_id: string; grade_revision: number; question_id: string; prompt: string; context: string; topics: { id: string; name: string }[]; score: number; marks: number; feedback: string; occurrences: number; resolved: boolean; occurred_at: string; priority: string }
 export interface MistakesPage { contexts: { id: string; name: string }[]; items: MistakeItem[]; total: number; active_count: number; next_offset: number | null; assessments: { id: string; title: string }[]; topics: { id: string; name: string }[] }

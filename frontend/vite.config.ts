@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  cacheDir: '.cache/vite',
   plugins: [react()],
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['prismjs'] },

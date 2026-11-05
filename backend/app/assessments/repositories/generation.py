@@ -66,7 +66,20 @@ class GenerationJobs:
                 from app.chat.repositories.tables import conversations
                 if not session.scalar(select(conversations.c.id).where(conversations.c.id==row['conversation_id'], conversations.c.learner_id==owner, conversations.c.deleted_at.is_(None))):
                     raise AppError('ASSESSMENT_JOB_NOT_FOUND', 'Assessment generation unavailable.', 404)
-            return self.public(row)
+            value = self.public(row)
+            if row['state'] == 'completed' and row['result']:
+                result = row['result']
+                identifier = result.get('assessment_id') if 'assessment' in result else result.get('id')
+                value['hydration'] = self.repository.display_hydration(session, owner, identifier)
+                if identifier:
+                    from .tables import assessments
+                    available = session.scalar(select(assessments.c.id).where(
+                        assessments.c.learner_id == owner, assessments.c.id == identifier))
+                    if not available:
+                        value['result'] = dict(result, deleted=True) if 'assessment' in result else dict(
+                            id=None, conversation_id=row['conversation_id'] or '', assessment_id=identifier,
+                            assessment=result, deleted=True)
+            return value
 
     def visible_context(self, owner, conversation, identifiers):
         """Resolve visible completed handoffs into lightweight owned card identities."""

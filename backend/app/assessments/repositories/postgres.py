@@ -56,6 +56,19 @@ class AssessmentRepository:
     def attempt_public(self, row):
         return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3),source_pending=bool(row.get('source_pending')),source_error=row.get('source_error'))
 
+    def display_hydration(self, session, owner, assessment_id):
+        """Fresh attempt state in the same owned handoff; keys stay private.
+
+        Prefer meaningful work to an unused retry, matching restored chat cards.
+        This reads one row, rather than transferring the whole attempt history.
+        """
+        from sqlalchemy import case
+        meaningful = or_(t.c.state != 'draft', t.c.answers != {})
+        row = session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner,
+            t.c.assessment_id == assessment_id).order_by(case((meaningful, 0), else_=1),
+            t.c.attempt_number.desc(), t.c.id).limit(1)).mappings().first() if assessment_id else None
+        return dict(version=1, attempt=self.attempt_public(row).model_dump(mode='json') if row else None)
+
     def claim_generation(self, owner, request):
         with self.transactions.write(owner) as tx:
             operation = str(request.client_request_id)

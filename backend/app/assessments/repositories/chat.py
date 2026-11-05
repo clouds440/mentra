@@ -46,7 +46,9 @@ class ChatAssessmentRepository:
             row = self._draft(session, owner, identifier)
             deleted = bool(row['assessment_id'] and not session.scalar(select(assessments.c.id).where(
                 assessments.c.learner_id == owner, assessments.c.id == row['assessment_id'])))
-            return dict(self.public(row), deleted=deleted)
+            return dict(self.public(row), deleted=deleted,
+                hydration=self.repository.display_hydration(session, owner, row['assessment_id']) if not deleted
+                    else dict(version=1, attempt=None))
 
     def revision_source(self, owner, identifier):
         """Trusted revision service only; private keys never enter the public DTO."""

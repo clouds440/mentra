@@ -3,6 +3,7 @@ import { setFileCacheOwner } from '../../services/fileSessionCache';
 import { setUploadOwner } from '../../services/files';
 import { openBroadcastChannel } from '../../utils/broadcastChannel';
 import { assessmentSession } from '../../stores/assessmentSession';
+import { assessmentGeneration } from '../../stores/assessmentGeneration';
 import { setRichContentOwner } from '../../lib/richContentCache';
 import { setAssessmentTargetOwner } from '../../services/assessmentTargetDraft';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -32,6 +33,7 @@ function setSessionOwner(owner: string | null) {
   setFileCacheOwner(owner);
   setUploadOwner(owner);
   assessmentSession.setOwner(owner);
+  assessmentGeneration.setOwner(owner);
   setAssessmentTargetOwner(owner);
 }
 
