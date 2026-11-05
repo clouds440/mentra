@@ -43,8 +43,9 @@ export function ChatPage() {
   const hasSources = useMemo(() => view.messages.some(hasChatSources), [view.messages]);
   useEffect(() => {
     if (!panel || (!hasSources && !(conversationId && view.before))) return;
-    panel.setLauncher({ title: 'Chat sources', icon: <Layers size={14} aria-hidden="true" />,
-      content: <ChatSourceCatalog key={id} messages={view.messages} conversationId={conversationId} before={view.before} /> });
+    panel.setLauncher({ tab: { title: 'Chat sources', icon: <Layers size={14} aria-hidden="true" />,
+      content: <ChatSourceCatalog key={id} messages={view.messages} conversationId={conversationId} before={view.before} /> },
+      menuContent: <ChatSourceCatalog key={id} messages={view.messages} conversationId={conversationId} before={view.before} compact /> });
     return () => panel.setLauncher();
   }, [panel, id, hasSources, conversationId, view.before, view.messages]);
   const [, refreshPause] = useState(0);

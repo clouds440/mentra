@@ -218,9 +218,12 @@ test('the panel dropdown browses sources from earlier messages without changing 
   await panel.getByRole('button', { name: 'From this chat' }).click();
   const catalog = page.getByRole('region', { name: 'From this chat' });
   await expect(catalog.getByRole('link', { name: /Article 1/ })).toBeVisible();
+  await expect(catalog.getByText('Publisher excerpt 1', { exact: true })).toHaveCount(0);
   await catalog.getByRole('button', { name: 'Load earlier sources' }).click();
-  await expect(catalog.getByText('Publisher excerpt 2', { exact: true })).toBeVisible();
-  await catalog.getByRole('link', { name: /Article 2/ }).click();
+  const earlier = catalog.getByRole('link', { name: /Article 2/ });
+  await expect(earlier).toBeVisible();
+  await expect(catalog.getByText('Publisher excerpt 2', { exact: true })).toHaveCount(0);
+  await earlier.click();
   await expect(panel.getByRole('tabpanel', { name: 'Article 2' })).toBeVisible();
   await expect(catalog).toHaveCount(0);
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(1);

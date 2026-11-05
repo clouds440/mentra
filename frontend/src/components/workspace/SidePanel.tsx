@@ -168,7 +168,7 @@ export function SidePanel() {
               title="From this chat" onClick={() => { setHasBrowsed(true); setBrowsing(value => !value); }}><List size={16} aria-hidden="true" /><ChevronDown size={9} aria-hidden="true" /></IconButton>
             <Popover anchor={browseButton} open={browsing && visible} onClose={() => setBrowsing(false)} id={browseId} role="region" label="From this chat"
               width={340} maxHeight={450} focusOnOpen keepMounted={hasBrowsed} portalContainer={panel}>
-              <PanelTabScope.Provider value={active || undefined}>{launcher.content}</PanelTabScope.Provider>
+              <PanelTabScope.Provider value={active || undefined}>{launcher.menuContent}</PanelTabScope.Provider>
             </Popover>
           </>}
           {!desktop && visible && <SidePanelTrigger inDrawer />}

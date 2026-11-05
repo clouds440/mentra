@@ -8,7 +8,8 @@ export interface PanelTab {
   parentId?: string;
 }
 interface OpenTab extends PanelTab { id: string }
-interface PanelState { tabs: OpenTab[]; active: string; visible: boolean; launcher?: PanelTab }
+interface PanelLauncher { tab: PanelTab; menuContent: ReactNode }
+interface PanelState { tabs: OpenTab[]; active: string; visible: boolean; launcher?: PanelLauncher }
 const empty: PanelState = { tabs: [], active: '', visible: false };
 
 function removeTab(state: PanelState, id: string) {
@@ -28,7 +29,7 @@ const Actions = createContext<{
   back: (id: string) => void;
   hide: () => void;
   toggle: () => void;
-  setLauncher: (tab?: PanelTab) => void;
+  setLauncher: (tab?: PanelLauncher) => void;
 } | null>(null);
 
 export function SidePanelProvider({ children }: { children: ReactNode }) {
@@ -58,9 +59,9 @@ export function SidePanelProvider({ children }: { children: ReactNode }) {
     toggle() {
       const id = crypto.randomUUID();
       setState(value => value.tabs.length ? { ...value, visible: !value.visible }
-        : value.launcher ? { ...value, tabs: [{ ...value.launcher, id }], active: id, visible: true } : value);
+        : value.launcher ? { ...value, tabs: [{ ...value.launcher.tab, id }], active: id, visible: true } : value);
     },
-    setLauncher(launcher?: PanelTab) { setState(value => value.launcher === launcher ? value : { ...value, launcher }); },
+    setLauncher(launcher?: PanelLauncher) { setState(value => value.launcher === launcher ? value : { ...value, launcher }); },
   }), []);
   return <Actions.Provider value={actions}><State.Provider value={state}>{children}</State.Provider></Actions.Provider>;
 }
