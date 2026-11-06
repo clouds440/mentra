@@ -5,6 +5,7 @@ from .states import learner_concept_state
 from .evidence import learning_evidence, evidence_decision, misconception, learner_audit
 from .topics import learning_topic, topic_skill
 from .maintenance import maintenance_jobs
+from .signals import learning_signals
 
 __all__ = [
     'metadata', 'concept', 'concept_alias', 'concept_relation', 'concept_redirect',

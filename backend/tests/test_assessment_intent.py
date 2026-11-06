@@ -149,7 +149,7 @@ class AssessmentIntentTests(unittest.IsolatedAsyncioTestCase):
     async def test_profile_level_is_data_and_requested_higher_level_is_allowed(self):
         profile=ProfileContext(details=ProfileDetails(education_level='primary',field_of_study='Science',
             learning_goal='Understand forces',learning_preference='concise',explanation_depth='brief'),estimates={})
-        self.service.workflows.profile=SimpleNamespace(prompt_context=lambda owner:profile)
+        self.service.workflows.profile=SimpleNamespace(prompt_snapshot=lambda owner:profile)
         payloads=[]
         invoke=self.service.workflows.llm.ainvoke
         async def capture(source,payload,**kwargs):

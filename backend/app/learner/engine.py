@@ -13,7 +13,7 @@ from app.learner.exceptions import LearnerError, ConceptNotFoundError
 from app.learner.models import Concept, Misconception, LearnerConceptState, LearningEvidence
 from app.learner.repositories.protocols import LearnerRepository
 from app.learner.concepts import SemanticResolver
-from app.learner.normalization import lookup_forms
+from app.learner.normalization import lookup_forms,normalize
 from app.learner.ranking import WeightedRankingPolicy, RankingPolicy
 from app.learner.retrieval import RetrievalService
 from app.learner.state import StateService
@@ -111,8 +111,6 @@ class LearnerEngine:
         acquire mastery merely because a generator mentioned them.
         """
         from starlette.concurrency import run_in_threadpool
-        if not hasattr(self.generated_concepts.resolver, 'organize'):
-            return await self.resolve_generated_concept_labels(request)
         known = await run_in_threadpool(self.repository.known_topic_labels,
             request.learner_id, request.context_id, request.labels, request.topic)
         missing = [label for label in request.labels if label not in known]
@@ -180,6 +178,20 @@ class LearnerEngine:
 
     def get_skill_topics(self, owner, ids):
         return self.repository.skill_memberships(owner, ids)
+
+    def get_learning_signals(self,owner,*,context_ids=None,query='',limit=20,offset=0,status='active'):
+        if status not in ('active','pending','all'):
+            from app.core.exceptions import AppError
+            raise AppError('LEARNING_SIGNAL_FILTER','Choose a supported observation status.',422)
+        if context_ids:
+            for identifier in context_ids: self.contexts.require(owner,identifier)
+        return self.repository.signal_page(owner,context_ids,normalize(query),min(50,max(1,limit)),max(0,offset),status)
+
+    def withdraw_learning_signal(self,owner,identifier):
+        self.repository.withdraw_signal(owner,identifier)
+
+    def retry_learning_signal_capture(self,owner,turn_id):
+        return self.repository.retry_signal_capture(owner,turn_id)
 
     def get_topic_practice_concepts(self, owner, context_id, topic_id, limit=5):
         self.contexts.require(owner, context_id)

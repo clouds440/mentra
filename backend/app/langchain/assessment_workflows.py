@@ -67,15 +67,10 @@ class AssessmentWorkflows:
             for offset in range(0, len(labels), 5):
                 target_request = GeneratedConceptsRequest(learner_id=owner, context_id=request.context_id,
                     topic=request.topic, labels=labels[offset:offset+5], permissive=True)
-                if hasattr(self.learner, 'prepare_assessment_concept_labels'):
-                    bindings = await self.learner.prepare_assessment_concept_labels(target_request)
-                    concepts.extend(bindings.values())
-                    from app.learner.models import Concept
-                    target_concepts.update({identifier: Concept(identifier, label) for label, identifier in bindings.items()})
-                else:
-                    resolved = await self.learner.resolve_generated_concepts(target_request)
-                    target_concepts.update({value.id: value for value in resolved})
-                    concepts.extend(concept.id for concept in resolved)
+                bindings = await self.learner.prepare_assessment_concept_labels(target_request)
+                concepts.extend(bindings.values())
+                from app.learner.models import Concept
+                target_concepts.update({identifier: Concept(identifier, label) for label, identifier in bindings.items()})
             concepts = list(dict.fromkeys(concepts))
         # The packet already supplies challenge support, uncertainty and
         # verification flags. Do not compute the entire registry ranking twice

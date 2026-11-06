@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from app.db.metadata import metadata
 
 jobs=Table('chat_evidence_job',metadata,
+    Column('disposition',Text),Column('progress',JSONB,nullable=False,server_default='{}'),
     Column('log_context',JSONB,nullable=True),
     Column('profile_context_version',BigInteger),
     Column('turn_id',Uuid(as_uuid=False),primary_key=True),Column('learner_id',Uuid(as_uuid=False),nullable=False),

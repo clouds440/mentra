@@ -149,7 +149,7 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(value.questions),2)
         for question in value.questions:
             self.assertTrue(question.concept_ids)
-            self.assertEqual(self.learner.get_concepts(question.concept_ids)[question.concept_ids[0]].canonical_name,'Science: a newly introduced relationship')
+            self.assertEqual(self.learner.get_practice_concepts(self.owner,self.context.context_id,question.concept_ids)[0].canonical_name,'Science: a newly introduced relationship')
 
     async def test_current_quality_phase_rollback_preserves_questions_attempts_and_keys(self):
         value = await self.service.generate(self.owner,self.request(count=2,question_format='written'))

@@ -43,23 +43,9 @@ async def resolve_question_concepts(learner, owner, request, questions, targets)
     # candidate promotion, canonical identity and context membership.
     for start in range(0, len(labels), 5):
         batch = labels[start:start+5]
-        resolve = getattr(learner, 'prepare_assessment_concept_labels', None) or getattr(learner, 'resolve_generated_concept_labels', None)
-        if resolve:
-            bindings = await resolve(GeneratedConceptsRequest(
-                learner_id=owner, context_id=request.context_id, topic=request.topic, labels=batch, permissive=True))
-            by_name.update({label.casefold():identifier for label,identifier in bindings.items()})
-            continue
-        concepts = await learner.resolve_generated_concepts(GeneratedConceptsRequest(
+        bindings = await learner.prepare_assessment_concept_labels(GeneratedConceptsRequest(
             learner_id=owner, context_id=request.context_id, topic=request.topic, labels=batch, permissive=True))
-        for concept in concepts:
-            by_name[concept.canonical_name.casefold()] = concept.id
-        # The facade may merge aliases. Resolve each unmatched label via the same
-        # public service, whose result is unambiguous for a single requested label.
-        for label in batch:
-            if label.casefold() not in by_name:
-                value = await learner.resolve_generated_concepts(GeneratedConceptsRequest(
-                    learner_id=owner, context_id=request.context_id, topic=request.topic, labels=[label], permissive=True))
-                if value: by_name[label.casefold()] = value[0].id
+        by_name.update({label.casefold():identifier for label,identifier in bindings.items()})
     for question in questions:
         question.concept_ids = list(dict.fromkeys([*question.concept_ids,
             *(by_name[label.casefold()] for label in pending[id(question)] if label.casefold() in by_name)]))

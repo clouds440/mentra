@@ -69,6 +69,23 @@ class AttachmentRepository:
                 attachments.c.learner_id == owner, attachments.c.conversation_id == conversation_id).values(extraction=extraction, extraction_error=None))
             if not result.rowcount:
                 raise AppError('CHAT_ATTACHMENT_NOT_FOUND', 'This file is no longer available.', 404)
+            text='\n\n'.join(block.get('text','') for block in (extraction.get('blocks') or [])[:32])[:8000]
+            if text.strip():
+                from hashlib import sha256
+                from app.langchain.repositories.evidence_tables import jobs
+                from .tables import turns
+                from sqlalchemy import or_
+                revision=str(extraction.get('reader_revision','unverified'))+':'+sha256(text.encode()).hexdigest()
+                eligible=select(turns.c.id).where(turns.c.learner_id==owner,turns.c.conversation_id==conversation_id,
+                    turns.c.attachment_ids.contains([identifier]),turns.c.state=='SUCCEEDED',turns.c.attempt==jobs.c.attempt,
+                    or_(turns.c.response_outcome.is_(None),turns.c.response_outcome['state'].astext=='completed')).correlate(jobs)
+                session.execute(update(jobs).where(jobs.c.learner_id==owner,jobs.c.turn_id.in_(eligible),
+                    jobs.c.state.in_(['applied','ignored','failed']),
+                    or_(jobs.c.receipt['source_revisions'][identifier].astext.is_(None),
+                        jobs.c.receipt['source_revisions'][identifier].astext!=revision),
+                    or_(jobs.c.disposition.is_(None),jobs.c.disposition!='formal_assessment_managed'))
+                    .values(state='queued',attempts=0,claim_id=None,claim_until=None,retry_at=None,
+                        disposition='attachment_source_ready',progress={}))
 
     def extraction_failed(self, owner, identifier, error):
         with self.sessions.begin() as session:

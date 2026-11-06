@@ -72,6 +72,8 @@ class AuditDatabaseRegressions(unittest.TestCase):
         cid = str(uuid4())
         first = chat.begin_turn(self.owner, SendTurn(conversation_id=cid, client_turn_id=uuid4(), expected_revision=0, content='Practice'))
         chat.finish(self.owner, first, response={'content': 'What is two plus two?'})
+        repository=ChatEvidenceRepository(self.db.sessions)
+        repository.complete(repository.claim(),lambda tx:None,disposition='non_learning')
         revision = chat.status(self.owner, cid)['conversation']['revision']
         job = chat.begin_turn(self.owner, SendTurn(conversation_id=cid, client_turn_id=uuid4(), expected_revision=revision, content='Four.'))
         return chat, job
@@ -80,14 +82,14 @@ class AuditDatabaseRegressions(unittest.TestCase):
         chat, job = self.evidence_turn()
         chat.finish(self.owner, job, response={'content': 'Partly done.', 'response_outcome': dict(state='partial', retryable=True)})
         with self.db.sessions() as session:
-            self.assertEqual(session.scalar(select(func.count()).select_from(jobs)), 0)
+            self.assertEqual(session.scalar(select(func.count()).select_from(jobs).where(jobs.c.state=='queued')), 0)
 
     def test_handoffs_and_review_waits_do_not_enqueue_evidence(self):
         for state in ('in_progress','awaiting_input','paused'):
             chat,job=self.evidence_turn()
             chat.finish(self.owner,job,response={'content':'Waiting.', 'response_outcome':dict(state=state)})
         with self.db.sessions() as session:
-            self.assertEqual(session.scalar(select(func.count()).select_from(jobs)),0)
+            self.assertEqual(session.scalar(select(func.count()).select_from(jobs).where(jobs.c.state=='queued')),0)
 
     def test_legacy_stale_job_is_retired(self):
         chat, job = self.evidence_turn()
@@ -96,7 +98,7 @@ class AuditDatabaseRegressions(unittest.TestCase):
             session.execute(update(turns).where(turns.c.id == job['turn_id']).values(state='FAILED'))
         self.assertIsNone(ChatEvidenceRepository(self.db.sessions).claim())
         with self.db.sessions() as session:
-            self.assertEqual(session.scalar(select(jobs.c.state)), 'ignored')
+            self.assertEqual(session.scalar(select(jobs.c.state).where(jobs.c.turn_id==job['turn_id'])), 'ignored')
 
     def test_enqueue_replay_is_idempotent(self):
         chat, job = self.evidence_turn()
@@ -104,4 +106,4 @@ class AuditDatabaseRegressions(unittest.TestCase):
         with self.db.sessions.begin() as session:
             ChatEvidenceRepository.queue(session, self.owner, job)
         with self.db.sessions() as session:
-            self.assertEqual(session.scalar(select(func.count()).select_from(jobs)), 1)
+            self.assertEqual(session.scalar(select(func.count()).select_from(jobs).where(jobs.c.state=='queued')), 1)

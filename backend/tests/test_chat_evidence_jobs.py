@@ -17,6 +17,10 @@ class EvidenceJobTests(unittest.TestCase):
         self.conversation=uuid4()
         first=self.chat.begin_turn(self.owner,SendTurn(conversation_id=self.conversation,client_turn_id=uuid4(),expected_revision=0,content='Practice algebra'))
         self.chat.finish(self.owner,first,response={'content':'What is two plus two?'})
+        # Every completed source now has a durable disposition, including the
+        # initial encounter. Isolate the following answer's lease in this fixture.
+        repository=ChatEvidenceRepository(self.db.sessions)
+        repository.complete(repository.claim(),lambda tx:None,disposition='non_learning')
         revision=self.chat.status(self.owner,str(self.conversation))['conversation']['revision']
         self.job=self.chat.begin_turn(self.owner,SendTurn(conversation_id=self.conversation,client_turn_id=uuid4(),expected_revision=revision,content='Two plus two equals four.'))
         self.chat.finish(self.owner,self.job,response={'content':'Correct.'})
@@ -28,7 +32,7 @@ class EvidenceJobTests(unittest.TestCase):
         self.assertIsNone(ChatEvidenceRepository(self.db.sessions).claim())
         repository.complete(job,lambda tx:None)
         with self.db.sessions() as session:
-            self.assertEqual(session.execute(select(jobs.c.state)).scalar_one(),'ignored')
+            self.assertEqual(session.execute(select(jobs.c.state).where(jobs.c.turn_id==self.job['turn_id'])).scalar_one(),'ignored')
         self.assertIsNone(repository.claim())
 
     def test_chat_deletion_removes_pending_evidence_jobs(self):
@@ -56,7 +60,7 @@ class EvidenceJobTests(unittest.TestCase):
                 attempts=3, claim_until=datetime.now(timezone.utc) - timedelta(seconds=1)))
         self.assertIsNone(repository.claim())
         with self.db.sessions() as session:
-            row = session.execute(select(jobs)).mappings().one()
+            row = session.execute(select(jobs).where(jobs.c.turn_id==self.job['turn_id'])).mappings().one()
         self.assertEqual(row['state'], 'failed')
         self.assertIsNone(row['claim_id'])
         self.assertIsNone(row['retry_at'])

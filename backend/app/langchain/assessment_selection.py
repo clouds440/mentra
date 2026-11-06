@@ -1,5 +1,4 @@
 """Choose omissions using the same owner-bound read tools as chat."""
-import asyncio
 from app.assessments.schemas import AssessmentSelection, GenerationRequest
 from app.learner.schemas import ResolveLearningContextRequest
 from app.core.observability.timing import run_in_threadpool
@@ -26,29 +25,21 @@ async def resolve_assessment_intent(workflows, owner, intent):
             rows = await run_in_threadpool(learner.get_context_page, owner, limit=20)
             contexts = [row.model_dump(mode='json') for row in rows if row.status != 'ARCHIVED']
         identifiers = [intent.context_id] if intent.context_id else [row['context_id'] for row in contexts[:20]]
-        scope = dict(context_ids=identifiers) if identifiers else {}
         async def read_profile():
             from .assessment_context import optional_read
             if not workflows.profile: return None
-            read = getattr(workflows.profile, 'prompt_snapshot', None) or workflows.profile.prompt_context
-            return await run_in_threadpool(optional_read, 'profile', lambda: read(owner))
+            return await run_in_threadpool(optional_read, 'profile', lambda: workflows.profile.prompt_snapshot(owner))
         # Recommendations and verification use the same ranking inputs. Read
         # them once through the existing owner-bound domain contract; do not
         # retain this snapshot across later concept mutations or responses.
         from .assessment_context import optional_read
-        prepare = getattr(learner, 'get_assessment_selection_context', None)
-        if prepare:
-            prepared = await run_in_threadpool(optional_read, 'selection',
-                lambda: prepare(owner, identifiers or None, intent.topic))
-            if prepared:
-                ranked, packet = prepared
-                learner_context = packet.model_dump(mode='json')
-            else:
-                ranked, learner_context = dict(recommendations=[], verification=[]), dict(availability='unavailable')
+        prepared = await run_in_threadpool(optional_read, 'selection',
+            lambda: learner.get_assessment_selection_context(owner, identifiers or None, intent.topic))
+        if prepared:
+            ranked, packet = prepared
+            learner_context = packet.model_dump(mode='json')
         else:
-            ranked = await run_in_threadpool(learner.get_study_targets, owner, identifiers or None)
-            learner_context = await tools['get_relevant_learner_context'].ainvoke(dict(
-                query=intent.topic or intent.instructions or 'Choose useful assessment practice', **scope))
+            ranked, learner_context = dict(recommendations=[], verification=[]), dict(availability='unavailable')
         profile = await read_profile()
         data = dict(priorities=[item.model_dump(mode='json') for item in ranked['recommendations']],
             verification=[item.model_dump(mode='json') for item in ranked['verification']],learner=learner_context)

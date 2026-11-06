@@ -39,26 +39,26 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
     async def test_valid_target_ids_do_not_spawn_paraphrased_skills(self):
         from app.langchain.assessment_concepts import resolve_question_concepts
         from app.assessments.schemas import GeneratedQuestion
-        learner=SimpleNamespace(resolve_generated_concept_labels=AsyncMock())
+        learner=SimpleNamespace(prepare_assessment_concept_labels=AsyncMock())
         question=GeneratedQuestion(prompt='Distinguish the letters.',difficulty=.2,marks=1,
             concept_ids=['known'],concept_names=['A long alternate description of letter dots'],
             model_answer='Compare their dots.',rubric='Identify the distinguishing dot pattern.')
         request=SimpleNamespace(concept_ids=[],context_id='context',topic='Arabic letters')
         await resolve_question_concepts(learner,self.owner,request,[question],[dict(id='known',name='Letter dots')])
-        learner.resolve_generated_concept_labels.assert_not_awaited()
+        learner.prepare_assessment_concept_labels.assert_not_awaited()
         self.assertEqual(question.concept_ids,['known'])
         self.assertEqual(question.concept_names,[])
 
     async def test_new_labels_resolve_once_per_batch_without_single_label_repairs(self):
         from app.langchain.assessment_concepts import resolve_question_concepts
         from app.assessments.schemas import GeneratedQuestion
-        learner=SimpleNamespace(resolve_generated_concept_labels=AsyncMock(return_value={'Letter dots':'same','Dot recognition':'same'}),
+        learner=SimpleNamespace(prepare_assessment_concept_labels=AsyncMock(return_value={'Letter dots':'same','Dot recognition':'same'}),
             resolve_generated_concepts=AsyncMock(side_effect=AssertionError('No single-label model fallback')))
         question=GeneratedQuestion(prompt='Distinguish the letters.',difficulty=.2,marks=1,
             concept_names=['Letter dots','Dot recognition'],model_answer='Compare dots.',rubric='Identify dots.')
         request=SimpleNamespace(concept_ids=[],context_id='context',topic='Arabic letters')
         await resolve_question_concepts(learner,self.owner,request,[question],[])
-        self.assertEqual(learner.resolve_generated_concept_labels.await_count,1)
+        self.assertEqual(learner.prepare_assessment_concept_labels.await_count,1)
         learner.resolve_generated_concepts.assert_not_awaited()
         self.assertEqual(question.concept_ids,['same'])
 
@@ -290,7 +290,7 @@ class TopicAssessmentTests(unittest.IsolatedAsyncioTestCase):
                 client_request_id=uuid4(), topic='AI basics', count=5, question_format='mcq')
         self.assertEqual(len(plans), 0)
         self.assertEqual(len(result['assessment']['questions']), 5)
-        self.assertEqual(self.db.repository.list_concepts(10)[0].canonical_name, 'AI basics')
+        self.assertEqual(result['assessment']['questions'][0]['learning_targets'][0]['subskill_name'], 'AI basics')
 
     async def test_permanently_invalid_questions_never_save_a_partial_assessment(self):
         from app.langchain.prompts import PromptSource

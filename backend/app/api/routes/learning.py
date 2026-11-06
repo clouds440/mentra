@@ -11,6 +11,25 @@ def private_response(response: Response): response.headers['Cache-Control'] = 'n
 router = APIRouter(prefix='/learning', tags=['learning'], dependencies=[Depends(private_response)])
 
 
+@router.get('/signals')
+async def signals(request: Request,context_id: str|None=Query(None,max_length=100),
+        query: str=Query('',max_length=200),limit: int=Query(20,ge=1,le=50),offset: int=Query(0,ge=0,le=100000),
+        status: Literal['active','pending','all']='active',
+        identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.learner_service.get_learning_signals,identity.learner_id,
+        context_ids=[context_id] if context_id else None,query=query,limit=limit,offset=offset,status=status)
+
+
+@router.delete('/signals/{identifier}',status_code=204)
+async def withdraw_signal(identifier: UUID,request: Request,identity=Depends(require_onboarded_identity)):
+    await run_in_threadpool(request.app.state.learner_service.withdraw_learning_signal,identity.learner_id,str(identifier))
+
+
+@router.post('/signal-captures/{turn_id}/retry')
+async def retry_signal_capture(turn_id: UUID,request: Request,identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.learner_service.retry_learning_signal_capture,identity.learner_id,str(turn_id))
+
+
 @router.get('/topics')
 async def topics(request: Request, query: str = Query('', max_length=200),
                  context_id: str | None = Query(None, max_length=100), all_contexts: bool = False,
