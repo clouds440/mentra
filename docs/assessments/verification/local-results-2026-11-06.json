@@ -1,5 +1,5 @@
 {
-  "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+  "revision": "source-sha256:05f3b3a64d3bbe8392ec063a023366c72b500185f3dd15ed0fb6764fdd51d584",
   "base": "f1b4ff7f5689fda6d906fffa7d6d0feb1297127a",
   "qualification": "Internal preview; production educational/effectiveness gates held.",
   "generation_before": {
@@ -2305,6 +2305,7 @@
     "output_cap_and_quality": "54 passed in 69.491s",
     "final_arabic_admission": "26 passed in 14.239s",
     "final_features": "70 passed in 84.167s",
+    "chat_read_scope": "11 passed in 23.570s; normal chat reads: one checkout, no writes/replay",
     "regression_followup": "91/92 passed, then the order-dependent retention fixture was corrected and its isolated current-contract restart check passed.",
     "grading_paper_followup": "5 passed in 8.458s; a bulk-run mock-paper failure did not reproduce in isolation.",
     "full_discovery": "1225 executed, 36 failures/errors, 1 skipped; 24 existing failures reproduced on unchanged main, remaining current-contract/runner/process issues corrected or passed in focused confirmation. Full repository suite is not claimed green."

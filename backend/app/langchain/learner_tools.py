@@ -61,19 +61,23 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
     learner_id = canonical_learner_id(learner_id)
 
     def active():
-        return learner.get_active_contexts(ActiveContextsRequest(learner_id=learner_id)).model_dump(mode='json')
+        with learner.read_scope() as scoped:
+            return scoped.get_active_contexts(ActiveContextsRequest(learner_id=learner_id)).model_dump(mode='json')
 
     def context(**kwargs):
         from app.learner.prompt_context import compact
-        return compact(learner.get_relevant_context(LearnerContextRequest(learner_id=learner_id, **kwargs)))
+        with learner.read_scope() as scoped:
+            return compact(scoped.get_relevant_context(LearnerContextRequest(learner_id=learner_id, **kwargs)))
 
     def recommendations(**kwargs):
-        return [r.model_dump(mode='json') for r in learner.get_study_recommendations(
-            StudyRecommendationsRequest(learner_id=learner_id, **kwargs))]
+        with learner.read_scope() as scoped:
+            return [r.model_dump(mode='json') for r in scoped.get_study_recommendations(
+                StudyRecommendationsRequest(learner_id=learner_id, **kwargs))]
 
     def verification(**kwargs):
-        return [r.model_dump(mode='json') for r in learner.get_verification_candidates(
-            VerificationCandidatesRequest(learner_id=learner_id, **kwargs))]
+        with learner.read_scope() as scoped:
+            return [r.model_dump(mode='json') for r in scoped.get_verification_candidates(
+                VerificationCandidatesRequest(learner_id=learner_id, **kwargs))]
 
     def lookup(**kwargs):
         with learner.read_scope() as scoped:

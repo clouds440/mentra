@@ -46,6 +46,7 @@ class LearnerEngine:
                 semantic_resolver=self.concepts.semantic_resolver,
                 generated_concept_resolver=self.generated_concepts.resolver, clock=self.clock)
             engine.contexts._read_contexts = {}
+            engine.contexts._read_only = True
             engine.states._read_states = {}
             engine.states._read_only = True
             engine.retrieval._ranking_cache = {}

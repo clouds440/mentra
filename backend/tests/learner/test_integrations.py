@@ -87,6 +87,57 @@ class LearnerIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             mutation.invoke({'concept_id': self.concepts[0].id, 'result': 'CORRECT', 'mastery': 1})
 
+    def test_chat_read_tools_use_one_checkout_without_writes_or_stale_replay(self):
+        from sqlalchemy import event, select, update
+        from app.langchain.learner_tools import create_learner_tools
+        from app.learner.repositories.tables import learner_concept_state, learning_context
+        from app.learner.evidence import EvidenceService
+
+        owner = 'e2ba227d-7165-5d43-91db-f7185326e0c4'
+        self.engine.submit_evidence(EvidenceSubmissionRequest(learner_id=owner,
+            concept_id=self.concepts[0].id, context_id=self.context.context_id,
+            source_type='QUIZ', source_id='stale-chat-read', item_id='stale-chat-read',
+            result='CORRECT', occurred_at=self.now))
+        with self.db.sessions.begin() as session:
+            session.execute(update(learner_concept_state).where(
+                learner_concept_state.c.concept_id == self.concepts[0].id
+            ).values(mastery_policy_version='old-policy'))
+            session.execute(update(learning_context).where(
+                learning_context.c.id == self.context.context_id
+            ).values(last_activity_at=self.now - timedelta(days=400)))
+        tools = {tool.name: tool for tool in create_learner_tools(self.engine, owner)}
+        for name, arguments in [
+            ('get_active_learning_contexts', {}),
+            ('get_relevant_learner_context', {'query': 'normal form', 'context_ids': [self.context.context_id]}),
+            ('get_study_recommendations', {'context_ids': [self.context.context_id]}),
+            ('get_student_weaknesses', {'context_ids': [self.context.context_id]}),
+            ('get_verification_candidates', {'context_ids': [self.context.context_id]}),
+            ('lookup_student_concept', {'label': 'Normal Form 0', 'context_id': self.context.context_id}),
+        ]:
+            counts = dict(checkouts=0, commits=0, writes=0)
+            def checkout(*args): counts['checkouts'] += 1
+            def commit(*args): counts['commits'] += 1
+            def query(connection, cursor, statement, *args):
+                if statement.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
+                    counts['writes'] += 1
+            listeners = [('checkout', checkout), ('commit', commit), ('before_cursor_execute', query)]
+            for key, callback in listeners:
+                event.listen(self.db.engine, key, callback)
+            try:
+                with patch.object(EvidenceService, 'recompute', side_effect=AssertionError('No foreground replay')):
+                    result = tools[name].invoke(arguments)
+                if name == 'get_relevant_learner_context':
+                    self.assertTrue(all(skill.get('mastery') is None for skill in result['skills']))
+                self.assertEqual(counts, dict(checkouts=1, commits=0, writes=0), name)
+            finally:
+                for key, callback in listeners:
+                    event.remove(self.db.engine, key, callback)
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(learning_context.c.status).where(
+                learning_context.c.id == self.context.context_id)), 'ACTIVE')
+            self.assertEqual(session.scalar(select(learner_concept_state.c.mastery_policy_version).where(
+                learner_concept_state.c.concept_id == self.concepts[0].id)), 'old-policy')
+
     def test_rag_scope_dormancy_filter_and_identity(self):
         request = LearnerContextRequest(learner_id='e2ba227d-7165-5d43-91db-f7185326e0c4', query='normal form')
         scope = resolve_retrieval_scope(self.engine, request)
