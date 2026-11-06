@@ -1,0 +1,548 @@
+[
+  {
+    "direction": "original",
+    "elapsed_ms": 7323.39,
+    "request": "Give me a three-question interactive multiple-choice quiz on net force and acceleration for an introductory physics student.",
+    "turn_state": "SUCCEEDED",
+    "card": {
+      "id": "34e43e81-ee00-4e35-b09c-10f5cee984c5",
+      "conversation_id": "7e0b6e06-24f0-4452-bf4a-7e8cb0f1c236",
+      "assessment_id": "b1a0d4a9-a96d-46a7-8a6b-df38a079bb52",
+      "assessment": {
+        "attempt_summary": null,
+        "tags": [],
+        "source_assessment_ids": [],
+        "practice_source": null,
+        "preferences": {
+          "level": "Introductory physics",
+          "result_style": "feedback",
+          "delivery": "interactive"
+        },
+        "paper": null,
+        "id": "b1a0d4a9-a96d-46a7-8a6b-df38a079bb52",
+        "context_id": "28a48cb1-ddca-44d5-b411-7017e7813c86",
+        "title": "Net Force and Acceleration: Interactive Multiple-Choice Quiz",
+        "purpose": "practice",
+        "revision": 1,
+        "created_at": "2026-11-06T10:39:39.800806Z",
+        "questions": [
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9565ba3c-13cd-45a9-955b-5e3e6286db61",
+                "subskill_name": "Newton's second law: net force, mass and acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$3.0\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "b",
+                "label": "$48\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "c",
+                "label": "$0.33\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "d",
+                "label": "$16\\ \\text{m/s}^2$"
+              }
+            ],
+            "id": "c799d115-a547-4d77-a1c0-1d3394b61350",
+            "prompt": "A 4.0 kg cart experiences a net force of 12 N to the right. What is the magnitude of its acceleration?",
+            "concept_ids": [
+              "9565ba3c-13cd-45a9-955b-5e3e6286db61"
+            ],
+            "difficulty": 0.25,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9c674ea6-3949-4956-976e-2eb2008602c1",
+                "subskill_name": "Net force from opposing forces and resulting acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$7.0\\ \\text{m/s}^2$ to the right"
+              },
+              {
+                "id": "b",
+                "label": "$3.0\\ \\text{m/s}^2$ to the right"
+              },
+              {
+                "id": "c",
+                "label": "$3.0\\ \\text{m/s}^2$ to the left"
+              },
+              {
+                "id": "d",
+                "label": "$5.0\\ \\text{m/s}^2$ to the right"
+              }
+            ],
+            "id": "87215ca1-82f3-47c2-818a-478ec2fa95a3",
+            "prompt": "Two horizontal forces act on a 2.0 kg box: 10 N to the right and 4 N to the left. What is the acceleration of the box?",
+            "concept_ids": [
+              "9c674ea6-3949-4956-976e-2eb2008602c1"
+            ],
+            "difficulty": 0.45,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "d001cb57-d0d4-4c68-8b72-27917000efbb",
+                "subskill_name": "Inverse relationship between mass and acceleration at constant net force"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "It doubles."
+              },
+              {
+                "id": "b",
+                "label": "It stays the same."
+              },
+              {
+                "id": "c",
+                "label": "It is halved."
+              },
+              {
+                "id": "d",
+                "label": "It becomes four times larger."
+              }
+            ],
+            "id": "2ae0766e-669a-437b-b7e6-9e2406fd91d1",
+            "prompt": "A constant net force acts on a block. If the block's mass is doubled while the net force stays the same, what happens to the magnitude of its acceleration?",
+            "concept_ids": [
+              "d001cb57-d0d4-4c68-8b72-27917000efbb"
+            ],
+            "difficulty": 0.5,
+            "marks": 1.0,
+            "source_tokens": []
+          }
+        ],
+        "sources": []
+      }
+    }
+  },
+  {
+    "direction": "harder",
+    "elapsed_ms": 6769.17,
+    "request": "Make chat draft 34e43e81-ee00-4e35-b09c-10f5cee984c5 harder. Keep the topic, question count and delivery, and preserve the original.",
+    "turn_state": "SUCCEEDED",
+    "card": {
+      "id": "bc819f65-3709-4d7a-a3ed-d3afa8d44a0f",
+      "conversation_id": "7e0b6e06-24f0-4452-bf4a-7e8cb0f1c236",
+      "assessment_id": "6c662d93-eb34-416f-aee4-babf06f55cd9",
+      "assessment": {
+        "attempt_summary": null,
+        "tags": [],
+        "source_assessment_ids": [],
+        "practice_source": null,
+        "preferences": {
+          "level": "Introductory physics",
+          "result_style": "feedback",
+          "delivery": "interactive"
+        },
+        "paper": null,
+        "id": "6c662d93-eb34-416f-aee4-babf06f55cd9",
+        "context_id": "28a48cb1-ddca-44d5-b411-7017e7813c86",
+        "title": "Net Force and Acceleration: Interactive Multiple-Choice Quiz (Harder Revision)",
+        "purpose": "practice",
+        "revision": 1,
+        "created_at": "2026-11-06T10:39:46.544361Z",
+        "questions": [
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9565ba3c-13cd-45a9-955b-5e3e6286db61",
+                "subskill_name": "Newton's second law: net force, mass and acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$9.0\\ \\text{m}$"
+              },
+              {
+                "id": "b",
+                "label": "$13.5\\ \\text{m}$"
+              },
+              {
+                "id": "c",
+                "label": "$18\\ \\text{m}$"
+              },
+              {
+                "id": "d",
+                "label": "$4.5\\ \\text{m}$"
+              }
+            ],
+            "id": "1f866b56-1ae4-4b62-83cd-8deaa1f9f0af",
+            "prompt": "A 4.0 kg cart is pushed with a constant 12 N force to the right while a constant 4.0 N friction force acts to the left. Starting from rest, how far does the cart travel in the first 3.0 s?",
+            "concept_ids": [
+              "9565ba3c-13cd-45a9-955b-5e3e6286db61"
+            ],
+            "difficulty": 0.6,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9c674ea6-3949-4956-976e-2eb2008602c1",
+                "subskill_name": "Net force from opposing forces and resulting acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$2.0\\ \\text{m/s}^2$ to the right"
+              },
+              {
+                "id": "b",
+                "label": "$8.0\\ \\text{m/s}^2$ to the left"
+              },
+              {
+                "id": "c",
+                "label": "$2.0\\ \\text{m/s}^2$ to the left"
+              },
+              {
+                "id": "d",
+                "label": "$4.0\\ \\text{m/s}^2$ to the right"
+              }
+            ],
+            "id": "206acb29-d026-4e43-91f7-03f540635c53",
+            "prompt": "Three horizontal forces act on a 2.0 kg box: 10 N to the right, 4.0 N to the left, and 2.0 N to the left. The box is already moving to the right at $3.0\\ \\text{m/s}$. What is the magnitude and direction of its acceleration?",
+            "concept_ids": [
+              "9c674ea6-3949-4956-976e-2eb2008602c1"
+            ],
+            "difficulty": 0.65,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "d001cb57-d0d4-4c68-8b72-27917000efbb",
+                "subskill_name": "Inverse relationship between mass and acceleration at constant net force"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$1.0\\ \\text{kg}$"
+              },
+              {
+                "id": "b",
+                "label": "$2.0\\ \\text{kg}$"
+              },
+              {
+                "id": "c",
+                "label": "$3.0\\ \\text{kg}$"
+              },
+              {
+                "id": "d",
+                "label": "$4.0\\ \\text{kg}$"
+              }
+            ],
+            "id": "0337fc66-fc19-441e-a849-9f669c1f18ee",
+            "prompt": "A constant net force gives a block of mass $m$ an acceleration of $6.0\\ \\text{m/s}^2$. The mass is then increased by $2.0\\ \\text{kg}$ while the net force stays the same, and the new acceleration is $2.0\\ \\text{m/s}^2$. What was the original mass $m$?",
+            "concept_ids": [
+              "d001cb57-d0d4-4c68-8b72-27917000efbb"
+            ],
+            "difficulty": 0.75,
+            "marks": 1.0,
+            "source_tokens": []
+          }
+        ],
+        "sources": []
+      }
+    }
+  },
+  {
+    "direction": "easier",
+    "elapsed_ms": 5856.56,
+    "request": "Make chat draft 34e43e81-ee00-4e35-b09c-10f5cee984c5 easier. Keep the topic, question count and delivery, and preserve the original.",
+    "turn_state": "SUCCEEDED",
+    "card": {
+      "id": "2184cd0b-b2e0-4f07-94f2-81c54e2dc1f7",
+      "conversation_id": "7e0b6e06-24f0-4452-bf4a-7e8cb0f1c236",
+      "assessment_id": "e3bdfd03-def1-49f2-930a-e0dc1cbb6a13",
+      "assessment": {
+        "attempt_summary": null,
+        "tags": [],
+        "source_assessment_ids": [],
+        "practice_source": null,
+        "preferences": {
+          "level": "Introductory physics",
+          "result_style": "feedback",
+          "delivery": "interactive"
+        },
+        "paper": null,
+        "id": "e3bdfd03-def1-49f2-930a-e0dc1cbb6a13",
+        "context_id": "28a48cb1-ddca-44d5-b411-7017e7813c86",
+        "title": "Net Force and Acceleration: Interactive Multiple-Choice Quiz (Easier Revision)",
+        "purpose": "practice",
+        "revision": 1,
+        "created_at": "2026-11-06T10:39:52.464033Z",
+        "questions": [
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9565ba3c-13cd-45a9-955b-5e3e6286db61",
+                "subskill_name": "Newton's second law: net force, mass and acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$32\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "b",
+                "label": "$2.0\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "c",
+                "label": "$0.5\\ \\text{m/s}^2$"
+              },
+              {
+                "id": "d",
+                "label": "$12\\ \\text{m/s}^2$"
+              }
+            ],
+            "id": "0b0a1f6c-7fc5-43b6-b56f-15a5e97fedbc",
+            "prompt": "A 4.0 kg cart experiences a net force of 8 N to the right. Using $a = F_{\\text{net}} / m$, what is the magnitude of its acceleration?",
+            "concept_ids": [
+              "9565ba3c-13cd-45a9-955b-5e3e6286db61"
+            ],
+            "difficulty": 0.15,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "9c674ea6-3949-4956-976e-2eb2008602c1",
+                "subskill_name": "Net force from opposing forces and resulting acceleration"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "$7.0\\ \\text{m/s}^2$ to the right"
+              },
+              {
+                "id": "b",
+                "label": "$3.0\\ \\text{m/s}^2$ to the right"
+              },
+              {
+                "id": "c",
+                "label": "$3.0\\ \\text{m/s}^2$ to the left"
+              },
+              {
+                "id": "d",
+                "label": "$5.0\\ \\text{m/s}^2$ to the right"
+              }
+            ],
+            "id": "14b4e6d0-a4d1-43ea-bf60-7cd91c5f3074",
+            "prompt": "Two horizontal forces act on a 2.0 kg box: 10 N to the right and 4 N to the left. First find the net force, then use $a = F_{\\text{net}} / m$ to find the acceleration.",
+            "concept_ids": [
+              "9c674ea6-3949-4956-976e-2eb2008602c1"
+            ],
+            "difficulty": 0.3,
+            "marks": 1.0,
+            "source_tokens": []
+          },
+          {
+            "validation": {
+              "state": "admitted",
+              "policy": "assessment-admission-v2",
+              "checks": [
+                "shape",
+                "unique_choices",
+                "context_leak"
+              ],
+              "semantic_review": "unverified"
+            },
+            "learning_targets": [
+              {
+                "subskill_id": "d001cb57-d0d4-4c68-8b72-27917000efbb",
+                "subskill_name": "Inverse relationship between mass and acceleration at constant net force"
+              }
+            ],
+            "question_type": "mcq",
+            "answer_mode": "single_choice",
+            "context": "",
+            "section": null,
+            "number": null,
+            "part": null,
+            "options": [
+              {
+                "id": "a",
+                "label": "It doubles."
+              },
+              {
+                "id": "b",
+                "label": "It stays the same."
+              },
+              {
+                "id": "c",
+                "label": "It is halved."
+              },
+              {
+                "id": "d",
+                "label": "It becomes four times larger."
+              }
+            ],
+            "id": "cf54dcbf-ffce-4946-8fb1-c49c8e6f9d72",
+            "prompt": "A constant net force acts on a block. If the block's mass is doubled while the net force stays the same, what happens to the magnitude of its acceleration? (Hint: $a = F_{\\text{net}} / m$.)",
+            "concept_ids": [
+              "d001cb57-d0d4-4c68-8b72-27917000efbb"
+            ],
+            "difficulty": 0.35,
+            "marks": 1.0,
+            "source_tokens": []
+          }
+        ],
+        "sources": []
+      }
+    }
+  }
+]

@@ -8,12 +8,15 @@ from ..schemas import GeneratedQuestion
 from ..quality import stored_question
 
 
-def review_item(repository,owner,identifier,question_id,expected_revision,operation_id,reason,*,correction=None):
-    if reason not in ('wrong_answer','ambiguous','answer_leak','trusted_correction'):
+def review_item(repository,owner,identifier,question_id,expected_revision,operation_id,reason,*,correction=None,details=''):
+    if reason not in ('wrong_answer','ambiguous','answer_leak','off_request','unhelpful','difficulty_mismatch','missing_information','trusted_correction'):
         raise AppError('ASSESSMENT_REVIEW_REASON','Choose a supported review reason.',422)
+    if not isinstance(details,str) or len(details)>2000:
+        raise AppError('ASSESSMENT_REVIEW_DETAILS','Keep report details within 2,000 characters.',422)
+    details=details.strip()
     if correction is not None:
         correction=GeneratedQuestion.model_validate(correction)
-    fingerprint=request_hash(dict(assessment_id=identifier,question_id=question_id,reason=reason,
+    fingerprint=request_hash(dict(assessment_id=identifier,question_id=question_id,reason=reason,details=details,
         correction=correction.model_dump(mode='json') if correction else None))
     with repository.transactions.write(owner) as tx:
         session=tx._session
@@ -37,7 +40,7 @@ def review_item(repository,owner,identifier,question_id,expected_revision,operat
         else:
             original['validation']=dict(original.get('validation') or {},state='invalidated')
         session.execute(item_reviews.insert().values(id=operation_id,learner_id=owner,assessment_id=identifier,
-            question_id=question_id,revision=assessment['revision']+1,reason=reason,
+            question_id=question_id,revision=assessment['revision']+1,reason=reason,details=details,
             decision='corrected' if correction else 'invalidated',previous_question=before,
             fingerprint=fingerprint,created_at=repository.clock()))
         session.execute(update(assessments).where(assessments.c.id==identifier,assessments.c.learner_id==owner)
@@ -71,11 +74,11 @@ def review_item(repository,owner,identifier,question_id,expected_revision,operat
             session.execute(update(attempts).where(attempts.c.id==row['id'],attempts.c.learner_id==owner).values(**values))
         if correction is None:
             root=(assessment.get('practice_lineage') or {}).get('question_items',{}).get(question_id,f'{identifier}:{question_id}')
-            quarantine_derivatives(repository,tx,owner,identifier,root,operation_id,reason)
+            quarantine_derivatives(repository,tx,owner,identifier,root,operation_id,reason,details)
         return repository.public(dict(assessment,questions=questions,revision=assessment['revision']+1))
 
 
-def quarantine_derivatives(repository,tx,owner,source_id,root,operation_id,reason):
+def quarantine_derivatives(repository,tx,owner,source_id,root,operation_id,reason,details):
     """Exposed/copy lineage cannot keep scoring an invalidated source key."""
     from uuid import UUID, uuid5
     session=tx._session
@@ -90,7 +93,7 @@ def quarantine_derivatives(repository,tx,owner,source_id,root,operation_id,reaso
             if question['id'] not in ids: continue
             session.execute(item_reviews.insert().values(id=str(uuid5(UUID(operation_id),question['id'])),
                 learner_id=owner,assessment_id=saved['id'],question_id=question['id'],revision=saved['revision']+1,
-                reason=reason,decision='invalidated',previous_question=deepcopy(question),
+                reason=reason,details=details,decision='invalidated',previous_question=deepcopy(question),
                 fingerprint=request_hash(dict(source_review=operation_id,root=root)),created_at=repository.clock()))
             question['validation']=dict(question.get('validation') or {},state='invalidated')
         session.execute(update(assessments).where(assessments.c.id==saved['id'],assessments.c.learner_id==owner)

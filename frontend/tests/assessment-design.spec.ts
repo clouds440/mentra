@@ -1,6 +1,39 @@
 import { test,expect } from '@playwright/test';
 import { assessmentFixture } from './fixtures/assessment';
 
+for(const direction of ['easier','harder'])test(`Make ${direction} sends the exact scoped revision and keeps local answers`,async({page})=>{
+  const state=await assessmentFixture(page);
+  await state.quiz.getByRole('radio').first().check();
+  await page.getByRole('button',{name:'Assessment options',exact:true}).click();
+  const sent=page.waitForRequest(request=>request.method()==='POST'&&new URL(request.url()).pathname==='/api/v1/conversations/turns');
+  await page.getByRole('menuitem',{name:`Make ${direction}`,exact:true}).click();
+  const request=await sent;
+  expect(request.postDataJSON()).toMatchObject({conversation_id:'handoff-chat',retrieval:{mode:'STANDARD'},
+    content:`Make chat draft handoff-draft ${direction}. Keep the topic, question count and delivery, and preserve the original.`});
+  await expect(state.quiz.getByRole('radio').first()).toBeChecked();
+});
+
+test('reports offer request-fit reasons and send the students explanation',async({page},info)=>{
+  const state=await assessmentFixture(page);
+  await state.quiz.getByRole('button',{name:'Report question',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  const reason=dialog.getByLabel('What needs review?');
+  for(const label of ['Doesn’t match what I requested','Not useful for my learning','Difficulty doesn’t match my request','Missing information or impossible to answer']){
+    await reason.click();await page.getByRole('option',{name:label,exact:true}).click();
+  }
+  await reason.click();await page.getByRole('option',{name:'Doesn’t match what I requested',exact:true}).click();
+  await dialog.getByRole('textbox',{name:'Anything else we should know? (optional)'}).fill('I requested calculations, but these only ask for definitions.');
+  for(const theme of ['light','dark']){
+    await page.evaluate(value=>{localStorage.setItem('mentra-theme',value);window.dispatchEvent(new StorageEvent('storage',{key:'mentra-theme',newValue:value,storageArea:localStorage}));},theme);
+    await page.waitForTimeout(200); // Capture settled theme colors, not the color transition.
+    await page.screenshot({path:info.outputPath(`report-${theme}-minimal-shadow.png`)});
+  }
+  const sent=page.waitForRequest(request=>request.method()==='POST'&&new URL(request.url()).pathname.endsWith('/items/q-0/report'));
+  await dialog.getByRole('button',{name:'Report & pause scoring',exact:true}).click();
+  expect((await sent).postDataJSON()).toMatchObject({reason:'off_request',details:'I requested calculations, but these only ask for definitions.'});
+  await expect(state.quiz.getByRole('alert')).toContainText('Scoring is paused');
+});
+
 test('same-attempt newer revision cannot replace dirty choices',async({page})=>{
   const state=await assessmentFixture(page,{existingAttempt:true});
   const choice=state.quiz.getByRole('radio').first();await choice.check();

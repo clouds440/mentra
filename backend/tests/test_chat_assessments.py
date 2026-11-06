@@ -225,6 +225,22 @@ class ChatAssessmentTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AppError):
             await retry_tools['assessment_question'].ainvoke(dict(draft_id=card['id'],number=10))
 
+    async def test_fixed_difficulty_actions_survive_model_paraphrasing_without_scope_changes(self):
+        conversation, card = await self.draft()
+        for direction in ['harder','easier']:
+            with self.subTest(direction=direction):
+                content=f"Make chat draft {card['id']} {direction}. Keep the topic, question count and delivery, and preserve the original."
+                scope=dict(assessment_service=self.service,conversation_id=conversation,
+                    current_user_message_id=str(uuid4()),current_answer_text=content)
+                tool=next(tool for tool in create_workflow_tools(self.owner,scope,ToolBudget()) if tool.name=='assessment_revise')
+                await tool.ainvoke(dict(draft_id=card['id'],instructions=f'Make the assessment {direction}',count=1,
+                    delivery='printable',level='Unrequested scope',question_numbers=['1']))
+                revised=scope['assessment_cards'][0]
+                self.assertNotEqual(revised['id'],card['id'])
+                self.assertEqual(len(revised['assessment']['questions']),len(card['assessment']['questions']))
+                self.assertEqual(revised['assessment']['preferences'].get('delivery'),card['assessment']['preferences'].get('delivery'))
+                self.assertEqual(self.service.chat.detail(self.owner,card['id'])['assessment'],card['assessment'])
+
     async def test_revision_rejects_foreign_chat_and_invented_instructions(self):
         conversation,card = await self.draft()
         scope = dict(assessment_service=self.service,conversation_id=self.conversation(),

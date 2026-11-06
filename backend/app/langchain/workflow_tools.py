@@ -358,6 +358,14 @@ def create_workflow_tools(owner, scope, budget):
             budget.call(True)
             if bool(draft_id) == bool(assessment_id):
                 raise AppError('ASSESSMENT_TARGET_REQUIRED', 'Choose exactly one assessment to revise.', 422)
+            from .assessment_actions import difficulty_action
+            if difficulty_action(scope['current_answer_text'], draft_id=draft_id, assessment_id=assessment_id):
+                # The fixed UI action already states the exact authorized change.
+                # A model paraphrase must not fail provenance or alter its scope.
+                instructions = scope['current_answer_text']
+                count = question_format = total_marks = duration_minutes = paper_sections = None
+                level = result_style = delivery = None
+                question_numbers = None
             if instructions not in scope['current_answer_text']:
                 raise AppError('ASSESSMENT_REVISION_PROVENANCE', 'Changes must quote the student request exactly.', 422)
             if draft_id:

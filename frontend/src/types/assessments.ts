@@ -1,4 +1,5 @@
 export type AssessmentAssistance = 'unknown' | 'independent' | 'assisted';
+export type AssessmentReportReason = 'wrong_answer' | 'ambiguous' | 'answer_leak' | 'off_request' | 'unhelpful' | 'difficulty_mismatch' | 'missing_information';
 export type AssessmentDelivery = 'interactive' | 'written' | 'printable';
 export interface AttemptScoring { raw_score: number; adjusted_score: number; max_score: number; multiplier: number; reported_assistance: AssessmentAssistance; policy: string }
 export type QuestionFormat = string;

@@ -15,7 +15,8 @@ export async function assessmentFixture(page: Page, { delay = 4000, duplicate = 
   await page.route('**/api/v1/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname; reads.push(path);if(request.method()!=='GET')writes.push(path);
     let body: unknown = [];
-    if (path.endsWith('/auth/me')) body = { learner_id: 'handoff-user', username: 'handoff-user', user_id: null, provider: null };
+    if (path.endsWith('/conversations/turns')) body = {conversation,items,has_more:false,next_cursor:null,turn:{id:'adjustment-turn',state:'SUCCEEDED',attempt:1,user_sequence:3,selection,error:null}};
+    else if (path.endsWith('/auth/me')) body = { learner_id: 'handoff-user', username: 'handoff-user', user_id: null, provider: null };
     else if (path.endsWith('/student-profile')) body = { learner_id: 'handoff-user', details: { education_level: 'college', field_of_study: 'Physics', learning_goal: 'Learn', learning_preference: 'balanced', explanation_depth: 'standard' }, estimates: Object.fromEntries(['overall_proficiency', 'reasoning', 'quantitative', 'comprehension', 'domain_familiarity'].map(key => [key, { value: null, confidence: 0, evidence_count: 0 }])), onboarding_phase: 'complete', calibration_status: 'skipped', evaluation_status: 'not_started', version: 1, context_version: 1 };
     else if (path.endsWith('/conversations/sync')) body = { reset: false, cursor: 3, has_more: false, conversations: [conversation], deleted_ids: [], list_cursor: null };
     else if (path.endsWith('/status')) body = { conversation, items, has_more: false, next_cursor: null, turn: { id: 'handoff-turn', state: 'SUCCEEDED', attempt: 1, user_sequence: 1, selection, error: null } };

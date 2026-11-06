@@ -1,6 +1,6 @@
 import { apiRequest } from './api';
 import { uploadFile } from './files';
-import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData } from '../types/assessments';
+import type { Assessment, AssessmentAttempt, AssessmentGeneration, ChatAssessmentCardData, AssessmentReportReason } from '../types/assessments';
 const base = '/api/v1/assessments';
 export const assessments = {
   page: (signal: AbortSignal, view: 'assessments' | 'create' = 'assessments', id?: string | null, offset = 0) => {
@@ -18,7 +18,7 @@ export const assessments = {
   stopJob: (id: string, expected_revision: number, signal: AbortSignal) => apiRequest<import('../types/assessments').GenerationJob>(`${base}/generation-jobs/${id}/stop`, {method:'POST', body:JSON.stringify({expected_revision}), signal}),
   draft: (id: string, signal: AbortSignal,attempt?:string) => apiRequest<ChatAssessmentCardData>(`${base}/chat-drafts/${id}${attempt ? `?attempt_id=${encodeURIComponent(attempt)}` : ''}`, { signal,cache:'no-store' }),
   handoff: (id: string, signal: AbortSignal,attempt?:string) => apiRequest<ChatAssessmentCardData>(`${base}/${id}/handoff${attempt ? `?attempt_id=${encodeURIComponent(attempt)}` : ''}`, { signal,cache:'no-store' }),
-  reportItem: (assessment:Assessment,question:string,reason:'wrong_answer'|'ambiguous'|'answer_leak',operation:string,signal:AbortSignal) => apiRequest<Assessment>(`${base}/${assessment.id}/items/${question}/report`,{method:'POST',signal,body:JSON.stringify({expected_revision:assessment.revision,client_request_id:operation,reason})}),
+  reportItem: (assessment:Assessment,question:string,reason:AssessmentReportReason,operation:string,signal:AbortSignal,details='') => apiRequest<Assessment>(`${base}/${assessment.id}/items/${question}/report`,{method:'POST',signal,body:JSON.stringify({expected_revision:assessment.revision,client_request_id:operation,reason,details})}),
   publish: (id: string, signal: AbortSignal) => apiRequest<ChatAssessmentCardData>(`${base}/chat-drafts/${id}/publish`, { method: 'POST', signal }),
   preferences: (signal: AbortSignal) => apiRequest<{ auto_add: boolean; revision: number }>(`${base}/preferences`, { signal }),
   savePreferences: (auto_add: boolean, expected_revision: number, signal: AbortSignal) => apiRequest<{ auto_add: boolean; revision: number }>(`${base}/preferences`, { method: 'PATCH', signal, body: JSON.stringify({ auto_add, expected_revision }) }),

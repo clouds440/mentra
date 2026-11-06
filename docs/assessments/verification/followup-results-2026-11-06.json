@@ -1,0 +1,40 @@
+{
+  "scope": "Synthetic follow-up checks; not independent educational validation",
+  "backend_report_quality_migration": {
+    "tests": 22,
+    "seconds": 29.141
+  },
+  "final_private_report_output": {
+    "tests": 6,
+    "seconds": 11.825
+  },
+  "difficulty_action_regressions": {
+    "tests": 3,
+    "seconds": 4.049
+  },
+  "production_browser": {
+    "tests": 5,
+    "seconds": 8.4
+  },
+  "challenge_design_simulations": {
+    "tests": 10,
+    "seconds": 0.003,
+    "live_integration": false
+  },
+  "live_model": {
+    "before_failure": "ASSESSMENT_REVISION_PROVENANCE from model paraphrase; stale failed receipt caused a partial outcome despite re-enqueue",
+    "fixed_original_ms": 7323.39,
+    "fixed_harder_ms": 6769.17,
+    "fixed_easier_ms": 5856.56,
+    "questions_per_version": 3,
+    "original_preserved": true,
+    "samples_per_action": 1
+  },
+  "static_checks": [
+    "theme",
+    "shared UI",
+    "strict TypeScript",
+    "production build"
+  ],
+  "migration": "20261106_0049"
+}

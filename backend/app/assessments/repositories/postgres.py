@@ -56,9 +56,9 @@ class AssessmentRepository:
             questions=[PublicQuestion.model_validate(dict({key:value for key,value in question.items() if key in PublicQuestion.model_fields and key!='validation'},
                 validation=public_validation(question))) for question in row['questions']])
 
-    def review_item(self, owner, identifier, question_id, expected_revision, operation_id, reason, *, correction=None):
+    def review_item(self, owner, identifier, question_id, expected_revision, operation_id, reason, *, correction=None, details=''):
         from .quality import review_item
-        return review_item(self,owner,identifier,question_id,expected_revision,operation_id,reason,correction=correction)
+        return review_item(self,owner,identifier,question_id,expected_revision,operation_id,reason,correction=correction,details=details)
 
     def attempt_public(self, row):
         return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3),source_pending=bool(row.get('source_pending')),source_error=row.get('source_error'))

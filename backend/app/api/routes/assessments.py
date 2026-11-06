@@ -22,14 +22,15 @@ class ItemReport(BaseModel):
     model_config=ConfigDict(extra='forbid')
     expected_revision: int=Field(ge=1)
     client_request_id: UUID
-    reason: Literal['wrong_answer','ambiguous','answer_leak']
+    reason: Literal['wrong_answer','ambiguous','answer_leak','off_request','unhelpful','difficulty_mismatch','missing_information']
+    details: str=Field(default='',max_length=2000)
 
 
 @router.post('/{identifier}/items/{question_id}/report',response_model=Assessment)
 async def report_item(identifier: UUID,question_id: UUID,body: ItemReport,request: Request,
         identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.repository.review_item,
-        identity.learner_id,str(identifier),str(question_id),body.expected_revision,str(body.client_request_id),body.reason)
+        identity.learner_id,str(identifier),str(question_id),body.expected_revision,str(body.client_request_id),body.reason,details=body.details)
 
 
 @router.get('/page')

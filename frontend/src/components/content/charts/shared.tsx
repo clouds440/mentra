@@ -12,7 +12,7 @@ export function plotColor(spec: ChartSpec, index: number, series = true) {
 export const margin = { top: 14, right: 12, bottom: 4, left: 0 };
 
 const tick = { fill: 'rgb(var(--muted))', fontSize: 11 };
-const tooltipStyle = { backgroundColor: 'rgb(var(--popover))', border: '1px solid rgb(var(--border))', borderRadius: 10, boxShadow: '0 4px 18px rgb(0 0 0 / .10)', color: 'rgb(var(--foreground))' };
+const tooltipStyle = { backgroundColor: 'rgb(var(--popover))', border: '1px solid rgb(var(--border))', borderRadius: 10, boxShadow: 'var(--shadow-overlay)', color: 'rgb(var(--foreground))' };
 // Prime zero-delay transitions with one display step, not preparatory frames.
 // Otherwise per-frame input can cancel every transition before it visibly moves.
 // Recharts owns interpolation and resumes from its latest visible geometry.

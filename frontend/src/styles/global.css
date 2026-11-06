@@ -52,6 +52,7 @@
   --rich-accent: 3 97 150;
   --overlay: 2 6 23;
   --shadow: 15 23 42;
+  --shadow-overlay: 0 2px 8px rgb(var(--shadow) / .045);
   --code: 241 245 249;
   --code-surface: 239 244 250;
   --code-header: 241 245 250;
