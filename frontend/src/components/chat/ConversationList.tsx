@@ -60,8 +60,7 @@ function ConversationRow({ chat, onOpen }: { chat: Conversation; onOpen: () => v
         {id:'delete', label:'Delete', icon:Trash2, destructive:true, onSelect:() => { setDeleteError(''); setDeleting(true); }},
       ]} />
     </div>}
-    {deleting && <Dialog open busy={deleteBusy} onDismiss={() => setDeleting(false)} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`} className="max-w-sm">
-      <div className="flex items-center gap-2 text-heading"><Trash2 size={17} className="shrink-0 text-danger" aria-hidden="true" /><h2 id={`${dialogId}-title`} className="text-sm font-semibold">Delete chat?</h2></div>
+    {deleting && <Dialog title={<span className="flex items-center gap-2"><Trash2 size={17} className="shrink-0 text-danger" aria-hidden="true" />Delete chat?</span>} open busy={deleteBusy} onDismiss={() => setDeleting(false)} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`} className="max-w-sm">
       <p id={`${dialogId}-description`} className="mt-3 break-words text-sm leading-6 text-muted">“{chat.title}” and its messages will be permanently deleted. This cannot be undone.</p>
       {deleteError && <p role="alert" className="mt-3 text-xs text-danger">{deleteError}</p>}
       <div className="mt-5 flex justify-end gap-2">

@@ -32,7 +32,7 @@ export function ImageGallery({ images, children }: { images: GalleryImage[]; chi
   return <GalleryContext.Provider value={context}>{children}
     {image && index !== null && <Dialog open className="visual-fullscreen image-viewer" aria-label={`Expanded image: ${imageCaption(image)}`} onDismiss={() => setSelected(null)}
       layout="viewer" closeLabel="Close image viewer"
-      heading={<span role="status" aria-live="polite" className="image-viewer-count">Image {index + 1} of {images.length}</span>}
+      title={<span role="status" aria-live="polite" className="image-viewer-count">Image {index + 1} of {images.length}</span>}
       onKeyDown={event => {
         if (event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); move(event.key === 'ArrowLeft' ? -1 : 1); }

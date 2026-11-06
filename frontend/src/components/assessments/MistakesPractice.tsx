@@ -75,8 +75,7 @@ export function MistakesPractice() {
   }
   const current = loadedKey === queryKey ? page : undefined;
   return <PageSection className="space-y-5">
-    {practiceOpen && <Dialog closeLabel="Close practice options" open busy={busy} onDismiss={() => setPracticeOpen(false)} aria-labelledby="mistake-practice-title" className="max-w-2xl">
-      <div className="mb-5 flex items-center justify-between gap-3"><h2 id="mistake-practice-title" className="text-lg font-medium text-heading">Practice my mistakes</h2></div>
+    {practiceOpen && <Dialog title="Practice my mistakes" closeLabel="Close practice options" open busy={busy} onDismiss={() => setPracticeOpen(false)} aria-labelledby="mistake-practice-title" className="max-w-2xl">
       <p className="mb-5 text-sm leading-6 text-muted">Choose what to revisit, or leave filters empty to include everything. Mentra prioritizes repeated mistakes and creates fresh variations.</p>
       <form className="space-y-5" onSubmit={event => { event.preventDefault(); void create(); }}>
         {filters()}
@@ -105,8 +104,7 @@ export function MistakesPractice() {
       <Button variant="secondary" size="sm" className="mt-auto w-full" onClick={() => setReviewed(item)}>Review mistake<ArrowUpRight size={14} aria-hidden="true" /></Button>
 </>}
     </li>)}</ul>}
-    {reviewed && <Dialog closeLabel="Close mistake review" open onDismiss={() => setReviewed(undefined)} aria-labelledby="mistake-review-title" className="max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-3"><h2 id="mistake-review-title" className="font-medium text-heading">Review mistake</h2></div>
+    {reviewed && <Dialog title="Review mistake" closeLabel="Close mistake review" open onDismiss={() => setReviewed(undefined)} aria-labelledby="mistake-review-title" className="max-w-2xl">
       <div className="min-w-0 space-y-4 break-words text-sm"><MarkdownContent content={reviewed.prompt} /><MistakeFeedback item={reviewed} /><Link className={buttonStyles({variant:'secondary',size:'sm',className:'max-w-full'})} to={`/assessments?assessment=${encodeURIComponent(reviewed.assessment_id)}&attempt=${encodeURIComponent(reviewed.attempt_id)}`}><span className="truncate">{reviewed.assessment_title}</span><ArrowUpRight size={14} aria-hidden="true" /></Link></div>
     </Dialog>}
     {current && <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs tabular-nums text-muted">{current.total ? `${offset + 1}–${Math.min(offset + 10, current.total)} of ${current.total}` : '0 mistakes'}</p><Pagination page={Math.floor(offset / 10) + 1} pages={Math.ceil(current.total / 10)} disabled={loading} onChange={value => setOffset((value - 1) * 10)} label="Mistake history pages" /></div>}

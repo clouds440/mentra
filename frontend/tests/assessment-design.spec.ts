@@ -17,6 +17,9 @@ test('reports offer request-fit reasons and send the students explanation',async
   const state=await assessmentFixture(page);
   await state.quiz.getByRole('button',{name:'Report question',exact:true}).click();
   const dialog=page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName('Report this question');
+  await expect(dialog.locator('.dialog-chrome').getByRole('heading',{name:'Report this question',exact:true})).toBeVisible();
+  await expect(dialog.locator('.dialog-content').getByRole('heading',{name:'Report this question',exact:true})).toHaveCount(0);
   const reason=dialog.getByLabel('What needs review?');
   for(const label of ['Doesn’t match what I requested','Not useful for my learning','Difficulty doesn’t match my request','Missing information or impossible to answer']){
     await reason.click();await page.getByRole('option',{name:label,exact:true}).click();

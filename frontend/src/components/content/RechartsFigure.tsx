@@ -102,7 +102,7 @@ function RechartsFigureContent({ code }: { code: string }) {
     </div>
     {!expanded && exportWarning}
     {data && <ChartDataTable spec={display} />}
-    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen chart-viewer" aria-label={'Expanded chart: ' + spec.title} onDismiss={() => setExpanded(false)} layout="viewer" heading={spec.unit ? spec.title + " (" + spec.unit + ")" : spec.title} headerActions={<div className="visual-actions">{downloads}</div>}>
+    {expanded && <Dialog ref={viewerRef} open className="visual-fullscreen chart-viewer" aria-label={'Expanded chart: ' + spec.title} onDismiss={() => setExpanded(false)} layout="viewer" title={spec.unit ? spec.title + " (" + spec.unit + ")" : spec.title} headerActions={<div className="visual-actions">{downloads}</div>}>
       {exportWarning}{modelWarning}<ChartCanvas spec={spec} />{controls}{modelDetails}
     </Dialog>}
   </figure>;

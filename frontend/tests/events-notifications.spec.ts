@@ -18,11 +18,11 @@ test('event editing, reminder inbox and notification preferences', async ({ page
   await chooseOption(page.getByLabel('Reminder', { exact: true }), 'disabled');
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
   const detail = page.getByRole('region', { name: 'Event details' });
-  await expect(detail.getByRole('heading', { name: 'Revision session' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Event details' }).getByRole('heading', { name: 'Revision session' })).toBeVisible();
   await detail.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Title', { exact: true }).fill('Revised session');
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
-  await expect(detail.getByRole('heading', { name: 'Revised session' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Event details' }).getByRole('heading', { name: 'Revised session' })).toBeVisible();
   await detail.getByRole('button', { name: 'Complete', exact: true }).click();
   await expect(detail.getByRole('button', { name: 'Reopen', exact: true })).toBeVisible();
   await detail.getByRole('button', { name: 'Reopen', exact: true }).click();

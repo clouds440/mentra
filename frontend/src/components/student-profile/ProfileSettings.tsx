@@ -30,7 +30,7 @@ export function ProfileSettings() {
       <Button className="shrink-0" size="sm" variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>
     </div>
     {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
-    {editing && <Dialog open onDismiss={() => setEditing(false)} aria-label="Edit learning profile" className="max-w-3xl"><h2 className="mb-5 text-lg font-semibold">Edit learning profile</h2><ProfileForm onSaved={() => setEditing(false)} onCancel={() => setEditing(false)} /></Dialog>}
+    {editing && <Dialog title="Edit learning profile" open onDismiss={() => setEditing(false)} aria-label="Edit learning profile" className="max-w-3xl"><ProfileForm onSaved={() => setEditing(false)} onCancel={() => setEditing(false)} /></Dialog>}
       <dl className="grid gap-3 sm:grid-cols-2">{entries.map(([label, value]) => <div key={label} className={`rounded-control border border-border bg-surface p-3 ${['Primary learning goal', 'Background or interests'].includes(label) ? 'sm:col-span-2' : ''}`}>
         <dt className="text-xs text-subtle">{label}</dt><dd className="mt-1 text-sm leading-6 text-body break-words">{value}</dd></div>)}</dl>
     <div className="mt-5 border-t border-border pt-4"><ProfileEstimates profile={profile} /></div>

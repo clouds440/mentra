@@ -1,13 +1,15 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, type DialogHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef, type DialogHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 
-export interface DialogProps extends DialogHTMLAttributes<HTMLDialogElement> { open?: boolean; busy?: boolean; onDismiss?: () => void; closeLabel?: string; heading?: ReactNode; headerActions?: ReactNode; layout?: 'default' | 'viewer'; dismissOnBackdrop?: boolean }
+export interface DialogProps extends Omit<DialogHTMLAttributes<HTMLDialogElement>, 'title'> { title: ReactNode; open?: boolean; busy?: boolean; onDismiss?: () => void; closeLabel?: string; headerActions?: ReactNode; layout?: 'default' | 'viewer'; dismissOnBackdrop?: boolean }
 /** Native modality keeps nested dropdowns inside the browser's top layer. */
-export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog({ open, busy = false, onDismiss, className, children, onCancel, onClose, onClick, closeLabel = 'Close', heading, headerActions, layout = 'default', dismissOnBackdrop = false, ...props }, ref) {
+export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog({ title, open, busy = false, onDismiss, className, children, onCancel, onClose, onClick, closeLabel = 'Close', headerActions, layout = 'default', dismissOnBackdrop = false, ...props }, ref) {
   const element = useRef<HTMLDialogElement>(null);
+  const generatedTitleId = useId();
+  const titleId = props['aria-labelledby'] || generatedTitleId;
   useImperativeHandle(ref, () => element.current!, []);
   useEffect(() => {
     const dialog = element.current;
@@ -30,7 +32,7 @@ export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog
       });
     };
   }, [open, layout]);
-  return createPortal(<dialog {...props} ref={element} data-layout={layout} aria-busy={busy || undefined} className={cn('dialog-frame', className)} onClick={event => {
+  return createPortal(<dialog {...props} aria-labelledby={props['aria-labelledby'] || (props['aria-label'] ? undefined : titleId)} ref={element} data-layout={layout} aria-busy={busy || undefined} className={cn('dialog-frame', className)} onClick={event => {
     onClick?.(event);
     if (!dismissOnBackdrop || busy || event.defaultPrevented || event.target !== event.currentTarget) return;
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -44,5 +46,5 @@ export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog
     // StrictMode reopens after effect cleanup before the queued close event fires.
     if (event.currentTarget.open) return;
     onClose?.(event); onDismiss?.();
-  }}><header className="dialog-chrome"><div className="dialog-heading">{heading}</div>{headerActions}<IconButton aria-label={closeLabel} title="Close" disabled={busy} onClick={() => element.current?.close()}><X size={18} aria-hidden="true" /></IconButton></header><div className="dialog-content">{children}</div></dialog>, document.body);
+  }}><header className="dialog-chrome"><h2 id={titleId} className="dialog-heading" dir="auto">{title}</h2>{headerActions}<IconButton aria-label={closeLabel} title="Close" disabled={busy} onClick={() => element.current?.close()}><X size={18} aria-hidden="true" /></IconButton></header><div className="dialog-content">{children}</div></dialog>, document.body);
 });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { MessageSquare, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { savedExchange } from '../../services/conversations';
 import { ApiError } from '../../services/api';
 import type { SavedExchange } from '../../types/conversations';
@@ -28,8 +28,7 @@ export function SavedChatExchange({ conversation, message, onClose }: { conversa
     } });
     return () => cancelAnimationFrame(frame);
   }, [data]);
-  return <Dialog open onDismiss={onClose} aria-labelledby="saved-exchange-title" layout="viewer" className="max-w-3xl">
-    <header className="shrink-0 border-b border-border p-4 sm:p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 flex items-center gap-1.5 text-xs text-accent"><MessageSquare size={14} aria-hidden="true" />Saved exchange</p><h2 id="saved-exchange-title" className="break-words font-semibold text-heading">{data?.title ?? 'Opening your chat…'}</h2></div></div></header>
+  return <Dialog title={data?.title ?? 'Opening your chat…'} open onDismiss={onClose} aria-labelledby="saved-exchange-title" layout="viewer" className="max-w-3xl">
     <div ref={reader} className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
       {error ? <p role="alert" className="text-sm text-danger">{error} <Button size="sm" variant="ghost" onClick={() => setRetry(value => value+1)}>Retry exchange</Button></p> : !data ? <Skeleton variant="text" rows={8} /> : data.messages.map(item => <section key={item.id} ref={item.id===message ? match : undefined} tabIndex={item.id===message ? -1 : undefined} aria-label={item.id===message ? 'Matching message' : 'Neighboring message'} className={`min-w-0 space-y-3 rounded-panel border p-3 sm:p-4 ${item.id===message ? 'border-accent/50 bg-active focus:outline-none focus:ring-2 focus:ring-accent' : 'border-border bg-surface'}`}>
         <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-medium text-muted">{item.role==='user' ? 'You' : 'Mentra'} · {new Date(item.created_at).toLocaleString()}</p>{!!item.content.trim() && <CopyResponse content={item.content} subject={item.role==='user' ? 'message' : 'response'} />}</div><SourceAnnotationChips annotations={item.source_annotations} />

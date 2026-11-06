@@ -27,7 +27,7 @@ test('event proposal recovers in Progress and commits once',async({page})=>{
   expect(decisions[0]).toMatchObject({decision:'approve'});
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await proposal.getByRole('link',{name:'View event',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Event details'}).getByRole('heading',{name:'Algebra exam'})).toBeVisible();
+  await expect(page.getByRole('dialog',{name:'Event details'}).getByRole('heading',{name:'Algebra exam'})).toBeVisible();
 });
 
 test('assessment grading, correction, paper confirmation and learning progress',async({page})=>{

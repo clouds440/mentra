@@ -47,9 +47,8 @@ export function ItemReview({assessment,question,ensureSaved}:{assessment:Assessm
     finally{if(!controller.signal.aborted) setBusy(false);}
   }
   return <><IconButton aria-label="Report question" title="Report question" onClick={()=>setOpen(true)}><Flag size={14} aria-hidden="true" /></IconButton>
-    {open && <Dialog open busy={busy} onDismiss={()=>setOpen(false)} aria-labelledby={heading} className="max-w-md">
-      <h2 id={heading} className="text-lg font-medium text-heading">Report this question</h2>
-      <p className="my-3 text-sm text-muted">Your report is saved for review. Scoring stays paused until a correction is approved. Your answers and earlier results are preserved.</p>
+    {open && <Dialog title="Report this question" open busy={busy} onDismiss={()=>setOpen(false)} aria-labelledby={heading} className="max-w-md">
+      <p className="mb-3 text-sm text-muted">Your report is saved for review. Scoring stays paused until a correction is approved. Your answers and earlier results are preserved.</p>
       <label className="block space-y-2 text-sm"><span>What needs review?</span>
         <Select value={reason} disabled={busy} onChange={event=>{setReason(event.target.value as AssessmentReportReason);operation.current=crypto.randomUUID();}}>
           {reasons.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}

@@ -50,7 +50,7 @@ export function ComposerCamera({ onClose, onPhoto }: { onClose: () => void; onPh
   }
 
   return <Dialog open onDismiss={onClose} aria-labelledby="composer-camera-title" className="max-w-lg"
-    heading={<h2 id="composer-camera-title" className="text-sm font-semibold">Take a photo</h2>}>
+    title="Take a photo">
     <video ref={video} autoPlay muted playsInline onLoadedData={() => setReady(true)} aria-label="Camera preview"
       className="aspect-video w-full rounded-control bg-background object-contain" />
     {!ready && !error && <p role="status" className="mt-2 text-xs text-muted">Starting camera…</p>}

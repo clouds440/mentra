@@ -158,7 +158,7 @@ export function MermaidDiagram({ code }: { code: string }) {
       {downloads}
     </div>
     {!expanded && downloadWarning}
-    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label={title ? 'Expanded diagram: ' + title : 'Expanded diagram'} className={zoomed ? "mermaid-fullscreen diagram-zoomed" : "mermaid-fullscreen"} layout="viewer" heading={title} headerActions={<div className="visual-actions"><Button size="sm" variant="ghost" aria-pressed={zoomed} onClick={() => setZoomed(value => !value)}>{zoomed ? 'Fit diagram' : 'Zoom in'}</Button>{downloads}</div>}>
+    {expanded && <Dialog open onDismiss={() => setExpanded(false)} aria-label={title ? 'Expanded diagram: ' + title : 'Expanded diagram'} className={zoomed ? "mermaid-fullscreen diagram-zoomed" : "mermaid-fullscreen"} layout="viewer" title={title || 'Diagram'} headerActions={<div className="visual-actions"><Button size="sm" variant="ghost" aria-pressed={zoomed} onClick={() => setZoomed(value => !value)}>{zoomed ? 'Fit diagram' : 'Zoom in'}</Button>{downloads}</div>}>
       {downloadWarning}{figure(expandedSvg)}
     </Dialog>}
   </figure>;
