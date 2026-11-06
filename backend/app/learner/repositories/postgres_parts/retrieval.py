@@ -84,7 +84,7 @@ class RetrievalStore(PostgresRepositoryBase):
         relevance = {c.id: c.relevance_score if c.relevance_score is not None else 0.5 for c in selected_contexts}
         result = {}
         with self._session() as session:
-            query = select(links).where(links.c.learner_id == learner_id, links.c.context_id.in_(relevance))
+            query = select(links).where(links.c.learner_id == learner_id, links.c.context_id.in_(relevance)).order_by(links.c.context_id)
             if concept_ids is not None:
                 query = query.where(links.c.concept_id.in_(concept_ids))
             for row in session.execute(query).mappings():

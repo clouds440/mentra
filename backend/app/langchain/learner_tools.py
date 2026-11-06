@@ -64,7 +64,8 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
         return learner.get_active_contexts(ActiveContextsRequest(learner_id=learner_id)).model_dump(mode='json')
 
     def context(**kwargs):
-        return learner.get_relevant_context(LearnerContextRequest(learner_id=learner_id, **kwargs)).model_dump(mode='json')
+        from app.learner.prompt_context import compact
+        return compact(learner.get_relevant_context(LearnerContextRequest(learner_id=learner_id, **kwargs)))
 
     def recommendations(**kwargs):
         return [r.model_dump(mode='json') for r in learner.get_study_recommendations(

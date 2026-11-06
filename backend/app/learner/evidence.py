@@ -123,6 +123,7 @@ class EvidenceService:
         if updated is state:
             return old
         updated = replace(updated, version=state.version + 1, retention_policy_version=self.retention.version)
+        updated = self._ranking_metadata(updated)
         repository.save_state(updated)
         return updated
 
@@ -140,10 +141,19 @@ class EvidenceService:
         state = replace(state, version=(old.version if old else 0) + 1, policy_data=policy_data,
                         mastery_policy_version=self.mastery.version,
                         retention_policy_version=self.retention.version)
+        state = self._ranking_metadata(state)
         repository.save_state(state)
         repository.audit('state_recomputed', {'policy': self.mastery.version, 'version': state.version,
                                              'evidence_count': state.evidence_count}, learner_id, concept_id)
         return state
+
+    def _ranking_metadata(self, state):
+        from .scoring.retention import ExponentialRetentionPolicy
+        data = dict(state.policy_data)
+        data.pop('ranking_half_life', None)
+        if type(self.retention) is ExponentialRetentionPolicy:
+            data['ranking_half_life'] = self.retention.base_half_life_days
+        return replace(state, policy_data=data)
 
     def confirm(self, request: ConfirmEvidenceRequest, repository=None) -> EvidenceSubmissionResult:
         context = nullcontext(repository) if repository is not None else self.repository.transaction(learner_ids=[request.learner_id])

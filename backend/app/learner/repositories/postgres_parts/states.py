@@ -26,6 +26,19 @@ class StatesStore(PostgresRepositoryBase):
                 where=stmt.excluded.version == states.c.version + 1).returning(states.c.version)).first()
             if saved is None:
                 raise LearnerError('Concurrent learner state version conflict; recompute from current state')
+            from ..tables.projections import ranking_projection
+            from app.learner.scoring.projection import project
+            from sqlalchemy import delete
+            half_life = state.policy_data.get('ranking_half_life')
+            projection = project(state, half_life) if half_life else None
+            if projection:
+                indexed = insert(ranking_projection).values(learner_id=state.learner_id,
+                    concept_id=state.concept_id, state_version=state.version, **projection)
+                session.execute(indexed.on_conflict_do_update(index_elements=['learner_id','concept_id'],
+                    set_={key: indexed.excluded[key] for key in projection | {'state_version':state.version}}))
+            else:
+                session.execute(delete(ranking_projection).where(ranking_projection.c.learner_id==state.learner_id,
+                    ranking_projection.c.concept_id==state.concept_id))
             if self._cache_allowed(state.learner_id):
                 self._read_cache[('state', (canonical_learner_id(state.learner_id), state.concept_id))] = state
 

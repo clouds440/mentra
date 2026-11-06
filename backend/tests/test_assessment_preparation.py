@@ -55,6 +55,24 @@ class AssessmentPreparationTests(unittest.IsolatedAsyncioTestCase):
             packet = self.learner.get_assessment_context(self.owner, self.request.context_id, 'Arabic letter forms').packet
         self.assertEqual(packet.concepts, [])
 
+    def test_learner_and_profile_share_one_read_checkout_and_eight_statements(self):
+        from app.student_profile.service import StudentProfileService
+        from app.student_profile.repositories.postgres import PostgresStudentProfileRepository
+        profile=StudentProfileService(PostgresStudentProfileRepository(self.db.sessions),None)
+        self.seed()
+        counts=dict(queries=0,checkouts=0,commits=0)
+        def query(*args): counts['queries']+=1
+        def checkout(*args): counts['checkouts']+=1
+        def commit(*args): counts['commits']+=1
+        listeners=[('before_cursor_execute',query),('checkout',checkout),('commit',commit)]
+        for name,action in listeners: event.listen(self.db.engine,name,action)
+        try: self.learner.get_assessment_context(self.owner,self.request.context_id,'Force',profile=profile)
+        finally:
+            for name,action in listeners: event.remove(self.db.engine,name,action)
+        self.assertLessEqual(counts['queries'],8)
+        self.assertEqual((counts['checkouts'],counts['commits']),(1,0))
+        print('COMBINED_PREPARATION_METRIC',counts)
+
     def test_exact_targets_remain_owned_and_complete_beyond_compact_packet(self):
         values = self.seed()
         actual = self.learner.get_assessment_context(self.owner, self.request.context_id, 'Any title', [value.id for value in values])

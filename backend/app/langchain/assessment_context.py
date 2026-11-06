@@ -20,12 +20,14 @@ def optional_context(workflows, owner, request, *, reuse=False):
     preparation, profile = None, None
     stages = []
     if not reuse:
-        stages.append(('learner', lambda: workflows.learner.get_assessment_context(owner, request.context_id, request.topic, request.concept_ids)))
-    if workflows.profile:
+        stages.append(('learner', lambda: workflows.learner.get_assessment_context(owner, request.context_id, request.topic, request.concept_ids,profile=workflows.profile)))
+    if workflows.profile and reuse:
         stages.append(('profile', lambda: workflows.profile.prompt_snapshot(owner)))
     # One sync task: no shared session or parallel checkout fanout at pool size 1.
     for stage, action in stages:
         value = optional_read(stage, action)
-        if stage == 'learner': preparation = value
+        if stage == 'learner':
+            preparation = value
+            profile = value.profile if value else None
         else: profile = value
     return preparation, profile

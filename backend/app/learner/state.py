@@ -57,8 +57,8 @@ class StateService:
         data.update(diagnostics(state, retention))
         return ConceptStateResponse(**data)
 
-    def predict(self, state, concept_id: str, difficulty: float) -> PerformancePrediction:
-        mean, lower, upper, supported, weight = performance_estimate(state, difficulty, self.clock(),
+    def predict(self, state, concept_id: str, difficulty: float, *, now=None) -> PerformancePrediction:
+        mean, lower, upper, supported, weight = performance_estimate(state, difficulty, now or self.clock(),
             getattr(self.retention, 'base_half_life_days', 30))
         return PerformancePrediction(concept_id=concept_id, expected_score=mean, lower_bound=lower,
                                       upper_bound=upper, supported=supported, evidence_weight=weight,

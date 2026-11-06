@@ -30,6 +30,19 @@ async def retry_signal_capture(turn_id: UUID,request: Request,identity=Depends(r
     return await run_in_threadpool(request.app.state.learner_service.retry_learning_signal_capture,identity.learner_id,str(turn_id))
 
 
+class ReviewSignal(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    context_id: str=Field(min_length=1,max_length=100)
+    concept_id: str=Field(min_length=1,max_length=100)
+    source_revision: str=Field(min_length=1,max_length=100)
+
+
+@router.post('/signals/{identifier}/review')
+async def review_signal(identifier: UUID,body: ReviewSignal,request: Request,identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.learner_service.review_learning_signal,identity.learner_id,
+        str(identifier),body.context_id,body.concept_id,body.source_revision)
+
+
 @router.get('/topics')
 async def topics(request: Request, query: str = Query('', max_length=200),
                  context_id: str | None = Query(None, max_length=100), all_contexts: bool = False,

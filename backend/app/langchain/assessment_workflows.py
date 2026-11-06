@@ -3,6 +3,7 @@ from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatc
 from app.learner.schemas import EvidenceSubmissionRequest
 from app.rag.schemas import AssessmentGroundingRequest
 from .prompts import PromptSource
+from app.learner.prompt_context import compact as compact_learner_context
 from .generation_recovery import invoke_generated, validate_questions, GenerationMismatch
 
 
@@ -109,7 +110,7 @@ class AssessmentWorkflows:
             from .assessment_design import design_assessment
             question_plan, paper = await design_assessment(self.llm, request, prompt_sources,
                 profile_context.model_dump(mode='json') if profile_context else None, original=revision,
-                learner_context=learner_context.model_dump(mode='json') if learner_context else None)
+                learner_context=compact_learner_context(learner_context) if learner_context else None)
         else:
             question_plan, paper = blueprint(request)
         if not paper: question_plan = question_plan[:min(request.count or 20,20)]
@@ -144,7 +145,7 @@ class AssessmentWorkflows:
             recommendations=[item.model_dump(mode='json', exclude_none=True) for item in recommendations if item.concept_id in concepts],
             verification=[item.model_dump(mode='json', exclude_none=True) for item in verification if item.concept_id in concepts],
             sources=prompt_sources, profile=profile_context.model_dump(mode='json', exclude_none=True) if profile_context else None,
-            learner_context=learner_context.model_dump(mode='json', exclude_none=True) if learner_context else None, level=request.level, result_style=request.result_style,
+            learner_context=compact_learner_context(learner_context) if learner_context else None, level=request.level, result_style=request.result_style,
             paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
                 sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None,
             **(dict(revision_instructions=revision.get('instructions', request.revision_instructions)) if revision else {}))

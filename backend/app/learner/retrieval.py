@@ -39,25 +39,28 @@ class RetrievalService:
             cache[key] = self.repository.topic_parent_ids(owner, context_ids)
         return cache[key]
 
-    def ranking_data(self, request, *, all_contexts=False):
+    def ranking_data(self, request, *, all_contexts=False, supported_only=False):
         contexts = self.contexts.select(request.learner_id, request.context_ids, all_contexts=all_contexts)
+        now = self.clock()
         cache = getattr(self, '_ranking_cache', None)
-        key = (request.learner_id, tuple((c.id, c.relevance_score) for c in contexts))
+        key = (request.learner_id, tuple((c.id, c.relevance_score) for c in contexts), supported_only)
         if cache is not None and key in cache:
             return cache[key]
-        concepts = self.repository.context_concepts(request.learner_id, [c.id for c in contexts])
+        candidate_ids = self.repository.ranking_candidates(request.learner_id,contexts,now,self.states.mastery,
+            self.retention,self.ranking,supported_only)
+        concepts = self.repository.context_concepts(request.learner_id, [c.id for c in contexts],
+            concept_ids=candidate_ids,limit=256)
         ids = [c.id for c in concepts]
         states = self.states.load(request.learner_id, ids)
         prerequisites = self.repository.prerequisite_counts(ids, [c.id for c in contexts], request.learner_id)
-        factors = self.repository.context_factors(request.learner_id, contexts)
-        now = self.clock()
+        factors = self.repository.context_factors(request.learner_id, contexts, ids)
         data = concepts, states, prerequisites, factors, now
         if cache is not None:
             cache[key] = data
         return data
 
-    def recommend(self, request, verification=False, *, data=None, supported_only=False):
-        concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request)
+    def recommend(self, request, verification=False, *, data=None, supported_only=False,predictions=None):
+        concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request,supported_only=supported_only)
 
         def ranked():
             for concept in concepts:
@@ -65,8 +68,12 @@ class RetrievalService:
                 factor = factors.get(concept.id, dict(importance=0.5, relevance=0.5, target_difficulty=0.5))
                 if factor['importance'] == 0:
                     continue
-                prediction = self.states.predict(state, concept.id, factor['target_difficulty'])
-                retention = self.retention.calculate(state, now) if state else None
+                if predictions is not None and concept.id in predictions:
+                    prediction,retention=predictions[concept.id]
+                else:
+                    prediction = self.states.predict(state, concept.id, factor['target_difficulty'],now=now)
+                    retention = self.retention.calculate(state, now) if state else None
+                    if predictions is not None: predictions[concept.id]=(prediction,retention)
                 projected = replace(state, mastery=prediction.expected_score) if state and prediction.supported else state
                 score, reason = self.ranking.score(projected, retention, prerequisites.get(concept.id, 0),
                                                    factor['relevance'], verification)
@@ -95,7 +102,8 @@ class RetrievalService:
         # Group before taking the shortlist: a large weak topic must not crowd
         # out every other topic merely because it has many children.
         context_ids = list({value['context_id'] for value in factors.values() if value.get('context_id')})
-        parents = self.topic_parents(request.learner_id, context_ids)
+        parents = {key:value.get('topic_id') for key,value in self.memberships(request.learner_id,
+            [value.id for value in concepts]).items() if value.get('topic_id')}
         best = {}
         for item in ranked():
             parent = parents.get(item.concept_id, item.concept_id)
@@ -157,7 +165,12 @@ class RetrievalService:
                             if context.id not in context_ids and len(context_ids) < 20:
                                 context_ids.append(context.id)
                                 included_contexts[context.id] = context
+        observations=[]
+        if context_ids:
+            _,observations=self.repository.assessment_metadata(request.learner_id,context_ids[0],
+                [c.id for c in concepts],terms)
         return LearnerContextPacket(active_contexts=[c.name for c in contexts if c.status == 'ACTIVE'],
+            observations=observations,
             context_ids=context_ids, concepts=self.project(request.learner_id, concepts,
                 [included_contexts[key] for key in context_ids]), generated_at=self.clock())
 
@@ -188,7 +201,7 @@ class RetrievalService:
             retention = self.retention.calculate(state, now) if state else None
             info = diagnostics(state, retention)
             factor = factors.get(concept.id, dict(importance=0.5, relevance=0.5, target_difficulty=0.5))
-            prediction = self.states.predict(state, concept.id, factor['target_difficulty'])
+            prediction = self.states.predict(state, concept.id, factor['target_difficulty'],now=now)
             membership = memberships.get(concept.id, {})
             items.append(LearnerContextConcept(concept_id=concept.id, name=membership.get('label', concept.canonical_name),
                          topic_id=membership.get('topic_id'), topic_name=membership.get('name'),

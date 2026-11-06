@@ -47,6 +47,7 @@ class LearnerEngine:
                 generated_concept_resolver=self.generated_concepts.resolver, clock=self.clock)
             engine.contexts._read_contexts = {}
             engine.states._read_states = {}
+            engine.states._read_only = True
             engine.retrieval._ranking_cache = {}
             engine.retrieval._projection_cache = {}
             engine.retrieval._membership_cache = {}
@@ -189,6 +190,9 @@ class LearnerEngine:
 
     def withdraw_learning_signal(self,owner,identifier):
         self.repository.withdraw_signal(owner,identifier)
+
+    def review_learning_signal(self,owner,identifier,context_id,concept_id,source_revision):
+        return self.repository.review_signal(owner,identifier,context_id,concept_id,source_revision)
 
     def retry_learning_signal_capture(self,owner,turn_id):
         return self.repository.retry_signal_capture(owner,turn_id)
@@ -375,9 +379,9 @@ class LearnerEngine:
     def get_relevant_context(self, request: LearnerContextRequest) -> LearnerContextPacket:
         return self.retrieval.packet(request)
 
-    def get_assessment_context(self, learner_id: str, context_id: str, query: str, concept_ids=()):
+    def get_assessment_context(self, learner_id: str, context_id: str, query: str, concept_ids=(),*,profile=None):
         from .preparation import prepare
-        return prepare(self, learner_id, context_id, query, concept_ids)
+        return prepare(self, learner_id, context_id, query, concept_ids,profile)
 
     def get_assessment_selection_context(self, learner_id, context_ids=None, query=None):
         with self.read_scope() as scoped:
@@ -427,9 +431,10 @@ class LearnerEngine:
     def get_study_targets(self, learner_id, context_ids=None, limit=5, *, supported_verification=False, all_contexts=False):
         """One consistent ranking input set for recommendations and verification."""
         request = StudyRecommendationsRequest(learner_id=learner_id, context_ids=context_ids, limit=limit)
-        data = self.retrieval.ranking_data(request, all_contexts=all_contexts)
-        return dict(recommendations=self.retrieval.recommend(request, data=data),
-                    verification=self.retrieval.recommend(request, verification=True, data=data, supported_only=supported_verification))
+        data = self.retrieval.ranking_data(request, all_contexts=all_contexts,supported_only=supported_verification)
+        predictions={}
+        return dict(recommendations=self.retrieval.recommend(request, data=data,predictions=predictions),
+                    verification=self.retrieval.recommend(request, verification=True, data=data, supported_only=supported_verification,predictions=predictions))
 
     def get_verification_candidates(self, request: VerificationCandidatesRequest) -> list[VerificationCandidate]:
         return self.retrieval.recommend(request, verification=True)

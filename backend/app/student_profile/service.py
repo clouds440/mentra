@@ -18,8 +18,8 @@ class StudentProfileService:
     def get(self, learner_id):
         return self.repository.read_profile(learner_id)
 
-    def prompt_snapshot(self, learner_id):
-        profile = self.repository.read_profile_snapshot(learner_id)
+    def prompt_snapshot(self, learner_id,*,sessions=None):
+        profile = self.repository.read_profile_snapshot(learner_id,sessions=sessions)
         return context_packet(profile) if profile else None
 
     def update_details(self, learner_id, request: ProfileUpdate):

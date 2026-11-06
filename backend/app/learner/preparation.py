@@ -11,9 +11,10 @@ class AssessmentContext:
     packet: LearnerContextPacket
     concepts: dict[str, Concept]
     memberships: dict[str, dict]
+    profile: dict | None = None
 
 
-def prepare(engine, owner, context_id, query, concept_ids=()):
+def prepare(engine, owner, context_id, query, concept_ids=(),profile=None):
     with engine.read_scope() as scoped:
         context = replace(scoped.contexts.require(owner, context_id), relevance_score=1)
         ids = list(dict.fromkeys(str(value) for value in concept_ids))
@@ -29,11 +30,15 @@ def prepare(engine, owner, context_id, query, concept_ids=()):
             raise AppError('ASSESSMENT_TARGET_UNAVAILABLE', 'A practice topic is no longer available in this learning context.', 404)
         if ids:
             concepts = [found[key] for key in ids]
-        memberships = scoped.repository.skill_memberships(owner, [value.id for value in concepts]) if concepts else {}
+        memberships,observations = scoped.repository.assessment_metadata(owner,context_id,
+            [value.id for value in concepts],query_terms(query))
         scoped.retrieval._membership_cache = {value.id: memberships.get(value.id) for value in concepts}
         scoped.states._read_only = True
         packet = LearnerContextPacket(active_contexts=[context.name] if context.status == 'ACTIVE' else [],
             context_ids=[context_id], concepts=scoped.retrieval.project(owner, concepts[:8], [context]) if concepts else [],
-            generated_at=engine.clock())
+            observations=observations,generated_at=engine.clock())
         labeled = {value.id: replace(value, canonical_name=memberships.get(value.id, {}).get('label', value.canonical_name)) for value in concepts}
-        return AssessmentContext(packet, labeled, memberships)
+        from app.db.reads import ReadSessions
+        snapshot=profile.prompt_snapshot(owner,sessions=ReadSessions(scoped.repository._session_factory,
+            scoped.repository._read_session)) if profile else None
+        return AssessmentContext(packet, labeled, memberships,snapshot)

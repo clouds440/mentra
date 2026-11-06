@@ -6,6 +6,7 @@ from .evidence import learning_evidence, evidence_decision, misconception, learn
 from .topics import learning_topic, topic_skill
 from .maintenance import maintenance_jobs
 from .signals import learning_signals
+from .projections import ranking_projection
 
 __all__ = [
     'metadata', 'concept', 'concept_alias', 'concept_relation', 'concept_redirect',

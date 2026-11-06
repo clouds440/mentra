@@ -194,6 +194,7 @@ class LearnerContextPacket(LearnerSchema):
     active_contexts: list[str] = Field(default_factory=list, max_length=20)
     context_ids: list[str] = Field(default_factory=list, max_length=20)
     concepts: list[LearnerContextConcept] = Field(default_factory=list, max_length=50)
+    observations: list[dict] = Field(default_factory=list, max_length=8)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
