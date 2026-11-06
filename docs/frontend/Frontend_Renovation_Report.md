@@ -277,7 +277,7 @@ the database regressions exercise actual ownership, retention and pagination.
 | Context selection | Explicit existing/new choice with reserved field height; newly created contexts remain usable if upload fails before refreshed options arrive |
 | Upload recovery | File, title, context, staged-file receipt and idempotency identity survive retry; oversized, empty and multi-file selections receive local feedback |
 | Material detail | Clear details/version headings and tidy version rows; replacements reuse the same upload workspace and existing revision fences |
-| Shared Dialog | One component-owned close control outside the scrolling content; optional heading/actions slots, viewer layout, busy dismissal guard and opt-in backdrop dismissal |
+| Shared Dialog | Required `title` rendered in the shared header with no divider or duplicate body title; one component-owned close control, optional header actions, viewer layout, busy dismissal guard and opt-in backdrop dismissal |
 | Modal callers | Removed caller-owned close buttons and root scroll/padding/position rules across references, file previews, images, diagrams, charts, skills, evidence, reviews and event forms |
 
 The shared Dialog preserves confirmation/form initial focus, native modality, nested
