@@ -86,6 +86,10 @@ class AnswerSheetFlowTests(unittest.IsolatedAsyncioTestCase):
             tool, _ = self.answer_tool(conversation, attachment_ids=[attached['id']])
             with patch.object(settings, 'assessment_vision_enabled', False):
                 result = await tool.ainvoke(dict(assessment_id=str(assessment.id), attachment_id=attached['id']))
+            from app.assessments.source_worker import SourceWorker
+            pending=self.service.repository.attempt(self.owner,result['attempt_id'])
+            self.assertTrue(pending.source_pending)
+            await SourceWorker(self.service).run_once()
             attempt = self.service.repository.attempt(self.owner, result['attempt_id'])
             self.assertEqual(attempt.state, 'pending_transcription')
             await self.finish(assessment, attempt, attempt.extraction['answers'], True)

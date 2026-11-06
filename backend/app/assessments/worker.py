@@ -20,10 +20,15 @@ class AssessmentWorker:
                 from app.db.admission import background_capacity
                 async def checkpoint(grades):
                     await run_in_threadpool(self.service.repository.checkpoint_grades, job, grades)
-                async with background_capacity(getattr(self.service,'admission',None),job['owner'],seconds=GRADING_TIMEOUT_SECONDS+30):
-                    with model_budget(deadline=monotonic()+GRADING_TIMEOUT_SECONDS, max_rounds=4,
-                                      max_input_tokens=131072, max_total_tokens=196608):
-                        grades = await asyncio.wait_for(self.service.workflows.grade(job, checkpoint=checkpoint), GRADING_TIMEOUT_SECONDS)
+                if all(question.get('options') for question in job['assessment']['questions']):
+                    # Pure key comparison must not queue behind unrelated LLM work.
+                    # Answers are already durable; recomputing after a crash is cheap.
+                    grades=await self.service.workflows.grade(job)
+                else:
+                    async with background_capacity(getattr(self.service,'admission',None),job['owner'],seconds=GRADING_TIMEOUT_SECONDS+30):
+                        with model_budget(deadline=monotonic()+GRADING_TIMEOUT_SECONDS, max_rounds=4,
+                                          max_input_tokens=131072, max_total_tokens=196608):
+                            grades = await asyncio.wait_for(self.service.workflows.grade(job, checkpoint=checkpoint), GRADING_TIMEOUT_SECONDS)
                 await run_in_threadpool(self.service.repository.complete, job, grades)
                 workflow_logger.event('assessment.results_ready', questions=len(grades.questions))
                 execution.outcome = 'success'
@@ -79,7 +84,9 @@ async def serve():
     async def consume(consumer, role):
         while not stopping.is_set():
             try:
-                processed = await consumer.run_once()
+                from app.core.config import settings
+                paused=(role=='chat.evidence' and not settings.learner_capture_enabled) or (role=='learner.maintenance' and not settings.learner_organization_enabled)
+                processed = False if paused else await consumer.run_once()
                 await run_in_threadpool(heartbeat.pulse,role)
                 if processed:
                     continue  # Drain ready jobs; idle polling must not throttle a busy queue.

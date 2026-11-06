@@ -60,6 +60,9 @@ class RetrievalService:
         return data
 
     def recommend(self, request, verification=False, *, data=None, supported_only=False,predictions=None):
+        from .ranking import RecentPracticePolicy
+        recent_due=isinstance(self.ranking,RecentPracticePolicy)
+        if verification and recent_due:return []
         concepts, states, prerequisites, factors, now = data if data is not None else self.ranking_data(request,supported_only=supported_only)
 
         def ranked():
@@ -78,7 +81,7 @@ class RetrievalService:
                 score, reason = self.ranking.score(projected, retention, prerequisites.get(concept.id, 0),
                                                    factor['relevance'], verification)
                 challenge = recommended_difficulty(state)
-                if state and state.mastery is not None and not prediction.supported and not state.verification_required:
+                if not recent_due and state and state.mastery is not None and not prediction.supported and not state.verification_required:
                     score, reason, challenge = max(score, 0.75), 'difficulty_unverified', factor['target_difficulty']
                 # Scope selection and the ranking policy already account for
                 # relevance. Apply the explicit learning importance only once.
@@ -208,7 +211,7 @@ class RetrievalService:
                          context_id=factor.get('context_id'),
                          mastery=state.mastery if state else None,
                          estimate_confidence=state.estimate_confidence if state else None,
-                         retention_confidence=retention, knowledge_status=info['knowledge_status'],
+                         retention_confidence=retention, knowledge_status=info['knowledge_status'],independent_item_count=info['independent_item_count'],
                          mastery_lower_bound=info['mastery_lower_bound'], mastery_upper_bound=info['mastery_upper_bound'],
                          target_performance=PerformanceEstimate.model_validate(prediction.model_dump(exclude={'concept_id', 'policy_version'})),
                          verification_required=state.verification_required if state else False,

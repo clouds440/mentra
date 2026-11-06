@@ -74,7 +74,8 @@ class LearnerIntegrationTests(unittest.TestCase):
         tools = {t.name: t for t in create_learner_tools(self.engine, 'e2ba227d-7165-5d43-91db-f7185326e0c4')}
         self.assertNotIn('record_learning_evidence', tools)
         packet = tools['get_relevant_learner_context'].invoke({'query': 'normal form', 'max_concepts': 2})
-        self.assertEqual(len(packet['concepts']), 2)
+        self.assertEqual(len(packet['skills']), 2)
+        self.assertEqual(packet['coverage']['skills_included'],2)
         self.assertEqual(len(tools['get_active_learning_contexts'].invoke({})['contexts']), 1)
         with self.assertRaises(ValidationError):
             tools['get_relevant_learner_context'].invoke({'query': 'normal form', 'learner_id': '6ce0b50e-09c7-5bc6-8ee3-f35d969ac429'})

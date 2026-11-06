@@ -1,0 +1,279 @@
+{
+  "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+  "scope": "Internal local evidence. Missing empirical/independent gates stay held.",
+  "gates": {
+    "G0": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "integrity_failures": 0
+      },
+      "plan_b": "Stop candidate writes on any integrity defect; preserve answers/evidence and reconcile receipts.",
+      "independently_adjudicated": false
+    },
+    "G1": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "current_restore_passed": true,
+        "outbox_recovery_passed": true
+      },
+      "plan_b": "Retain additive source/review/prediction tables; current-state backup/restore and roll forward. No historical-client compatibility.",
+      "independently_adjudicated": false
+    },
+    "G2": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "desktop_runs": 30,
+        "mobile_runs": 30,
+        "desktop_p95_ms": 18.4,
+        "mobile_p95_ms": 51.6,
+        "blocking_reads": 0
+      },
+      "plan_b": "Use the single owned handoff endpoint; revert only faulty reconciliation/visual paths while preserving local work.",
+      "independently_adjudicated": false
+    },
+    "G3": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "desktop_p95_ms": 31.6,
+        "mobile_p95_ms": 50.3,
+        "navigation_writes": 0,
+        "recovery_passed": true
+      },
+      "plan_b": "Retain local inputs, debounce browser recovery, remove heavy visual layers if interaction gates fail.",
+      "independently_adjudicated": false
+    },
+    "G4": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "sql": 8,
+        "checkouts": 1,
+        "commits": 0,
+        "parity_passed": true
+      },
+      "plan_b": "LEARNER_PERSONALIZATION_ENABLED=false: requested scope and current profile remain usable.",
+      "independently_adjudicated": false
+    },
+    "G5": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "operations": 1000,
+        "checkout_timeouts": 0,
+        "model_wait_holds": 0,
+        "control_fences_passed": true
+      },
+      "plan_b": "Serialize bounded DB stages; preserve control/publication fences and durable backlogs.",
+      "independently_adjudicated": false
+    },
+    "G6": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "runs": 30,
+        "full_p95_ms": 7019.64,
+        "content_calls": 1,
+        "blocking_organizer_calls": 0
+      },
+      "plan_b": "Serve reviewed bank/template content or background generation; preserve requested scope/count.",
+      "independently_adjudicated": false
+    },
+    "G7": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Only optional reranking may fall back; unavailable grounding fails explicitly.",
+      "independently_adjudicated": false
+    },
+    "G8": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "independent_items": 0,
+        "english_items": 0,
+        "arabic_items": 0,
+        "deterministic_passed": true
+      },
+      "plan_b": "Quarantine/report invalid items and withdraw only affected effective evidence; use independently reviewed items.",
+      "independently_adjudicated": false
+    },
+    "G9": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Use reviewed formats/domains/rubrics and retain human review for unsupported grading.",
+      "independently_adjudicated": false
+    },
+    "G10": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "independent_turns": 0,
+        "false_mastery": 0
+      },
+      "plan_b": "Keep source-bound observations unscored; LEARNER_CAPTURE_ENABLED=false pauses consumption without dropping sources.",
+      "independently_adjudicated": false
+    },
+    "G11": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Retain/retry the durable backlog with explicit dispositions; do not drop committed sources.",
+      "independently_adjudicated": false
+    },
+    "G12": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "LEARNER_ORGANIZATION_ENABLED=false; explicit reviewed binding and reversible display grouping, no automatic semantic merges.",
+      "independently_adjudicated": false
+    },
+    "G13": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "concepts": 100001,
+        "evidence": 1000000,
+        "states_materialized": 255,
+        "prompt_skills": 8,
+        "prompt_tokens": 2000,
+        "read_p95_ms": 674.25,
+        "top5_recall": 1,
+        "exact_recall": 1,
+        "age_strata_passed": true
+      },
+      "plan_b": "LEARNER_RANKING_MODE=recent_due; recover the scalar index from current state with the bounded rebuild CLI.",
+      "independently_adjudicated": false
+    },
+    "G14": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Revert visual changes if work/focus regresses; keep the complete handoff and raw answers.",
+      "independently_adjudicated": false
+    },
+    "G15": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Keep estimates explicitly heuristic; no probability claim without prospective holdout qualification.",
+      "independently_adjudicated": false
+    },
+    "G16": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {},
+      "plan_b": "Use transparent adaptation or personalization off; no marketing claim without a powered delayed-learning study.",
+      "independently_adjudicated": false
+    },
+    "G17": {
+      "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+      "evidence": [
+        {
+          "path": "verification/local-results-2026-11-06.json",
+          "sha256": "ee137b4e948de45d04ff1500c8c28f953f4ed2cf5e942a7a45f2de41251771f4"
+        }
+      ],
+      "metrics": {
+        "choice_runs": 30,
+        "choice_processing_p95_ms": 28.59,
+        "choice_model_calls": 0,
+        "busy_model_does_not_block_choices": true,
+        "written_runs": 9,
+        "written_processing_p95_ms": 4281.42,
+        "answers_and_rubrics_preserved": true
+      },
+      "plan_b": "Choice grading bypasses model capacity; preserve written rubrics/answers and retry incomplete batches, never trim work.",
+      "independently_adjudicated": false
+    }
+  }
+}

@@ -171,10 +171,18 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         from app.db.migrate import migration_config,upgrade
         from app.assessments.repositories.source_jobs import SourceJobs
         from app.assessments.repositories.tables import source_jobs
-        from sqlalchemy import update
+        from app.assessments.repositories.tables import prediction_snapshots
+        from sqlalchemy import update,delete
         assessment,attempt=await self.prepared()
         stored=self.files.upload(self.owner,BytesIO(b'original'),'answers.txt','assessment','rollback-source')
         queued=SourceJobs(self.service.repository).enqueue(self.owner,str(attempt.id),stored['id'],attempt.revision)
+        with self.assertRaisesRegex(RuntimeError,'Export pre-outcome snapshots'):
+            with self.db.engine.connect() as connection:
+                command.downgrade(migration_config(connection),'20261103_0039')
+        # Explicit current-schema backup/restore rehearsal in the disposable DB.
+        with self.db.sessions.begin() as session:
+            snapshot_backup=[dict(row) for row in session.execute(select(prediction_snapshots)).mappings()]
+            session.execute(delete(prediction_snapshots))
         with self.assertRaisesRegex(RuntimeError,'Drain assessment source jobs'):
             with self.db.engine.connect() as connection:
                 command.downgrade(migration_config(connection),'20261103_0039')
@@ -187,6 +195,10 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(attempts.c.state).where(attempts.c.id==str(attempt.id))),'draft')
         upgrade(self.db.engine)
+        with self.db.sessions.begin() as session:
+            session.execute(prediction_snapshots.insert(),snapshot_backup)
+        with self.db.sessions() as session:
+            self.assertEqual([dict(row) for row in session.execute(select(prediction_snapshots)).mappings()],snapshot_backup)
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'draft')
         with self.db.engine.connect() as connection:
             command.check(migration_config(connection))
@@ -365,8 +377,9 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         profile.update_details(self.owner,ProfileUpdate(expected_version=profile.get(self.owner).version,details=details()))
         request = self.request.model_copy(update={'count':1,'concept_names':['Linear equations','Factoring']})
         generated,sources = await self.service.workflows.generate(self.owner,request)
-        second = self.learner.resolve_concept(ConceptResolutionRequest(label='Factoring',learner_id=self.owner,context_id=request.context_id))
-        generated.questions[0].concept_ids.append(second.concept_id)
+        from app.learner.schemas import GeneratedConceptsRequest
+        second=await self.learner.prepare_assessment_concept_labels(GeneratedConceptsRequest(learner_id=self.owner,context_id=request.context_id,topic=request.topic,labels=['Factoring']))
+        generated.questions[0].concept_ids.append(second['Factoring'])
         assessment = self.service.repository.save(self.owner,request,generated,sources)
         attempt = self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
         self.service.submit(self.owner,str(attempt.id),SubmitAnswers(expected_revision=1,client_request_id=uuid4(),answers={str(assessment.questions[0].id):'Partially correct'}))
@@ -378,9 +391,9 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(estimate.evidence_count,1)
         self.assertEqual(estimate.successful_weight,0)
 
-    async def test_generation_hash_preserves_pre_revision_request_replays(self):
+    async def test_current_generation_hash_replays_identical_requests(self):
         from app.history_management.repositories.events.postgres import request_hash
-        payload = self.request.model_dump(mode='json',include={'client_request_id','context_id','topic','concept_names','confirm_new_concepts','count','purpose','grounded','document_ids'})
+        payload = self.request.model_dump(mode='json')
         self.assertEqual(request_hash(payload),request_hash(self.request.fingerprint_payload()))
         assessment = await self.service.generate(self.owner,self.request)
         self.assertEqual((await self.service.generate(self.owner,self.request)).id,assessment.id)

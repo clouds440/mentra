@@ -23,7 +23,7 @@ LABELS = {
     'get_study_recommendations': 'Finding what to study next',
     'get_student_weaknesses': 'Finding useful practice targets',
     'get_verification_candidates': 'Finding concepts to review',
-    'resolve_student_concept': 'Understanding the topic',
+    'lookup_student_concept': 'Understanding the topic',
     'search_study_material': 'Reading documents',
     'find_study_material': 'Finding your source',
     'read_study_material': 'Reading your source',

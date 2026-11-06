@@ -219,7 +219,7 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
         read_tool = tool('get_active_learning_contexts', read)
         self.assertEqual(await execute.execute(read_tool, {}), {'version':1})
         self.budget.cache['learner:old'] = {'version':1}
-        await execute.execute(tool('resolve_student_concept', write), {})
+        await execute.execute(tool('assessment_answer', write, 'assessment'), {})
         self.assertNotIn('learner:old', self.budget.cache)
         self.assertNotIn('_initial_learner_context', self.scope)
         self.assertEqual(await execute.execute(read_tool, {}), {'version':2})

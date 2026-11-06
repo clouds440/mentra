@@ -33,11 +33,13 @@ async def resolve_assessment_intent(workflows, owner, intent):
         # them once through the existing owner-bound domain contract; do not
         # retain this snapshot across later concept mutations or responses.
         from .assessment_context import optional_read
+        from app.core.config import settings
         prepared = await run_in_threadpool(optional_read, 'selection',
-            lambda: learner.get_assessment_selection_context(owner, identifiers or None, intent.topic))
+            lambda: learner.get_assessment_selection_context(owner, identifiers or None, intent.topic)) if settings.learner_personalization_enabled else None
         if prepared:
             ranked, packet = prepared
-            learner_context = packet.model_dump(mode='json')
+            from app.learner.prompt_context import compact
+            learner_context = compact(packet)
         else:
             ranked, learner_context = dict(recommendations=[], verification=[]), dict(availability='unavailable')
         profile = await read_profile()

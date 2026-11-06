@@ -1,6 +1,8 @@
 import type { Assessment } from '../../types/assessments';
 
-/** Explicit delivery wins; old records retain their established presentation. */
+export const assessmentViewKey=(conversation:string,message:number|string,artifact:string)=>JSON.stringify([conversation,message,artifact]);
+
+/** Explicit delivery wins; automatic delivery follows the generated structure. */
 export function usesInteractiveAssessment(assessment: Assessment): boolean {
   const delivery = assessment.preferences?.delivery;
   if (delivery) return delivery === 'interactive';

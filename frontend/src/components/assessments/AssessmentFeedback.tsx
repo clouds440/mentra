@@ -9,10 +9,12 @@ import { ViewToggle } from '../ui/ViewToggle';
 import { useQuestionNavigation } from './useQuestionNavigation';
 import { MistakePractice } from './MistakePractice';
 import { LearningTargetGroups, LearningTargetLabels } from './LearningTargetLabels';
+import { ItemReview } from './ItemReview';
 
 /** Join by immutable question ID; model response order never determines attribution. */
 export function AssessmentFeedback({ assessment, attempt }: { assessment: Assessment; attempt: AssessmentAttempt }) {
-  const [view,setView]=useState<'grid'|'list'>('grid');
+  const [view,setView]=useState<'grid'|'list'>('list');
+  const [expanded,setExpanded]=useState<Set<string>>(()=>new Set());
   const [reviewOpen, setReviewOpen] = useState(false);
   const { index: selected, setIndex: setSelected, direction }=useQuestionNavigation();
   const grades = new Map(attempt.grades?.map(grade => [grade.question_id, grade]));
@@ -29,9 +31,9 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
   const percent = maximum ? score/maximum*100 : 0;
   const current=Math.min(selected,Math.max(0,results.length-1));
   const visible = results.slice(current,current+1);
-  const renderFeedback = ({question, index, grade, outcome}: typeof results[number]) => <div className="space-y-2"><LearningTargetLabels question={question} /><QuestionFeedback label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')} answer={selectedAnswer(question, attempt.answers[question.id])} correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} /></div>;
+  const renderFeedback = ({question, index, grade, outcome}: typeof results[number]) => <div className="space-y-3"><QuestionFeedback label={questionLabel(question, index)} prompt={[question.context, question.prompt].filter(Boolean).join('\n\n')} answer={selectedAnswer(question, attempt.answers[question.id])} correctAnswer={grade.correct_answer} outcome={outcome} score={grade.score} maxScore={question.marks} showMarks={style === 'marks'} feedback={grade.feedback} misconceptions={grade.misconceptions} /><div className="flex items-start justify-between gap-3"><details className="text-xs text-muted"><summary className="ui-disclosure cursor-pointer py-2">Learning evidence</summary><LearningTargetLabels question={question} /><p className="mt-2">This checks the listed skills. The estimate is heuristic and is not a calibrated probability.</p></details><ItemReview assessment={assessment} question={question} /></div></div>;
   return <section aria-label="Assessment feedback" className="assessment-feedback min-w-0 space-y-3">
-    <div className="space-y-3 rounded-xl border border-border-strong bg-surface p-3">
+    <div className="space-y-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-heading">Your results</h2>{style === 'marks' && <p className="text-sm font-semibold tabular-nums text-heading">Final result: {Number(score.toFixed(4))}/{Number(maximum.toFixed(4))}</p>}</div>
       {attempt.scoring?.multiplier === .9 && <p className="text-xs leading-5 text-muted">{style === 'marks' ? `Raw score: ${attempt.scoring.raw_score}/${attempt.scoring.max_score}. ` : ''}Self-reported AI/hint use: 0.9× final-score adjustment applied. Question marks and correctness show the original rubric result.</p>}
       {style === 'marks' && <div className="h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true"><div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, percent)}%` }} /></div>}
@@ -40,7 +42,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
         return <span key={outcome} className={`inline-flex items-center gap-1.5 text-xs font-medium ${style.color}`}><style.Icon aria-hidden="true" size={15} />{results.filter(item => item.outcome === outcome).length} {style.label.toLowerCase()}</span>;
       })}</div>
     </div>
-    {!!assessment.questions.some(question => question.learning_targets?.length) && <section aria-label="Topics covered" className="rounded-control border border-border p-3"><h3 className="text-sm font-medium text-heading">Skills checked in this assessment</h3><p className="mt-1 text-xs text-muted">These results apply to the listed subskills. Other skills in each topic remain untested.</p><div className="mt-2"><LearningTargetGroups stacked targets={assessment.questions.flatMap(question => question.learning_targets ?? [])} /></div></section>}
+    {!!assessment.questions.some(question => question.learning_targets?.length) && <details className="text-xs text-muted"><summary className="ui-disclosure cursor-pointer py-2">Skills checked in this assessment</summary><p className="mt-1">Other skills in each topic remain untested.</p><div className="mt-2"><LearningTargetGroups stacked targets={assessment.questions.flatMap(question => question.learning_targets ?? [])} /></div></details>}
     <MistakePractice key={`${attempt.id}:${attempt.grade_revision}`} assessment={assessment} attempt={attempt} />
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted">All {results.length} results</p><ViewToggle label="Result view" view={view} onChange={setView} /></div>
     {view === 'grid' ? <div className="workspace-compact-grid">{results.map((item, position) => {
@@ -52,7 +54,7 @@ export function AssessmentFeedback({ assessment, attempt }: { assessment: Assess
         <QuestionCardPreview content={item.grade.feedback} secondary />
         <Button size="sm" variant="secondary" className="mt-auto w-full" onClick={() => { setSelected(position); setReviewOpen(true); }}>Review result</Button>
       </article>;
-    })}</div> : results.map(item => <div key={item.question.id}>{renderFeedback(item)}</div>)}
+    })}</div> : results.map(item => {const appearance=feedbackAppearance[item.outcome];return <details key={item.question.id} className="assessment-result py-2" onToggle={event=>{const open=event.currentTarget.open;setExpanded(previous=>{const next=new Set(previous);if(open)next.add(item.question.id);else next.delete(item.question.id);return next;});}}><summary className="ui-disclosure cursor-pointer py-2 text-sm"><span className="inline-flex items-center gap-2"><appearance.Icon size={16} className={appearance.color} aria-hidden="true" /><span className="font-medium">{questionLabel(item.question,item.index)}</span><span className={`text-xs ${appearance.color}`}>{appearance.label}</span>{style==='marks'&&<span className="text-xs text-muted">{item.grade.score}/{item.question.marks}</span>}</span></summary>{expanded.has(item.question.id)&&<div className="py-3">{renderFeedback(item)}</div>}</details>})}
     {reviewOpen && <Dialog closeLabel="Close result review" open onDismiss={() => setReviewOpen(false)} aria-labelledby="result-review-title" className="max-w-2xl">
       <div className="mb-4 flex items-center justify-between gap-3"><h2 id="result-review-title" className="font-medium text-heading">Question {current+1} of {results.length}</h2></div>
       <nav aria-label="Result questions" className="mb-4 flex flex-wrap gap-1.5">{results.map(({question,index,outcome},position)=><button key={question.id} type="button" aria-label={`Question ${index+1}: ${feedbackAppearance[outcome].label.toLowerCase()}`} aria-current={position===current?'step':undefined} onClick={()=>setSelected(position)} className={`ui-button grid min-h-8 min-w-8 place-items-center rounded-control border px-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-accent ${outcome==='correct'?'border-success/40 bg-success/10 text-success':outcome==='wrong'?'border-danger/40 bg-danger/10 text-danger':'border-warning/40 bg-warning/10 text-warning'} ${position===current?'ring-2 ring-offset-1 ring-current':''}`}>{index+1}</button>)}</nav>

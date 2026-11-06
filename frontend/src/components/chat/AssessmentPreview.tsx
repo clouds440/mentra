@@ -8,7 +8,7 @@ import { Skeleton } from '../ui/Skeleton';
 export interface AssessmentReference { kind: 'draft' | 'saved' | 'generation'; id: string; title: string }
 
 /** Read through the normal owned API; activity never carries private answers. */
-export function AssessmentPreview({ reference, conversationId }: { reference: AssessmentReference; conversationId: string }) {
+export function AssessmentPreview({ reference, conversationId,viewId }: { reference: AssessmentReference; conversationId: string;viewId:string }) {
   const [card, setCard] = useState<ChatAssessmentCardData>();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -16,12 +16,12 @@ export function AssessmentPreview({ reference, conversationId }: { reference: As
     if (reference.kind === 'generation') return;
     const controller = new AbortController();
     const read = reference.kind === 'draft' ? assessments.draft(reference.id, controller.signal)
-      : assessments.detail(reference.id, controller.signal).then(assessment => ({ id: null, conversation_id: conversationId, assessment_id: assessment.id, assessment }));
+      : assessments.handoff(reference.id, controller.signal).then(value=>({...value,conversation_id:conversationId}));
     void read.then(value => { if (!controller.signal.aborted) setCard(value); })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, [reference.id, reference.kind, conversationId]);
-  if (reference.kind === 'generation') return <AssessmentGenerationCard id={reference.id} title={reference.title} />;
+  if (reference.kind === 'generation') return <AssessmentGenerationCard id={reference.id} title={reference.title} viewId={viewId} />;
   if (failed) return <p className="mt-3 text-sm text-muted" role="status">Your practice is saved. Its card will appear with the completed response.</p>;
-  return card ? <ChatAssessmentCard initial={card} hydrated /> : <Skeleton variant="card" />;
+  return card ? <ChatAssessmentCard initial={card} hydrated viewId={viewId} /> : <Skeleton variant="text" />;
 }

@@ -247,17 +247,19 @@ class TopicTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(page.total, 1)
         self.assertEqual(page.items[0].subskill_count, 1)
 
-    async def test_chat_encounter_uses_owned_grouping_without_learning_evidence(self):
+    async def test_chat_lookup_unknown_does_not_create_skills_or_evidence(self):
         from app.langchain.learner_tools import create_learner_tools
-        tool = next(value for value in create_learner_tools(self.engine, self.owner) if value.name == 'resolve_student_concept')
-        first = await tool.ainvoke(dict(label='Chain rule', context_id=self.context))
-        again = await tool.ainvoke(dict(label='Chain rule', context_id=self.context))
-        self.assertEqual(first['concept_id'], again['concept_id'])
-        page = self.engine.get_learning_topics(self.page_request())
-        self.assertEqual(page.total, 1)
-        self.assertEqual(page.items[0].subskill_count, 1)
-        self.assertEqual(page.items[0].checked_count, 0)
-        self.assertEqual(self.db.repository.list_evidence(self.owner, first['concept_id']), [])
+        tool=next(value for value in create_learner_tools(self.engine,self.owner) if value.name=='lookup_student_concept')
+        for _ in range(3):
+            value=await tool.ainvoke(dict(label='Chain rule',context_id=self.context))
+            self.assertEqual(value['status'],'review_needed')
+        self.assertEqual(self.engine.get_learning_topics(self.page_request()).total,0)
+        self.assertEqual(self.db.repository.context_concepts(self.owner,[self.context]),[])
+        skills=await self.engine.topics.resolve(self.request(['Chain rule']),published=True)
+        value=await tool.ainvoke(dict(label='Chain rule',context_id=self.context))
+        self.assertEqual(value['status'],'resolved')
+        self.assertEqual(value['matches'][0]['id'],skills[0].id)
+        self.assertEqual(self.db.repository.list_evidence(self.owner,skills[0].id),[])
 
     async def test_failed_preview_does_not_write_fallback_membership(self):
         from unittest.mock import AsyncMock

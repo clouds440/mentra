@@ -16,6 +16,16 @@ from tests import test_assessment_flexibility as fixtures
 
 
 class QualityChecks(unittest.TestCase):
+    def test_real_before_sample_with_two_dots_below_ba_is_rejected(self):
+        options=[dict(id='ba',label='ب'),dict(id='ta',label='ت'),dict(id='tha',label='ث')]
+        question=self.item(prompt='أي حرف من الحروف التالية له **نقطتان** تحته؟',options=options,
+            correct_option_id='ba',model_answer='الباء لها نقطتان تحتها.')
+        with self.assertRaisesRegex(GenerationMismatch,'arabic_letter_dot_key_mismatch'):check_question(question)
+        correct=question.model_copy(update=dict(prompt='أي حرف له نقطة واحدة تحته؟',model_answer='الباء لها نقطة واحدة تحتها.'))
+        self.assertIn('arabic_letter_dot_key',check_question(correct)['checks'])
+        geometry=correct.model_copy(update=dict(prompt='أي نقطة تقع أعلى النقطة أ؟'))
+        self.assertNotIn('arabic_letter_dot_key',check_question(geometry)['checks'])
+
     def item(self,**updates):
         return GeneratedQuestion(**dict(dict(prompt='Find `result`.\n```python\na = [1, 2]\nb = [3]\nresult = a + b\n```',
             concept_ids=['known'],marks=1,difficulty=.2,options=[dict(id='a',label='`[1, 2, 3]`'),dict(id='b',label='`[4, 5]`')],
@@ -50,6 +60,22 @@ class QualityChecks(unittest.TestCase):
 
 class QualityLifecycleTests(unittest.IsolatedAsyncioTestCase):
     setUp=fixtures.FlexibleEngineTests.setUp
+
+    async def test_exact_repeated_new_quiz_does_not_manufacture_independent_mastery(self):
+        from app.learner.repositories.tables import learner_concept_state
+        first,_=await self.prepared()
+        def state():
+            with self.db.sessions() as session:return dict(session.execute(select(learner_concept_state).where(
+                learner_concept_state.c.learner_id==self.owner,learner_concept_state.c.concept_id==first.questions[0].concept_ids[0])).mappings().one())
+        before=state();second,attempt=await self.prepared()
+        self.assertNotEqual(first.id,second.id);self.assertEqual(attempt.state,'graded')
+        after=state()
+        self.assertEqual(before['policy_data_json']['independent_items'],after['policy_data_json']['independent_items'])
+        with self.db.sessions() as session:
+            rows=list(session.execute(select(learning_evidence).where(learning_evidence.c.learner_id==self.owner)).mappings())
+        self.assertEqual(len(rows),4)
+        copies=[row for row in rows if row['metadata_json'].get('assessment_id')==str(second.id)]
+        self.assertTrue(all(row['independence']==0 and row['metadata_json']['known_item_exposure'] for row in copies))
 
     async def prepared(self,*,apply=True,answer='a'):
         value=await self.service.generate(self.owner,GenerationRequest(client_request_id=uuid4(),

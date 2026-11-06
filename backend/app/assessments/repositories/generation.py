@@ -70,16 +70,28 @@ class GenerationJobs:
             value = self.public(row)
             if row['state'] == 'completed' and row['result']:
                 result = row['result']
+                from .tables import assessments,chat_drafts
+                available=None
+                if 'assessment' in result and result.get('id'):
+                    current=session.execute(select(chat_drafts,assessments.c.id.label('available')).outerjoin(
+                        assessments,(assessments.c.id==chat_drafts.c.assessment_id)&(assessments.c.learner_id==owner)).where(
+                            chat_drafts.c.id==result['id'],chat_drafts.c.learner_id==owner)).mappings().first()
+                    if not current: raise AppError('ASSESSMENT_DRAFT_NOT_FOUND','Chat assessment unavailable.',404)
+                    result=dict(id=current['id'],conversation_id=current['conversation_id'],assessment_id=current['assessment_id'],
+                        assessment=self.repository.public(current['payload']).model_dump(mode='json'))
+                    available=current['available']
                 identifier = result.get('assessment_id') if 'assessment' in result else result.get('id')
-                value['hydration'] = self.repository.display_hydration(session, owner, identifier)
-                if identifier:
-                    from .tables import assessments
-                    available = session.scalar(select(assessments.c.id).where(
-                        assessments.c.learner_id == owner, assessments.c.id == identifier))
-                    if not available:
-                        value['result'] = dict(result, deleted=True) if 'assessment' in result else dict(
-                            id=None, conversation_id=row['conversation_id'] or '', assessment_id=identifier,
-                            assessment=result, deleted=True)
+                if identifier and ('assessment' not in result or not result.get('id')):
+                    saved=session.execute(select(assessments).where(assessments.c.learner_id==owner,
+                        assessments.c.id==identifier)).mappings().first()
+                    available=saved['id'] if saved else None
+                    if saved:
+                        fresh=self.repository.public(saved).model_dump(mode='json')
+                        result=dict(result,assessment=fresh) if 'assessment' in result else fresh
+                deleted=bool(identifier and not available)
+                value['hydration']=self.repository.display_hydration(session,owner,identifier) if not deleted else dict(version=1,attempt=None)
+                value['result']=(dict(result,deleted=True) if 'assessment' in result else dict(
+                    id=None,conversation_id=row['conversation_id'] or '',assessment_id=identifier,assessment=result,deleted=True)) if deleted else result
             return value
 
     def visible_context(self, owner, conversation, identifiers):

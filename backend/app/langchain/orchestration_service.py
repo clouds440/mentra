@@ -138,7 +138,8 @@ class OrchestrationService:
         if 'learner' in prepared:
             kwargs['learner_context'] = prepared['learner']
             if prepared['learner'] is not None:
-                recovery_scope['_initial_learner_context'] = prepared['learner'].model_dump(mode='json')
+                from app.learner.prompt_context import compact
+                recovery_scope['_initial_learner_context'] = compact(prepared['learner'])
         policy = history_policy or HistoryContextPolicy()
         if history_scope is not None:
             history_scope['activity'] = activity

@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import select, update, or_, func, literal_column, union_all
+from sqlalchemy import select, update, or_, and_, func, literal_column, union_all
 from sqlalchemy.dialects.postgresql import insert
 
 from app.learner.normalization import normalize
@@ -9,6 +9,19 @@ from app.learner.repositories.tables import concept, concept_alias, concept_rela
 
 
 class ConceptsStore(PostgresRepositoryBase):
+    def lookup_owned_skill(self, owner, context_id, forms):
+        from app.learner.repositories.tables import context_concept, topic_skill
+        aliases=select(concept_alias.c.concept_id).where(concept_alias.c.normalized_alias.in_(forms),concept_alias.c.confidence>=.9)
+        with self._session() as session:
+            rows=session.execute(select(concept.c.id,func.coalesce(topic_skill.c.label,concept.c.canonical_name).label('label'))
+                .join(context_concept,context_concept.c.concept_id==concept.c.id)
+                .outerjoin(topic_skill,and_(topic_skill.c.concept_id==concept.c.id,topic_skill.c.learner_id==owner))
+                .where(context_concept.c.learner_id==owner,context_concept.c.context_id==context_id,concept.c.status=='ACTIVE',
+                    or_(topic_skill.c.concept_id.is_(None),topic_skill.c.published),
+                    or_(concept.c.normalized_name.in_(forms),concept.c.id.in_(aliases),func.lower(topic_skill.c.label).in_(forms)))
+                .order_by(concept.c.id).limit(5)).mappings()
+            return [dict(row) for row in rows]
+
     def find_exact_concepts(self, forms, min_confidence=0.9):
         aliases = select(concept_alias.c.concept_id).where(
             concept_alias.c.normalized_alias.in_(forms), concept_alias.c.confidence >= min_confidence)

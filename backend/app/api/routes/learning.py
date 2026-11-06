@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field,model_validator
 from typing import Literal
 from uuid import UUID
 from app.student_profile.dependencies import require_onboarded_identity
@@ -30,15 +30,30 @@ async def retry_signal_capture(turn_id: UUID,request: Request,identity=Depends(r
     return await run_in_threadpool(request.app.state.learner_service.retry_learning_signal_capture,identity.learner_id,str(turn_id))
 
 
+@router.get('/signal-captures')
+async def failed_signal_captures(request:Request,identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.learner_service.get_failed_signal_captures,identity.learner_id)
+
+
 class ReviewSignal(BaseModel):
     model_config=ConfigDict(extra='forbid')
     context_id: str=Field(min_length=1,max_length=100)
-    concept_id: str=Field(min_length=1,max_length=100)
+    concept_id: str|None=Field(default=None,min_length=1,max_length=100)
+    new_label: str|None=Field(default=None,min_length=1,max_length=200)
     source_revision: str=Field(min_length=1,max_length=100)
+    @model_validator(mode='after')
+    def target(self):
+        if bool(self.concept_id)==bool(self.new_label and self.new_label.strip()):
+            raise ValueError('Choose an existing skill or name one new skill')
+        if self.new_label:self.new_label=self.new_label.strip()
+        return self
 
 
 @router.post('/signals/{identifier}/review')
 async def review_signal(identifier: UUID,body: ReviewSignal,request: Request,identity=Depends(require_onboarded_identity)):
+    if body.new_label:
+        return await request.app.state.learner_service.review_new_learning_signal(identity.learner_id,
+            str(identifier),body.context_id,body.new_label,body.source_revision)
     return await run_in_threadpool(request.app.state.learner_service.review_learning_signal,identity.learner_id,
         str(identifier),body.context_id,body.concept_id,body.source_revision)
 

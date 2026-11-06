@@ -122,8 +122,8 @@ async def update_preferences(body: AssessmentPreferences, request: Request, iden
         identity.learner_id, body.auto_add, body.expected_revision)
 
 @router.get('/chat-drafts/{identifier}')
-async def chat_draft(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
-    return await run_in_threadpool(request.app.state.assessment_service.chat.detail, identity.learner_id, str(identifier))
+async def chat_draft(identifier: UUID, request: Request,attempt_id: UUID|None=None, identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.chat.detail, identity.learner_id, str(identifier),str(attempt_id) if attempt_id else None)
 
 @router.post('/chat-drafts/{identifier}/publish')
 async def publish_chat_draft(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
@@ -191,6 +191,12 @@ async def question_paper(identifier: UUID, request: Request, identity=Depends(re
 @router.get('/{identifier}', response_model=Assessment)
 async def detail(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):
     return await run_in_threadpool(request.app.state.assessment_service.repository.detail, identity.learner_id, str(identifier))
+
+
+@router.get('/{identifier}/handoff')
+async def handoff(identifier: UUID,request: Request,attempt_id: UUID|None=None,identity=Depends(require_onboarded_identity)):
+    return await run_in_threadpool(request.app.state.assessment_service.repository.handoff,identity.learner_id,
+        str(identifier),str(attempt_id) if attempt_id else None)
 
 @router.get('/{identifier}/attempts', response_model=list[Attempt])
 async def attempts(identifier: UUID, request: Request, identity=Depends(require_onboarded_identity)):

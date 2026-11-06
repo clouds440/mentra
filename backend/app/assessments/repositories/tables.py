@@ -1,8 +1,20 @@
-from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, Boolean
+from sqlalchemy import Table, Column, Uuid, Text, BigInteger, DateTime, Integer, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, Boolean, Double
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from app.db.metadata import metadata
 
 assistance_kind = ENUM('unknown', 'independent', 'assisted', name='assessment_assistance_kind', create_type=False)
+
+prediction_snapshots=Table('assessment_prediction_snapshot',metadata,
+    Column('learner_id',Uuid(as_uuid=False),primary_key=True),Column('attempt_id',Uuid(as_uuid=False),primary_key=True),
+    Column('question_id',Uuid(as_uuid=False),primary_key=True),Column('captured_at',DateTime(timezone=True),nullable=False),
+    Column('item_family',Text,nullable=False),Column('content_hash',Text,nullable=False),Column('first_exposure',Boolean,nullable=False),
+    Column('expected_score',Double,nullable=False),Column('supported',Boolean,nullable=False),
+    Column('baseline_recent',Double,nullable=False),Column('baseline_band',Double,nullable=False),
+    Column('state_versions',JSONB,nullable=False),Column('policy_identity',JSONB,nullable=False),
+    Column('assessment_revision',BigInteger,nullable=False),Column('protocol',Text,nullable=False),Column('answer_mode',Text,nullable=False),
+    ForeignKeyConstraint(['learner_id','attempt_id'],['assessment_attempt.learner_id','assessment_attempt.id'],ondelete='CASCADE'),
+    CheckConstraint('expected_score BETWEEN 0 AND 1 AND baseline_recent BETWEEN 0 AND 1 AND baseline_band BETWEEN 0 AND 1',name='assessment_prediction_bounds'),
+    Index('idx_assessment_prediction_family','learner_id','item_family'),Index('idx_assessment_prediction_content','learner_id','content_hash'))
 
 item_reviews = Table('assessment_item_review', metadata,
     Column('id', Uuid(as_uuid=False), primary_key=True),

@@ -136,6 +136,21 @@ class ResultsBeforeLearningTests(unittest.IsolatedAsyncioTestCase):
     setUp = flexible.FlexibleEngineTests.setUp
     request = flexible.FlexibleEngineTests.request
 
+    async def test_choice_grading_bypasses_busy_model_capacity_and_redundant_checkpoint(self):
+        assessment=await self.service.generate(self.owner,self.request(count=5,question_format='mcq'))
+        attempt=self.service.repository.start(self.owner,str(assessment.id),StartAttempt(client_request_id=uuid4()))
+        answers={str(q.id):q.options[0].id for q in assessment.questions}
+        self.service.submit(self.owner,str(attempt.id),SubmitAnswers(client_request_id=uuid4(),expected_revision=1,answers=answers))
+        with patch('app.db.admission.background_capacity',side_effect=AssertionError('Model capacity is unavailable')) as capacity,patch.object(
+                self.service.workflows.llm,'ainvoke',side_effect=AssertionError('Choices require no model call')),patch.object(
+                self.service.repository,'checkpoint_grades',side_effect=AssertionError('Cheap deterministic work needs no checkpoint')):
+            self.assertTrue(await AssessmentWorker(self.service).run_once())
+        capacity.assert_not_called()
+        result=self.service.repository.attempt(self.owner,str(attempt.id))
+        self.assertEqual(result.state,'graded');self.assertEqual(result.answers,answers)
+        self.assertEqual(result.evidence_status,'pending')
+        self.assertEqual(sum(grade.score for grade in result.grades),sum(q.marks for q in assessment.questions))
+
     async def prepared(self):
         assessment = await self.service.generate(self.owner, self.request(count=6, question_format='written'))
         attempt = self.service.repository.start(self.owner, str(assessment.id), StartAttempt(client_request_id=uuid4()))

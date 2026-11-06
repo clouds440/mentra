@@ -170,6 +170,7 @@ class PerformanceEstimate(LearnerSchema):
 
 
 class LearnerContextConcept(LearnerSchema):
+    independent_item_count: int = Field(default=0,ge=0,le=64)
     concept_id: str
     name: str
     topic_id: str | None = None

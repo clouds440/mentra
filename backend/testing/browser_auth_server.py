@@ -76,6 +76,8 @@ async def lifespan(application):
     assessment_evidence_worker = AssessmentEvidenceWorker(application.state.assessment_service)
     from app.assessments.generation_worker import AssessmentGenerationWorker
     generation_worker = AssessmentGenerationWorker(application.state.assessment_service)
+    from app.assessments.source_worker import SourceWorker
+    source_worker=SourceWorker(application.state.assessment_service)
     from app.chat.attachments import AttachmentService
     from app.chat.repositories.attachments import AttachmentRepository
     from app.langchain.orchestration_service import OrchestrationService
@@ -98,6 +100,7 @@ async def lifespan(application):
             await asyncio.to_thread(application.state.history_management.events.repository.deliver_reminders)
             await grading_worker.run_once()
             await assessment_evidence_worker.run_once()
+            await source_worker.run_once()
             await asyncio.sleep(0.2)
 
     async def process_generation():

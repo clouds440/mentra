@@ -1,0 +1,972 @@
+[
+  {
+    "version": "before",
+    "sample": 0,
+    "item": 1,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A box sits on a frictionless horizontal floor. A student pushes it to the right with a force of 12 N while a rope pulls it to the left with a force of 5 N. What is the net force on the box?",
+    "options": [
+      {
+        "id": "a",
+        "label": "7 N to the right"
+      },
+      {
+        "id": "b",
+        "label": "7 N to the left"
+      },
+      {
+        "id": "c",
+        "label": "17 N to the right"
+      },
+      {
+        "id": "d",
+        "label": "17 N to the left"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "Take right as positive: +12 N + (−5 N) = +7 N. The net force is 7 N directed to the right.",
+    "rubric": "Award the full mark only for the option stating 7 N to the right. No partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 0,
+    "item": 2,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A 4.0 kg cart experiences a net force of 10 N. What is the magnitude of its acceleration?",
+    "options": [
+      {
+        "id": "a",
+        "label": "0.4 m/s²"
+      },
+      {
+        "id": "b",
+        "label": "2.5 m/s²"
+      },
+      {
+        "id": "c",
+        "label": "14 m/s²"
+      },
+      {
+        "id": "d",
+        "label": "40 m/s²"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "Using F = ma: a = F/m = 10 N / 4.0 kg = 2.5 m/s².",
+    "rubric": "Award the full mark only for the option 2.5 m/s². No partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 0,
+    "item": 3,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A puck sliding on frictionless ice has a net force of 6 N directed to the east. Which statement about the puck's acceleration is correct?",
+    "options": [
+      {
+        "id": "a",
+        "label": "The acceleration is directed east, the same direction as the net force."
+      },
+      {
+        "id": "b",
+        "label": "The acceleration is directed west, opposite to the net force."
+      },
+      {
+        "id": "c",
+        "label": "The acceleration is zero because the puck is on ice."
+      },
+      {
+        "id": "d",
+        "label": "The acceleration direction depends on the puck's velocity, not on the net force."
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "Acceleration is always in the same direction as the net force (a = F_net/m, and mass is positive). So the acceleration points east, the same direction as the net force.",
+    "rubric": "Award the full mark only for the option saying the acceleration is directed east, the same direction as the net force. No partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 0,
+    "item": 4,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A 2.0 kg block is pulled to the right with 15 N while friction acts to the left with 3 N. What is the block's acceleration?",
+    "options": [
+      {
+        "id": "a",
+        "label": "9 m/s² to the right"
+      },
+      {
+        "id": "b",
+        "label": "6 m/s² to the right"
+      },
+      {
+        "id": "c",
+        "label": "6 m/s² to the left"
+      },
+      {
+        "id": "d",
+        "label": "1.5 m/s² to the right"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "Net force: F_net = 15 N − 3 N = 12 N to the right. Then a = F_net/m = 12 N / 2.0 kg = 6 m/s² to the right.",
+    "rubric": "Award the full mark only for the option 6 m/s² to the right. No partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 0,
+    "item": 5,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A free-body diagram of a crate shows a 20 N force upward and a 20 N force downward, with no horizontal forces. What is the net force on the crate, and what is its acceleration?",
+    "options": [
+      {
+        "id": "a",
+        "label": "Net force 40 N downward; acceleration is nonzero."
+      },
+      {
+        "id": "b",
+        "label": "Net force 20 N upward; acceleration is nonzero."
+      },
+      {
+        "id": "c",
+        "label": "Net force 0 N; acceleration is 0 m/s²."
+      },
+      {
+        "id": "d",
+        "label": "Net force 0 N, but the acceleration cannot be determined without the mass."
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "The upward and downward forces are equal and opposite, so they cancel: F_net = 20 N − 20 N = 0 N. With zero net force, a = F_net/m = 0, so the acceleration is zero (the crate is in equilibrium).",
+    "rubric": "Award the full mark only for the option stating the net force is 0 N and the acceleration is 0 m/s². No partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 1,
+    "item": 1,
+    "title": "Python List Operations: Concatenation, Repetition and Indexing (Practice)",
+    "prompt": "What is the value of `result` after this code runs?\n\n```python\na = [1, 2]\nb = [3, 4]\nresult = a + b\n```",
+    "options": [
+      {
+        "id": "a",
+        "label": "`[1, 2, 3, 4]`"
+      },
+      {
+        "id": "b",
+        "label": "`[4, 6]`"
+      },
+      {
+        "id": "c",
+        "label": "`[[1, 2], [3, 4]]`"
+      },
+      {
+        "id": "d",
+        "label": "`[1, 2]`"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "`result` is `[1, 2, 3, 4]`. The `+` operator joins the two lists into a new list containing the elements of `a` followed by the elements of `b`.",
+    "rubric": "Award the full mark only for the option `[1, 2, 3, 4]`. Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 1,
+    "item": 2,
+    "title": "Python List Operations: Concatenation, Repetition and Indexing (Practice)",
+    "prompt": "What is the value of `result` after this code runs?\n\n```python\nresult = [0, 1] * 3\n```",
+    "options": [
+      {
+        "id": "a",
+        "label": "`[0, 1, 0, 1, 0, 1]`"
+      },
+      {
+        "id": "b",
+        "label": "`[0, 3, 1, 3]`"
+      },
+      {
+        "id": "c",
+        "label": "`[0, 1, 3]`"
+      },
+      {
+        "id": "d",
+        "label": "`[0, 0, 0, 1, 1, 1]`"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "`result` is `[0, 1, 0, 1, 0, 1]`. Multiplying a list by an integer repeats the whole list that many times, keeping the order of elements within each copy.",
+    "rubric": "Award the full mark only for the option `[0, 1, 0, 1, 0, 1]`. Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 1,
+    "item": 3,
+    "title": "Python List Operations: Concatenation, Repetition and Indexing (Practice)",
+    "prompt": "Given `letters = ['a', 'b', 'c', 'd', 'e']`, what is the value of `letters[2]`?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`'b'`"
+      },
+      {
+        "id": "b",
+        "label": "`'c'`"
+      },
+      {
+        "id": "c",
+        "label": "`'d'`"
+      },
+      {
+        "id": "d",
+        "label": "`'e'`"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "`letters[2]` is `'c'`. List indices start at 0, so index 2 refers to the third element.",
+    "rubric": "Award the full mark only for the option `'c'`. Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 1,
+    "item": 4,
+    "title": "Python List Operations: Concatenation, Repetition and Indexing (Practice)",
+    "prompt": "Given `nums = [10, 20, 30, 40]`, what is the value of `nums[-2]`?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`20`"
+      },
+      {
+        "id": "b",
+        "label": "`30`"
+      },
+      {
+        "id": "c",
+        "label": "`40`"
+      },
+      {
+        "id": "d",
+        "label": "`10`"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "`nums[-2]` is `30`. A negative index counts from the end of the list, so `-1` is the last element (`40`) and `-2` is the one before it (`30`).",
+    "rubric": "Award the full mark only for the option `30`. Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 1,
+    "item": 5,
+    "title": "Python List Operations: Concatenation, Repetition and Indexing (Practice)",
+    "prompt": "Given `data = [5, 6, 7, 8, 9, 10]`, what is the value of `data[1:4]`?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`[5, 6, 7, 8]`"
+      },
+      {
+        "id": "b",
+        "label": "`[6, 7, 8]`"
+      },
+      {
+        "id": "c",
+        "label": "`[6, 7, 8, 9]`"
+      },
+      {
+        "id": "d",
+        "label": "`[7, 8, 9]`"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "`data[1:4]` is `[6, 7, 8]`. A slice includes the element at the start index (1) and stops before the end index (4), so it takes indices 1, 2 and 3.",
+    "rubric": "Award the full mark only for the option `[6, 7, 8]`. Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 2,
+    "item": 1,
+    "title": "تمييز الباء والتاء والثاء: تدريب للمبتدئين",
+    "prompt": "أي حرف من الحروف التالية له **ثلاث نقاط** فوقه؟",
+    "options": [
+      {
+        "id": "ba",
+        "label": "ب"
+      },
+      {
+        "id": "ta",
+        "label": "ت"
+      },
+      {
+        "id": "tha",
+        "label": "ث"
+      }
+    ],
+    "key": [
+      "tha"
+    ],
+    "model_answer": "الثاء (ث) هي الحرف الذي له ثلاث نقاط فوقه.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «ث» فقط، ولا تُمنح أي علامة لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 2,
+    "item": 2,
+    "title": "تمييز الباء والتاء والثاء: تدريب للمبتدئين",
+    "prompt": "أي حرف من الحروف التالية له **نقطتان** تحته؟",
+    "options": [
+      {
+        "id": "ba",
+        "label": "ب"
+      },
+      {
+        "id": "ta",
+        "label": "ت"
+      },
+      {
+        "id": "tha",
+        "label": "ث"
+      }
+    ],
+    "key": [
+      "ba"
+    ],
+    "model_answer": "الباء (ب) هي الحرف الذي له نقطتان تحته.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «ب» فقط، ولا تُمنح أي علامة لاختيار آخر.",
+    "correctness_solvability_points": 0,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No valid choice: ب has one dot below, not two. Wrong keyed answer and explanation."
+  },
+  {
+    "version": "before",
+    "sample": 2,
+    "item": 3,
+    "title": "تمييز الباء والتاء والثاء: تدريب للمبتدئين",
+    "prompt": "اقرأ الكلمة التالية: **تُفَّاح**\n\nما الحرف الأول في هذه الكلمة؟",
+    "options": [
+      {
+        "id": "ba",
+        "label": "ب"
+      },
+      {
+        "id": "ta",
+        "label": "ت"
+      },
+      {
+        "id": "tha",
+        "label": "ث"
+      }
+    ],
+    "key": [
+      "ta"
+    ],
+    "model_answer": "الحرف الأول في كلمة «تُفَّاح» هو التاء (ت)، لأن فوقه نقطتين.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «ت» فقط، ولا تُمنح أي علامة لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 2,
+    "item": 4,
+    "title": "تمييز الباء والتاء والثاء: تدريب للمبتدئين",
+    "prompt": "اقرأ الكلمة التالية: **ثَوْب**\n\nما الحرف الأول في هذه الكلمة؟",
+    "options": [
+      {
+        "id": "ba",
+        "label": "ب"
+      },
+      {
+        "id": "ta",
+        "label": "ت"
+      },
+      {
+        "id": "tha",
+        "label": "ث"
+      }
+    ],
+    "key": [
+      "tha"
+    ],
+    "model_answer": "الحرف الأول في كلمة «ثَوْب» هو الثاء (ث)، لأن فوقه ثلاث نقاط.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «ث» فقط، ولا تُمنح أي علامة لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "before",
+    "sample": 2,
+    "item": 5,
+    "title": "تمييز الباء والتاء والثاء: تدريب للمبتدئين",
+    "prompt": "أي كلمة تبدأ بحرف **الباء**؟",
+    "options": [
+      {
+        "id": "bab",
+        "label": "بَاب"
+      },
+      {
+        "id": "tamr",
+        "label": "تَمْر"
+      },
+      {
+        "id": "thalj",
+        "label": "ثَلْج"
+      }
+    ],
+    "key": [
+      "bab"
+    ],
+    "model_answer": "كلمة «بَاب» تبدأ بالباء (ب)، أما «تَمْر» فتبدأ بالتاء و«ثَلْج» فتبدأ بالثاء.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «بَاب» فقط، ولا تُمنح أي علامة لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 0,
+    "item": 1,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A box experiences a 12 N force to the right and a 4 N force to the left. What is the net force on the box?",
+    "options": [
+      {
+        "id": "a",
+        "label": "8 N to the right"
+      },
+      {
+        "id": "b",
+        "label": "16 N to the right"
+      },
+      {
+        "id": "c",
+        "label": "8 N to the left"
+      },
+      {
+        "id": "d",
+        "label": "48 N to the right"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "The forces act in opposite directions, so subtract the smaller from the larger: 12 N − 4 N = 8 N, directed to the right (the direction of the larger force).",
+    "rubric": "Full marks only for option a (8 N to the right). Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 0,
+    "item": 2,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "Two forces act on a cart: 5 N to the east and 3 N to the east. What is the net force on the cart?",
+    "options": [
+      {
+        "id": "a",
+        "label": "2 N to the east"
+      },
+      {
+        "id": "b",
+        "label": "8 N to the east"
+      },
+      {
+        "id": "c",
+        "label": "8 N to the west"
+      },
+      {
+        "id": "d",
+        "label": "15 N to the east"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "The forces point in the same direction, so add their magnitudes: 5 N + 3 N = 8 N, directed east.",
+    "rubric": "Full marks only for option b (8 N to the east). Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 0,
+    "item": 3,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A 2 kg object experiences a net force of 10 N. What is its acceleration?",
+    "options": [
+      {
+        "id": "a",
+        "label": "5 m/s²"
+      },
+      {
+        "id": "b",
+        "label": "20 m/s²"
+      },
+      {
+        "id": "c",
+        "label": "0.2 m/s²"
+      },
+      {
+        "id": "d",
+        "label": "12 m/s²"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "Using Newton's second law, a = F_net / m = 10 N / 2 kg = 5 m/s².",
+    "rubric": "Full marks only for option a (5 m/s²). Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 0,
+    "item": 4,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A 4 kg object accelerates at 3 m/s². What net force acts on it?",
+    "options": [
+      {
+        "id": "a",
+        "label": "0.75 N"
+      },
+      {
+        "id": "b",
+        "label": "7 N"
+      },
+      {
+        "id": "c",
+        "label": "12 N"
+      },
+      {
+        "id": "d",
+        "label": "1.33 N"
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "Rearranging Newton's second law: F_net = m·a = 4 kg × 3 m/s² = 12 N.",
+    "rubric": "Full marks only for option c (12 N). Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 0,
+    "item": 5,
+    "title": "Net Force and Acceleration: Practice Set",
+    "prompt": "A 3 kg block is pushed with 15 N to the right while friction exerts 6 N to the left. What is the block's acceleration?",
+    "options": [
+      {
+        "id": "a",
+        "label": "7 m/s² to the right"
+      },
+      {
+        "id": "b",
+        "label": "3 m/s² to the right"
+      },
+      {
+        "id": "c",
+        "label": "5 m/s² to the right"
+      },
+      {
+        "id": "d",
+        "label": "2 m/s² to the left"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "First find the net force: 15 N − 6 N = 9 N to the right. Then a = F_net / m = 9 N / 3 kg = 3 m/s² to the right.",
+    "rubric": "Full marks only for option b (3 m/s² to the right). Any other option earns 0.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 1,
+    "item": 1,
+    "title": "Python List Concatenation and Indexing — Practice MCQ Set",
+    "prompt": "What is the value of `result` after this code runs?\n\n```python\na = [1, 2, 3]\nb = [4, 5]\nresult = a + b\n```",
+    "options": [
+      {
+        "id": "a",
+        "label": "`[1, 2, 3, 4, 5]`"
+      },
+      {
+        "id": "b",
+        "label": "`[5, 7, 8]`"
+      },
+      {
+        "id": "c",
+        "label": "`[[1, 2, 3], [4, 5]]`"
+      },
+      {
+        "id": "d",
+        "label": "`[1, 2, 3, 4, 5, 4, 5]`"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "`a + b` concatenates the two lists, producing a new list containing all elements of `a` followed by all elements of `b`: `[1, 2, 3, 4, 5]`.",
+    "rubric": "Full marks (1) only for option `a`. Any other option earns 0; no partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 1,
+    "item": 2,
+    "title": "Python List Concatenation and Indexing — Practice MCQ Set",
+    "prompt": "Given `nums = [10, 20, 30, 40, 50]`, what does `nums[2]` evaluate to?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`20`"
+      },
+      {
+        "id": "b",
+        "label": "`30`"
+      },
+      {
+        "id": "c",
+        "label": "`40`"
+      },
+      {
+        "id": "d",
+        "label": "`[30]`"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "Python list indexing starts at 0, so `nums[0]` is `10`, `nums[1]` is `20`, and `nums[2]` is `30`.",
+    "rubric": "Full marks (1) only for option `b`. Any other option earns 0; no partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 1,
+    "item": 3,
+    "title": "Python List Concatenation and Indexing — Practice MCQ Set",
+    "prompt": "Given `letters = ['a', 'b', 'c', 'd']`, what is the value of `letters[-1]`?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`'a'`"
+      },
+      {
+        "id": "b",
+        "label": "`'c'`"
+      },
+      {
+        "id": "c",
+        "label": "`'d'`"
+      },
+      {
+        "id": "d",
+        "label": "It raises an `IndexError`."
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "Negative indices count from the end of the list: `-1` refers to the last element, so `letters[-1]` is `'d'`.",
+    "rubric": "Full marks (1) only for option `c`. Any other option earns 0; no partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 1,
+    "item": 4,
+    "title": "Python List Concatenation and Indexing — Practice MCQ Set",
+    "prompt": "What is printed by this code?\n\n```python\nx = [1, 2]\ny = [3]\nz = x + y\nz[0] = 99\nprint(x)\n```",
+    "options": [
+      {
+        "id": "a",
+        "label": "`[99, 2]`"
+      },
+      {
+        "id": "b",
+        "label": "`[1, 2]`"
+      },
+      {
+        "id": "c",
+        "label": "`[99, 2, 3]`"
+      },
+      {
+        "id": "d",
+        "label": "`[1, 2, 3]`"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "`x + y` creates a new list `z = [1, 2, 3]`; it does not alias `x`. Assigning `z[0] = 99` changes only `z`, so `x` remains `[1, 2]` and `[1, 2]` is printed.",
+    "rubric": "Full marks (1) only for option `b`. Any other option earns 0; no partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 1,
+    "item": 5,
+    "title": "Python List Concatenation and Indexing — Practice MCQ Set",
+    "prompt": "Given `data = [5, 6, 7]`, which expression raises an `IndexError`?",
+    "options": [
+      {
+        "id": "a",
+        "label": "`data[0]`"
+      },
+      {
+        "id": "b",
+        "label": "`data[-3]`"
+      },
+      {
+        "id": "c",
+        "label": "`data[3]`"
+      },
+      {
+        "id": "d",
+        "label": "`data[-1]`"
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "`data` has length 3, so valid indices are `0, 1, 2` (or `-1, -2, -3`). `data[3]` is out of range and raises `IndexError`; `data[-3]` is `5` and `data[-1]` is `7`.",
+    "rubric": "Full marks (1) only for option `c`. Any other option earns 0; no partial credit for choice-only items.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 2,
+    "item": 1,
+    "title": "تمييز أشكال الباء والتاء والثاء — تدريب للمبتدئين",
+    "prompt": "أيُّ الحروف التالية هو حرف **الباء** في شكله المفرد؟",
+    "options": [
+      {
+        "id": "a",
+        "label": "ب"
+      },
+      {
+        "id": "b",
+        "label": "ت"
+      },
+      {
+        "id": "c",
+        "label": "ث"
+      },
+      {
+        "id": "d",
+        "label": "ن"
+      }
+    ],
+    "key": [
+      "a"
+    ],
+    "model_answer": "حرف الباء المفرد هو **ب**: له نقطة واحدة أسفل الحرف.",
+    "rubric": "تُمنح العلامة كاملة لاختيار الخيار «ب» فقط، ولا تُمنح أي درجة جزئية لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 2,
+    "item": 2,
+    "title": "تمييز أشكال الباء والتاء والثاء — تدريب للمبتدئين",
+    "prompt": "أيُّ الحروف التالية هو حرف **التاء** في شكله المفرد؟",
+    "options": [
+      {
+        "id": "a",
+        "label": "ب"
+      },
+      {
+        "id": "b",
+        "label": "ث"
+      },
+      {
+        "id": "c",
+        "label": "ت"
+      },
+      {
+        "id": "d",
+        "label": "ي"
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "حرف التاء المفرد هو **ت**: له نقطتان فوق الحرف.",
+    "rubric": "تُمنح العلامة كاملة لاختيار الخيار «ت» فقط، ولا تُمنح أي درجة جزئية لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 2,
+    "item": 3,
+    "title": "تمييز أشكال الباء والتاء والثاء — تدريب للمبتدئين",
+    "prompt": "أيُّ الحروف التالية هو حرف **الثاء** في شكله المفرد؟",
+    "options": [
+      {
+        "id": "a",
+        "label": "ت"
+      },
+      {
+        "id": "b",
+        "label": "ث"
+      },
+      {
+        "id": "c",
+        "label": "ب"
+      },
+      {
+        "id": "d",
+        "label": "ن"
+      }
+    ],
+    "key": [
+      "b"
+    ],
+    "model_answer": "حرف الثاء المفرد هو **ث**: له ثلاث نقاط فوق الحرف.",
+    "rubric": "تُمنح العلامة كاملة لاختيار الخيار «ث» فقط، ولا تُمنح أي درجة جزئية لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 2,
+    "item": 4,
+    "title": "تمييز أشكال الباء والتاء والثاء — تدريب للمبتدئين",
+    "prompt": "انظر إلى الحرف التالي: **ث**\n\nكم عدد النقاط فوق هذا الحرف؟",
+    "options": [
+      {
+        "id": "a",
+        "label": "نقطة واحدة"
+      },
+      {
+        "id": "b",
+        "label": "نقطتان"
+      },
+      {
+        "id": "c",
+        "label": "ثلاث نقاط"
+      },
+      {
+        "id": "d",
+        "label": "بلا نقاط"
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "الحرف **ث** هو الثاء، وفوقه **ثلاث نقاط**.",
+    "rubric": "تُمنح العلامة كاملة لاختيار «ثلاث نقاط» فقط، ولا تُمنح أي درجة جزئية لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  },
+  {
+    "version": "after",
+    "sample": 2,
+    "item": 5,
+    "title": "تمييز أشكال الباء والتاء والثاء — تدريب للمبتدئين",
+    "prompt": "أيُّ الحروف التالية له **نقطتان** فوقه؟",
+    "options": [
+      {
+        "id": "a",
+        "label": "ب"
+      },
+      {
+        "id": "b",
+        "label": "ث"
+      },
+      {
+        "id": "c",
+        "label": "ت"
+      },
+      {
+        "id": "d",
+        "label": "م"
+      }
+    ],
+    "key": [
+      "c"
+    ],
+    "model_answer": "الحرف الذي له نقطتان فوقه هو **ت** (التاء). أما الباء فنقطتها واحدة أسفلها، والثاء فلها ثلاث نقاط فوقها، والميم بلا نقاط.",
+    "rubric": "تُمنح العلامة كاملة لاختيار الخيار «ت» فقط، ولا تُمنح أي درجة جزئية لاختيار آخر.",
+    "correctness_solvability_points": 1,
+    "review": "Internal assistant factual audit; not blinded independent human review.",
+    "finding": "No factual key or solvability defect found in this limited review."
+  }
+]

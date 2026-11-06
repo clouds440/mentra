@@ -189,7 +189,7 @@ def create_workflow_tools(owner, scope, budget):
             budget.call(True)
             # Same arguments in a retried turn produce the same operation ID.
             body = GeneratePractice(**arguments)
-            identity = body.model_dump_json(exclude={'delivery'} if body.delivery == 'interactive' else set())
+            identity = body.model_dump_json()
             if scope.get('resume_instruction'): identity += '\n' + scope['resume_instruction']
             request_id = uuid5(NAMESPACE_URL, f"assessment:{owner}:{scope['current_user_message_id']}:{identity}")
             selection = scope.get('retrieval_selection') or ChatSelection()

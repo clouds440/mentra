@@ -63,7 +63,7 @@ class AssessmentRepository:
     def attempt_public(self, row):
         return Attempt(**{key:row[key] for key in ('id','assessment_id','revision','state','attempt_number','answers','grades','extraction','error','evidence_status','created_at')}, grade_revision=row.get('grade_revision',1),grade_history=row.get('grade_history',[]), assistance=row.get('assistance','unknown'), reported_assistance=row.get('reported_assistance','unknown'), scoring=row.get('scoring'), retry_pending=bool(row.get('retry_at') and row.get('worker_attempts',0)<3),source_pending=bool(row.get('source_pending')),source_error=row.get('source_error'))
 
-    def display_hydration(self, session, owner, assessment_id):
+    def display_hydration(self, session, owner, assessment_id, attempt_id=None):
         """Fresh attempt state in the same owned handoff; keys stay private.
 
         Prefer meaningful work to an unused retry, matching restored chat cards.
@@ -71,10 +71,19 @@ class AssessmentRepository:
         """
         from sqlalchemy import case
         meaningful = or_(t.c.state != 'draft', t.c.answers != {})
-        row = session.execute(select(*ATTEMPT_COLUMNS).where(t.c.learner_id == owner,
-            t.c.assessment_id == assessment_id).order_by(case((meaningful, 0), else_=1),
+        filters=[t.c.learner_id==owner,t.c.assessment_id==assessment_id]
+        if attempt_id: filters.append(t.c.id==attempt_id)
+        row = session.execute(select(*ATTEMPT_COLUMNS).where(*filters).order_by(case((meaningful, 0), else_=1),
             t.c.attempt_number.desc(), t.c.id).limit(1)).mappings().first() if assessment_id else None
+        if attempt_id and not row: raise AppError('ATTEMPT_NOT_FOUND','Assessment attempt unavailable.',404)
         return dict(version=1, attempt=self.attempt_public(row).model_dump(mode='json') if row else None)
+
+    def handoff(self,owner,identifier,attempt_id=None):
+        with self.sessions() as session:
+            row=self._assessment(session,owner,identifier)
+            return dict(id=None,conversation_id='',assessment_id=identifier,
+                assessment=self.public(row).model_dump(mode='json'),
+                hydration=self.display_hydration(session,owner,identifier,attempt_id))
 
     def claim_generation(self, owner, request):
         with self.transactions.write(owner) as tx:
@@ -199,6 +208,8 @@ class AssessmentRepository:
                 extraction=None, error=None, worker_attempts=0, evidence_status='none', start_fingerprint=fingerprint,
                 assistance='assisted' if assessment.get('practice_lineage') else 'unknown')
             session.execute(t.insert().values(**row))
+            from .predictions import capture
+            capture(session,owner,assessment,row,self.clock())
             return self.attempt_public(row)
 
     def store_chat_answers(self, owner, identifier, expected_revision, answers, message_id, fingerprint):

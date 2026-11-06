@@ -19,20 +19,20 @@ from app.core.exceptions import AppError
 
 
 class IntentContractTests(unittest.TestCase):
-    def test_exact_targets_preserve_legacy_fingerprints_and_require_a_context(self):
+    def test_exact_targets_use_current_fingerprints_and_require_a_context(self):
         from pydantic import ValidationError
         body = dict(client_request_id=uuid4(), context_id='context', topic='Topic')
-        self.assertNotIn('concept_ids', GenerationRequest(**body).fingerprint_payload())
+        self.assertIn('concept_ids', GenerationRequest(**body).fingerprint_payload())
         selected = GenerationRequest(**body, concept_ids=[uuid4()])
         self.assertIn('concept_ids', selected.fingerprint_payload())
         with self.assertRaises(ValidationError):
             AssessmentIntent(client_request_id=uuid4(), concept_ids=[uuid4()])
-    def test_selected_formats_are_canonical_and_preserve_legacy_replays(self):
+    def test_selected_formats_are_canonical_and_use_current_replays(self):
         from pydantic import ValidationError
         body = dict(client_request_id=uuid4(), context_id='context', topic='Forces')
-        self.assertNotIn('question_formats', GenerationRequest(**body).fingerprint_payload())
+        self.assertIn('question_formats', GenerationRequest(**body).fingerprint_payload())
         value = AssessmentIntent(**body, count=4, question_formats=['multiple_choice','short_answer','mcq'])
-        self.assertNotIn('result_style', value.fingerprint_payload())
+        self.assertIn('result_style', value.fingerprint_payload())
         self.assertEqual(value.question_formats, ['mcq','short_answer'])
         self.assertEqual(value.question_format, 'mixed')
         with self.assertRaises(ValidationError):
@@ -149,7 +149,7 @@ class AssessmentIntentTests(unittest.IsolatedAsyncioTestCase):
     async def test_profile_level_is_data_and_requested_higher_level_is_allowed(self):
         profile=ProfileContext(details=ProfileDetails(education_level='primary',field_of_study='Science',
             learning_goal='Understand forces',learning_preference='concise',explanation_depth='brief'),estimates={})
-        self.service.workflows.profile=SimpleNamespace(prompt_snapshot=lambda owner:profile)
+        self.service.workflows.profile=SimpleNamespace(prompt_snapshot=lambda owner,**kwargs:profile)
         payloads=[]
         invoke=self.service.workflows.llm.ainvoke
         async def capture(source,payload,**kwargs):

@@ -63,7 +63,7 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await run_assessment_pipeline(self.service))
         result=self.service.repository.attempt(self.owner,str(attempt.id))
         self.assertEqual(result.state,'graded');self.assertEqual(result.evidence_status,'applied')
-        self.assertEqual(sum(q.score for q in result.grades),6)
+        self.assertEqual(sum(q.score for q in result.grades),3)
         by_id = {grade.question_id: grade for grade in result.grades}
         for index, question in enumerate(assessment.questions):
             grade = by_id[str(question.id)]
@@ -80,8 +80,8 @@ class MCQAssessmentTests(unittest.IsolatedAsyncioTestCase):
                          {identifier: grade.outcome for identifier, grade in by_id.items()})
         self.assertEqual(self.service.submit(self.owner,str(attempt.id),submit).state,'graded')
         with self.assertRaises(AppError): self.service.repository.save_draft_answers(self.owner,str(attempt.id),body)
-    def test_private_correct_option_validation_and_legacy_fingerprint(self):
-        self.assertNotIn('question_format',self.request.fingerprint_payload())
+    def test_private_correct_option_validation_and_current_fingerprint(self):
+        self.assertEqual(self.request.fingerprint_payload()['question_format'],self.request.question_format)
         args=dict(prompt='Question?',concept_ids=['c'],difficulty=.5,marks=1,model_answer='A',rubric='A',options=[dict(id='a',label='A'),dict(id='b',label='B')],correct_option_id='x')
         with self.assertRaises(ValidationError): GeneratedQuestion(**args)
 

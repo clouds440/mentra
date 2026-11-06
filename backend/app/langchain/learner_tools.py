@@ -75,25 +75,9 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
         return [r.model_dump(mode='json') for r in learner.get_verification_candidates(
             VerificationCandidatesRequest(learner_id=learner_id, **kwargs))]
 
-    def resolve(**kwargs):
-        if not kwargs.get('context_id'):
-            active_contexts = learner.get_active_contexts(ActiveContextsRequest(learner_id=learner_id)).contexts
-            if len(active_contexts) == 1:
-                kwargs['context_id'] = active_contexts[0].context_id
-        if kwargs.get('context_id'):
-            # Validate scope through the public read contract before resolution.
-            learner.get_relevant_context(LearnerContextRequest(learner_id=learner_id, query=kwargs['label'],
-                                         context_ids=[kwargs['context_id']], max_concepts=1))
-        return learner.resolve_concept(ConceptResolutionRequest(learner_id=learner_id, **kwargs)).model_dump(mode='json')
-
-    async def resolve_encountered(**kwargs):
-        from starlette.concurrency import run_in_threadpool
-        if not hasattr(learner, 'resolve_encountered_concept'):
-            return await run_in_threadpool(resolve, **kwargs)
-        if not kwargs.get('context_id'):
-            contexts = await run_in_threadpool(learner.get_active_contexts, ActiveContextsRequest(learner_id=learner_id))
-            if len(contexts.contexts) == 1: kwargs['context_id'] = contexts.contexts[0].context_id
-        return (await learner.resolve_encountered_concept(ConceptResolutionRequest(learner_id=learner_id, **kwargs))).model_dump(mode='json')
+    def lookup(**kwargs):
+        with learner.read_scope() as scoped:
+            return scoped.lookup_student_concept(ConceptResolutionRequest(learner_id=learner_id, **kwargs))
 
     tools = [
         StructuredTool.from_function(active, name='get_active_learning_contexts', description='Get current learning contexts.'),
@@ -105,8 +89,8 @@ def create_learner_tools(learner, learner_id: str, *, provenance: ObservationPro
                                      description='Get ranked study weaknesses for current or requested contexts.'),
         StructuredTool.from_function(verification, name='get_verification_candidates', args_schema=RankingToolInput,
                                      description='Get concepts to verify, with suggested difficulty and reasons.'),
-        StructuredTool.from_function(resolve, coroutine=resolve_encountered, name='resolve_student_concept', args_schema=ResolutionToolInput,
-                                     description='Resolve an encountered skill within its learning area, reusing its broader topic and subskill. Naming a skill never establishes mastery.'),
+        StructuredTool.from_function(lookup, name='lookup_student_concept', args_schema=ResolutionToolInput,
+                                     description='Look up existing owned skills by exact name or accepted alias. Read only; unknown mentions need review and never establish mastery.'),
     ]
     if provenance is not None:
         def record(**kwargs):

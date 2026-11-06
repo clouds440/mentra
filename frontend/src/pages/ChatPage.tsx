@@ -225,7 +225,7 @@ export function ChatPage() {
               data-latest-turn={scroll.anchor !== null && group.userSequence === scroll.anchor || undefined} ref={scroll.anchor !== null && group.userSequence === scroll.anchor ? scroll.latest : undefined}
               className={`flex flex-col gap-7 sm:gap-9 ${scroll.anchor !== null && group.userSequence === scroll.anchor ? 'min-h-[var(--latest-turn-height,0px)]' : ''}`}>
               {group.messages.map(message => <ChatMessage key={message.id} message={message} reveal={revealing.has(message.id)} showContextualAction={message.id === view.messages[view.messages.length - 1]?.id} />)}
-              {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} stopping={stopping} />}
+              {view.busy && index === scroll.groups.length - 1 && <ChatActivity conversationId={id} turnId={view.turn?.id} attempt={view.turn?.attempt} responseSequence={view.turn ? view.turn.user_sequence+1 : undefined} stopping={stopping} />}
             </div>)}
             {view.olderWindow && <button type="button" className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'self-center' })}
               onClick={() => { scroll.showLatest(); void chatStore.open(id, true); }}>Back to latest messages</button>}

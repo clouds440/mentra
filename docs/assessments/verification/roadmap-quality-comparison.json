@@ -1,0 +1,74 @@
+{
+  "method": "Internal, non-blinded assistant rubric on three synthetic matched prompts through each version of ChatService. Not a student study or full tool-selection ablation.",
+  "rubric": [
+    "Evidence limits explicit",
+    "Sequence adapts to demonstrated ability",
+    "Targets the supplied struggle",
+    "Observable checkpoints match the focus",
+    "Honors the goal and timeframe"
+  ],
+  "missing_evidence_case": "Only evidence limits, checkpoints and goal/timeframe apply (3 points).",
+  "ratings": [
+    {
+      "case": "no_evidence",
+      "before": 2,
+      "after": 3,
+      "maximum": 3,
+      "reason": "Before lacks an explicit provisional/evidence limit; after states it."
+    },
+    {
+      "case": "observed_foundation_gap",
+      "before": 2,
+      "after": 4,
+      "maximum": 5,
+      "reason": "After centers the concatenation misconception and provisional scope. Its extra [4,2] loop checkpoint remains pedagogically awkward, so it loses one point."
+    },
+    {
+      "case": "demonstrated_lists_unknown_joins",
+      "before": 2,
+      "after": 5,
+      "maximum": 5,
+      "reason": "Before spends week one on proven lists and calls joins new ground; after builds on lists and diagnoses duplicate-producing joins explicitly as unverified."
+    }
+  ],
+  "before": {
+    "scope": "Three synthetic matched prompts; analyst smoke review, not independent learning-effect evidence.",
+    "cases": [
+      {
+        "case": "no_evidence",
+        "ms": 4593.44,
+        "roadmap": "**Four-week Python data handling roadmap**\n\n**Week 1 — Python foundations for data**\nLists, dicts, loops, functions, and reading/writing files.\n*Checkpoint:* Write a script that loads a CSV with plain Python, filters rows by a condition, and prints a summary count.\n\n**Week 2 — NumPy and pandas basics**\nArrays, Series/DataFrame creation, indexing, selecting columns, basic filtering.\n*Checkpoint:* Load a CSV into a DataFrame and produce a filtered subset plus column means without a loop.\n\n**Week 3 — Cleaning and transforming**\nMissing values, type conversion, sorting, grouping, `groupby` aggregations, merging.\n*Checkpoint:* Take a messy dataset and produce a grouped summary table with missing values handled and documented.\n\n**Week 4 — Analysis workflow and reproducibility**\nCombining steps into a script/notebook, simple plots, and a short written interpretation.\n*Checkpoint:* Deliver a runnable notebook that loads, cleans, summarizes, and plots one dataset, with 3–4 sentences interpreting the results.\n\n<small>Checkpoints are observable outputs you can self-verify; they aren't graded evidence of mastery.</small>"
+      },
+      {
+        "case": "observed_foundation_gap",
+        "ms": 2708.96,
+        "roadmap": "# Four-Week Python Data Handling Roadmap\n\n**Week 1 — Core Python data structures**\nLists, tuples, dicts, indexing, slicing, and iteration.\n*Checkpoint:* Write a script that builds a list of dicts from raw rows and prints a filtered subset — no reference material.\n\n**Week 2 — Files and tabular data**\nReading/writing CSV and JSON; loading into pandas DataFrames.\n*Checkpoint:* Load a CSV, inspect shape/dtypes, and save a cleaned copy — explain each step aloud.\n\n**Week 3 — Cleaning and transforming**\nMissing values, type conversion, filtering, grouping, aggregation.\n*Checkpoint:* Produce a grouped summary table from a messy dataset and justify two cleaning decisions.\n\n**Week 4 — Analysis workflow**\nMerging, sorting, simple summaries, and a short end-to-end notebook.\n*Checkpoint:* Complete a small analysis from raw file to printed insight, independently.\n\n<small>Your evidence flags list concatenation vs. elementwise addition as a known snag — in Week 1, deliberately test `[1,2] + [3]` against `[1,2] + 3` and note the difference.</small>"
+      },
+      {
+        "case": "demonstrated_lists_unknown_joins",
+        "ms": 2650.51,
+        "roadmap": "**Four-week Python data handling roadmap**\n\n**Week 1 — Core Python data structures**\nLists, tuples, dicts, and comprehensions; indexing, slicing, iteration.\n*Checkpoint:* Write a script that reads a list of records (dicts) and produces a filtered, sorted summary — no external libraries.\n\n**Week 2 — NumPy and array operations**\nArrays, vectorized math, boolean masking, aggregation along axes.\n*Checkpoint:* Given a 2D array, compute per-row and per-column statistics using vectorized operations only (no Python loops).\n\n**Week 3 — pandas fundamentals**\nSeries/DataFrame creation, selection, filtering, grouping, missing-data handling.\n*Checkpoint:* Load a small CSV and produce a grouped summary table with at least one aggregation and one cleaned column.\n\n**Week 4 — Combining and reshaping data**\nJoins/merges, concatenation, pivot/melt, basic time-series resampling.\n*Checkpoint:* Merge two related tables on a key, verify row counts before/after, and build a pivot table answering one concrete question.\n\nYour lists skill is already demonstrated, so Week 1 can move quickly — spend the saved time on Week 3, where pandas joins and reshaping will be new ground."
+      }
+    ]
+  },
+  "after": {
+    "scope": "Three synthetic matched prompts; analyst smoke review, not independent learning-effect evidence.",
+    "cases": [
+      {
+        "case": "no_evidence",
+        "ms": 4923.38,
+        "roadmap": "Here's a four-week roadmap. Since you haven't shared prior Python experience, this is **provisional** — it assumes a beginner-to-early-intermediate starting point.\n\n**Week 1 — Python fundamentals for data**\nVariables, lists/dicts, loops, functions, and reading files.\n*Checkpoint:* Write a script that loads a CSV and prints row count, column names, and one summary stat — without copying a tutorial.\n\n**Week 2 — NumPy & pandas basics**\nArrays, Series/DataFrame, indexing, filtering, and basic aggregation.\n*Checkpoint:* Given a messy CSV, select/filter rows and compute grouped means in pandas, explaining each step.\n\n**Week 3 — Cleaning & transforming**\nMissing values, type conversion, merging, and reshaping.\n*Checkpoint:* Take a dataset with nulls and duplicates and produce a clean, documented DataFrame ready for analysis.\n\n**Week 4 — Analysis & visualization**\nGroupby/aggregation workflows plus matplotlib/seaborn plots.\n*Checkpoint:* Complete a small end-to-end analysis (load → clean → summarize → 2–3 charts) and write a short findings summary.\n\nWant me to adjust the pace if you already know some Python?"
+      },
+      {
+        "case": "observed_foundation_gap",
+        "ms": 3095.82,
+        "roadmap": "# Four-Week Python Data Handling Roadmap\n\n**Basis:** Your only supplied evidence is a struggle with list operations — specifically expecting `[1, 2] + [3]` to give `[4, 2]`. That's a concatenation-vs-elementwise confusion, and it's the one thing I'll build around. Everything else is provisional until you show it.\n\n| Week | Focus | Observable checkpoint |\n|---|---|---|\n| **1** | Lists and elementwise thinking | Given `[1, 2] + [3]`, explain in one sentence why the result is `[1, 2, 3]`, then write a loop that *does* produce `[4, 2]`. |\n| **2** | Dicts, indexing, and grouping | Build a dict that counts word frequencies from a short list of strings, and retrieve one count by key without errors. |\n| **3** | NumPy arrays and vectorized math | Show that `np.array([1,2]) + np.array([3])` broadcasts, and contrast it with the list result from Week 1. |\n| **4** | pandas: load, filter, summarize | Load a small CSV, filter rows on a condition, and produce a grouped mean — narrating each step. |\n\n**How to check yourself:** a checkpoint counts only if you do it *without* looking at notes. If you need help, that's fine — just redo it cold before moving on.\n\n<small>Weeks 2–4 assume no prior evidence either way; treat them as provisional and adjust after Week 1.</small>"
+      },
+      {
+        "case": "demonstrated_lists_unknown_joins",
+        "ms": 2624.05,
+        "roadmap": "**Four-week Python data handling roadmap**\n\nYour lists skill is solid (demonstrated, 8 independent items), so I'll build on that. DataFrame joins are unverified — your own note (\"I can filter rows, but cannot explain why my joins duplicate them\") is the one piece of evidence, so joins get a dedicated week with a diagnostic first.\n\n| Week | Focus | Observable checkpoint |\n|---|---|---|\n| 1 | Pandas basics: Series/DataFrame, indexing, filtering, `groupby` | Given a raw CSV, produce a filtered + grouped summary and explain each step aloud |\n| 2 | Joins & merges: `merge` types, keys, duplicate rows | Diagnose a deliberately duplicated merge: state the cause and fix it with the right key/`validate` |\n| 3 | Reshaping & cleaning: `pivot_table`, `melt`, missing values, dtypes | Clean a messy dataset and show before/after row counts with a reason for each change |\n| 4 | End-to-end pipeline: load → clean → join → summarize | Build a short script that runs on a fresh file and produces a correct summary table |\n\n<small>Provisional: only lists and joins have any evidence; weeks 1, 3 and 4 are curriculum-based, not measured. Week 2 starts with a quick diagnostic since join ability is unknown.</small>"
+      }
+    ]
+  }
+}

@@ -41,7 +41,7 @@ export function AnswerSheetUpload({attempt, onStart, onChange, disabled = false,
   }
   return <div className="space-y-2">
     <input type="file" ref={input} className="hidden" aria-label="Upload assessment answer sheet" accept={answerSheetAccept} disabled={disabled || busy} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file); }} />
-    <Button variant="secondary" size="sm" disabled={disabled || busy} loading={busy} onClick={() => input.current?.click()}><FileUp size={15} aria-hidden="true" />Upload answersheet</Button>
+    <Button variant="ghost" size="sm" disabled={disabled || busy} loading={busy} onClick={() => input.current?.click()}><FileUp size={15} aria-hidden="true" />Upload answer sheet</Button>
     <p className="text-xs text-muted">PDF, TXT or PNG/JPEG. Review the extracted answers, then submit for evaluation.</p>
     {busy && <p role="status" className="text-xs text-muted">Reading your answer sheet…</p>}
     {error && <div role="alert" className="text-sm text-danger">{error} <Button size="sm" variant="ghost" disabled={disabled || busy} onClick={() => { if (retry.current) void upload(retry.current); }}>Retry upload</Button></div>}

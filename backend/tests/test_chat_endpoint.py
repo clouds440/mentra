@@ -121,7 +121,9 @@ class ChatEndpointTests(unittest.TestCase):
         asyncio.run(ChatService(FakeModelFactory(model)).reply([("user", "Help")], learner_context=context))
         self.assertTrue(model.messages[0].content.startswith("\n\n".join((
             get_system_prompt(PromptSource.CHAT), get_system_prompt(PromptSource.LEARNER_CONTEXT)))))
-        self.assertIn("generated_at", model.messages[0].content)
+        self.assertIn('"coverage"', model.messages[0].content)
+        self.assertIn('"skills"', model.messages[0].content)
+        self.assertNotIn('"generated_at"', model.messages[0].content)
         self.assertIsInstance(model.messages[1], HumanMessage)
 
     def test_missing_ai_configuration_returns_clean_503(self) -> None:

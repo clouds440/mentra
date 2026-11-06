@@ -88,7 +88,7 @@ Stored/UI history and model input are independent. Recent messages, a private da
 | `CHAT_INPUT_TOKENS` | 16384 |
 | `CHAT_RECOVERY_INPUT_TOKENS` | 28672 |
 | `CHAT_CONTEXT_WINDOW_TOKENS` | 32768 (provider context ceiling, including output) |
-| `CHAT_OUTPUT_TOKEN_RESERVE` | 2048 |
+| `CHAT_OUTPUT_TOKEN_RESERVE` | 4000 |
 | `CHAT_SUMMARY_ENABLED` | true |
 
 There is no fixed number of turns: token capacity and complete exchange boundaries determine selection. `chat_summary` stores owner/chat-scoped incremental summaries and coverage watermarks. Every persistent request fetches the applicable summary; old attempts cannot see future coverage. Compaction runs after responses only when enough displaced history accumulates, with cross-process leases, no paid retry loop and failure cooldown. Summaries are historical background, not evidence or an instruction to recap unrelated topics.

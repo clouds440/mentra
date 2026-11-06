@@ -1,10 +1,25 @@
-from sqlalchemy import select,update,func,literal,or_
+from sqlalchemy import select,update,func,literal,or_,literal_column
 from app.core.exceptions import AppError
 from .base import PostgresRepositoryBase
 from ..tables.signals import learning_signals
 
+def topical_match(query):
+    return func.to_tsvector(literal_column("'simple'::regconfig"),learning_signals.c.normalized_label+' '+learning_signals.c.topic).op('@@',is_comparison=True)(
+        func.plainto_tsquery(literal_column("'simple'::regconfig"),query))
+
 
 class SignalsStore(PostgresRepositoryBase):
+    def failed_signal_captures(self,owner):
+        from app.langchain.repositories.evidence_tables import jobs
+        from app.chat.repositories.tables import turns,conversations
+        with self._session() as session:
+            rows=session.execute(select(jobs.c.turn_id,jobs.c.disposition,jobs.c.created_at,
+                turns.c.conversation_id,conversations.c.title).join(turns,(turns.c.id==jobs.c.turn_id)&(turns.c.learner_id==owner))
+                .join(conversations,(conversations.c.id==turns.c.conversation_id)&(conversations.c.learner_id==owner)).where(
+                    jobs.c.learner_id==owner,jobs.c.state=='failed',turns.c.attempt==jobs.c.attempt,
+                    turns.c.state=='SUCCEEDED',conversations.c.deleted_at.is_(None)).order_by(jobs.c.created_at.desc(),jobs.c.turn_id).limit(20)).mappings()
+            return dict(items=[dict(row) for row in rows])
+
     def assessment_metadata(self,owner,context_id,ids,terms):
         from ..tables.topics import topic_skill,learning_topic
         from sqlalchemy.dialects.postgresql import JSONB
@@ -15,14 +30,11 @@ class SignalsStore(PostgresRepositoryBase):
         filters=[learning_signals.c.learner_id==owner,learning_signals.c.status=='active',
             or_(learning_signals.c.context_id==context_id,learning_signals.c.context_id.is_(None))]
         if terms:
-            filters.append(or_(*[or_(learning_signals.c.normalized_label.contains(term,autoescape=True),
-                func.lower(learning_signals.c.topic).contains(term,autoescape=True)) for term in terms],
+            filters.append(or_(*[topical_match(term) for term in terms],
                 learning_signals.c.concept_id.in_(ids)))
-        else:
-            filters.append(learning_signals.c.concept_id.in_(ids))
         observations=select(learning_signals.c.id,learning_signals.c.kind,learning_signals.c.label,
             learning_signals.c.concept_id,learning_signals.c.quote,learning_signals.c.source_revision,
-            learning_signals.c.source_kind).where(*filters).order_by(
+            learning_signals.c.source_kind,learning_signals.c.context_id,learning_signals.c.topic).where(*filters).order_by(
                 learning_signals.c.observed_at.desc(),learning_signals.c.id).limit(8).subquery()
         def packed(rows):
             return select(func.coalesce(func.jsonb_agg(func.to_jsonb(rows.table_valued())),literal([],type_=JSONB))).scalar_subquery()
@@ -30,7 +42,14 @@ class SignalsStore(PostgresRepositoryBase):
             membership,signals=session.execute(select(packed(memberships),packed(observations))).one()
             return {row['concept_id']:row for row in membership},signals
 
-    def review_signal(self,owner,identifier,context_id,concept_id,source_revision):
+    def signal_for_review(self,owner,identifier):
+        with self._session() as session:
+            row=session.execute(select(learning_signals).where(learning_signals.c.learner_id==owner,
+                learning_signals.c.id==identifier)).mappings().first()
+            if not row: raise AppError('LEARNING_SIGNAL_NOT_FOUND','Learning observation unavailable.',404)
+            return dict(row)
+
+    def review_signal(self,owner,identifier,context_id,concept_id,source_revision,*,allow_staged=False):
         from ..tables import context_concept
         with self.transaction(learner_ids=[owner]) as repo:
             with repo._session() as session:
@@ -41,6 +60,17 @@ class SignalsStore(PostgresRepositoryBase):
                     raise AppError('LEARNING_SIGNAL_CHANGED','This source changed. Refresh before reviewing it.',409)
                 owned=session.scalar(select(context_concept.c.concept_id).where(context_concept.c.learner_id==owner,
                     context_concept.c.context_id==context_id,context_concept.c.concept_id==concept_id))
+                if not owned and allow_staged:
+                    from ..tables.topics import topic_skill
+                    from ..tables import learning_context
+                    context=session.scalar(select(learning_context.c.id).where(learning_context.c.learner_id==owner,
+                        learning_context.c.id==context_id))
+                    staged=session.scalar(select(topic_skill.c.concept_id).where(topic_skill.c.learner_id==owner,
+                        topic_skill.c.concept_id==concept_id,topic_skill.c.published.is_(False)))
+                    if context and staged:
+                        repo.add_context_concept(context_id,concept_id,learner_id=owner)
+                        repo.publish_topic_skills(owner,[concept_id])
+                        owned=concept_id
                 if not owned: raise AppError('LEARNING_SIGNAL_TARGET','Choose a skill in your learning area.',404)
                 if row['details'].get('reviewed') and (row['context_id'],row['concept_id'])!=(context_id,concept_id):
                     raise AppError('LEARNING_SIGNAL_CHANGED','This observation was already reviewed. Refresh it.',409)
@@ -52,7 +82,7 @@ class SignalsStore(PostgresRepositoryBase):
     def signal_page(self,owner,context_ids=None,query='',limit=20,offset=0,status='active'):
         filters=[learning_signals.c.learner_id==owner,learning_signals.c.status.in_(['active','pending']) if status=='all' else learning_signals.c.status==status]
         if context_ids is not None: filters.append(learning_signals.c.context_id.in_(context_ids))
-        if query: filters.append(learning_signals.c.normalized_label.contains(query,autoescape=True))
+        if query: filters.append(topical_match(query))
         with self._session() as session:
             rows=list(session.execute(select(learning_signals).where(*filters).order_by(
                 learning_signals.c.observed_at.desc(),learning_signals.c.id).limit(limit+1).offset(offset)).mappings())

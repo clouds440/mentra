@@ -158,10 +158,20 @@ class FlexibleEngineTests(unittest.IsolatedAsyncioTestCase):
             before = session.execute(select(assessments.c.questions).where(assessments.c.id==str(value.id))).scalar_one()
         from alembic import command
         from app.db.migrate import downgrade, upgrade
+        from app.assessments.repositories.tables import prediction_snapshots
+        from sqlalchemy import delete
+        with self.assertRaisesRegex(RuntimeError,'Export pre-outcome snapshots'):
+            downgrade(self.db.engine,'20261106_0043')
+        with self.db.sessions.begin() as session:
+            snapshots=[dict(row) for row in session.execute(select(prediction_snapshots)).mappings()]
+            session.execute(delete(prediction_snapshots))
         downgrade(self.db.engine, '20261106_0043')
         upgrade(self.db.engine)
         with self.db.sessions() as session:
             after = session.execute(select(assessments.c.questions).where(assessments.c.id==str(value.id))).scalar_one()
+        with self.db.sessions.begin() as session:session.execute(prediction_snapshots.insert(),snapshots)
+        with self.db.sessions() as session:
+            self.assertEqual([dict(row) for row in session.execute(select(prediction_snapshots)).mappings()],snapshots)
         self.assertEqual(before,after)
         self.assertEqual(self.service.repository.attempt(self.owner,str(attempt.id)).state,'draft')
 

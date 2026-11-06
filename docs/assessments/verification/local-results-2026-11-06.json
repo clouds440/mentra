@@ -1,0 +1,2312 @@
+{
+  "revision": "source-sha256:4aaefa140e134f91191d379f411135bd3ece6e1a2bc9be1fb0076ea7031cec86",
+  "base": "f1b4ff7f5689fda6d906fffa7d6d0feb1297127a",
+  "qualification": "Internal preview; production educational/effectiveness gates held.",
+  "generation_before": {
+    "mode": "before-final",
+    "provider": "deepseek-flash",
+    "database": "isolated local PostgreSQL",
+    "samples": [
+      {
+        "index": 0,
+        "language": "English",
+        "elapsed_ms": 17525.07,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_selection",
+            "elapsed_ms": 2082.87
+          },
+          {
+            "source": "assessment_targets",
+            "elapsed_ms": 1750.32
+          },
+          {
+            "source": "topic_organization",
+            "elapsed_ms": 2821.67
+          },
+          {
+            "source": "topic_organization",
+            "elapsed_ms": 3826.26
+          },
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6513.03
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 1,
+        "language": "English",
+        "elapsed_ms": 13204.85,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_selection",
+            "elapsed_ms": 1443.84
+          },
+          {
+            "source": "assessment_targets",
+            "elapsed_ms": 1102.75
+          },
+          {
+            "source": "topic_organization",
+            "elapsed_ms": 3832.42
+          },
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6526.89
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 2,
+        "language": "Arabic",
+        "elapsed_ms": 14965.91,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_selection",
+            "elapsed_ms": 1287.43
+          },
+          {
+            "source": "assessment_targets",
+            "elapsed_ms": 1490.72
+          },
+          {
+            "source": "topic_organization",
+            "elapsed_ms": 3029.44
+          },
+          {
+            "source": "topic_organization",
+            "elapsed_ms": 3030.63
+          },
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5819.77
+          }
+        ],
+        "questions": 5
+      }
+    ],
+    "median_ms": 14965.91,
+    "p95_ms": 17525.07,
+    "maximum_ms": 17525.07
+  },
+  "generation_after": {
+    "mode": "current-api",
+    "provider": "deepseek-flash",
+    "database": "isolated local PostgreSQL",
+    "samples": [
+      {
+        "index": 0,
+        "language": "English",
+        "elapsed_ms": 6151.12,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5718.03
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 1,
+        "language": "English",
+        "elapsed_ms": 5796.27,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5619.14
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 2,
+        "language": "Arabic",
+        "elapsed_ms": 5455.73,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5159.21
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 3,
+        "language": "English",
+        "elapsed_ms": 5895.53,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5725.67
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 4,
+        "language": "English",
+        "elapsed_ms": 6250.81,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6071.34
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 5,
+        "language": "Arabic",
+        "elapsed_ms": 5760.27,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5563.19
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 6,
+        "language": "English",
+        "elapsed_ms": 6903.92,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6731.77
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 7,
+        "language": "English",
+        "elapsed_ms": 6783.96,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6595.58
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 8,
+        "language": "Arabic",
+        "elapsed_ms": 5487.3,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5302.7
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 9,
+        "language": "English",
+        "elapsed_ms": 7034.07,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6704.37
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 10,
+        "language": "English",
+        "elapsed_ms": 5310.56,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5134.86
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 11,
+        "language": "Arabic",
+        "elapsed_ms": 5142.59,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 4955.33
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 12,
+        "language": "English",
+        "elapsed_ms": 7019.64,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6838.74
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 13,
+        "language": "English",
+        "elapsed_ms": 5674.95,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5496.49
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 14,
+        "language": "Arabic",
+        "elapsed_ms": 5103.57,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 4769.87
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 15,
+        "language": "English",
+        "elapsed_ms": 5846.1,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5662.12
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 16,
+        "language": "English",
+        "elapsed_ms": 6112.98,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5938.55
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 17,
+        "language": "Arabic",
+        "elapsed_ms": 5086.65,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 4895.1
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 18,
+        "language": "English",
+        "elapsed_ms": 5540.48,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5363.67
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 19,
+        "language": "English",
+        "elapsed_ms": 6147.31,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5968.7
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 20,
+        "language": "Arabic",
+        "elapsed_ms": 4884.35,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 4708.06
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 21,
+        "language": "English",
+        "elapsed_ms": 6036.22,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5860.83
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 22,
+        "language": "English",
+        "elapsed_ms": 5735.8,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5560.93
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 23,
+        "language": "Arabic",
+        "elapsed_ms": 5875.59,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5657.48
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 24,
+        "language": "English",
+        "elapsed_ms": 6400.36,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6220.66
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 25,
+        "language": "English",
+        "elapsed_ms": 6654.97,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 6475.16
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 26,
+        "language": "Arabic",
+        "elapsed_ms": 5587.41,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5395.77
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 27,
+        "language": "English",
+        "elapsed_ms": 5978.61,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5802.29
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 28,
+        "language": "English",
+        "elapsed_ms": 5870.08,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 5678.11
+          }
+        ],
+        "questions": 5
+      },
+      {
+        "index": 29,
+        "language": "Arabic",
+        "elapsed_ms": 4752.28,
+        "state": "completed",
+        "calls": [
+          {
+            "source": "assessment_generation",
+            "elapsed_ms": 4576.68
+          }
+        ],
+        "questions": 5
+      }
+    ],
+    "median_ms": 5858.09,
+    "p95_ms": 7019.64,
+    "maximum_ms": 7034.07
+  },
+  "choice_matched_before": {
+    "scope": "Synthetic known-rubric grading through the current API and durable worker.\n\nTEST_DATABASE_URL is mandatory. Provider-backed written cases are opt-in.\nTimings exclude idle queue polling; no learner/evidence update is on the result path.\n",
+    "summary": {
+      "mcq": {
+        "samples": 30,
+        "median_ms": 40.945,
+        "p95_ms": 42.27
+      }
+    },
+    "samples": [
+      {
+        "kind": "mcq",
+        "index": 0,
+        "published_ms": 127.96,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 1,
+        "published_ms": 40.28,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 2,
+        "published_ms": 39.7,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 3,
+        "published_ms": 41.51,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 4,
+        "published_ms": 40.79,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 5,
+        "published_ms": 41.16,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 6,
+        "published_ms": 41.29,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 7,
+        "published_ms": 42.01,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 8,
+        "published_ms": 40.32,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 9,
+        "published_ms": 40.96,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 10,
+        "published_ms": 40.5,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 11,
+        "published_ms": 40.37,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 12,
+        "published_ms": 41.02,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 13,
+        "published_ms": 41.22,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 14,
+        "published_ms": 42.23,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 15,
+        "published_ms": 40.85,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 16,
+        "published_ms": 41.35,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 17,
+        "published_ms": 41.62,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 18,
+        "published_ms": 42.27,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 19,
+        "published_ms": 41.17,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 20,
+        "published_ms": 40.73,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 21,
+        "published_ms": 40.24,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 22,
+        "published_ms": 41.6,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 23,
+        "published_ms": 40.93,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 24,
+        "published_ms": 40.51,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 25,
+        "published_ms": 40.56,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 26,
+        "published_ms": 40.41,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 27,
+        "published_ms": 40.43,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 28,
+        "published_ms": 40.61,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 29,
+        "published_ms": 41.46,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      }
+    ],
+    "quality_scope": "Simple synthetic arithmetic rubrics only; not independent educational/grading validation."
+  },
+  "choice_matched_after": {
+    "scope": "Synthetic known-rubric grading through the current API and durable worker.\n\nTEST_DATABASE_URL is mandatory. Provider-backed written cases are opt-in.\nTimings exclude idle queue polling; no learner/evidence update is on the result path.\n",
+    "summary": {
+      "mcq": {
+        "samples": 30,
+        "median_ms": 27.555,
+        "p95_ms": 28.59
+      }
+    },
+    "samples": [
+      {
+        "kind": "mcq",
+        "index": 0,
+        "published_ms": 112.46,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 1,
+        "published_ms": 28.59,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 2,
+        "published_ms": 28.42,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 3,
+        "published_ms": 28.54,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 4,
+        "published_ms": 27.18,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 5,
+        "published_ms": 28.06,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 6,
+        "published_ms": 27.23,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 7,
+        "published_ms": 28.56,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 8,
+        "published_ms": 28.37,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 9,
+        "published_ms": 28.25,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 10,
+        "published_ms": 27.9,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 11,
+        "published_ms": 27.6,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 12,
+        "published_ms": 27.94,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 13,
+        "published_ms": 27.19,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 14,
+        "published_ms": 27.43,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 15,
+        "published_ms": 27.81,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 16,
+        "published_ms": 27.38,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 17,
+        "published_ms": 27.34,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 18,
+        "published_ms": 28.05,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 19,
+        "published_ms": 28.0,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 20,
+        "published_ms": 27.72,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 21,
+        "published_ms": 26.96,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 22,
+        "published_ms": 27.39,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 23,
+        "published_ms": 27.51,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 24,
+        "published_ms": 27.45,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 25,
+        "published_ms": 26.74,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 26,
+        "published_ms": 26.94,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 27,
+        "published_ms": 27.06,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 28,
+        "published_ms": 27.15,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 29,
+        "published_ms": 27.17,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      }
+    ],
+    "quality_scope": "Simple synthetic arithmetic rubrics only; not independent educational/grading validation."
+  },
+  "grading_before": {
+    "scope": "Synthetic known-rubric grading through the current API and durable worker.\n\nTEST_DATABASE_URL is mandatory. Provider-backed written cases are opt-in.\nTimings exclude idle queue polling; no learner/evidence update is on the result path.\n",
+    "summary": {
+      "mcq": {
+        "samples": 30,
+        "median_ms": 40.975,
+        "p95_ms": 43.19
+      },
+      "written": {
+        "samples": 9,
+        "median_ms": 3739.34,
+        "p95_ms": 4130.38
+      }
+    },
+    "samples": [
+      {
+        "kind": "mcq",
+        "index": 0,
+        "published_ms": 129.48,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 1,
+        "published_ms": 39.89,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 2,
+        "published_ms": 41.72,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 3,
+        "published_ms": 41.71,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 4,
+        "published_ms": 42.73,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 5,
+        "published_ms": 40.88,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 6,
+        "published_ms": 41.87,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 7,
+        "published_ms": 40.29,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 8,
+        "published_ms": 40.02,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 9,
+        "published_ms": 41.36,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 10,
+        "published_ms": 42.12,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 11,
+        "published_ms": 41.04,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 12,
+        "published_ms": 40.6,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 13,
+        "published_ms": 41.03,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 14,
+        "published_ms": 41.69,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 15,
+        "published_ms": 42.73,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 16,
+        "published_ms": 40.73,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 17,
+        "published_ms": 40.42,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 18,
+        "published_ms": 40.67,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 19,
+        "published_ms": 40.88,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 20,
+        "published_ms": 41.27,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 21,
+        "published_ms": 39.95,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 22,
+        "published_ms": 41.15,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 23,
+        "published_ms": 40.4,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 24,
+        "published_ms": 41.61,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 25,
+        "published_ms": 40.56,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 26,
+        "published_ms": 43.19,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 27,
+        "published_ms": 40.49,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 28,
+        "published_ms": 40.92,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 29,
+        "published_ms": 40.0,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 0,
+        "published_ms": 3915.81,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3717.0
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 1,
+        "published_ms": 3569.77,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3523.37
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 2,
+        "published_ms": 4039.56,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3991.03
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 3,
+        "published_ms": 2849.66,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 2802.91
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 4,
+        "published_ms": 3764.42,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3718.32
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 5,
+        "published_ms": 3739.34,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3693.6
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 6,
+        "published_ms": 2873.25,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 2825.37
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 7,
+        "published_ms": 3403.83,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3357.26
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 8,
+        "published_ms": 4130.38,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 4085.02
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      }
+    ],
+    "quality_scope": "Simple synthetic arithmetic rubrics only; not independent educational/grading validation."
+  },
+  "grading_after": {
+    "scope": "Synthetic known-rubric grading through the current API and durable worker.\n\nTEST_DATABASE_URL is mandatory. Provider-backed written cases are opt-in.\nTimings exclude idle queue polling; no learner/evidence update is on the result path.\n",
+    "summary": {
+      "mcq": {
+        "samples": 30,
+        "median_ms": 48.08,
+        "p95_ms": 62.73
+      },
+      "written": {
+        "samples": 9,
+        "median_ms": 3579.67,
+        "p95_ms": 4281.42
+      }
+    },
+    "samples": [
+      {
+        "kind": "mcq",
+        "index": 0,
+        "published_ms": 169.72,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 1,
+        "published_ms": 48.05,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 2,
+        "published_ms": 43.82,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 3,
+        "published_ms": 50.23,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 4,
+        "published_ms": 47.24,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 5,
+        "published_ms": 52.36,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 6,
+        "published_ms": 50.11,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 7,
+        "published_ms": 49.71,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 8,
+        "published_ms": 49.99,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 9,
+        "published_ms": 47.68,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 10,
+        "published_ms": 49.04,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 11,
+        "published_ms": 47.69,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 12,
+        "published_ms": 44.47,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 13,
+        "published_ms": 45.83,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 14,
+        "published_ms": 49.54,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 15,
+        "published_ms": 50.66,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 16,
+        "published_ms": 46.8,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 17,
+        "published_ms": 46.49,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 18,
+        "published_ms": 47.66,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 19,
+        "published_ms": 48.59,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 20,
+        "published_ms": 46.59,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 21,
+        "published_ms": 48.11,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 22,
+        "published_ms": 56.04,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 23,
+        "published_ms": 62.73,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 24,
+        "published_ms": 45.12,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 25,
+        "published_ms": 49.06,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 26,
+        "published_ms": 46.09,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 27,
+        "published_ms": 45.96,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 28,
+        "published_ms": 45.96,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "mcq",
+        "index": 29,
+        "published_ms": 52.32,
+        "state": "graded",
+        "calls": [],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 0,
+        "published_ms": 4281.42,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3978.95
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 1,
+        "published_ms": 3638.66,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3561.99
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 2,
+        "published_ms": 3579.67,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3505.06
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 3,
+        "published_ms": 2749.79,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 2678.87
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 4,
+        "published_ms": 3406.91,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3332.14
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 5,
+        "published_ms": 3663.29,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3587.79
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 6,
+        "published_ms": 2875.66,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 2804.7
+          }
+        ],
+        "expected_score": 10,
+        "observed_score": 10.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 7,
+        "published_ms": 3427.48,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3354.52
+          }
+        ],
+        "expected_score": 5,
+        "observed_score": 5.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      },
+      {
+        "kind": "written",
+        "index": 8,
+        "published_ms": 3674.85,
+        "state": "graded",
+        "calls": [
+          {
+            "source": "assessment_grading",
+            "ms": 3597.97
+          }
+        ],
+        "expected_score": 0,
+        "observed_score": 0.0,
+        "answers_preserved": true,
+        "evidence_status": "pending"
+      }
+    ],
+    "quality_scope": "Simple synthetic arithmetic rubrics only; not independent educational/grading validation."
+  },
+  "outer_chat_smoke": [
+    {
+      "kind": "quiz",
+      "turn_state": "SUCCEEDED",
+      "turn_ms": 10840.07,
+      "prompt_to_handoff_ms": 10840.07,
+      "outcome": {
+        "state": "completed",
+        "tasks": [
+          {
+            "id": "receipt1",
+            "code": null,
+            "state": "completed",
+            "job_id": "0ec4994f-97b2-43bd-8572-bec1f4b60f88",
+            "job_kind": "generation",
+            "required": true,
+            "operation": "assessment_generate",
+            "retryable": false,
+            "effect_certainty": "committed",
+            "job_revision": 1
+          },
+          {
+            "id": "quiz",
+            "state": "in_progress",
+            "declared": true,
+            "required": true,
+            "grounding": "none",
+            "operation": "assessment_generate",
+            "receipt_ids": [
+              "receipt1"
+            ]
+          }
+        ],
+        "legacy": false,
+        "version": 3,
+        "retryable": false,
+        "reason_code": null
+      },
+      "questions": 5,
+      "capture_drain_ms": 5.0
+    },
+    {
+      "kind": "chat_signal",
+      "turn_state": "SUCCEEDED",
+      "turn_ms": 2989.73,
+      "prompt_to_handoff_ms": null,
+      "outcome": {
+        "state": "completed",
+        "tasks": [],
+        "legacy": false,
+        "version": 3,
+        "retryable": false,
+        "reason_code": null,
+        "control_action": null
+      },
+      "questions": 0,
+      "capture_drain_ms": 1989.31
+    }
+  ],
+  "ui": {
+    "desktop_runs": 30,
+    "mobile_runs": 30,
+    "desktop_p95_ms": 18.4,
+    "mobile_p95_ms": 51.6,
+    "mobile_cpu_rate": 4,
+    "desktop_interactions": {
+      "choice": 22.1,
+      "text": 31.6,
+      "navigation": 24.3
+    },
+    "mobile_interactions": {
+      "choice": 37.6,
+      "text": 31.1,
+      "navigation": 50.3
+    },
+    "blocking_reads": 0,
+    "navigation_writes": 0
+  },
+  "context": {
+    "queries": 8,
+    "checkouts": 1,
+    "commits": 0,
+    "remote_learner_only_p95_ms": 825,
+    "remote_combined_qualification": "held"
+  },
+  "scale": {
+    "concepts": 100001,
+    "evidence": 1000000,
+    "median_ms": 596.65,
+    "p95_ms": 674.25,
+    "states_materialized": 255,
+    "ledger_reads": 0,
+    "top5_recall": 1,
+    "exact_recall": 1,
+    "scope": "Phase-six scalar ranker; unchanged selection algorithm. Local Docker PG17, 12 host logical CPUs, Docker 15.58GiB."
+  },
+  "quality": {
+    "before_correct_solvable": 14,
+    "after_correct_solvable": 15,
+    "items_per_version": 15,
+    "grading_cases_per_version": 45,
+    "grading_correct_before": 45,
+    "grading_correct_after": 45,
+    "review_scope": "Synthetic factual/rubric cases plus internal assistant review; zero independent human reviews."
+  },
+  "known_main_failures": [
+    "test_summary_is_background_not_visible_evidence (tests.test_chat_summaries.SummaryTests.test_summary_is_background_not_visible_evidence)",
+    "test_tool_limits_unknown_calls_and_provider_fallback (tests.test_history_management.HistoryManagementTests.test_tool_limits_unknown_calls_and_provider_fallback)",
+    "test_additive_upgrade_downgrade_preserves_chat (tests.test_history_management.MigrationRehearsal.test_additive_upgrade_downgrade_preserves_chat)",
+    "test_evidence_inventory_reaches_next_round_without_blocking_real_followups (tests.test_web_search.ServiceTests.test_evidence_inventory_reaches_next_round_without_blocking_real_followups)",
+    "test_quick_lookup_retires_search_schema_with_novel_results_each_time (tests.test_web_search.ServiceTests.test_quick_lookup_retires_search_schema_with_novel_results_each_time)",
+    "test_rag_translates_only_safe_vision_errors (tests.vision.test_ocr.VisionOCRTests.test_rag_translates_only_safe_vision_errors)",
+    "test_persistent_session_migration_downgrade_preserves_and_revokes_sessions (tests.auth.test_auth.AuthenticationTests.test_persistent_session_migration_downgrade_preserves_and_revokes_sessions)",
+    "test_chat_and_profile_share_distinct_registered_prompts (tests.student_profile.test_evaluator.ProfileEvaluatorTests.test_chat_and_profile_share_distinct_registered_prompts)",
+    "test_normal_chat_pdf_and_txt_attachments_prepare_the_same_attempt_pipeline (tests.test_answer_sheet_flow.AnswerSheetFlowTests.test_normal_chat_pdf_and_txt_attachments_prepare_the_same_attempt_pipeline)",
+    "test_chat_returns_reply_and_sends_system_prompt_and_history (tests.test_chat_endpoint.ChatEndpointTests.test_chat_returns_reply_and_sends_system_prompt_and_history)",
+    "test_domain_tools_remain_available_before_final_output (tests.test_chat_titles.TitleGenerationTests.test_domain_tools_remain_available_before_final_output)",
+    "test_first_answer_has_validated_title_and_only_answer_streams (tests.test_chat_titles.TitleGenerationTests.test_first_answer_has_validated_title_and_only_answer_streams)",
+    "test_invalid_title_does_not_lose_answer (tests.test_chat_titles.TitleGenerationTests.test_invalid_title_does_not_lose_answer)",
+    "test_migration_drift_and_downgrade_preserve_memory_and_chat (tests.test_events.EventPersistenceTests.test_migration_drift_and_downgrade_preserve_memory_and_chat)",
+    "test_real_tool_loop_remembers_and_retrieves (tests.test_history_management.HistoryManagementTests.test_real_tool_loop_remembers_and_retrieves)",
+    "test_midnight_restart_and_json_format (tests.test_log_files.DailyLogTests.test_midnight_restart_and_json_format)",
+    "test_additive_migration_preserves_legacy_records (tests.test_observability.DurableLoggingTests.test_additive_migration_preserves_legacy_records)",
+    "test_discovery_adds_assessment_policy_and_final_round_retains_it (tests.test_prompt_efficiency.PromptActivationTests.test_discovery_adds_assessment_policy_and_final_round_retains_it)",
+    "test_migration_down_up_preserves_non_feature_data_and_metadata (tests.test_web_search_persistence.PersistenceTests.test_migration_down_up_preserves_non_feature_data_and_metadata)",
+    "test_large_committed_write_returns_truthful_receipt (tests.test_workflow_guards.CoordinatorTests.test_large_committed_write_returns_truthful_receipt)",
+    "test_normal_packet_fits_but_large_unicode_and_model_context_do_not (tests.test_workflow_guards.CoordinatorTests.test_normal_packet_fits_but_large_unicode_and_model_context_do_not)",
+    "test_parallel_reads_then_second_round_and_matching_results (tests.test_workflow_guards.CoordinatorTests.test_parallel_reads_then_second_round_and_matching_results)",
+    "test_write_receipt_reserves_utf8_bytes_as_well_as_tokens (tests.test_workflow_guards.CoordinatorTests.test_write_receipt_reserves_utf8_bytes_as_well_as_tokens)",
+    "test_rag_capabilities_and_cache_identity_keep_the_existing_shape (tests.vision.test_ocr.VisionOCRTests.test_rag_capabilities_and_cache_identity_keep_the_existing_shape)"
+  ],
+  "test_runs": {
+    "production_ui": "28 passed; 60 measured handoffs",
+    "real_api_browser": "14 passed on final frozen source",
+    "paper_source_feedback_ui": "22 passed",
+    "saved_topics": "4 passed",
+    "live_provider_ui": "1 passed",
+    "output_cap_and_quality": "54 passed in 69.491s",
+    "final_arabic_admission": "26 passed in 14.239s",
+    "final_features": "70 passed in 84.167s",
+    "regression_followup": "91/92 passed, then the order-dependent retention fixture was corrected and its isolated current-contract restart check passed.",
+    "grading_paper_followup": "5 passed in 8.458s; a bulk-run mock-paper failure did not reproduce in isolation.",
+    "full_discovery": "1225 executed, 36 failures/errors, 1 skipped; 24 existing failures reproduced on unchanged main, remaining current-contract/runner/process issues corrected or passed in focused confirmation. Full repository suite is not claimed green."
+  }
+}

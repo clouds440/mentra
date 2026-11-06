@@ -39,10 +39,10 @@ class RoutingTests(unittest.IsolatedAsyncioTestCase):
 
 
 
-    def test_delivery_preserves_legacy_replays(self):
+    def test_delivery_is_part_of_current_request_identity(self):
         body = dict(client_request_id=uuid4(), context_id='context', topic='Fractions')
         old = GenerationRequest(**body)
-        self.assertEqual(old.fingerprint_payload(), GenerationRequest(**body, delivery='interactive').fingerprint_payload())
+        self.assertNotEqual(old.fingerprint_payload(), GenerationRequest(**body, delivery='interactive').fingerprint_payload())
         self.assertNotEqual(old.fingerprint_payload(), GenerationRequest(**body, delivery='written').fingerprint_payload())
 
     def test_ordinary_schema_omits_nested_paper_arguments_but_advanced_is_available(self):
@@ -63,8 +63,9 @@ class RoutingTests(unittest.IsolatedAsyncioTestCase):
         for changes in (dict(instructions='Use two parts'), dict(total_marks=10),
                         dict(instructions='Make each question worth five marks'),
                         dict(instructions='Set a time limit of 5 minutes'),
-                        dict(duration_minutes=5), dict(question_format='proof'), dict(count=20)):
+                        dict(duration_minutes=5)):
             self.assertFalse(small_practice(GenerationRequest(**dict(body, **changes))))
+        self.assertTrue(small_practice(GenerationRequest(**dict(body,question_format='proof',count=20))))
 
 
 class DiscoveryTests(unittest.IsolatedAsyncioTestCase):
@@ -164,8 +165,13 @@ class SmallWorkflowTests(unittest.IsolatedAsyncioTestCase):
         calls = []
         concept = SimpleNamespace(id='concept', canonical_name='Fractions: halves')
         async def resolve(request):
-            return [SimpleNamespace(id='concept', canonical_name=label) for label in request.labels]
+            return {label:'concept' for label in request.labels}
+        from app.learner.preparation import AssessmentContext
+        from app.learner.schemas import LearnerContextPacket
         learner = SimpleNamespace(get_context_summaries=lambda *a: [],
+            get_assessment_context=lambda *a,**k:AssessmentContext(LearnerContextPacket(active_contexts=[],context_ids=['context'],concepts=[]),{},{}),
+            get_skill_topics=lambda *a:{},
+            prepare_assessment_concept_labels=resolve,
             get_study_targets=lambda *a: dict(recommendations=[],verification=[]),
             get_concepts=lambda ids: {identifier:concept for identifier in ids},
             resolve_generated_concepts=resolve,
@@ -190,10 +196,10 @@ class SmallWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.questions[0].concept_ids, ['concept'])
         return calls, result
 
-    async def test_three_model_stages_become_one_without_dropping_validation(self):
+    async def test_designed_and_standard_content_keep_validation_with_one_standard_call(self):
         before, reference = await self.run_workflow(False)
         after, result = await self.run_workflow(True)
-        self.assertEqual(before, ['assessment_targets', 'assessment_design', 'assessment_generation'])
+        self.assertEqual(before, ['assessment_design', 'assessment_generation'])
         self.assertEqual(after, ['assessment_generation'])
         self.assertEqual(result.title, reference.title)
         self.assertEqual(result.paper, reference.paper)

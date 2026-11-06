@@ -13,6 +13,16 @@ class RankingPolicy(Protocol):
 
 
 @dataclass(frozen=True)
+class RecentPracticePolicy:
+    """Explicit Plan B: bounded oldest/unseen practice, no verification claims."""
+    clock: object
+
+    def score(self,state,retention,prerequisites,relevance,verification=False):
+        age=(self.clock()-state.last_evidence_at).total_seconds()/86400 if state and state.last_evidence_at else None
+        return (1 if age is None else min(.99,max(0,age)/90),'recent_due_practice')
+
+
+@dataclass(frozen=True)
 class WeightedRankingPolicy:
     weakness_weight: float = 0.4
     retention_weight: float = 0.2

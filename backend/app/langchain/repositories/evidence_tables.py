@@ -12,4 +12,5 @@ jobs=Table('chat_evidence_job',metadata,
     Column('claim_id',Uuid(as_uuid=False)),Column('claim_until',DateTime(timezone=True)),Column('receipt',JSONB),
     ForeignKeyConstraint(['learner_id','turn_id'],['chat_turn.learner_id','chat_turn.id'],ondelete='CASCADE'),
     CheckConstraint("attempt > 0 AND attempts BETWEEN 0 AND 3 AND state IN ('queued','running','applied','ignored','failed')",name='chat_evidence_job_state'),
-    Index('idx_chat_evidence_queue','state','retry_at','claim_until'))
+    Index('idx_chat_evidence_queue','state','retry_at','claim_until'),
+    Index('idx_chat_capture_owner','learner_id','state','created_at','turn_id'))

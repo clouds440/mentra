@@ -26,7 +26,7 @@ export function PracticeNotice({ assessment }: { assessment: Assessment }) {
   const [expanded, setExpanded] = useState(false);
   const source = assessment.practice_source;
   if (!source) return null;
-  return <aside className="space-y-2 rounded-lg border border-border bg-surface p-3" aria-label="Repeated practice">
+  return <aside className="space-y-2 py-2" aria-label="Repeated practice">
     {assessment.tags?.includes('revision assessment') && <p className="text-xs font-semibold text-accent">Revision assessment</p>}
     {!!assessment.source_assessment_ids?.length && <div className="flex flex-wrap gap-2">{assessment.source_assessment_ids.map((id, index) => <Link key={id} className={buttonStyles({ variant: 'secondary', size: 'sm' })} to={`/assessments?assessment=${encodeURIComponent(id)}`}>Source assessment {index+1}</Link>)}</div>}
     <p className="text-xs text-muted">This practice is based on previously graded questions. Results are saved as practice and do not count as a fresh independent demonstration.</p>
@@ -40,12 +40,12 @@ export function PracticeNotice({ assessment }: { assessment: Assessment }) {
 export function PaperHeader({ assessment, printMode = false }: { assessment: Assessment; printMode?: boolean }) {
   const paper = assessment.paper;
   if (!paper) return null;
-  return <header className="space-y-3 rounded-lg border border-border-strong bg-surface p-3">
+  return <header className="space-y-3 py-2">
     <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"><FileText size={14} aria-hidden="true" />Mock examination</span>{paper.duration_minutes && <span className="flex items-center gap-1.5 text-xs text-muted"><Clock3 size={13} aria-hidden="true" />{paper.duration_minutes} minutes</span>}</div>
     <p className="text-sm font-medium text-heading">{paper.question_count} questions{showsAssessmentMarks(assessment) ? ` · ${paper.total_marks} marks` : ''}</p>
     {!printMode && <PrintPaperButton assessment={assessment} />}
     <p className="text-xs leading-5 text-muted">{paper.instructions}</p>
-    <div className="grid gap-2 sm:grid-cols-3">{paper.sections.map((section, index) => <div key={`${index}-${section.title}`} className="rounded-md border border-border px-2.5 py-2"><p className="text-xs font-medium text-heading">{section.title}</p><p className="mt-1 text-[11px] text-muted">{section.question_count} questions{showsAssessmentMarks(assessment) && <> · {section.questions?.length ? section.questions.reduce((sum,q) => sum + q.parts.reduce((value,p) => value+p.marks,0),0) : section.question_count * section.part_marks.reduce((sum, mark) => sum + mark, 0)} marks</>}</p></div>)}</div>
+    <div className="grid gap-2 sm:grid-cols-3">{paper.sections.map((section, index) => <div key={`${index}-${section.title}`} className="py-2"><p className="text-xs font-medium text-heading">{section.title}</p><p className="mt-1 text-[11px] text-muted">{section.question_count} questions{showsAssessmentMarks(assessment) && <> · {section.questions?.length ? section.questions.reduce((sum,q) => sum + q.parts.reduce((value,p) => value+p.marks,0),0) : section.question_count * section.part_marks.reduce((sum, mark) => sum + mark, 0)} marks</>}</p></div>)}</div>
   </header>;
 }
 
@@ -56,7 +56,7 @@ export function AssessmentPaper({ assessment, printMode = false }: { assessment:
     {!printMode && !assessment.paper && <PrintPaperButton assessment={assessment} />}
     {assessment.questions.map((question, index) => <section key={question.id} className="space-y-2">
       {question.section && question.section !== assessment.questions[index - 1]?.section && <h3 className="border-b border-border pb-2 pt-2 text-sm font-semibold text-heading">{question.section}</h3>}
-      {!!question.context && (question.number !== assessment.questions[index-1]?.number || question.context !== assessment.questions[index-1]?.context) && <div className="rounded-lg border border-border bg-surface p-3"><MarkdownContent content={question.context} /></div>}
+      {!!question.context && (question.number !== assessment.questions[index-1]?.number || question.context !== assessment.questions[index-1]?.context) && <div className="py-2 text-sm leading-relaxed text-muted"><MarkdownContent content={question.context} /></div>}
       <div className="flex items-center justify-between gap-3 text-xs"><h4 className="font-medium text-heading">{questionLabel(question, index)}</h4>{showsAssessmentMarks(assessment) && <span className="shrink-0 tabular-nums text-muted">[{question.marks} {question.marks === 1 ? 'mark' : 'marks'}]</span>}</div>
       {!printMode && <LearningTargetLabels question={question} />}<MarkdownContent content={question.prompt} />
       {!!question.options?.length && <ol className="grid gap-1 text-sm text-muted sm:grid-cols-2">{question.options.map((option, i) => <li key={option.id} className="flex gap-2"><span className="font-medium">{String.fromCharCode(65 + i)}.</span><MarkdownContent content={option.label} /></li>)}</ol>}

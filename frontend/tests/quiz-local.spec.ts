@@ -29,7 +29,7 @@ async function workspace(page: Page, failFirst = false, loseReply = false, codeA
     else if (path.endsWith('/student-profile')) body = {learner_id:identity.learner_id,details:{education_level:'college',field_of_study:'Programming',learning_goal:'Learn',learning_preference:'balanced',explanation_depth:'standard'},estimates:Object.fromEntries(['overall_proficiency','reasoning','quantitative','comprehension','domain_familiarity'].map(key => [key,{value:null,confidence:0,evidence_count:0}])),onboarding_phase:'complete',calibration_status:'skipped',evaluation_status:'not_started',version:1,context_version:1};
     else if (path.endsWith('/conversations/sync')) body = {reset:false,cursor:3,has_more:false,conversations:[conversation],deleted_ids:[],list_cursor:null};
     else if (path.endsWith('/status')) body = {conversation,items,has_more:false,next_cursor:null,turn:{id:'quiz-turn',state:'SUCCEEDED',attempt:1,user_sequence:1,selection,error:null}};
-    else if (path.endsWith('/chat-drafts/draft-quiz')) body = card;
+    else if (path.endsWith('/chat-drafts/draft-quiz')) body = {...card,hydration:{version:1,attempt}};
     else if (path.endsWith('/assessment-quiz/attempts') && request.method() === 'POST') {
       starts++;
       attempt = {id:'attempt-quiz',assessment_id:assessment.id,revision:1,state:'draft',attempt_number:1,answers:{},grades:null,extraction:null,error:null,evidence_status:'none',created_at:date,grade_revision:1,grade_history:[]}; body = attempt;
@@ -82,7 +82,7 @@ test('Next is local, code uses shared blocks, and navigation preserves choices w
   expect(state.starts()).toBe(0);
   await page.reload();
   await expect(state.quiz.getByText(/Question 1 of 3/)).toBeVisible();
-  await expect(state.quiz.getByRole('radio').first()).not.toBeChecked();
+  await expect(state.quiz.getByRole('radio').first()).toBeChecked();
 });
 
 test('one final Submit sends all answers and shows review plus a visible composer evaluation indicator', async ({page}) => {
@@ -175,8 +175,7 @@ test('assessment navigation stays in the header apart from quiz and correction c
   const footer = correction.locator('..');
   await expect(footer.getByRole('button')).toHaveCount(2);
   await expect(footer.getByRole('button',{name:'Start new attempt',exact:true})).toBeVisible();
-  const view = page.getByLabel('Assessment header').getByRole('button',{name:'View in assessments',exact:true});
-  await expect(view).toBeVisible();
+  const view = page.getByRole('menuitem',{name:'View in assessments',exact:true});
   const desktop = await footer.getByRole('button').evaluateAll(elements => elements.map(element => ({top:element.getBoundingClientRect().top,height:element.getBoundingClientRect().height})));
   expect(new Set(desktop.map(value => value.top)).size).toBe(1);
   expect(desktop.every(value => value.height === 32)).toBeTruthy();
@@ -188,6 +187,7 @@ test('assessment navigation stays in the header apart from quiz and correction c
   const mobile = await footer.getByRole('button').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
   expect(mobile.length).toBe(2);
   await page.screenshot({path:testInfo.outputPath('quiz-footer-mobile.png')});
+  await page.getByRole('button',{name:'Assessment options',exact:true}).click();
   await view.click();
   await expect(page).toHaveURL(/\/assessments\?assessment=assessment-quiz$/);
 });
@@ -201,7 +201,7 @@ test('assessment results render question, answer and feedback code through Prism
   await state.quiz.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(page.getByRole('region',{name:'Quiz answers'})).toBeVisible();
   state.grade();
-  await page.getByRole('button',{name:'Review result',exact:true}).first().click();
+  await page.getByText('Question 1',{exact:true}).click();
   const result=page.getByRole('region',{name:'Question 1 feedback',exact:true});
   await expect(result).toBeVisible({timeout:10_000});
   await expect(result.locator('.code-block[data-language="python"]')).toHaveCount(3);

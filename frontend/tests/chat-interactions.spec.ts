@@ -93,8 +93,9 @@ test('first chat generates an interactive assessment from a topic with no prior 
   await quiz.getByRole('button', { name:'Next' }).click();
   await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
   await page.reload();
-  await expect(quiz.getByText(/Question 1 of 3/)).toBeVisible();
-  await expect(quiz.getByRole('radio').first()).not.toBeChecked();
+  await expect(quiz.getByText(/Question 2 of 3/)).toBeVisible();
+  await quiz.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(quiz.getByRole('radio').first()).toBeChecked();
 });
 
 for (const request of ['Give me a five question interactive quiz on Linear equations', 'Quiz me with five clickable options questions on Linear equations', 'I keep mixing up linear equations']) {
@@ -147,7 +148,7 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
     await route.fetch(); await route.abort('failed');
   }, {times:1});
   await quiz.getByRole('button',{name:'Submit',exact:true}).click();
-  await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible({ timeout: 20000 });
+  await expect(card.getByText('Final result: 3/5', { exact: true })).toBeVisible({ timeout: 20000 });
   await expect.poll(async () => {
     const attempts = await (await page.request.get(`${origin}/api/v1/assessments/${savedAssessments[0].id}/attempts`)).json();
     return attempts[0]?.evidence_status;
@@ -156,13 +157,14 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   await feedback.getByRole('button', { name: 'List view', exact: true }).click();
   await expect(feedback.getByText('3 correct', { exact:true })).toBeVisible();
   await expect(feedback.getByText('2 incorrect', { exact:true })).toBeVisible();
+  await feedback.locator('summary').filter({hasText:/Question 4/}).click();
   await expect(feedback.getByRole('region', { name: 'Question 4 feedback' })).toContainText('An unsupported explanation.');
   await expect(feedback.getByRole('region', { name: 'Question 4 feedback' })).toContainText('Correct answer');
   await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('feedback-desktop-dark.png') });
   await page.evaluate(() => localStorage.setItem('mentra-theme', 'light'));
   await page.reload();
-  await expect(card.getByText('Final result: 6/10', { exact: true })).toBeVisible();
+  await expect(card.getByText('Final result: 3/5', { exact: true })).toBeVisible();
   await feedback.getByRole('button', { name: 'List view', exact: true }).click();
   await feedback.getByRole('heading', { name:'Your results' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('feedback-desktop-light.png') });
@@ -171,6 +173,7 @@ test(`five question MCQ invoked from ${request} restores progress and grades`, a
   await expect.poll(() => page.getByRole('complementary', { name:'Main navigation' }).evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   await page.screenshot({ path: testInfo.outputPath('feedback-mobile-light.png') });
+  await feedback.locator('summary').filter({hasText:/Question 4/}).click();
   await feedback.getByRole('region', { name:'Question 4 feedback' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('feedback-incorrect-mobile.png') });
 });

@@ -6,6 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    learner_ranking_mode: Literal['adaptive','recent_due'] = 'adaptive'
+    learner_personalization_enabled: bool = True
+    learner_capture_enabled: bool = True
+    learner_organization_enabled: bool = True
     log_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR'] = 'INFO'
     log_format: Literal['console', 'json'] | None = None
     log_file_enabled: bool = True
@@ -79,7 +83,7 @@ class Settings(BaseSettings):
     memory_semantic_enabled: bool = True
     summarizer_concurrency: int = Field(default=2, ge=1, le=4)
     chat_context_window_tokens: int = Field(default=32768, ge=1024)
-    chat_output_token_reserve: int = Field(default=2048, ge=128)
+    chat_output_token_reserve: int = Field(default=4000, ge=128)
     assessment_generation_output_tokens: int = Field(default=8192, ge=512, le=32768)
     assessment_grading_output_tokens: int = Field(default=8192, ge=512, le=32768)
     assessment_vision_enabled: bool = True

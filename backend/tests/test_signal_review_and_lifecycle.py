@@ -14,6 +14,39 @@ class SignalReviewTests(unittest.IsolatedAsyncioTestCase):
     setUp=fixtures.SignalCaptureTests.setUp
     turn=fixtures.SignalCaptureTests.turn
 
+    async def test_reviewed_new_labels_are_scoped_idempotent_and_unscored(self):
+        context=self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner,name='Calculus')).context_id
+        other_context=self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner,name='Another subject')).context_id
+        ids=[]
+        for _ in range(3):
+            self.turn();await self.worker.run_once()
+        rows=self.learner.get_learning_signals(self.owner)['items']
+        for row in rows[:2]:
+            result=await self.learner.review_new_learning_signal(self.owner,row['id'],context,'Apply the chain rule',row['source_revision'])
+            ids.append(result['concept_id'])
+            repeated=await self.learner.review_new_learning_signal(self.owner,row['id'],context,'Apply the chain rule',row['source_revision'])
+            self.assertEqual(result,repeated)
+        self.assertEqual(len(set(ids)),1)
+        other=await self.learner.review_new_learning_signal(self.owner,rows[2]['id'],other_context,'Apply the chain rule',rows[2]['source_revision'])
+        self.assertNotEqual(other['concept_id'],ids[0])
+        with self.db.sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(concept)),2)
+            self.assertEqual(session.scalar(select(func.count()).select_from(learning_evidence)),0)
+            self.assertEqual(session.scalar(select(func.count()).select_from(learner_concept_state)),0)
+        with self.assertRaises(AppError):
+            await self.learner.review_new_learning_signal(self.other,rows[0]['id'],context,'Forged skill',rows[0]['source_revision'])
+
+    async def test_failed_capture_recovery_list_is_owned_and_live(self):
+        from app.langchain.repositories.evidence_tables import jobs
+        self.turn()
+        with self.db.sessions.begin() as session:
+            session.execute(update(jobs).values(state='failed',attempts=3,disposition='capture_failed'))
+        owned=self.learner.get_failed_signal_captures(self.owner)['items']
+        self.assertEqual(len(owned),1)
+        self.assertEqual(self.learner.get_failed_signal_captures(self.other)['items'],[])
+        self.learner.retry_learning_signal_capture(self.owner,owned[0]['turn_id'])
+        self.assertEqual(self.learner.get_failed_signal_captures(self.owner)['items'],[])
+
     async def test_source_review_converges_without_mastery_and_pending_stays_out(self):
         self.turn();await self.worker.run_once()
         context=self.learner.resolve_learning_context(ResolveLearningContextRequest(learner_id=self.owner,name='Calculus')).context_id
@@ -73,6 +106,20 @@ class SignalReviewTests(unittest.IsolatedAsyncioTestCase):
 
 
 class PromptBudgetTests(unittest.TestCase):
+    def test_roadmap_keeps_support_priority_misconceptions_and_a_chat_struggle(self):
+        from app.learner.prompt_context import compact
+        from app.learner.schemas import LearnerContextPacket,LearnerContextConcept
+        packet=LearnerContextPacket(concepts=[LearnerContextConcept(concept_id=str(i),name='Python lists',importance=.95,
+            relevance=.9,independent_item_count=0,misconceptions=['Mistakes concatenation for elementwise addition']) for i in range(8)],
+            observations=[dict(id='new-signal',kind='struggle',label='List concatenation',quote='I keep confusing concatenation with addition.')])
+        result=compact(packet)
+        self.assertEqual(result['observations'][0]['id'],'new-signal')
+        self.assertEqual(result['observations'][0]['scoring'],'unscored')
+        skill=result['skills'][0]
+        self.assertEqual(skill['importance'],.95);self.assertEqual(skill['independent_items'],0)
+        self.assertFalse(skill['target_supported']);self.assertIsNone(skill['mastery'])
+        self.assertIn('elementwise',skill['misconceptions'][0])
+
     def test_multilingual_packet_is_bounded_with_explicit_coverage(self):
         import json
         from app.learner.prompt_context import compact

@@ -31,9 +31,9 @@ async function chat(page: Page, paper = false, generation = false) {
   await page.route('**/api/v1/assessments/**', async route => {
     const path = new URL(route.request().url()).pathname;
     let body: unknown = [];
-    if (path.endsWith('/chat-drafts/flex-draft')) body = card;
+    if (path.endsWith('/chat-drafts/flex-draft')) body = {...card,hydration:{version:1,attempt}};
     else if (path.endsWith('/generation-jobs/flex-job/retry')) { job.state='running'; job.can_retry=false; job.error=null; body=job; }
-    else if (path.endsWith('/generation-jobs/flex-job')) body=job;
+    else if (path.endsWith('/generation-jobs/flex-job')) body=job.state==='completed'?{...job,hydration:{version:1,attempt}}:job;
     else if (path.endsWith('/flex-assessment/attempts') && route.request().method()==='POST') {
       starts++;
       attempt={id:'flex-attempt',assessment_id:value.id,revision:1,state:'draft',attempt_number:1,answers:{},grades:null,extraction:null,error:null,evidence_status:'none',created_at:created,grade_revision:1,grade_history:[]}; body=attempt;
@@ -59,13 +59,14 @@ async function chat(page: Page, paper = false, generation = false) {
 for (const width of [390,1280]) test(`mixed interactive practice keeps typed and multiple-choice answers at ${width}`, async ({page},info) => {
   await page.setViewportSize({width,height:844}); const state=await chat(page);
   const quiz=page.getByRole('region',{name:'Interactive quiz'});
+  await quiz.getByText('Practice details & help',{exact:true}).click();
   const skills=quiz.getByRole('list',{name:'Skills practised'});
   await expect(skills.getByText('Arabic for beginners',{exact:true})).toHaveCount(1);
   await expect(skills.getByText('Letter dots',{exact:true})).toBeVisible();
   await expect(skills.getByText('Letter shapes',{exact:true})).toBeVisible();
   await quiz.getByRole('radio',{name:'Mass × acceleration',exact:true}).check();
   await quiz.getByRole('button',{name:'Next',exact:true}).click();
-  await expect(quiz.getByText('True or false',{exact:true})).toBeVisible();
+  await expect(quiz.getByText(/^True or false/)).toBeVisible();
   await quiz.getByRole('radio',{name:'True',exact:true}).check();
   await quiz.getByRole('button',{name:'Next',exact:true}).click();
   await quiz.getByLabel('Answer question 3').fill('   ');
@@ -148,10 +149,11 @@ for (const width of [390,1280]) test(`completed assessment groups repeated topic
     answers:Object.fromEntries(state.value.questions.map(q=>[q.id,q.options?.[0]?.id ?? 'My explanation'])),
     grades:state.value.questions.map(q=>({question_id:q.id,score:2,confidence:1,feedback:'Correct.',concept_grades:{},misconceptions:[],outcome:'correct'})),
     extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]};
-  await page.route('**/api/v1/assessments/flex-assessment/attempts',route=>route.fulfill({json:[attempt]}));
+  state.setAttempt(attempt);
   await page.route('**/api/v1/assessments/attempts/flex-attempt',route=>route.fulfill({json:attempt}));
   await page.reload();
-  const coverage=page.getByRole('region',{name:'Topics covered',exact:true});
+  await page.getByText('Skills checked in this assessment',{exact:true}).click();
+  const coverage=page.getByRole('region',{name:'Assessment feedback'}).getByRole('list',{name:'Skills practised'});
   await expect(coverage.getByText('Arabic for beginners',{exact:true})).toHaveCount(1);
   await expect(coverage.getByText('Letter dots',{exact:true})).toHaveCount(1);
   await expect(coverage.getByText('Letter shapes',{exact:true})).toHaveCount(1);
@@ -168,13 +170,15 @@ test('simple grading shows correctness and feedback without marks or letter grad
     answers:Object.fromEntries(state.value.questions.map(q=>[q.id,q.options?.[0]?.id ?? 'My explanation'])),
     grades:state.value.questions.map(q=>({question_id:q.id,score:2,confidence:1,feedback:'Your reasoning is accurate.',concept_grades:{},misconceptions:[],outcome:'correct'})),
     extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]};
-  await page.route('**/api/v1/assessments/flex-assessment/attempts',route=>route.fulfill({json:[attempt]}));
+  state.setAttempt(attempt);
   await page.route('**/api/v1/assessments/attempts/flex-attempt',route=>route.fulfill({json:attempt}));
   await page.reload();
   const feedback=page.getByRole('region',{name:'Assessment feedback'});
   await expect(feedback).toBeVisible();
+  if(await feedback.getByText('Your reasoning is accurate.').count()===0)for(const summary of await feedback.locator('.assessment-result > summary').all())await summary.click();
   await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(4);
   await feedback.getByRole('button',{name:'List view',exact:true}).click();
+  if(await feedback.getByText('Your reasoning is accurate.').count()===0)for(const summary of await feedback.locator('.assessment-result > summary').all())await summary.click();
   await expect(feedback.getByText('Your reasoning is accurate.')).toHaveCount(4);
   await expect(feedback).not.toContainText(/marks|8\/8|2\/2|Practice grade|A ≥/i);
 });
@@ -209,6 +213,7 @@ test('results use compact two-column grids with full review and list views', asy
     extraction:null,error:null,evidence_status:'applied',created_at:created,grade_revision:1,grade_history:[]});
   await page.reload();
   const feedback=page.getByRole('region',{name:'Assessment feedback'});
+  await feedback.getByRole('button',{name:'Grid view',exact:true}).click();
   const cards=feedback.locator('.workspace-compact-grid > article');
   await expect(cards).toHaveCount(4);
   const boxes=await cards.evaluateAll(items=>items.map(item=>({x:item.getBoundingClientRect().x,y:item.getBoundingClientRect().y,height:item.getBoundingClientRect().height})));
@@ -224,6 +229,7 @@ test('results use compact two-column grids with full review and list views', asy
   await expect(dialog.getByRole('region',{name:'Question 3 feedback',exact:true})).toBeVisible();
   await page.keyboard.press('Escape');
   await feedback.getByRole('button',{name:'List view',exact:true}).click();
+  for(const summary of await feedback.locator('.assessment-result > summary').all())await summary.click();
   await expect(feedback.getByRole('group',{name:'Your answer'})).toHaveCount(4);
   await feedback.getByRole('button',{name:'Grid view',exact:true}).click();
   await expect(cards).toHaveCount(4);
@@ -264,6 +270,7 @@ test('results remain usable while learning updates run in the background', async
   await expect(feedback).toBeVisible();
   await expect(page.getByText('Results saved. Learning progress updates in the background.',{exact:true})).toBeVisible();
   await expect(page.getByText('Evaluating your answers…',{exact:true})).toHaveCount(0);
+  await feedback.getByRole('button',{name:'Grid view',exact:true}).click();
   await feedback.getByRole('button',{name:'Review result',exact:true}).first().click();
   await page.getByRole('dialog').getByRole('button',{name:'Next result',exact:true}).click();
   await expect(page.getByRole('dialog').getByRole('region',{name:'Question 2 feedback',exact:true})).toBeVisible();
@@ -280,6 +287,7 @@ test('question card Markdown renders in both chat and the assessments page', asy
     extraction: null, error: null, evidence_status: 'applied', created_at: created, grade_revision: 1, grade_history: [] };
   state.setAttempt(attempt); await page.reload();
   async function verify() {
+    await page.getByRole('button',{name:'Grid view',exact:true}).click();
     const preview = page.locator('.question-card-preview').first();
     await expect(preview.locator('strong')).toHaveText('Force');
     await expect(preview.locator('code')).toHaveText('mass');

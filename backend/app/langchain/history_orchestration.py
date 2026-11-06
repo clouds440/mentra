@@ -42,22 +42,15 @@ async def tool_reply(llm, conversation, service, owner, scope, additional_source
         from .event_tools import create_event_tools
         tools.extend(create_event_tools(service.events, scope['event_proposal_service'], owner, scope, budget))
         domains.update({tool.name: 'events' for tool in tools if tool.name in ('event_lookup', 'event_manage')})
-    if scope.get('learner_service') is not None:
+    if scope.get('learner_service') is not None and settings.learner_personalization_enabled:
         from .learner_tools import create_learner_tools
         from langchain_core.tools import StructuredTool
         for tool in create_learner_tools(scope['learner_service'], owner):
             if tool.name == 'get_student_weaknesses':
                 continue  # Same capability as get_study_recommendations.
-            is_read = tool.name != 'resolve_student_concept'
-            if is_read:
-                parallel_reads.add(tool.name)
+            parallel_reads.add(tool.name)
             async def read(_tool=tool, **arguments):
-                budget.call(write=_tool.name == 'resolve_student_concept')
-                if _tool.name == 'resolve_student_concept':
-                    result = await _tool.ainvoke(arguments)
-                    for key in list(budget.cache):
-                        if key.startswith('learner:'): budget.cache.pop(key)
-                    return result
+                budget.call(write=False)
                 key = 'learner:' + _tool.name + json.dumps(arguments, sort_keys=True, default=str)
                 if _tool.name == 'get_relevant_learner_context' and scope.get('_initial_learner_context') and arguments.get('query') == scope.get('current_answer_text') and not arguments.get('context_ids'):
                     return scope['_initial_learner_context']

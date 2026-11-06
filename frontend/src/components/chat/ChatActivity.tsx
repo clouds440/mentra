@@ -3,7 +3,8 @@ import type { AssessmentReference } from './AssessmentPreview';
 import { Skeleton } from '../ui/Skeleton';
 const AssessmentPreview = lazy(() => import('./AssessmentPreview').then(module => ({ default: module.AssessmentPreview })));
 import { apiEvents } from '../../services/api';
-import { chatStore } from '../../stores/chatStore';
+import { chatStore,useConversationField } from '../../stores/chatStore';
+import { assessmentViewKey } from '../assessments/assessmentDelivery';
 import { ThinkingIndicator } from './ChatMessage';
 import { WebsiteIcon, safeWebsite } from '../webSearch/WebsiteIcon';
 import type { WebsiteIdentity } from '../../types/webSearch';
@@ -38,9 +39,12 @@ function valid(value: unknown): value is Activity {
       && typeof v.assessment_card.title === 'string' && v.assessment_card.title.length <= 200);
 }
 
-export function ChatActivity({ conversationId, turnId, attempt, stopping = false }: { conversationId: string; turnId?: string; attempt?: number; stopping?: boolean }) {
+export function ChatActivity({ conversationId, turnId, attempt, responseSequence,stopping = false }: { conversationId: string; turnId?: string; attempt?: number;responseSequence?:number; stopping?: boolean }) {
   const [current, setCurrent] = useState<Activity>();
   const [assessment, setAssessment] = useState<AssessmentReference>();
+  const messages=useConversationField(conversationId,'messages');
+  const alreadyVisible=!!assessment&&messages.some(message=>message.sequence===responseSequence&&message.assessment_cards?.some(card=>
+    ('generation_job_id' in card ? card.generation_job_id : card.id??card.assessment_id)===assessment.id));
   const label = useActivityFeedback(current, !!turnId);
   useEffect(() => {
     setCurrent(undefined);
@@ -89,6 +93,6 @@ export function ChatActivity({ conversationId, turnId, attempt, stopping = false
   return <div aria-label="Current activity">
     <ThinkingIndicator label={stopping ? 'Stopping this response' : label} />
     {current && <div className="sm:ml-11">{sites(current)}</div>}
-    {assessment && !stopping && <div className="sm:ml-11"><Suspense fallback={<Skeleton variant="card" />}><AssessmentPreview key={`${assessment.kind}:${assessment.id}`} reference={assessment} conversationId={conversationId} /></Suspense></div>}
+    {assessment && !alreadyVisible && !stopping && <div className="sm:ml-11"><Suspense fallback={<Skeleton variant="card" />}><AssessmentPreview key={`${assessment.kind}:${assessment.id}`} reference={assessment} conversationId={conversationId} viewId={assessmentViewKey(conversationId,responseSequence??turnId??'pending',assessment.id)} /></Suspense></div>}
   </div>;
 }

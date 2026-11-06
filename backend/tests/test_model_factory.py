@@ -19,6 +19,16 @@ def configured_settings(**overrides: object) -> Settings:
 
 
 class ModelFactoryTests(unittest.TestCase):
+    def test_default_general_output_ceiling_reaches_provider(self):
+        captured=[]
+        class Model:
+            def __init__(self,**kwargs):captured.append(kwargs)
+        module=types.ModuleType('langchain_openai');module.ChatOpenAI=Model
+        with patch.dict(sys.modules,{'langchain_openai':module}):
+            factory=ModelFactory(configured_settings())
+            factory.get_model();factory.get_model(output_tokens=512)
+        self.assertEqual([value['max_tokens'] for value in captured],[4000,512])
+
     def test_official_deepseek_disables_thinking_for_structured_and_tool_requests(self):
         captured = []
         class FakeChatOpenAI:

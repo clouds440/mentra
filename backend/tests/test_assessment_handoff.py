@@ -37,6 +37,12 @@ class AssessmentHandoffTests(unittest.IsolatedAsyncioTestCase):
         value = self.service.chat.detail(self.owner, card['id'])['hydration']['attempt']
         self.assertEqual(value['id'], str(attempt.id))
         self.assertEqual(value['state'], 'graded')
+        pinned=self.service.repository.handoff(self.owner,card['assessment_id'],str(unused.id))
+        self.assertEqual(pinned['hydration']['attempt']['id'],str(unused.id))
+        pinned=self.service.chat.detail(self.owner,card['id'],str(unused.id))
+        self.assertEqual(pinned['hydration']['attempt']['id'],str(unused.id))
+        with self.assertRaises(AppError): self.service.repository.handoff(self.other,card['assessment_id'])
+        with self.assertRaises(AppError): self.service.repository.handoff(self.owner,card['assessment_id'],str(uuid4()))
 
     async def test_completed_job_refreshes_attempt_state_in_one_handoff(self):
         conversation, card = await self.card()
@@ -56,3 +62,20 @@ class AssessmentHandoffTests(unittest.IsolatedAsyncioTestCase):
         deleted = self.service.generation_jobs.get(self.owner, job['id'])
         self.assertTrue(deleted['result']['deleted'])
         self.assertIsNone(deleted['hydration']['attempt'])
+
+    async def test_completed_unsaved_job_follows_publication_and_quality_review(self):
+        conversation=self.conversation()
+        draft=await self.service.generate_chat(self.owner,conversation,self.request)
+        job=self.service.generation_jobs.enqueue(self.owner,AssessmentIntent.model_validate(
+            self.request.model_copy(update={'client_request_id':uuid4()}).model_dump()),conversation)
+        with self.db.sessions.begin() as session:
+            session.execute(update(generation_jobs).where(generation_jobs.c.id==job['id']).values(state='completed',result=draft))
+        saved=self.service.chat.publish(self.owner,draft['id'])
+        attempt=self.service.repository.start(self.owner,saved['assessment_id'],StartAttempt(client_request_id=uuid4()))
+        self.service.repository.review_item(self.owner,saved['assessment_id'],saved['assessment']['questions'][0]['id'],
+            saved['assessment']['revision'],str(uuid4()),'ambiguous')
+        current=self.service.generation_jobs.get(self.owner,job['id'])
+        self.assertEqual(current['result']['assessment_id'],saved['assessment_id'])
+        self.assertEqual(current['result']['assessment']['questions'][0]['validation']['state'],'invalidated')
+        self.assertEqual(current['hydration']['attempt']['id'],str(attempt.id))
+        self.assertNotIn('model_answer',str(current))

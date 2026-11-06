@@ -10,7 +10,7 @@ import re
 import unicodedata
 from array import array
 
-POLICY = 'assessment-admission-v1'
+POLICY = 'assessment-admission-v2'
 
 
 class UnsupportedCheck(ValueError): pass
@@ -90,16 +90,36 @@ def executable_choice_check(question):
         return False
 
 
+def arabic_dot_key_check(question):
+    """Finite fact check for explicit dot-count questions about ب / ت / ث."""
+    from app.langchain.generation_recovery import GenerationMismatch
+    if question.answer_mode!='single_choice':return False
+    plain=lambda value:''.join(c for c in unicodedata.normalize('NFKC',value) if unicodedata.category(c)!='Mn')
+    text=plain(question.prompt)
+    if not re.search('حرف|الحروف',text) or 'له' not in text:return False
+    count=2 if re.search('نقطت(?:ان|ين)',text) else 3 if re.search(r'ثلاث(?:ة)?\s+نقاط',text) else 1 if 'نقطة' in text else None
+    above=bool(re.search('فوق|أعلى|اعلى',text));below=bool(re.search('تحت|أسفل|اسفل',text))
+    if count is None or above==below:return False
+    option=next((option for option in question.options if option.id==question.correct_option_id),None)
+    key=re.sub(r'[*`\s\u200e\u200f]','',plain(option.label)) if option else ''
+    facts={'ب':(1,False),'ت':(2,True),'ث':(3,True)}
+    if key not in facts:return False
+    if facts[key]!=(count,above):raise GenerationMismatch('arabic_letter_dot_key_mismatch')
+    return True
+
+
 def check_question(question, *, planned_context=''):
     from app.langchain.generation_recovery import GenerationMismatch
     labels=[normalized(option.label) for option in question.options]
+    arabic_checked=arabic_dot_key_check(question)
     if len(labels)!=len(set(labels)): raise GenerationMismatch('duplicate_option_labels')
     if len(question.options)>6: raise GenerationMismatch('too_many_choice_options')
     answer=normalized(question.model_answer)
     if len(answer)>=24 and any(answer in normalized(context) for context in (question.context,planned_context) if context):
         raise GenerationMismatch('answer_leaked_in_question_context')
     return dict(policy=POLICY,state='admitted',checks=['shape','unique_choices','context_leak',
-        *(['executable_key'] if executable_choice_check(question) else [])],semantic_review='unverified')
+        *(['executable_key'] if executable_choice_check(question) else []),
+        *(['arabic_letter_dot_key'] if arabic_checked else [])],semantic_review='unverified')
 
 
 def answerable(assessment):
@@ -114,4 +134,4 @@ def stored_question(question, identifier):
 
 def public_validation(question):
     value=question.get('validation',{})
-    return {key:value[key] for key in ('state','policy','checks','semantic_review') if key in value} or dict(state='legacy',semantic_review='unverified')
+    return {key:value[key] for key in ('state','policy','checks','semantic_review') if key in value} or dict(state='unreviewed',semantic_review='unverified')

@@ -298,12 +298,17 @@ class AssessmentWorkflows:
         assessment, attempt = job['assessment'], job['attempt']
         lineage = assessment.get('practice_lineage') or {}
         exposed = bool(lineage.get('known_exposure'))
+        from sqlalchemy import select
+        from app.assessments.repositories.tables import prediction_snapshots
+        exposure=dict(unit_of_work._session.execute(select(prediction_snapshots.c.question_id,prediction_snapshots.c.first_exposure).where(
+            prediction_snapshots.c.learner_id==job['owner'],prediction_snapshots.c.attempt_id==job['id'])).all())
         questions = {question['id']:question for question in assessment['questions']}
         requests = []
         previous = {(receipt.get('question_id'),receipt['concept_id']):receipt['evidence_id'] for receipt in (attempt.get('evidence_receipt') or []) if receipt['accepted']}
         withdraw = []
         for grade in grades.questions:
             question = questions[grade.question_id]
+            item_exposed=exposed or exposure.get(grade.question_id) is False
             if question.get('validation',{}).get('state')=='invalidated':
                 withdraw.extend(receipt['evidence_id'] for receipt in (attempt.get('evidence_receipt') or [])
                     if receipt.get('question_id')==grade.question_id and receipt.get('accepted'))
@@ -323,12 +328,13 @@ class AssessmentWorkflows:
                     supersedes_evidence_id=previous.get((grade.question_id,concept)) if attempt['grade_revision']>1 else None,
                     result='CORRECT' if value.score==value.max_score else 'INCORRECT' if value.score==0 else 'PARTIAL',
                     score=value.score, max_score=value.max_score, difficulty=question['difficulty'],
-                    independence=0 if exposed else 1 if attempt.get('assistance') == 'independent' else .4 if attempt.get('assistance') == 'assisted' else None, hint_count=0,
+                    independence=0 if item_exposed else 1 if exposure.get(grade.question_id) is True and attempt.get('assistance') == 'independent' else .4 if attempt.get('assistance') == 'assisted' else None, hint_count=0,
                     evidence_confidence=min(grade.confidence,value.confidence), occurred_at=attempt['submitted_at'],
                     metadata=dict(assessment_id=assessment['id'], attempt_id=job['id'], question_id=grade.question_id, grading_revision='assessment-grading-v1',
                         question_score=grade.score, question_max_score=question['marks'],
                         misconceptions=grade.misconceptions, transcription_confirmed=bool(attempt['extraction']),
-                        assistance=attempt.get('assistance','unknown'), independence_provenance='known_answer_exposure' if exposed else 'self_reported',
+                        assistance=attempt.get('assistance','unknown'), independence_provenance='known_item_exposure' if item_exposed else 'self_reported' if exposure.get(grade.question_id) is True else 'exposure_unrecorded',
+                        known_item_exposure=item_exposed,
                         **(dict(known_exposure=True, source_attempt_id=provenance['attempt_id'], source_grade_revision=provenance['grade_revision']) if exposed else {}),
                         profile_context_version=job.get('profile_context_version'))))
         if withdraw:

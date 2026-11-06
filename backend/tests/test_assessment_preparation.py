@@ -86,6 +86,13 @@ class AssessmentPreparationTests(unittest.IsolatedAsyncioTestCase):
             result = await self.service.generate(self.owner, self.request)
         self.assertEqual(len(result.questions), 2)
 
+    async def test_personalization_off_avoids_learner_preparation_and_keeps_requested_quiz(self):
+        with patch('app.core.config.settings.learner_personalization_enabled',False),patch.object(
+                self.learner,'get_assessment_context',side_effect=AssertionError('Learner preparation must be bypassed')):
+            result=await self.service.generate(self.owner,self.request)
+        self.assertEqual(len(result.questions),2)
+        self.assertEqual(result.context_id,self.request.context_id)
+
     async def test_programming_errors_are_not_silenced_as_optional_failures(self):
         with patch.object(self.learner, 'get_assessment_context', side_effect=AssertionError('unexpected bug')):
             with self.assertRaisesRegex(AssertionError, 'unexpected bug'):

@@ -151,25 +151,9 @@ class GenerationRequest(Contract):
         return self
 
     def fingerprint_payload(self):
-        # Preserve replay hashes for generation requests created before revisions
-        # were supported. New optional defaults must not invalidate old retries.
-        exclude = {'revision_draft_id','revision_assessment_id','revision_instructions'} if not self.revision_instructions else set()
-        if not self.question_formats: exclude.add('question_formats')
-        if not self.revision_question_numbers: exclude.add('revision_question_numbers')
-        if not self.concept_ids: exclude.add('concept_ids')
-        if self.topic_id is None: exclude.add('topic_id')
-        if self.question_format == 'written': exclude.add('question_format')
-        if not self.paper_sections: exclude.add('paper_sections')
-        if self.total_marks is None: exclude.add('total_marks')
-        if self.duration_minutes is None or self.question_format != 'mock_paper': exclude.add('duration_minutes')
-        if not self.instructions: exclude.add('instructions')
-        if self.level is None: exclude.add('level')
-        # Omitted style remains replay-compatible with pre-automation requests.
-        if self.result_style in ('marks', None): exclude.add('result_style')
-        # Legacy retries remain valid; default interactive delivery changes UI,
-        # not the private generated question/answer identity.
-        if self.delivery in (None, 'interactive'): exclude.add('delivery')
-        return self.model_dump(mode='json', exclude=exclude)
+        """One current canonical contract; retry identity includes every field."""
+        return self.model_dump(mode='json')
+
 
 class AssessmentIntent(GenerationRequest):
     """A user can ask for an assessment without completing a configuration form."""

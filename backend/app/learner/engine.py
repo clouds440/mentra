@@ -60,6 +60,10 @@ class LearnerEngine:
                  clock: Callable[[], datetime] | None = None) -> None:
         self.repository = repository
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        if ranking_policy is None:
+            from app.core.config import settings
+            from .ranking import RecentPracticePolicy
+            if settings.learner_ranking_mode=='recent_due':ranking_policy=RecentPracticePolicy(self.clock)
         self.mastery_policy = mastery_policy or HeuristicMasteryPolicy()
         self.retention_policy = retention_policy or ExponentialRetentionPolicy()
         self.concepts = ConceptService(repository, semantic_resolver)
@@ -121,17 +125,18 @@ class LearnerEngine:
             known.update(dict(zip(missing, values, strict=True)))
         return {label: known[label].id for label in request.labels}
 
-    async def resolve_encountered_concept(self, request: ConceptResolutionRequest) -> ConceptResolution:
-        """A chat-mentioned skill may be organized, but never scored by mention."""
-        from starlette.concurrency import run_in_threadpool
-        if not request.context_id or not hasattr(self.generated_concepts.resolver, 'organize'):
-            return await run_in_threadpool(self.resolve_concept, request)
-        context = await run_in_threadpool(self.contexts.require, request.learner_id, request.context_id)
-        values = await self.topics.resolve(GeneratedConceptsRequest(learner_id=request.learner_id,
-            context_id=request.context_id, topic=(request.surrounding_text or context.name)[:200], labels=[request.label]), published=True)
-        value = values[0]
-        return ConceptResolution(status='resolved', concept_id=value.id, canonical_name=value.canonical_name,
-            confidence=.8, method='organized_subskill')
+    def lookup_student_concept(self, request: ConceptResolutionRequest):
+        """Read-only owned lookup. Unknown mentions are captured after the reply."""
+        context_id=request.context_id
+        if not context_id:
+            contexts=self.repository.page_for_learner(request.learner_id,0,2,'ACTIVE')
+            if len(contexts)!=1:
+                return dict(status='needs_context',matches=[])
+            context_id=contexts[0].id
+        self.contexts.require(request.learner_id,context_id)
+        matches=self.repository.lookup_owned_skill(request.learner_id,context_id,lookup_forms(request.label))
+        return dict(status='resolved' if len(matches)==1 else 'ambiguous' if matches else 'review_needed',
+            context_id=context_id,matches=matches,scoring='not_admitted')
 
     def get_learning_topics(self, request):
         return self.topics.page(request)
@@ -194,8 +199,23 @@ class LearnerEngine:
     def review_learning_signal(self,owner,identifier,context_id,concept_id,source_revision):
         return self.repository.review_signal(owner,identifier,context_id,concept_id,source_revision)
 
+    async def review_new_learning_signal(self,owner,identifier,context_id,label,source_revision):
+        from starlette.concurrency import run_in_threadpool
+        from app.core.exceptions import AppError
+        source=await run_in_threadpool(self.repository.signal_for_review,owner,identifier)
+        if source['status']=='withdrawn' or source['source_revision']!=source_revision:
+            raise AppError('LEARNING_SIGNAL_CHANGED','This source changed. Refresh before reviewing it.',409)
+        context=await run_in_threadpool(self.contexts.require,owner,context_id)
+        bindings=await self.prepare_assessment_concept_labels(GeneratedConceptsRequest(learner_id=owner,
+            context_id=context_id,topic=source['topic'] or context.name,labels=[label]))
+        return await run_in_threadpool(self.repository.review_signal,owner,identifier,context_id,
+            bindings[label],source_revision,allow_staged=True)
+
     def retry_learning_signal_capture(self,owner,turn_id):
         return self.repository.retry_signal_capture(owner,turn_id)
+
+    def get_failed_signal_captures(self,owner):
+        return self.repository.failed_signal_captures(owner)
 
     def get_topic_practice_concepts(self, owner, context_id, topic_id, limit=5):
         self.contexts.require(owner, context_id)

@@ -23,7 +23,7 @@ const toolLabels: Record<string, string> = {
   get_study_recommendations: 'Finding what to study next',
   get_student_weaknesses: 'Finding useful practice topics',
   get_verification_candidates: 'Finding concepts to review',
-  resolve_student_concept: 'Understanding the topic',
+  lookup_student_concept: 'Understanding the topic',
   search_study_material: 'Reading your study material',
   get_study_source_chunk: 'Reading the relevant passage',
   assessment_generate: 'Creating your practice questions',
@@ -48,7 +48,7 @@ const messageLabels: Record<string, string> = {
 // These reads are routine prompt preparation, not a distinct user-facing action.
 const quietTools = new Set([
   'profile_context', 'get_active_learning_contexts',
-  'resolve_student_concept', 'enable_workflow_tools',
+  'lookup_student_concept', 'enable_workflow_tools',
 ]);
 
 const completedLabels: Record<string, string> = {

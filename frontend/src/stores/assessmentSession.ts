@@ -1,9 +1,10 @@
 import { invalidatePageCache } from '../services/pageCache';
 import { useSyncExternalStore } from 'react';
 import { assessments } from '../services/assessments';
-import type { AssessmentAttempt } from '../types/assessments';
+import type { Assessment,AssessmentAttempt } from '../types/assessments';
 
 export interface QuizDraft {
+  paper:Assessment;
   signature: string; answers: Record<string, string>; index: number;
   assistance: 'unknown' | 'independent' | 'assisted'; operation: string;
   attempt: AssessmentAttempt | null;
@@ -14,12 +15,15 @@ const needsRefresh = (attempt: AssessmentAttempt) => attempt.source_pending || e
 class AssessmentSession {
   private owner: string | null = null;
   private drafts = new Map<string, QuizDraft>();
+  private draftTimers=new Map<string,ReturnType<typeof setTimeout>>();
+  private cacheKey(owner:string,key:string){return `mentra:assessment-draft:${owner}:${key}`;}
   private attempts = new Map<string, AssessmentAttempt>();
   private submitting = new Set<string>();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private controller = new AbortController();
   private listeners = new Set<() => void>();
-  private status = { evaluating: 0, submitting: 0 };
+  private storageUnavailable=false;
+  private status = { evaluating: 0, submitting: 0, draftStorageUnavailable:false };
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   snapshot = () => this.status;
   attempt = (id: string) => this.attempts.get(id);
@@ -27,8 +31,8 @@ class AssessmentSession {
     return [...this.attempts.values()].filter(value => value.assessment_id === assessment && (value.source_pending || value.source_error || value.state !== 'draft' || Object.keys(value.answers).length > 0)).sort((a,b) => b.attempt_number - a.attempt_number)[0];
   }
   private publish() {
-    const next = { evaluating: [...this.attempts.values()].filter(evaluating).length, submitting: this.submitting.size };
-    if (next.evaluating !== this.status.evaluating || next.submitting !== this.status.submitting) this.status = next;
+    const next = { evaluating: [...this.attempts.values()].filter(evaluating).length, submitting: this.submitting.size,draftStorageUnavailable:this.storageUnavailable };
+    if (next.evaluating !== this.status.evaluating || next.submitting !== this.status.submitting || next.draftStorageUnavailable!==this.status.draftStorageUnavailable) this.status = next;
     this.listeners.forEach(fn => fn());
   }
   private accept(attempt: AssessmentAttempt) {
@@ -47,11 +51,43 @@ class AssessmentSession {
     }
     this.controller.abort(); this.controller = new AbortController();
     this.timers.forEach(clearTimeout); this.timers.clear();
-    this.drafts.clear(); this.attempts.clear(); this.submitting.clear(); this.owner = owner; this.publish();
+    this.draftTimers.forEach(clearTimeout);this.draftTimers.clear();
+    if(this.owner){try{const prefix=this.cacheKey(this.owner,'');for(const key of Object.keys(sessionStorage))if(key.startsWith(prefix))sessionStorage.removeItem(key);}catch{/* Browser storage can be unavailable. */}}
+    try{for(const key of Object.keys(sessionStorage))if(key.startsWith('mentra:assessment-draft:')&&(!owner||!key.startsWith(this.cacheKey(owner,''))))sessionStorage.removeItem(key);}catch{/* No cross-owner cache is read. */}
+    this.drafts.clear(); this.attempts.clear(); this.submitting.clear(); this.owner = owner;this.storageUnavailable=false; this.publish();
   }
-  draft(owner: string | undefined, key: string) { return owner === this.owner ? this.drafts.get(key) : undefined; }
-  remember(owner: string | undefined, key: string, draft: QuizDraft) { if (owner && owner === this.owner) this.drafts.set(key, draft); }
-  forget(owner: string | undefined, key: string) { if (owner === this.owner) this.drafts.delete(key); }
+  draft(owner: string | undefined, key: string) {
+    if(!owner||owner!==this.owner)return undefined;
+    if(!this.drafts.has(key)){try{const text=sessionStorage.getItem(this.cacheKey(owner,key));if(text){const value=JSON.parse(text) as QuizDraft;if(value.paper?.id&&value.signature&&value.answers&&value.operation)this.drafts.set(key,value);}}catch{/* Keep an invalid cache out of the current contract. */}}
+    return this.drafts.get(key);
+  }
+  remember(owner: string | undefined, key: string, draft: QuizDraft) {
+    if(!owner||owner!==this.owner)return;
+    this.drafts.set(key,draft);
+    const timer=this.draftTimers.get(key);if(timer)clearTimeout(timer);
+    // Paint/input stay local. Browser-session durability is saved after input,
+    // with a pagehide flush; no question-navigation request reaches the server.
+    this.draftTimers.set(key,setTimeout(()=>{this.draftTimers.delete(key);this.persistDraft(owner,key);},250));
+  }
+  persistDraft(owner:string,key:string){
+    if(owner!==this.owner)return;
+    try{const value=this.drafts.get(key);if(value)sessionStorage.setItem(this.cacheKey(owner,key),JSON.stringify(value));}catch{this.storageUnavailable=true;this.publish();}
+  }
+  flushDrafts(){if(this.owner)for(const key of this.drafts.keys())this.persistDraft(this.owner,key);}
+  archiveDraft(owner:string|undefined,key:string){
+    if(!owner||owner!==this.owner)return;
+    const value=this.draft(owner,key);if(!value)return;
+    const archived=`${value.paper.id}:recovery:${Date.now()}:${crypto.randomUUID()}`;
+    this.drafts.set(archived,value);this.persistDraft(owner,archived);this.forget(owner,key);
+    window.dispatchEvent(new CustomEvent('mentra:assessment-recovery',{detail:value.paper.id}));
+  }
+  recoveryKeys(owner:string|undefined,assessment:string){
+    if(!owner||owner!==this.owner)return [];
+    const prefix=`${assessment}:recovery:`;const keys=new Set([...this.drafts.keys()].filter(key=>key.startsWith(prefix)));
+    try{const storedPrefix=this.cacheKey(owner,prefix);for(const key of Object.keys(sessionStorage))if(key.startsWith(storedPrefix))keys.add(key.slice(this.cacheKey(owner,'').length));}catch{/* In-memory recovery remains available. */}
+    return [...keys].sort();
+  }
+  forget(owner: string | undefined, key: string) { if (owner&&owner === this.owner){this.drafts.delete(key);const timer=this.draftTimers.get(key);if(timer)clearTimeout(timer);this.draftTimers.delete(key);try{sessionStorage.removeItem(this.cacheKey(owner,key));}catch{/* Nothing to restore. */}} }
   begin(owner: string | undefined, operation: string) { if (owner && owner === this.owner) { this.submitting.add(operation); this.publish(); } }
   end(owner: string | undefined, operation: string) { if (owner === this.owner) { this.submitting.delete(operation); this.publish(); } }
   observe(owner: string | undefined, attempt: AssessmentAttempt) {
@@ -80,6 +116,7 @@ class AssessmentSession {
   }
 }
 export const assessmentSession = new AssessmentSession();
+window.addEventListener('pagehide',()=>assessmentSession.flushDrafts());
 export const useAssessmentEvaluation = () => useSyncExternalStore(assessmentSession.subscribe, assessmentSession.snapshot);
 export const useEvaluatedAttempt = (id: string) => useSyncExternalStore(assessmentSession.subscribe, () => assessmentSession.attempt(id));
 

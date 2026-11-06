@@ -80,8 +80,11 @@ class ChatService:
                 if image_context:
                     context['chat_images'] = [dict(id=image['id'], filename=image['filename']) for image in image_context]
             if learner_context is not None:
-                sources.append(PromptSource.LEARNER_CONTEXT)
-                context['learner'] = learner_context.model_dump(mode='json', exclude_none=True)
+                from app.core.config import settings
+                if settings.learner_personalization_enabled:
+                    sources.append(PromptSource.LEARNER_CONTEXT)
+                    from app.learner.prompt_context import compact
+                    context['learner'] = compact(learner_context)
             if source_packet is not None:
                 sources.append(PromptSource.RAG_CONTEXT)
                 context['study_sources'] = dict(source_packet, sources=[

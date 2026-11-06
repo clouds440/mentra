@@ -4,6 +4,13 @@ import yaml
 
 
 class DeploymentConfigTests(unittest.TestCase):
+    def test_general_output_ceiling_is_consistent_for_api_and_workers(self):
+        from app.core.config import Settings
+        config=yaml.safe_load((Path(__file__).resolve().parents[2]/'docker-compose.yml').read_text())
+        self.assertEqual(Settings(_env_file=None).chat_output_token_reserve,4000)
+        for role in ('backend','assessment-worker','summarizer'):
+            self.assertEqual(config['services'][role]['environment']['CHAT_OUTPUT_TOKEN_RESERVE'],'${CHAT_OUTPUT_TOKEN_RESERVE:-4000}')
+
     def test_reranker_cpu_budget_reaches_api_and_assessment_worker(self):
         from app.core.config import Settings
         from pydantic import ValidationError

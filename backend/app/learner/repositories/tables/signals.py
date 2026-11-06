@@ -1,4 +1,4 @@
-from sqlalchemy import Table,Column,Text,Integer,Double,Uuid,ForeignKey,ForeignKeyConstraint,UniqueConstraint,CheckConstraint,Index
+from sqlalchemy import Table,Column,Text,Integer,Double,Uuid,ForeignKey,ForeignKeyConstraint,UniqueConstraint,CheckConstraint,Index,text
 from sqlalchemy.dialects.postgresql import JSONB
 from .common import metadata,timestamp
 
@@ -18,4 +18,5 @@ learning_signals=Table('learning_signal',metadata,
     CheckConstraint("kind IN ('encounter','struggle','self_report','guided_work','demonstration') AND status IN ('active','pending','withdrawn') AND source_kind IN ('user','attachment') AND confidence BETWEEN 0 AND 1 AND span_start >= 0 AND span_end > span_start AND attempt > 0",name='learning_signal_bounds'),
     Index('idx_learning_signal_context','learner_id','context_id','status','observed_at','id'),
     Index('idx_learning_signal_recent','learner_id','status','observed_at','id'),
-    Index('idx_learning_signal_label','learner_id','normalized_label','topic','observed_at'))
+    Index('idx_learning_signal_label','learner_id','normalized_label','topic','observed_at'),
+    Index('idx_learning_signal_search',text("to_tsvector('simple'::regconfig, (normalized_label || ' '::text) || topic)"),postgresql_using='gin'))

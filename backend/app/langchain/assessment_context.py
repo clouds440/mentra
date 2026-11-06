@@ -17,11 +17,12 @@ def optional_read(stage, action):
 
 
 def optional_context(workflows, owner, request, *, reuse=False):
+    from app.core.config import settings
     preparation, profile = None, None
     stages = []
-    if not reuse:
+    if not reuse and settings.learner_personalization_enabled:
         stages.append(('learner', lambda: workflows.learner.get_assessment_context(owner, request.context_id, request.topic, request.concept_ids,profile=workflows.profile)))
-    if workflows.profile and reuse:
+    if workflows.profile and (reuse or not settings.learner_personalization_enabled):
         stages.append(('profile', lambda: workflows.profile.prompt_snapshot(owner)))
     # One sync task: no shared session or parallel checkout fanout at pool size 1.
     for stage, action in stages:

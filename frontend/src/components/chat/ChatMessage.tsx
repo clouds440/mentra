@@ -16,6 +16,7 @@ import { WebCitation } from '../webSearch/WebCitation';
 import { CopyResponse } from './CopyResponse';
 import { ChatSourceButtons, useSourceTabs } from './ChatSources';
 import { ContextualActions } from './ContextualActions';
+import { assessmentViewKey } from '../assessments/assessmentDelivery';
 
 const ChatAssessmentCard = lazy(() => import('../assessments/ChatAssessmentCard').then(module => ({ default: module.ChatAssessmentCard })));
 const AssessmentGenerationCard = lazy(() => import('../assessments/AssessmentGenerationCard').then(module => ({ default: module.AssessmentGenerationCard })));
@@ -102,7 +103,7 @@ export const ChatMessage = memo(function ChatMessage({ message, reveal = false, 
             {message.conversation_id && grouped && <ConversationalQuestionnaire cards={inputCards} messageId={message.id} conversationId={message.conversation_id} />}
             {message.conversation_id && message.interactions?.filter(card => !grouped || !inputCards.some(input => input.id === card.id)).map(card => <ChoiceCard key={card.id} card={card} messageId={message.id} conversationId={message.conversation_id!} />)}
             {!!message.event_proposals?.length && <div className="chat-domain-card">{message.event_proposals.map(proposal => <EventProposalCard key={proposal.id} initial={proposal} />)}</div>}
-            {!!message.assessment_cards?.length && <div className="chat-domain-card"><Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} />)}</Suspense></div>}
+            {!!message.assessment_cards?.length && <div className="chat-domain-card"><Suspense fallback={<Skeleton variant="card" />}>{message.assessment_cards.map(card => 'generation_job_id' in card ? <AssessmentGenerationCard key={card.id} id={card.generation_job_id} title={card.title} viewId={assessmentViewKey(message.conversation_id??'',message.sequence??message.id,card.generation_job_id)} /> : <ChatAssessmentCard key={card.attempt_id ?? card.id ?? card.assessment_id} initial={card} viewId={assessmentViewKey(message.conversation_id??'',message.sequence??message.id,card.id??card.assessment_id??card.assessment.id)} />)}</Suspense></div>}
             {!!message.event_references?.length && <div className="mt-3 flex flex-wrap gap-3">{message.event_references.map(event => <Link key={event.id} className={buttonStyles({ variant: 'secondary', size: 'sm', className: 'max-w-full text-left' })} to={`/progress?tab=events&event=${event.id}`}>{event.title}</Link>)}</div>}
             <ChatSourceButtons message={message} />
             {!!message.content.trim() && <CopyResponse content={message.content} />}

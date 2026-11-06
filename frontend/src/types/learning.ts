@@ -5,6 +5,13 @@ export interface LearningConcept {
   retention_confidence: number | null; knowledge_status: string; misconceptions: string[];
 }
 
+export interface LearningSignal {
+  id:string;turn_id:string;context_id:string|null;concept_id:string|null;
+  kind:'encounter'|'struggle'|'self_report'|'guided_work'|'demonstration';label:string;topic:string;
+  quote:string;source_revision:string;source_kind:'user'|'attachment';status:'active'|'pending';observed_at:string;
+  details:{reviewed?:boolean;scoring?:string};
+}
+
 export interface LearningTopic { id: string; name: string; scope: string; context_id?: string | null; matching_skills?: string[]; subskill_count: number; checked_count: number; revision: number }
 export interface LearningTopicsPage { items: LearningTopic[]; total: number; ungrouped_count: number; limit: number; offset: number; generated_at: string }
 export interface TopicSkillsPage { topic: LearningTopic; items: LearningConcept[]; total: number; limit: number; offset: number; generated_at: string }

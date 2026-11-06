@@ -27,7 +27,8 @@ async function fixture(page: Page, written = false, failFirst = false) {
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname, method=route.request().method();
     let body: unknown;
-    if (path.endsWith('/conversations/polish-chat/status')) body=snapshot();
+    if(path.endsWith('/sheet-assessment/handoff'))body={...card,hydration:{version:1,attempt}};
+    else if (path.endsWith('/conversations/polish-chat/status')) body=snapshot();
     else if (path.endsWith('/conversations/turns')) {
       const request=route.request().postDataJSON(); expect(request.attachment_ids).toEqual(['sheet-attachment']); turnId=request.client_turn_id; userSequence=3;
       begin(); attempt={...attempt,source_pending:true};
@@ -67,7 +68,8 @@ for (const [kind,mime] of [['pdf','application/pdf'],['txt','text/plain'],['png'
   const state=await fixture(page);
   await page.goto('/chat/polish-chat');
   const quiz=page.getByRole('region',{name:'Interactive quiz'});
-  await expect(quiz.getByRole('button',{name:'Upload answersheet',exact:true})).toBeVisible();
+  await quiz.getByText('Practice details & help',{exact:true}).click();
+  await expect(quiz.getByRole('button',{name:'Upload answer sheet',exact:true})).toBeVisible();
   await expect(quiz.getByLabel('Upload assessment answer sheet')).toHaveAttribute('accept',/\.pdf.*\.txt/);
   await quiz.getByLabel('Upload assessment answer sheet').setInputFiles({name:`answers.${kind}`,mimeType:mime,buffer:Buffer.from('1. A\n2. Inertia resists changes in motion.')});
   const sheet=page.getByRole('region',{name:'Assessment answer sheet'});
@@ -113,6 +115,7 @@ test('regular chat attachment updates the existing interactive card and the new 
 test('failed upload retries the same attempt and upload receipt', async ({page}) => {
   const state=await fixture(page,false,true);
   await page.goto('/chat/polish-chat');
+  await page.getByText('Practice details & help',{exact:true}).click();
   await page.getByLabel('Upload assessment answer sheet').setInputFiles({name:'answers.txt',mimeType:'text/plain',buffer:Buffer.from('1. A\n2. Inertia.')});
   await page.getByRole('button',{name:'Retry upload',exact:true}).click();
   await expect(page.getByRole('region',{name:'Assessment answer sheet'})).toBeVisible();
@@ -129,7 +132,7 @@ test('queued chat extraction failure at the same attempt revision restores editi
   state.failSource();
   await expect(page.getByRole('alert').filter({hasText:'Your existing answers are saved.'})).toHaveCount(2);
   await expect(page.getByLabel('Answer 2',{exact:true})).toHaveCount(2);
-  await expect(page.getByRole('button',{name:'Upload answersheet',exact:true})).toHaveCount(2);
+  await expect(page.getByRole('button',{name:'Upload answer sheet',exact:true})).toHaveCount(2);
 });
 
 test('self-reported AI use shows the adjusted total with original correctness', async ({page},info) => {

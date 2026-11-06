@@ -362,12 +362,10 @@ class EventPersistenceTests(unittest.TestCase):
         self.assertEqual(self.service.detail(self.owner, event['id'])['reminder_state'], 'delivered')
         self.assertEqual(self.service.remove(self.owner, event['id'], 1, str(uuid4()))['outcome'], 'deleted')
 
-    def test_retention_migration_downgrade_preserves_live_rows_and_update_fence(self):
+    def test_current_retention_fence_preserves_live_rows_across_service_restart(self):
         event = self.create()
-        with self.db.engine.connect() as connection:
-            command.downgrade(migration_config(connection), '20261009_0007')
-            connection.commit()
-        # Read only historical columns: the current application requires head.
+        # Current-contract restart; no historical client/schema compatibility.
+        self.service=create_events_service(self.db.sessions,clock=lambda:self.now)
         with self.db.sessions() as session:
             self.assertEqual(session.scalar(select(events.c.revision).where(events.c.id == event['id'])), 1)
         with self.service.repository.transactions.write(self.owner) as uow:

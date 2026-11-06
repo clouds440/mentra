@@ -8,6 +8,24 @@ from app.core.identifiers import canonical_learner_id
 
 
 class StatesStore(PostgresRepositoryBase):
+    def rebuild_ranking_projection(self,owner,after_id='',limit=256):
+        """Replace derived rows from CURRENT state, without replaying/changing beliefs."""
+        from ..tables.projections import ranking_projection
+        from app.learner.scoring.projection import project
+        with self.transaction(learner_ids=[owner]) as repository:
+            session=repository._active_session
+            rows=list(session.execute(select(states).where(states.c.learner_id==owner,states.c.concept_id>after_id)
+                .order_by(states.c.concept_id).limit(min(256,max(1,limit)))).mappings())
+            rebuilt=0
+            for row in rows:
+                state=self._state_from_row(row);half_life=state.policy_data.get('ranking_half_life')
+                value=project(state,half_life) if half_life else None
+                if not value:continue
+                stmt=insert(ranking_projection).values(learner_id=owner,concept_id=state.concept_id,state_version=state.version,**value)
+                session.execute(stmt.on_conflict_do_update(index_elements=['learner_id','concept_id'],
+                    set_={key:stmt.excluded[key] for key in value|{'state_version':state.version}}));rebuilt+=1
+            return dict(scanned=len(rows),rebuilt=rebuilt,skipped=len(rows)-rebuilt,next_cursor=rows[-1]['concept_id'] if len(rows)==min(256,max(1,limit)) else None)
+
     def get_state(self, learner_id, concept_id):
         def read():
             with self._session() as session:

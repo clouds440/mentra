@@ -776,6 +776,16 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .choice-option:has(:disabled) { cursor: default; }
 .choice-option > span { min-width: 0; overflow-wrap: anywhere; }
 .interactive-surface .field-control { background: transparent; }
+.assessment-inline { background: transparent; border: 0; }
+.assessment-prompt { font-size: 1.0625em; line-height: 1.7; }
+.assessment-interaction .choice-option { min-height: 44px; border-radius: 9px; padding: .75rem; }
+.assessment-interaction .choice-option input { width: 16px; height: 16px; flex-shrink: 0; }
+.assessment-inline > [aria-label='Assessment header'] h2 { margin-block: 0; }
+.assessment-inline > [aria-label='Assessment header'] p { margin-block: 0 .25rem; }
+.assessment-details > summary { width: fit-content; }
+.assessment-feedback .question-feedback { border: 0; padding: 0; border-radius: 0; }
+.assessment-inline .assessment-feedback .workspace-panel { background: transparent; border-color: transparent; }
+@media (pointer: coarse) { .assessment-inline .ui-button, .assessment-interaction .ui-button, .assessment-details > summary, .assessment-result > summary { min-height: 44px; } .assessment-inline .icon-control { min-width: 44px; } }
 .chart-controls { border-top: 1px solid rgb(var(--border) / .65); padding: .75rem 0 .25rem; display: grid; gap: .625rem; }
 .chart-control-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
 .chart-control-header > .visual-actions { flex: none; max-width: 100%; }

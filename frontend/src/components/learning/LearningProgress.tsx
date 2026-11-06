@@ -7,6 +7,7 @@ import { usePageRefresh, refreshPage } from '../../hooks/usePageRefresh';
 import { ApiError } from '../../services/api';
 import { EventAgenda } from '../events/EventAgenda';
 import { ConceptReview } from './ConceptReview';
+import { LearningObservations } from './LearningObservations';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
@@ -52,6 +53,7 @@ function Progress() {
     <section role="tabpanel" id="progress-panel-learning" aria-labelledby="progress-learning" hidden={tab !== 'learning'} className="space-y-6">
       <PageToolbar><div><h2 className="font-medium text-heading">Learning overview</h2><p className="mt-1 text-xs text-muted">Choose which learning area to explore. Topic suggestions become progress estimates after you practise.</p></div><Select className="max-w-sm" aria-label="Learning context" value={selection} onChange={event => { setLearning(null); setTotalConcepts(null); setSelection(event.target.value); }}><option value="all">All learning areas</option><option value="">Active learning areas</option>{contexts.map(item => <option key={item.context_id} value={item.context_id}>{item.name}</option>)}</Select></PageToolbar>
       {tab==='learning' && bootstrap && <ConceptReview initial={bootstrap.candidates} contexts={contexts} onReviewed={() => setReload(value => value+1)} />}
+      {tab==='learning' && bootstrap && <LearningObservations contexts={contexts} context={context} onReviewed={()=>setReload(value=>value+1)} />}
       {!learning && !error && <PageSkeleton layout="table" />}
       {learning && <><QuickReview learning={learning} context={context} /><div className="grid gap-3 sm:grid-cols-3">{[['Topics in your learning areas', totalConcepts ?? '—'], ['Practice suggestions', learning.recommendations.length], ['Review suggestions', learning.verification.filter(item => supportedReview(item.reason)).length]].map(([label, value]) => <div key={String(label)} className="workspace-panel"><p className="text-xs text-muted">{label}</p><p className="mt-3 text-3xl font-medium text-heading">{value}</p></div>)}</div>
         {tab === 'learning' && <TopicProgress key={selection} context={context} allContexts={allContexts} reload={reload} onTotal={setTotalConcepts} />}

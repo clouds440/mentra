@@ -79,9 +79,11 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Generate a two question quiz on Linear equations');
   await page.getByRole('button',{name:'Send message'}).click();
   const cards = page.getByRole('region',{name:'Chat assessment'});
+  await cards.first().getByText('Practice details & help',{exact:true}).click();
   await expect(cards.first().getByRole('button',{name:'Add to assessments',exact:true})).toBeEnabled();
   expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(0);
   await page.reload();
+  await cards.first().getByText('Practice details & help',{exact:true}).click();
   await expect(cards.first().getByRole('button',{name:'Add to assessments',exact:true})).toBeEnabled();
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Evaluate these answers:\n1. First partial explanation.\n2. Second partial explanation.');
   await page.getByRole('button',{name:'Send message'}).click();
@@ -108,7 +110,7 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await page.goto('/');
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Generate a two question quiz on Linear equations');
   await page.getByRole('button',{name:'Send message'}).click();
-  await expect(page.getByRole('region',{name:'Chat assessment'}).last().getByText('Saved to your assessments.',{exact:true})).toBeVisible();
+  await expect.poll(async()=>((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).length).toBe(2);
   const chatId=page.url().split('/chat/')[1];
   expect(chatId).toBeTruthy();
   const history=await (await page.request.get(`${origin}/api/v1/conversations/${chatId}/messages`)).json();

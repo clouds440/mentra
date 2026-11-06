@@ -3,6 +3,12 @@ import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
+test.afterEach(async({page},info)=>{
+  if(info.status===info.expectedStatus)return;
+  const response=await page.request.get('http://127.0.0.1:18003/api/v1/documents');
+  if(response.ok())console.log('Synthetic ingestion diagnostics',JSON.stringify((await response.json()).items?.map((item:{id:string;active_generation_id:string|null;jobs:unknown[]})=>({id:item.id,active_generation_id:item.active_generation_id,jobs:item.jobs}))));
+});
+
 test('chat file extraction and explicit Library admission survive reload', async ({ page }) => {
   await page.goto('/register');
   await page.getByLabel('Username', { exact: true }).fill(`files_${randomUUID().slice(0, 8)}`);
@@ -30,5 +36,5 @@ test('chat file extraction and explicit Library admission survive reload', async
   await page.reload();
   await expect(message.getByRole('link', { name: 'View in Library',exact:true })).toBeVisible();
   await message.getByRole('link', { name: 'View in Library',exact:true }).click();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('Ready to study - Source details and versions', { exact: true })).toBeVisible({ timeout: 20_000 });
 });

@@ -1,4 +1,14 @@
 import { apiRequest } from './api';
+import type { LearningSignal } from '../types/learning';
+
+export const learningSignals=(signal:AbortSignal,context='',query='',offset=0)=>{
+  const params=new URLSearchParams({status:'all',query,offset:String(offset),limit:'20'});if(context)params.set('context_id',context);
+  return apiRequest<{items:LearningSignal[];next_offset:number|null}>(`/api/v1/learning/signals?${params}`,{signal,cache:'no-store'});
+};
+export const withdrawLearningSignal=(id:string,signal:AbortSignal)=>apiRequest<void>(`/api/v1/learning/signals/${id}`,{method:'DELETE',signal});
+export const failedSignalCaptures=(signal:AbortSignal)=>apiRequest<{items:{turn_id:string;conversation_id:string;title:string;disposition:string|null}[]}>('/api/v1/learning/signal-captures',{signal,cache:'no-store'});
+export const retrySignalCapture=(turn:string,signal:AbortSignal)=>apiRequest(`/api/v1/learning/signal-captures/${turn}/retry`,{method:'POST',signal});
+export const reviewLearningSignal=(item:LearningSignal,context:string,target:{concept_id:string}|{new_label:string},signal:AbortSignal)=>apiRequest(`/api/v1/learning/signals/${item.id}/review`,{method:'POST',signal,body:JSON.stringify({context_id:context,...target,source_revision:item.source_revision})});
 import type { ProgressExplanation } from '../types/learning';
 import type { LearningTopicsPage, TopicSkillsPage } from '../types/learning';
 function topicParams(context: string, query: string, offset: number, allContexts: boolean) {
