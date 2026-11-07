@@ -14,6 +14,7 @@ from app.web_search.normalization import normalize_results, source_date
 from app.web_search.urls import in_scope, public_url
 from app.web_search.citations import web_citations, historical_web_markers
 from app.web_search.provider import ProviderError
+from app.web_search.preview import PublisherRead
 from app.langchain.activity import ActivityPublisher, ActivityUpdate, publish_activity
 from app.langchain.web_tools import create_web_tools, commit_web_result
 from app.langchain.tool_execution import ToolExecutor
@@ -103,6 +104,37 @@ class ContractTests(unittest.TestCase):
 
 
 class ServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_blocked_publisher_then_successful_alternative_finishes_generally(self):
+        from unittest.mock import patch
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        self.setup_service()
+        self.provider.search.return_value={'results':{'web':[
+            dict(url='https://example.org/article',title='A publisher',description='A version overview'),
+            dict(url='https://docs.python.org/3/whatsnew/',title='Official release notes',description='Release notes')]}}
+        state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
+        class Script:
+            async def ainvoke_messages(self,source,messages,**kwargs):
+                receipts=[json.loads(item.content) for item in messages if isinstance(item,ToolMessage)]
+                if not receipts:
+                    return AIMessage(content='',tool_calls=[dict(name='web_search',args={'query':'release notes'},id='lookup')])
+                if len(receipts)==1:
+                    return AIMessage(content='',tool_calls=[dict(name='web_read',args={'source_token':'W1'},id='blocked')])
+                if len(receipts)==2:
+                    assert receipts[-1]['publisher_status']=='blocked'
+                    return AIMessage(content='',tool_calls=[dict(name='web_read',args={'source_token':'W2'},id='alternative')])
+                context=context_data(kwargs['system_context'])
+                assert len(context['web_evidence']['page_read_results'])==2
+                return AIMessage(content='',tool_calls=[dict(name='FinishResponse',id='finish',args=dict(
+                    content='The requested release details are supported by the official page [[W2]].',outcome='partial',
+                    tasks=[dict(id='release-details',state='completed',operation='web_read',grounding='web',receipt_ids=['receipt3'])]))])
+        with patch('app.langchain.web_reader.read_publisher_result',AsyncMock(side_effect=[
+                PublisherRead('blocked','PUBLISHER_HTTP_403',http_status=403),
+                PublisherRead('ok',page={'url':'https://docs.python.org/3/whatsnew/','blocks':['Complete release details']})])):
+            await tool_reply(Script(),[HumanMessage(content='Explain the release details from a source')],None,str(uuid4()),state,(),{})
+        self.assertEqual(state['response_outcome']['state'],'completed')
+        self.assertFalse(state['response_outcome']['retryable'])
+
     async def test_forecast_reads_returned_page_after_snippet_search(self):
         from unittest.mock import patch
         from app.langchain.history_orchestration import tool_reply
@@ -121,7 +153,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
                     return AIMessage(content='',tool_calls=[dict(name='web_read',args={'source_token':'W1'},id='read')])
                 assert receipts[-1]['blocks'] == blocks, receipts[-1]
                 return AIMessage(content='Seven verified daily rows from the forecast [[W1]].')
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock(return_value={'url':'https://www.bbc.com/weather/1176615','blocks':blocks})) as read:
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock(return_value=PublisherRead('ok',page={'url':'https://www.bbc.com/weather/1176615','blocks':blocks}))) as read:
             await tool_reply(Script(),[HumanMessage(content='Tell me the Islamabad weather for one week')],None,str(uuid4()),state,(),{})
         read.assert_awaited_once()
         self.provider.search.assert_awaited_once()

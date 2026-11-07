@@ -2,6 +2,8 @@
 import asyncio
 from contextlib import asynccontextmanager
 import re
+import zlib
+from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import urljoin
 
@@ -23,8 +25,8 @@ _read_errors = (TimeoutError, httpx.HTTPError, ValueError, KeyError, OSError)
 
 
 @asynccontextmanager
-async def _publisher_response(url, transport=None):
-    async with asyncio.timeout(4), _checks, httpx.AsyncClient(
+async def _publisher_response(url, transport=None, *, timeout=4):
+    async with asyncio.timeout(timeout), _checks, httpx.AsyncClient(
         transport=transport or PublicTransport(), trust_env=False, follow_redirects=False,
     ) as client:
         for _ in range(4):
@@ -32,7 +34,9 @@ async def _publisher_response(url, transport=None):
             if not url.startswith('https://'):
                 break
             client.cookies.clear()
-            async with client.stream('GET', url, headers={'Accept-Encoding': 'identity'}) as response:
+            async with client.stream('GET', url, headers={'Accept-Encoding': 'gzip, deflate',
+                    'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1',
+                    'User-Agent': 'Mentra/1.0 (public-source reader)'}) as response:
                 if response.is_redirect:
                     url = urljoin(url, response.headers['location'])
                     continue
@@ -61,35 +65,78 @@ async def check_preview(url: str, *, transport=None) -> PreviewResult:
     return PreviewResult(status='unavailable')
 
 
-async def read_publisher(url: str, *, transport=None):
+@dataclass(frozen=True)
+class PublisherRead:
+    status: str
+    code: str | None = None
+    page: dict | None = None
+    http_status: int | None = None
+    truncated: bool = False
+
+
+async def read_publisher_result(url: str, *, transport=None):
     limit = 768 * 1024
+    truncated = False
     try:
-        async with _publisher_response(url, transport) as (url, response):
+        async with _publisher_response(url, transport, timeout=6) as (url, response):
             if _media(response) not in ('text/html', 'application/xhtml+xml', 'text/plain'):
-                return None
-            if response.headers.get('content-encoding', 'identity').lower() != 'identity':
-                return None
+                return PublisherRead('unsupported', 'PUBLISHER_UNSUPPORTED_CONTENT')
+            coding = response.headers.get('content-encoding', 'identity').strip().lower()
+            if coding not in ('identity', 'gzip', 'deflate'):
+                return PublisherRead('unsupported', 'PUBLISHER_UNSUPPORTED_ENCODING')
+            # In-memory/test transports may supply an already decoded response.
+            preloaded = response.is_stream_consumed
+            decoder = zlib.decompressobj(31 if coding == 'gzip' else 15) if coding != 'identity' and not preloaded else None
             data = bytearray()
-            async for chunk in response.aiter_bytes(chunk_size=16384):
-                data.extend(chunk[:limit - len(data)])
-                if len(data) >= limit:
+            received = 0
+            async def chunks():
+                if preloaded:
+                    yield response.content[:limit+1]
+                else:
+                    async for chunk in response.aiter_raw(chunk_size=16384):
+                        yield chunk
+            # Bound encoded and decoded bytes independently. A compressed bomb
+            # must never allocate the unbounded decoded publisher response.
+            async for chunk in chunks():
+                encoded_remaining = max(0, limit-received)
+                received += len(chunk)
+                remaining = limit - len(data)
+                decoded = decoder.decompress(chunk[:encoded_remaining], remaining) if decoder else chunk[:remaining]
+                data.extend(decoded)
+                if len(data) >= limit or received > limit:
+                    truncated = True
                     break
+            if decoder and not truncated and not decoder.eof:
+                return PublisherRead('unavailable', 'PUBLISHER_INVALID_ENCODING')
             encoding = response.encoding or 'utf-8'
             html = data.decode(encoding, errors='replace')
             plain = _media(response) == 'text/plain'
-    except _read_errors + (LookupError,):
-        return None
+    except httpx.HTTPStatusError as error:
+        status = error.response.status_code
+        category = 'blocked' if status in (401,403) else 'rate_limited' if status == 429 else 'not_found' if status in (404,410) else 'unavailable'
+        return PublisherRead(category, 'PUBLISHER_HTTP_' + str(status), http_status=status)
+    except (TimeoutError, httpx.TimeoutException):
+        return PublisherRead('timeout', 'PUBLISHER_TIMEOUT')
+    except _read_errors + (LookupError, zlib.error):
+        return PublisherRead('unavailable', 'PUBLISHER_READ_FAILED')
     if plain:
         blocks = [line.strip()[:4000] for line in html[:30000].splitlines() if line.strip()][:100]
-        return dict(url=url, blocks=blocks, links=[]) if blocks else None
-    return await asyncio.to_thread(_reader_html, url, html)
+        page = dict(url=url, blocks=blocks, links=[]) if blocks else None
+    else:
+        page = await asyncio.to_thread(_reader_html, url, html)
+    return PublisherRead('ok', page=page, truncated=truncated) if page else PublisherRead('empty', 'PUBLISHER_NO_READABLE_TEXT')
+
+
+async def read_publisher(url: str, *, transport=None):
+    """Public Reader endpoint keeps its page-or-null presentation contract."""
+    return (await read_publisher_result(url, transport=transport)).page
 
 
 def _reader_html(url, html):
     soup = BeautifulSoup(html, 'html.parser')
     for tag in soup.select('script,style,noscript,iframe,template,nav,aside,footer,form,[hidden],[aria-hidden="true"]'):
         tag.decompose()
-    content = soup.select_one('article, main, [role="main"]') or soup.body or soup
+    content = soup.select_one('main, [role="main"]') or soup.select_one('article') or soup.body or soup
     blocks = []
     remaining = 30000
     for tag in content.select('h1,h2,h3,h4,p,li,blockquote,pre,tr')[:150]:

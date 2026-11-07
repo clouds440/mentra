@@ -49,6 +49,30 @@ def record_receipt(scope, call, result):
                 task.update(state='completed', superseded_by=call['id'], retryable=False)
 
 
+def receipt_requirements(tasks, declared):
+    """Requested deliverables define completion; exploratory attempts do not.
+
+    Referenced required reads and every write/uncertain effect stay required.
+    An unreferenced read failure can be incidental only when the model has
+    explicitly accounted for, and completed, all requested deliverables.
+    """
+    required_tasks = [task for task in declared if task.get('required', True)]
+    fulfilled = bool(required_tasks) and all(task.get('state') == 'completed' for task in required_tasks)
+    required_refs = {ref for task in required_tasks for ref in task.get('receipt_ids', [])}
+    known_refs = {ref for task in tasks for ref in (task['id'], *task.get('_aliases', []))}
+    fulfilled = fulfilled and required_refs <= known_refs
+    optional_refs = {ref for task in declared if not task.get('required', True) for ref in task.get('receipt_ids', [])} - required_refs
+    result = []
+    for task in tasks:
+        identifiers = {task['id'], *task.get('_aliases', [])}
+        read_only = task.get('effect_certainty') == 'read_only' and not task.get('job_id')
+        incidental = fulfilled and task.get('state') in ('failed', 'partial') and not identifiers & required_refs
+        optional = read_only and not identifiers & required_refs and (
+            bool(identifiers & optional_refs) or incidental or task.get('required') is False)
+        result.append({key:value for key,value in dict(task, required=not optional).items() if key != '_aliases'})
+    return result
+
+
 def finalize(scope, decision):
     canonical = scope.get('_task_receipts', {})
     # Short server-assigned references reduce copying errors and protocol tokens.
@@ -72,20 +96,18 @@ def finalize(scope, decision):
                 for ref in task.receipt_ids):
             from app.core.exceptions import AppError
             raise AppError('CHAT_INVALID_RECEIPT', 'The requested action has no matching successful receipt.', 502)
-    optional = {receipts[ref]['id'] for task in decision.tasks if not task.required for ref in task.receipt_ids
-                if receipts[ref].get('effect_certainty') == 'read_only'}
-    required_refs = {receipts[ref]['id'] for task in decision.tasks if task.required for ref in task.receipt_ids}
-    optional -= required_refs
-    tasks = [dict(task, required=task['id'] not in optional) for task in canonical.values() if not task.get('superseded_by')]
     declared = [task.model_dump(mode='json') for task in decision.tasks]
+    tasks = receipt_requirements([dict(task, _aliases=[call_id]) for call_id,task in canonical.items()
+        if not task.get('superseded_by')], declared)
     failed = [task for task in tasks if task['required'] and task['state'] in ('failed','partial')]
     explicit_failed = any(task.required and task.state in ('failed','partial') for task in decision.tasks)
     cards = scope.get('assessment_cards', [])
     usable = any(task['state'] in ('completed','in_progress','awaiting_input') for task in tasks) or bool(cards)
     state = decision.outcome
     required_tasks = [task for task in decision.tasks if task.required]
-    if state in ('partial', 'failed') and required_tasks and all(task.state == 'completed' for task in required_tasks) and not failed and any(
-            not task.required and task.state in ('partial', 'failed') for task in decision.tasks):
+    if state in ('partial', 'failed') and required_tasks and all(task.state == 'completed' for task in required_tasks) and not failed and (any(
+            not task.required and task.state in ('partial', 'failed') for task in decision.tasks) or any(
+            not task['required'] and task['state'] in ('partial','failed') for task in tasks)):
         # A failed optional illustration/extra lookup cannot contradict the
         # verified completion of every required deliverable. Unaccounted failures
         # and writes still use the canonical required-receipt checks below.
@@ -114,7 +136,10 @@ def finalize(scope, decision):
 
 def normalize_optional_outcome(outcome):
     """Correct old optional-only failures in read projections, without rewriting history."""
-    tasks = outcome.get('tasks', [])
+    saved_tasks = outcome.get('tasks', [])
+    declared = [task for task in saved_tasks if task.get('declared')]
+    tasks = [*receipt_requirements([task for task in saved_tasks if not task.get('declared')], declared), *declared]
+    outcome = dict(outcome, tasks=tasks)
     if (outcome.get('state') in ('partial', 'failed') and outcome.get('reason_code') == 'REQUEST_OUTCOME_INCOMPLETE'
             and any(task.get('declared') and task.get('required', True) for task in tasks)
             and all(task.get('state') == 'completed' for task in tasks if task.get('required', True))

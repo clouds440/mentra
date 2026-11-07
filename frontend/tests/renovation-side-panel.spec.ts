@@ -10,6 +10,27 @@ async function openWebsiteActions(page: Page, preview: Locator) {
 
 const date = '2026-11-05T00:00:00Z';
 
+for (const requiredGap of [false,true]) test(`read diagnostics show unfinished only for an actual required gap: ${requiredGap}`, async ({page}) => {
+  const fixture=await richChat(page,'The supported requested answer.');
+  const outcome={version:3,state:requiredGap ? 'partial' : 'completed',retryable:requiredGap,
+    reason_code:requiredGap ? 'REQUEST_OUTCOME_INCOMPLETE' : null,tasks:[
+      {id:'blocked',operation:'web_read',state:'failed',required:requiredGap,effect_certainty:'read_only'},
+      {id:'answer',state:requiredGap ? 'partial' : 'completed',required:true,declared:true}]};
+  Object.assign(fixture.items[1],{response_outcome:outcome,tool_warnings:[{tool_name:'web_read',code:'PUBLISHER_HTTP_403',message:'Publisher denied access.',task_impact:'optional',effect_certainty:'read_only'}]});
+  fixture.setTurn({id:'read-turn',state:'FAILED',attempt:1,user_sequence:1,assistant_sequence:2,selection:fixture.conversation.selection,error:'Part of this response is unfinished.',can_retry:requiredGap,response_outcome:outcome});
+  await page.goto('/chat/polish-chat');
+  await expect(page.getByText('The supported requested answer.',{exact:true})).toBeVisible();
+  const notice=page.getByRole('article',{name:'Mentra response',exact:true}).getByRole('status');
+  if(requiredGap) await expect(notice).toContainText('unfinished');
+  else {
+    await expect(notice).toHaveCount(0);
+    await expect(page.getByRole('button',{name:'Retry response',exact:true})).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByText('The supported requested answer.',{exact:true})).toBeVisible();
+    await expect(notice).toHaveCount(0);
+  }
+});
+
 test('repeated source clicks focus one existing tab and reopen the hidden panel', async ({page}) => {
   await page.setViewportSize({width:1440,height:900});
   await citations(page);

@@ -2,7 +2,7 @@ import unittest
 
 import httpx
 
-from app.web_search.preview import check_preview, read_publisher
+from app.web_search.preview import check_preview, read_publisher, read_publisher_result
 
 
 class WebPreviewTests(unittest.IsolatedAsyncioTestCase):
@@ -62,7 +62,42 @@ class WebPreviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, dict(url='https://example.org/article', blocks=['Selected heading', 'A useful excerpt.'],
             links=[dict(url='https://example.org/next', title='Related page')]))
 
-    async def test_reader_rejects_compressed_and_nontext_documents(self):
+    async def test_reader_rejects_invalid_compression_and_nontext_documents(self):
         for headers in ({'content-type': 'text/html', 'content-encoding': 'gzip'}, {'content-type': 'application/pdf'}):
             transport = httpx.MockTransport(lambda _: httpx.Response(200, headers=headers))
             self.assertIsNone(await read_publisher('https://example.org/file', transport=transport))
+
+    async def test_valid_compression_and_main_content_work_across_unrelated_publishers(self):
+        import gzip, zlib
+        html = b'<body><article>Unrelated sidebar</article><main><h1>Release notes</h1><p>Version 12.3 is available.</p></main></body>'
+        for host, coding, encode in (('docs.python.org','gzip',gzip.compress),('www.metoffice.gov.uk','deflate',zlib.compress),('en.wikipedia.org','identity',lambda value:value)):
+            with self.subTest(host=host,coding=coding):
+                def remote(request):
+                    self.assertNotIn('cookie',request.headers)
+                    self.assertNotIn('authorization',request.headers)
+                    return httpx.Response(200,headers={'content-type':'text/html','content-encoding':coding},stream=httpx.ByteStream(encode(html)))
+                result = await read_publisher_result('https://'+host+'/public-page',transport=httpx.MockTransport(remote))
+                self.assertEqual(result.status,'ok')
+                self.assertEqual(result.page['blocks'],['Release notes','Version 12.3 is available.'])
+
+    async def test_compression_bomb_is_bounded_and_reported_truncated(self):
+        import gzip
+        data = gzip.compress(b'<main><p>'+b'x'*(2*1024*1024)+b'</p></main>')
+        transport = httpx.MockTransport(lambda _:httpx.Response(200,headers={'content-type':'text/html','content-encoding':'gzip'},stream=httpx.ByteStream(data)))
+        result = await read_publisher_result('https://example.org/page',transport=transport)
+        self.assertEqual(result.status,'ok')
+        self.assertTrue(result.truncated)
+        self.assertLessEqual(sum(map(len,result.page['blocks'])),30000)
+
+    async def test_access_denied_timeout_and_unsupported_are_distinct(self):
+        for code, expected in ((403,'blocked'),(429,'rate_limited'),(404,'not_found'),(503,'unavailable')):
+            with self.subTest(code=code):
+                result=await read_publisher_result('https://example.org/page',transport=httpx.MockTransport(lambda _:httpx.Response(code)))
+                self.assertEqual(result.status,expected)
+                self.assertEqual(result.http_status,code)
+                self.assertIsNone(result.page)
+        def timeout(request): raise httpx.ReadTimeout('test')
+        result=await read_publisher_result('https://example.org/page',transport=httpx.MockTransport(timeout))
+        self.assertEqual(result.status,'timeout')
+        result=await read_publisher_result('https://example.org/page',transport=httpx.MockTransport(lambda _:httpx.Response(200,headers={'content-type':'application/pdf'})))
+        self.assertEqual(result.status,'unsupported')

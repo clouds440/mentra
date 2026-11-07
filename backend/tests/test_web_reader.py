@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 from app.history_management.budgets import ToolBudget
 from app.langchain.web_reader import create_web_reader
 from app.langchain.web_tools import packet_cost
-from app.web_search.preview import _reader_html
+from app.web_search.preview import _reader_html, PublisherRead
 
 
 class WebReaderTests(unittest.IsolatedAsyncioTestCase):
@@ -16,7 +16,7 @@ class WebReaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_reads_full_forecast_under_existing_citation_without_new_search(self):
         tool = self.make_tool()
         blocks = [f'November {day}: Sunny. High 27 C, Low 12 C' for day in range(7, 14)]
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock(return_value={'url':self.scope['web_sources'][0].url,'blocks':blocks})) as read:
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock(return_value=PublisherRead('ok',page={'url':self.scope['web_sources'][0].url,'blocks':blocks}))) as read:
             value = await tool.ainvoke({'source_token':'W2'})
         self.assertEqual(value['outcome'], 'ok')
         self.assertEqual(value['source_token'], 'W2')
@@ -27,21 +27,30 @@ class WebReaderTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unadmitted_source_does_not_make_network_request(self):
         tool = self.make_tool()
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock()) as read:
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock()) as read:
             self.assertEqual((await tool.ainvoke({'source_token':'W1'}))['outcome'], 'invalid_input')
         read.assert_not_awaited()
 
     async def test_blocked_page_is_explicit_and_physical_reads_are_bounded(self):
         tool = self.make_tool()
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock(return_value=None)) as read:
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock(return_value=PublisherRead('blocked','PUBLISHER_HTTP_403',http_status=403))) as read:
             for _ in range(3):
                 self.assertEqual((await tool.ainvoke({'source_token':'W2'}))['outcome'], 'unavailable')
             self.assertEqual((await tool.ainvoke({'source_token':'W2'}))['outcome'], 'budget_exhausted')
         self.assertEqual(read.await_count, 3)
 
+    async def test_temporary_failures_are_retryable_but_access_denial_is_not(self):
+        for status,expected in (('blocked',False),('timeout',True),('rate_limited',True),('unsupported',False)):
+            tool=self.make_tool()
+            with patch('app.langchain.web_reader.read_publisher_result',AsyncMock(return_value=PublisherRead(status,'PUBLISHER_TEST'))):
+                value=await tool.ainvoke({'source_token':'W2'})
+            self.assertEqual(value['publisher_status'],status)
+            self.assertEqual(value['retryable'],expected)
+            self.assertEqual(self.scope['_web_page_results']['W2']['publisher_status'],status)
+
     async def test_page_packet_fits_byte_and_token_budgets(self):
         tool = self.make_tool(max_result_bytes=2200, max_result_tokens=600)
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock(return_value={'url':'https://www.bbc.com/weather/1176615','blocks':['Forecast row '+str(i)+' '+('Sunny ' * 30) for i in range(100)]})):
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock(return_value=PublisherRead('ok',page={'url':'https://www.bbc.com/weather/1176615','blocks':['Forecast row '+str(i)+' '+('Sunny ' * 30) for i in range(100)]}))):
             result = await tool.ainvoke({'source_token':'W2'})
         self.assertTrue(result['details_omitted'])
         self.assertTrue(result['blocks'])
@@ -51,7 +60,7 @@ class WebReaderTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_exhausted_packet_budget_does_not_fetch(self):
         tool = self.make_tool(max_result_tokens=100)
-        with patch('app.langchain.web_reader.read_publisher', AsyncMock()) as read:
+        with patch('app.langchain.web_reader.read_publisher_result', AsyncMock()) as read:
             self.assertEqual((await tool.ainvoke({'source_token':'W2'}))['outcome'], 'budget_exhausted')
         read.assert_not_awaited()
 

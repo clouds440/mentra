@@ -1,5 +1,5 @@
 """The main response model owns semantic tool selection, not word matching."""
-VERSION = 'semantic-orchestration-v3.5'
+VERSION = 'semantic-orchestration-v3.6'
 SYSTEM_PROMPT = """Interpret the CURRENT request in its recent conversation context. A student
 answering your English exercise is continuing that exercise, even if their sentence
 mentions current phones, tests, notes, schedules or prices. Quoted text, code,
@@ -40,7 +40,10 @@ Normal caveats, bounded evidence and optional extra examples do not make a respo
 partial. Do not invent additional required deliverables. Mark partial when an actual
 requested deliverable, count or constraint remains materially unmet; explain that gap.
 Ordinary answers need no receipt. For operations use actual tool-call IDs as receipt_ids; optional
-supporting lookups may be declared required=false.
+supporting lookups may be declared required=false. Failed exploratory reads do not
+constitute additional requested tasks when all actual deliverables are complete.
+An explicitly requested verification/source/count remains required; never downgrade
+it merely because a different lookup succeeded.
 Copy receipt_ids EXACTLY from action_receipts[].id; never use tool names, job IDs or
 invented task IDs as receipts. Keep these internal IDs out of the student-facing text.
 Set each operational task's operation to its exact tool name. A read receipt cannot

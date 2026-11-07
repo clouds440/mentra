@@ -28,6 +28,8 @@ def web_evidence_context(scope, *, research_available=False):
     if not (sources or searches or scope.get('_web_physical_calls') or scope.get('_research_physical_calls')):
         return None
     return dict(search_calls=scope.get('_web_physical_calls', 0),
+        page_reads=scope.get('_web_page_reads', 0),
+        page_read_results=list(scope.get('_web_page_results', {}).values()),
         research_calls=scope.get('_research_physical_calls', 0),
         source_count=len(sources),
         checked_image_count=len({image.url for source in sources for image in source.images}),

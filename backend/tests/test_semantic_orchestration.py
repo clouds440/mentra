@@ -20,6 +20,62 @@ def scope():
 
 
 class OutcomeTests(unittest.TestCase):
+    def test_unreferenced_failed_reads_do_not_invent_missing_deliverables(self):
+        for operation in ('web_read','web_search','history_lookup','search_study_material','user_memory'):
+            for reference in ('good','receipt2'):
+                with self.subTest(operation=operation,reference=reference):
+                    value=scope()
+                    record_receipt(value,dict(id='blocked',name=operation,args={'query':'first','action':'recall'}),dict(outcome='unavailable'))
+                    record_receipt(value,dict(id='good',name=operation,args={'query':'alternative','action':'recall'}),dict(outcome='ok'))
+                    finalize(value,FinishResponse(content='All requested details are supported.',outcome='partial',tasks=[
+                        dict(id='answer',state='completed',operation=operation,receipt_ids=[reference])]))
+                    self.assertEqual(value['response_outcome']['state'],'completed')
+                    self.assertFalse(value['response_outcome']['retryable'])
+                    self.assertFalse(value['response_outcome']['tasks'][0]['required'])
+
+    def test_required_verification_stays_partial_even_when_an_alternative_succeeds(self):
+        for refs in (['blocked'],['blocked','good']):
+            value=scope()
+            record_receipt(value,dict(id='blocked',name='web_read',args={'source_token':'W1'}),dict(outcome='unavailable'))
+            record_receipt(value,dict(id='good',name='web_read',args={'source_token':'W2'}),dict(outcome='ok'))
+            finalize(value,FinishResponse(content='One source is available; required cross-verification is missing.',tasks=[
+                dict(id='verify',state='completed' if len(refs)==2 else 'partial',receipt_ids=refs)]))
+            self.assertEqual(value['response_outcome']['state'],'partial')
+            self.assertTrue(value['response_outcome']['tasks'][0]['required'])
+
+    def test_unreferenced_write_failures_and_uncertain_effects_cannot_be_downgraded(self):
+        for certainty in ('not_started','unknown','committed'):
+            value=scope()
+            record_receipt(value,dict(id='write',name='event_manage',args={}),dict(outcome='unavailable',effect_certainty=certainty))
+            record_receipt(value,dict(id='read',name='web_search',args={}),dict(outcome='ok'))
+            finalize(value,FinishResponse(content='The explanation is complete.',tasks=[dict(id='explain',state='completed',receipt_ids=['read'])]))
+            self.assertEqual(value['response_outcome']['state'],'partial')
+            self.assertTrue(value['response_outcome']['tasks'][0]['required'])
+
+    def test_saved_incidental_read_failure_is_corrected_for_message_and_turn_without_writes(self):
+        from copy import deepcopy
+        from app.chat.repositories.response_outcomes import project_outcomes,turn_outcome
+        original=dict(version=3,state='partial',retryable=False,reason_code='REQUEST_OUTCOME_INCOMPLETE',tasks=[
+            dict(id='receipt1',operation='web_search',state='completed',effect_certainty='read_only',required=True),
+            dict(id='receipt2',operation='web_read',state='failed',effect_certainty='read_only',required=True),
+            dict(id='receipt3',operation='web_read',state='completed',effect_certainty='read_only',required=True),
+            dict(id='answer',declared=True,required=True,state='completed',receipt_ids=['receipt1','receipt3'])])
+        before=deepcopy(original)
+        projected=project_outcomes(None,'synthetic',[dict(sequence=2,response_outcome=original)])[0]
+        turn=turn_outcome(dict(state='FAILED',response_outcome=original),[])
+        self.assertEqual(projected['response_outcome']['state'],'completed')
+        self.assertEqual(turn['state'],'completed')
+        self.assertEqual(original,before)
+        original['tasks'][-1]['state']='partial'
+        self.assertEqual(turn_outcome(dict(state='FAILED',response_outcome=original),[])['state'],'partial')
+
+    def test_saved_unknown_required_references_cannot_be_assumed_fulfilled(self):
+        from app.langchain.task_outcomes import normalize_optional_outcome
+        value=dict(state='partial',retryable=True,reason_code='REQUEST_OUTCOME_INCOMPLETE',tasks=[
+            dict(id='receipt1',state='failed',required=True,effect_certainty='read_only'),
+            dict(id='answer',declared=True,state='completed',required=True,receipt_ids=['unresolved-reference'])])
+        self.assertEqual(normalize_optional_outcome(value)['state'],'partial')
+
     def test_synthesis_failure_preserves_native_results_without_another_model_call(self):
         from app.langchain.recovery_receipts import partial_response
         value=scope()
