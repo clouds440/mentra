@@ -20,13 +20,12 @@ class SendTurn(BaseModel):
     interaction_response: InteractionResponse | None = None
     challenge_action: ChallengeAction | None = None
     retry: bool = False
-    resume_from: UUID | None = None
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=4)
     timezone: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode='after')
     def isolated_challenge_action(self):
-        if self.challenge_action and (self.interaction_response or self.source_annotations or self.attachment_ids or self.resume_from):
+        if self.challenge_action and (self.interaction_response or self.source_annotations or self.attachment_ids):
             raise ValueError('Send difficulty actions separately from attachments, selections and other interactions.')
         return self
 

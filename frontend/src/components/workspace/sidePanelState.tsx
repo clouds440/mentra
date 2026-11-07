@@ -54,8 +54,12 @@ export function SidePanelProvider({ children }: { children: ReactNode }) {
           return { ...value, tabs: value.tabs.map(open => open === parent ? tabAt(parent.id, entries, entries.length - 1) : open),
             active: parent.id, visible: true };
         }
-        const existing = tab.reuseKey && value.tabs.find(open => open.reuseKey === tab.reuseKey);
-        if (existing) return { ...value, active: existing.id, visible: true };
+        const existing = tab.reuseKey && value.tabs.find(open => open.entries.some(item => item.reuseKey === tab.reuseKey));
+        if (existing) {
+          const cursor = existing.entries.findIndex(item => item.reuseKey === tab.reuseKey);
+          const entries = existing.entries.map((item, index) => index === cursor ? { ...entry, entryId: item.entryId } : item);
+          return { ...value, tabs: value.tabs.map(open => open === existing ? tabAt(open.id, entries, cursor) : open), active: existing.id, visible: true };
+        }
         // A source opened from a list gets its own tab with a local return
         // point. Closing the originating tab does not invalidate that history.
         const entries = parent ? [parent.entries[parent.cursor], entry] : [entry];

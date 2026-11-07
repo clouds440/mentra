@@ -365,7 +365,9 @@ class ChatStore {
       body = { conversation_id: id, client_turn_id: view.turn.id, expected_revision: view.revision, content: message.content, timezone: message.timezone, source_annotations: message.source_annotations, interaction_response: message.interaction_response, challenge_action:message.challenge_action, retrieval: view.turn.selection, attachment_ids: view.turn.attachment_ids ?? [] };
     }
     body ??= { conversation_id: id, client_turn_id: crypto.randomUUID(), expected_revision: this.chats.get(id)?.revision ?? 0, content, retrieval, challenge_action:challengeAction, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, interaction_response: interactionResponse, source_annotations: sourceAnnotations.length ? sourceAnnotations : undefined, attachment_ids: attachments.map(file => file.id) };
-    body = { ...body, retry, resume_from: body.resume_from ?? (!retry && (view.turn?.can_resume || view.turn?.can_retry) ? view.turn.id : undefined) };
+    // Typed sends are new, durable exchanges. Only the explicit Retry/Resume
+    // controls may continue and replace an existing response.
+    body = { ...body, retry };
     this.pending.set(id, body);
     const started = performance.now();
     this.responseStarts.set(id, started);
@@ -378,9 +380,6 @@ class ChatStore {
     if (!this.alive(signal)) return;
     try {
       const page = await api.sendTurn(body, signal); if (!this.alive(signal)) return;
-      if (body.resume_from && (page.turn?.id === body.resume_from || page.continued_turn_id === body.resume_from)) {
-        this.pending.delete(id); await this.persist(() => cache.pending(null, id));
-      }
       performance.measure('mentra.chat.acknowledged', { start: started });
       await this.applyPage(page);
       if (!this.alive(signal)) return;

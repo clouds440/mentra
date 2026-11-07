@@ -104,6 +104,10 @@ class ResponseRuntime:
         self.executor.results = state.get('results', {})
         self.executor.outages = state.get('outages', {})
         self.selection.active = set(value['active']) & self.selection.by_name.keys()
+        # A previously failed snippet-only lookup can use the newly available
+        # reader on explicit retry without discarding completed tool receipts.
+        if self.scope.get('web_sources') and 'web_read' in self.selection.by_name:
+            self.selection.active.add('web_read')
         if value.get('policy_version')!=POLICY_VERSION:
             self.selection.active.update(self.selection.common)
         self.selection.explicit = set(value.get('explicit', [])) & self.selection.by_name.keys()

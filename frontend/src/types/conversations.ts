@@ -16,7 +16,6 @@ export interface PendingTurn {
   conversation_id: string; client_turn_id: string; expected_revision: number;
   content: string; retrieval: ChatSelection; retry?: boolean;
   attachment_ids?: string[];
-  resume_from?: string;
 }
 export interface ChallengeAction { source_kind:'draft'|'assessment'; source_id:string; expected_revision:number; direction:'easier'|'harder' }
 export interface Turn {

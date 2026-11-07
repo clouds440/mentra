@@ -234,7 +234,10 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
             content='A clear explanation.',general_query=True,needs_tools=False,uncertain=False))]) for i in range(2)]
         model=ScriptedModel(replies)
         details=dict(preferred_name='Before',learning_preference='balanced',explanation_depth='standard')
-        profile=Mock(side_effect=lambda *a:SimpleNamespace(model_dump=lambda **k:dict(details=dict(details))))
+        from pydantic import BaseModel
+        class ProfileFixture(BaseModel):
+            details: dict
+        profile=Mock(side_effect=lambda *a:ProfileFixture(details=dict(details)))
         history=SimpleNamespace(profile=SimpleNamespace(prompt_context=profile),
             summary_context=lambda *a:(dict(state='empty',content='',revision=0),None),events=None)
         chat=ChatService(MentraLLM(SimpleNamespace(get_model=lambda:model)))

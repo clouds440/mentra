@@ -1,4 +1,4 @@
-import { BookOpen, EllipsisVertical, ExternalLink, Globe, MessageSquarePlus, Pin, PinOff } from 'lucide-react';
+import { BookOpen, EllipsisVertical, ExternalLink, Globe, MessageSquarePlus, Pin, PinOff, RotateCw } from 'lucide-react';
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { apiRequest } from '../../services/api';
 import type { PanelResource, SourceAnnotation } from '../../types/sourceAnnotations';
@@ -29,6 +29,7 @@ export function WebSourcePreview({ source, navigation }: { source: Extract<Panel
   const previous = entry && readerHistory.get(entry);
   const [reading, setReading] = useState(previous?.reading ?? false);
   const [reader, setReader] = useState<ReaderResult | null | undefined>(previous?.reader);
+  const [reloadVersion, setReloadVersion] = useState(0);
   useEffect(() => {
     if (entry) readerHistory.set(entry, { reading, reader });
   }, [entry, reading, reader]);
@@ -40,7 +41,7 @@ export function WebSourcePreview({ source, navigation }: { source: Extract<Panel
     }).then(value => { if (!controller.signal.aborted) setReader(value); })
       .catch(() => { if (!controller.signal.aborted) setReader(null); });
     return () => controller.abort();
-  }, [href, reading, reader]);
+  }, [href, reading, reader, reloadVersion]);
   const [result, setResult] = useState<PreviewResult>();
   useEffect(() => {
     if (reading || result !== undefined) return;
@@ -59,12 +60,16 @@ export function WebSourcePreview({ source, navigation }: { source: Extract<Panel
       if (!controller.signal.aborted) setResult({ status: 'unavailable' });
     }).finally(() => clearTimeout(timer));
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [href, reading, result]);
+  }, [href, reading, result, reloadVersion]);
   const frame = result?.status === 'available' && result.url ? previewUrl(result.url) : undefined;
   if (frame && !frame.hash) frame.hash = url.hash;
   return <div className="workspace-web-preview">
     <header className="workspace-resource-toolbar workspace-web-toolbar" data-no-excerpt>
       {navigation}
+      <IconButton size="sm" aria-label="Refresh page" title="Refresh page" disabled={reading ? reader === undefined : result === undefined}
+        onClick={() => { setReader(undefined); setResult(undefined); setReloadVersion(value => value + 1); }}>
+        <RotateCw size={15} aria-hidden="true" />
+      </IconButton>
       <span className="min-w-0 flex-1 truncate px-1 text-xs text-muted" dir="ltr" title={url.hostname}>{url.hostname}</span>
       <IconButton ref={anchor} className="workspace-web-menu-trigger" aria-label="Website actions" title="Website actions"
         aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined} onClick={() => setMenuOpen(open => !open)}>
@@ -85,7 +90,7 @@ export function WebSourcePreview({ source, navigation }: { source: Extract<Panel
       </li>)}</ul>}
     </div> : <div className="workspace-web-status" role="status">{reader === null ? <>Readable text is unavailable for this page.
       <button type="button" className={buttonStyles({ size: 'sm', variant: 'ghost' })} onClick={() => setReader(undefined)}>Retry Reader</button></> : 'Loading readable text…'}</div>
-    : frame ? <iframe src={frame.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
+    : frame ? <iframe key={reloadVersion} src={frame.href} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
       allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'"
       {...{ credentialless: '' }} /> : <div className="workspace-web-status" role="status">
       <Globe size={24} strokeWidth={1.5} aria-hidden="true" />

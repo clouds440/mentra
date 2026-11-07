@@ -92,8 +92,9 @@ def _reader_html(url, html):
     content = soup.select_one('article, main, [role="main"]') or soup.body or soup
     blocks = []
     remaining = 30000
-    for tag in content.select('h1,h2,h3,h4,p,li,blockquote,pre')[:150]:
-        line = ' '.join(tag.get_text().split())
+    for tag in content.select('h1,h2,h3,h4,p,li,blockquote,pre,tr')[:150]:
+        # Preserve the column boundaries needed to interpret factual tables.
+        line = ' | '.join(' '.join(cell.get_text(' ', strip=True).split()) for cell in tag.find_all(['th', 'td'], recursive=False)) if tag.name == 'tr' else ' '.join(tag.get_text().split())
         if not line or line in blocks:
             continue
         blocks.append(line[:min(4000, remaining)])

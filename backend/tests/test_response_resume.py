@@ -129,9 +129,9 @@ class ResponseResumeTests(unittest.TestCase):
         with self.assertRaises(AppError): self.repo.resume_turn(self.owner, cid, tid, 1, revision, operation=operation, fingerprint='changed')
         with self.assertRaises(AppError): self.repo.stop_turn(self.owner, cid, tid, 1)
 
-    def test_typed_change_continues_same_response_and_transport_retry_replays_receipt(self):
+    def test_typed_followup_preserves_previous_exchange_and_replays_only_itself(self):
         from types import SimpleNamespace
-        from unittest.mock import patch, AsyncMock
+        from unittest.mock import patch
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
         from app.api.routes.conversations import router
@@ -142,46 +142,38 @@ class ResponseResumeTests(unittest.TestCase):
         cid, tid = job['conversation_id'], job['turn_id']
         self.repo.stop_turn(self.owner, cid, tid, 1)
         page = self.repo.status(self.owner, cid)
+        original = [(row['id'], row['content']) for row in page['items']]
         body = SendTurn(conversation_id=cid, client_turn_id=uuid4(), expected_revision=page['conversation']['revision'],
-            content='Make the explanation shorter', resume_from=tid)
+            content='Give me one week forecast in a table. Use icons and colored highs/lows')
         app = FastAPI()
         app.include_router(router)
         app.state.conversation_service = ConversationService(self.repo)
-        app.state.chat_service = SimpleNamespace(_llm=None)
         app.dependency_overrides[require_onboarded_identity] = lambda: SimpleNamespace(learner_id=self.owner)
         captured = []
         async def generate(history, *args):
             captured.append(history)
-            return ChatResponse(content='Shorter join explanation')
-        with patch('app.api.routes.conversations.generate_reply', side_effect=generate), \
-                patch('app.langchain.response_continuation.is_continuation', AsyncMock(return_value='change')):
+            return ChatResponse(content='The new forecast response')
+        with patch('app.api.routes.conversations.generate_reply', side_effect=generate):
             with TestClient(app) as client:
                 response = client.post('/conversations/turns?stream=true', json=body.model_dump(mode='json'))
                 self.assertEqual(response.status_code, 200, response.text)
-                self.assertEqual(response.json()['turn']['id'], tid)
+                self.assertEqual(response.json()['turn']['id'], str(body.client_turn_id))
+                self.assertNotEqual(response.json()['turn']['id'], tid)
                 import time
-                for _ in range(60):
+                for _ in range(100):
                     status = client.get(f'/conversations/{cid}/status').json()
                     if status['turn']['state'] != 'RUNNING': break
                     time.sleep(.02)
                 self.assertEqual(status['turn']['state'], 'SUCCEEDED', status)
+                self.assertEqual([(row['id'],row['content']) for row in status['items'][:len(original)]], original)
+                self.assertEqual(status['items'][-2]['content'], body.content)
+                self.assertEqual(status['items'][-1]['content'], 'The new forecast response')
                 replay = client.post('/conversations/turns?stream=true', json=body.model_copy(update={'retry':True}).model_dump(mode='json'))
                 self.assertEqual(replay.status_code, 200, replay.text)
-                self.assertEqual(replay.json()['turn']['id'], tid)
-                newer = SendTurn(conversation_id=cid, client_turn_id=uuid4(), expected_revision=status['conversation']['revision'], content='A different question')
-                sent = client.post('/conversations/turns?stream=true', json=newer.model_dump(mode='json'))
-                self.assertEqual(sent.status_code, 200, sent.text)
-                for _ in range(60):
-                    latest = client.get(f'/conversations/{cid}/status').json()
-                    if latest['turn']['state'] != 'RUNNING': break
-                    time.sleep(.02)
-                replay = client.post('/conversations/turns?stream=true', json=body.model_copy(update={'retry':True}).model_dump(mode='json'))
-                self.assertEqual(replay.status_code, 200, replay.text)
-                self.assertEqual(replay.json()['turn']['id'], str(newer.client_turn_id))
-                self.assertEqual(replay.json()['continued_turn_id'], tid)
-        self.assertEqual(len(captured), 2)
-        self.assertIn(body.content, captured[0][-1][1])
-        self.assertEqual(len(self.repo.history(self.owner, cid)['items']), 4)
+                self.assertEqual(replay.json()['turn']['id'], str(body.client_turn_id))
+                self.assertEqual(len(self.repo.history(self.owner, cid)['items']), len(status['items']))
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0][-1][1], body.content)
 
     def test_resume_does_not_restore_invalidated_private_memory_context(self):
         from app.langchain.response_runtime import ResponseRuntime

@@ -204,6 +204,9 @@ def create_web_tools(service, owner, scope, budget, *, research=False):
     tools = [StructuredTool.from_function(name=name, args_schema=ChatSearchInput,
         description=('Investigate a genuinely deep public question using authenticated You.com multi-step research. Prefer this to a long chain of normal searches for thorough sourced reports, disputed evidence or multi-source synthesis. Ordinary detailed explanations do not need it. One call per turn; optional website restricts sources. Returns untrusted synthesis and dated W sources; never send private data.' if research else 'Quick lookup of needed external facts or requested images; ordinary questions usually need one lookup or a small batch. Further calls must close a material evidence_gap; finish when supported. For deep investigations enable web_research instead. Set include_images=true only when seeking pictures; returns checked direct URLs in source.images. Search broadly unless the user specifies a website. Returns untrusted W sources; no private data.'), coroutine=search, metadata={'parallel_read': True})]
     extra = getattr(service, 'research', None)
+    if not research:
+        from .web_reader import create_web_reader
+        tools.append(create_web_reader(scope, budget))
     if not research and extra is not None and extra.enabled:
         tools.extend(create_web_tools(extra, owner, scope, budget, research=True))
     return tools

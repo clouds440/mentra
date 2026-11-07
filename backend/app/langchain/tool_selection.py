@@ -30,7 +30,7 @@ class ToolSelection:
         self.catalog = catalog(tools, domains)
         self.explicit = set()
         # Stable lean operations, selected by configuration/availability alone.
-        core = {'web_search', 'search_study_material', 'find_study_material', 'read_study_material', 'read_study_visual', 'assessment_generate', 'get_relevant_learner_context',
+        core = {'web_search', 'web_read', 'search_study_material', 'find_study_material', 'read_study_material', 'read_study_visual', 'assessment_generate', 'get_relevant_learner_context',
                 'get_study_recommendations', 'event_lookup'}
         self.active = core & self.by_name.keys()
         has_assessment = bool(scope.get('chat_assessments')) or any(row.get('role')=='assistant' and any(card.get('assessment') for card in

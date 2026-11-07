@@ -9,6 +9,84 @@ async function openWebsiteActions(page: Page, preview: Locator) {
 }
 
 const date = '2026-11-05T00:00:00Z';
+
+test('repeated source clicks focus one existing tab and reopen the hidden panel', async ({page}) => {
+  await page.setViewportSize({width:1440,height:900});
+  await citations(page);
+  await page.goto('/chat/polish-chat');
+  await page.getByRole('button',{name:'Open side panel',exact:true}).click();
+  const catalog = page.getByRole('tab',{name:'Chat sources',exact:true});
+  await expect(catalog).toHaveCount(1);
+  const open = page.getByRole('button',{name:'Web sources (8)',exact:true});
+  await open.click();
+  await open.click();
+  const sources = page.getByRole('tab',{name:'Web sources',exact:true});
+  await expect(sources).toHaveCount(1);
+  await catalog.click();
+  await open.click();
+  await expect(sources).toHaveAttribute('aria-selected','true');
+  await page.getByRole('button',{name:'Hide side panel',exact:true}).click();
+  await open.click();
+  await expect(sources).toHaveCount(1);
+  await expect(sources).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('button',{name:'Hide side panel',exact:true})).toBeVisible();
+});
+
+test('browser refresh reloads its preview and Reader without adding tabs', async ({page}) => {
+  await page.setViewportSize({width:1440,height:900});
+  await citations(page);
+  let previewRequests = 0, readerRequests = 0;
+  page.on('request',request => { if (request.url().endsWith('/web/preview')) previewRequests++; });
+  await page.route('**/api/v1/web/reader',route => route.fulfill({json:{url:web(1).url,blocks:[`Fresh reader ${++readerRequests}`],links:[]}}));
+  await page.goto('/chat/polish-chat');
+  await page.getByRole('article',{name:'Mentra response'}).getByRole('link',{name:'Open web source W1:',exact:false}).first().click();
+  const preview = page.getByRole('tabpanel',{name:'Article 1',exact:true});
+  await expect(preview.locator('iframe')).toBeVisible();
+  await preview.getByRole('button',{name:'Refresh page',exact:true}).click();
+  await expect.poll(() => previewRequests).toBe(2);
+  await expect(preview.locator('iframe')).toBeVisible();
+  await expect(page.getByRole('tab',{name:'Article 1',exact:true})).toHaveCount(1);
+  await openWebsiteActions(page,preview);
+  await websiteActions(page).getByRole('menuitem',{name:'Reader',exact:true}).click();
+  await expect(preview.getByText('Fresh reader 1',{exact:true})).toBeVisible();
+  await preview.getByRole('button',{name:'Refresh page',exact:true}).click();
+  await expect(preview.getByText('Fresh reader 2',{exact:true})).toBeVisible();
+  await expect(page.getByRole('tab',{name:'Article 1',exact:true})).toHaveCount(1);
+});
+
+for (const paused of [false,true]) test(`typed follow-up preserves both exchanges after ${paused ? 'pause' : 'partial failure'}`, async ({page}) => {
+  const fixture = await richChat(page,'The earlier answer is incomplete.');
+  fixture.setTurn({id:'old-turn',state:'FAILED',attempt:1,user_sequence:1,selection:fixture.conversation.selection,
+    can_retry:!paused,can_resume:paused,resume_until:new Date(Date.now()+600000).toISOString(),
+    error:paused ? 'Response stopped.' : 'Part of this response is unfinished.',
+    response_outcome:{version:3,state:paused ? 'paused' : 'partial',retryable:!paused}});
+  await page.route('**/api/v1/conversations/turns',route => {
+    const body = route.request().postDataJSON();
+    fixture.submissions.push(body);
+    fixture.conversation.revision++;
+    fixture.conversation.message_count = 4;
+    fixture.items.push({id:'new-user',conversation_id:'polish-chat',sequence:3,role:'user',content:body.content,created_at:date},
+      {id:'new-answer',conversation_id:'polish-chat',sequence:4,role:'assistant',content:'The new forecast answer.',created_at:date});
+    fixture.setTurn({id:body.client_turn_id,state:'SUCCEEDED',attempt:1,user_sequence:3,error:null});
+    return route.fulfill({json:{conversation:fixture.conversation,items:fixture.items,has_more:false,next_cursor:null,
+      turn:{id:body.client_turn_id,state:'SUCCEEDED',attempt:1,user_sequence:3,error:null}}});
+  });
+  await page.goto('/chat/polish-chat');
+  const message = 'Give me the forecast in a table with icons';
+  await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill(message);
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await expect(page.getByRole('article',{name:'Your message',exact:true})).toHaveCount(2);
+  await expect(page.getByRole('article',{name:'Mentra response',exact:true})).toHaveCount(2);
+  expect(fixture.submissions[0]).not.toHaveProperty('resume_from');
+  expect(fixture.submissions[0].client_turn_id).not.toBe('old-turn');
+  for (const reload of [false,true]) {
+    if (reload) await page.reload();
+    await expect(page.getByText('The earlier answer is incomplete.',{exact:true})).toBeVisible();
+    await expect(page.getByRole('article',{name:'Your message',exact:true}).last()).toContainText(message);
+    await expect(page.getByText('The new forecast answer.',{exact:true})).toBeVisible();
+  }
+});
+
 const web = (index: number) => ({ token: 'W' + index, url: 'https://example.org/article/' + index,
   title: 'Article ' + index, domain: 'example.org', favicon_url: 'https://example.org/favicon.ico',
   excerpt: 'Publisher excerpt ' + index, searched_at: date, source_date_status: 'missing' });
@@ -87,9 +165,9 @@ test('sources open new tabs, retain previews, resize and scroll without losing c
   await first.click();
   const preview = panel.getByRole('tabpanel', { name: 'Article 1' });
   const toolbar = preview.locator('.workspace-web-toolbar');
-  await expect(toolbar.locator('button, a')).toHaveCount(3);
+  await expect(toolbar.locator('button, a')).toHaveCount(4);
   expect(await toolbar.locator('button, a').evaluateAll(controls => controls.map(control => control.getAttribute('aria-label'))))
-    .toEqual(['Back', 'Forward', 'Website actions']);
+    .toEqual(['Back', 'Forward', 'Refresh page', 'Website actions']);
   await expect(toolbar.getByText('example.org', { exact: true })).toBeVisible();
   const menu = await openWebsiteActions(page, preview);
   await expect(menu.getByRole('menuitem', { name: 'Open in browser' })).toHaveAttribute('href', web(1).url);

@@ -50,30 +50,7 @@ async def send(body: SendTurn, request: Request, stream: bool = False, identity=
     async def generate(messages, selection, scope):
         response = await generate_reply(messages, ChatSelection(**selection), request, identity, service(request).policy, scope)
         return response.model_dump(mode='json')
-    if body.resume_from and not body.attachment_ids and not body.source_annotations and not body.interaction_response:
-        page = await run_in_threadpool(service(request).repository.status, identity.learner_id, str(body.conversation_id))
-        turn = page.get('turn')
-        source = turn
-        if turn and turn['id'] != str(body.resume_from):
-            source_page = await run_in_threadpool(service(request).repository.status, identity.learner_id,
-                str(body.conversation_id), str(body.resume_from))
-            source = source_page.get('turn')
-        if source and source['id'] == str(body.resume_from) and source.get('resume_operation_id') == str(body.client_turn_id):
-            return await service(request).resume(identity.learner_id, str(body.conversation_id), source['id'],
-                ResumeTurn(attempt=source['attempt'], expected_revision=body.expected_revision, client_request_id=body.client_turn_id),
-                generate, fingerprint=service(request).repository._request_hash(body))
-        from datetime import datetime, timezone
-        resumable = turn and turn.get('resume_until') and turn['resume_until'] > datetime.now(timezone.utc)
-        if turn and turn['id'] == str(body.resume_from) and resumable:
-            original = next((item['content'] for item in page['items'] if item['sequence'] == turn['user_sequence']), None)
-            if original:
-                from app.langchain.response_continuation import is_continuation
-                action = await is_continuation(request.app.state.chat_service._llm, original, body.content)
-                if action != 'new':
-                    return await service(request).resume(identity.learner_id, str(body.conversation_id), turn['id'],
-                        ResumeTurn(attempt=turn['attempt'], expected_revision=body.expected_revision,
-                            instruction=body.content if action == 'change' else None, client_request_id=body.client_turn_id),
-                        generate, fingerprint=service(request).repository._request_hash(body))
+    # A typed send always creates its own durable exchange. Resume is explicit.
     result = await service(request).send(identity.learner_id, body, generate, with_scope=True, wait=not stream)
     trace = getattr(request.state, 'log_trace', None)
     if trace is not None:

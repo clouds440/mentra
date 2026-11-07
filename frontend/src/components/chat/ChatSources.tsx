@@ -70,7 +70,7 @@ export function ChatSourceButtons({ message }: { message: ChatMessageData }) {
   return <div className="mt-4 flex flex-wrap gap-2">{groups.map(({ kind, title, Icon }) => {
     const total = count(message, kind);
     return total > 0 && <button key={kind} type="button" className={buttonStyles({ size: 'sm', variant: 'secondary' })} title="Open in side panel"
-      onClick={() => panel.open({ title, icon: <Icon size={14} aria-hidden="true" />, content: <ChatSourceCollection message={message} group={kind} /> })}>
+      onClick={() => panel.open({ title, reuseKey: `message-sources:${message.conversation_id ?? ''}:${message.id}:${kind}`, icon: <Icon size={14} aria-hidden="true" />, content: <ChatSourceCollection message={message} group={kind} /> })}>
       <PanelRight size={15} aria-hidden="true" />{title} ({total})
     </button>;
   })}</div>;

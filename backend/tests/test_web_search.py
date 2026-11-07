@@ -103,6 +103,30 @@ class ContractTests(unittest.TestCase):
 
 
 class ServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_forecast_reads_returned_page_after_snippet_search(self):
+        from unittest.mock import patch
+        from app.langchain.history_orchestration import tool_reply
+        from langchain_core.messages import HumanMessage
+        self.setup_service()
+        self.provider.search.return_value = {'results':{'web':[dict(url='https://www.bbc.com/weather/1176615',title='Islamabad forecast',description='14 day forecast for Islamabad.')]}}
+        state = self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
+        blocks = [f'November {day}: Sunny. High 27 C, Low 12 C' for day in range(7,14)]
+        class Script:
+            async def ainvoke_messages(self, source, messages, **kwargs):
+                receipts = [json.loads(item.content) for item in messages if isinstance(item,ToolMessage)]
+                if not receipts:
+                    return AIMessage(content='',tool_calls=[dict(name='web_search',args={'query':'Islamabad 7 day forecast'},id='search')])
+                if len(receipts) == 1:
+                    assert 'web_read' in [getattr(tool, 'name', '') for tool in kwargs['tools']]
+                    return AIMessage(content='',tool_calls=[dict(name='web_read',args={'source_token':'W1'},id='read')])
+                assert receipts[-1]['blocks'] == blocks, receipts[-1]
+                return AIMessage(content='Seven verified daily rows from the forecast [[W1]].')
+        with patch('app.langchain.web_reader.read_publisher', AsyncMock(return_value={'url':'https://www.bbc.com/weather/1176615','blocks':blocks})) as read:
+            await tool_reply(Script(),[HumanMessage(content='Tell me the Islamabad weather for one week')],None,str(uuid4()),state,(),{})
+        read.assert_awaited_once()
+        self.provider.search.assert_awaited_once()
+        self.assertEqual(state['web_sources'][0].token, 'W1')
+
     def setup_service(self):
         self.now = NOW
         self.provider = AsyncMock()

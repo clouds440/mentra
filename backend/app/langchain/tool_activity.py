@@ -10,6 +10,7 @@ LABELS = {
     'present_questionnaire': 'Preparing your questions',
     'web_research': 'Researching the web',
     'web_search': 'Searching the web',
+    'web_read': 'Reading a web source',
     'present_choices': 'Preparing choices for you',
     'request_input': 'Preparing a question for you',
     'present_visuals': 'Preparing a visual comparison',
