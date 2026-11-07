@@ -170,6 +170,7 @@ class PerformanceEstimate(LearnerSchema):
 
 
 class LearnerContextConcept(LearnerSchema):
+    challenge_preferences: list[dict] = Field(default_factory=list,max_length=6)
     independent_item_count: int = Field(default=0,ge=0,le=64)
     concept_id: str
     name: str

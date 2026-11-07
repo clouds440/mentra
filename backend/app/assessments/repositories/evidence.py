@@ -6,6 +6,12 @@ from app.core.exceptions import AppError
 from .tables import evidence_jobs as j, attempts as t
 
 
+def first_exposures(session,owner,attempt_id):
+    from .tables import prediction_snapshots
+    return dict(session.execute(select(prediction_snapshots.c.question_id,prediction_snapshots.c.first_exposure).where(
+        prediction_snapshots.c.learner_id==owner,prediction_snapshots.c.attempt_id==attempt_id)).all())
+
+
 class AssessmentEvidenceJobs:
     def __init__(self, repository):
         self.repository = repository
@@ -74,6 +80,10 @@ class AssessmentEvidenceJobs:
             tx._session.execute(update(t).where(t.c.id == job['id']).values(evidence_status=status,
                 evidence_receipt=receipt, revision=t.c.revision + 1))
             tx._session.execute(update(j).where(key).values(state='applied', claim_id=None, claim_until=None, retry_at=None))
+            if (job['assessment'].get('preferences') or {}).get('challenge_choice_id'):
+                from app.challenge.repositories.worker import enqueue
+                enqueue(repo,tx._session,job['owner'],'outcome',f"{job['id']}:{job['grade_revision']}",
+                    dict(attempt_id=job['id'],grade_revision=job['grade_revision']))
 
     def fail(self, job):
         repo = self.repository

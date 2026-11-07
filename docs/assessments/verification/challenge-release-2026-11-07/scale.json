@@ -1,0 +1,29 @@
+{
+  "fixture": "synthetic SQL scale, not student outcomes",
+  "effective_family_rows": 40000,
+  "skills": 8,
+  "window_per_scope": 32,
+  "disabled": {
+    "samples": 30,
+    "median_ms": 20.829,
+    "p95_ms": 25.342
+  },
+  "enabled": {
+    "samples": 30,
+    "median_ms": 21.122,
+    "p95_ms": 28.166
+  },
+  "added_p95_ms": 2.824,
+  "foreground_per_read": {
+    "queries": 7.0,
+    "checkouts": 1.0,
+    "commits": 0.0
+  },
+  "window_scan": [
+    {
+      "type": "Index Scan",
+      "rows": 32,
+      "index": "idx_challenge_family_window"
+    }
+  ]
+}

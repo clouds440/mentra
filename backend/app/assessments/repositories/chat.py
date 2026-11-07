@@ -114,6 +114,8 @@ class ChatAssessmentRepository:
                 sources=sources, operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage
             payload['practice_lineage'] = inherit_practice_lineage(self.repository, session, owner, request, payload['questions'], payload['id'])
+            from app.challenge.repositories.store import publication_preferences
+            payload['preferences']=publication_preferences(self.repository,session,owner,request,payload)
             row = dict(id=str(uuid4()), learner_id=owner, conversation_id=conversation, payload=payload,
                 operation_id=str(request.client_request_id), assessment_id=None, created_at=self.repository.clock())
             session.execute(chat_drafts.insert().values(**row))

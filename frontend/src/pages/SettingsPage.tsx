@@ -10,6 +10,7 @@ import { NotificationSettings } from '../components/notifications/NotificationSe
 import { AssessmentSettings } from '../components/assessments/AssessmentSettings';
 import { PasswordSettings } from '../components/auth/PasswordSettings';
 import { ChatAppearanceSettings } from '../components/chat/ChatAppearanceSettings';
+import { useAuth } from '../components/auth/AuthProvider';
 
 const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
 
@@ -23,6 +24,8 @@ const settingSections = [
 ];
 
 export function SettingsPage() {
+  const { identity } = useAuth();
+  const canChangePassword = !!identity?.user_id && !identity.provider;
   const [params, setParams] = useSearchParams();
   const sections = ['profile', 'memories', 'notifications'] as const;
   const requested = params.get('tab');
@@ -37,15 +40,16 @@ export function SettingsPage() {
     setParams(next);
   }
   return (
-    <PageShell>
-        <WorkspaceHeader title="Settings" description="Make Mentra feel right for you. Manage your learning profile, saved memories and reminders." icon={Settings2} />
+    <PageShell className="settings-page">
+        <WorkspaceHeader title="Settings" description="Your learning, your way. Adjust your profile, memories, and reminders." icon={Settings2} />
 
         <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'} className="settings-stack">
-        <ProfileSettings />
-        <div className="settings-grid"><ChatAppearanceSettings /><AssessmentSettings /></div>
-        <PasswordSettings />
-        <div className="workspace-panel mt-6 divide-y divide-border">
+        <nav aria-label="Profile page sections" className="settings-jump-links"><span>On this page</span><a href="#settings-profile">Learning profile</a><a href="#settings-preferences">Preferences</a>{canChangePassword && <a href="#settings-security">Password</a>}<a href="#settings-data">Your data</a></nav>
+        <div id="settings-profile"><ProfileSettings /></div>
+        <div id="settings-preferences" className="settings-grid"><ChatAppearanceSettings /><AssessmentSettings /></div>
+        {canChangePassword && <div id="settings-security"><PasswordSettings /></div>}
+        <div id="settings-data" className="workspace-panel mt-6 divide-y divide-border">
           {settingSections.map(({ title, description, detail, icon: Icon }) => (
             <section className="flex gap-4 sm:gap-6" key={title}>
               <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted">

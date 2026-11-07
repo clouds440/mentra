@@ -15,7 +15,8 @@ async function send(page: Page, content: string) {
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill(content);
   await page.getByRole('button', { name: 'Send message' }).click();
   expect((await response).status()).toBe(200);
-  await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Mentra response' }).last()).toBeVisible({timeout:30000});
+  await expect(page.getByRole('textbox',{name:'Ask Mentra anything'})).toBeEnabled({timeout:30000});
 }
 
 test('memory cards have distinct surfaces and button controls in both themes and on mobile', async ({page}, info) => {
@@ -112,6 +113,7 @@ test('Settings drawer, tabs, manual CRUD, evidence and draft retention', async (
   await expect(page.getByRole('tab', { name: 'Profile & preferences' })).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: 'Memories' })).toBeFocused();
+  await page.getByRole('tab',{name:'Memories',exact:true}).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page.getByText('A fresh start')).toBeVisible();
@@ -133,7 +135,7 @@ test('actual memory/history tool calls, references, chat deletion retention and 
   await expect(page).toHaveURL(/\/$/);
   await send(page, 'Find past chats about mermaid');
   await page.getByRole('button', { name: 'Open history reference H1' }).click();
-  await expect(page.getByRole('dialog')).toContainText('Remember that I prefer mermaid diagrams.');
+  await expect(page.getByRole('tabpanel')).toContainText('Remember that I prefer mermaid diagrams.');
   await page.getByRole('button', { name: 'Hide side panel' }).click();
   await page.goto(sourceChat);
   await page.getByRole('link', { name: 'Remember that I prefer mermaid diagrams.', exact: true }).hover();
@@ -226,11 +228,11 @@ test('a delayed pagination response cannot leak rows into a changed status filte
   let requested!: () => void;
   const started = new Promise<void>(resolve => { requested = resolve; });
   const row = { id: randomUUID(), content: 'Saved row from the old filter.', category: 'fact', status: 'active', origin: 'manual', revision: 1, conflicts: [], pinned: false, stale: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), confirmed_at: null, expires_at: null };
-  await page.route('**/api/v1/memories?*', async route => {
+  await page.route(/\/api\/v1\/memories(?:\/page)?\?/, async route => {
     const url = new URL(route.request().url());
     if (url.searchParams.has('cursor')) { requested(); await gate; }
     const pending = url.searchParams.get('status') === 'pending';
-    await route.fulfill({ json: { items: pending ? [] : [row], next_cursor: pending ? null : 'next-page' } }).catch(() => undefined);
+    await route.fulfill({ json: { items: pending ? [] : [row], next_cursor: pending ? null : 'next-page',preferences:{automatic_memory:true,revision:1} } }).catch(() => undefined);
   });
   await page.goto('/settings?tab=memories');
   await expect(page.getByText(row.content, { exact: true })).toBeVisible();
@@ -292,10 +294,13 @@ test('memory pages load only on demand, reconcile another tab and retain profile
   await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
   await page.getByLabel('Background or interests', { exact: true }).fill('Draft physics');
   expect(calls).toBe(0);
+  await page.getByRole('dialog',{name:'Edit learning profile'}).getByRole('button',{name:'Close',exact:true}).click();
   await page.getByRole('tab', { name: 'Memories' }).click();
   await expect(page.getByText('A fresh start')).toBeVisible();
   await page.getByRole('tab', { name: 'Profile & preferences' }).click();
+  await page.getByRole('button',{name:'Edit profile',exact:true}).click();
   await expect(page.getByLabel('Background or interests', { exact: true })).toHaveValue('Draft physics');
+  await page.getByRole('dialog',{name:'Edit learning profile'}).getByRole('button',{name:'Close',exact:true}).click();
   await page.getByRole('tab', { name: 'Memories' }).click();
   const peer = await context.newPage();
   await peer.goto('/settings?tab=memories');

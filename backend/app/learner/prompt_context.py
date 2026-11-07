@@ -25,6 +25,10 @@ def compact(packet, budget=2000):
             importance=number(item.importance),relevance=number(item.relevance),independent_items=item.independent_item_count,
             target_supported=bool(item.target_performance and item.target_performance.supported),
             misconceptions=[text[:120] for text in item.misconceptions[:1]])
+        if item.challenge_preferences:
+            value['challenge_fit']=[{key:row[key] for key in ('context_id','language','answer_mode','offset','families','flags','basis')}
+                for row in item.challenge_preferences[:2]]
+            result['challenge_policy']='Provisional scoped practice fit only, never mastery. Mixed results call for a diagnostic; explicit choices win.'
         result['skills'].append(value);result['coverage']['skills_included']+=1
         if not fits(): result['skills'].pop();result['coverage']['skills_included']-=1;break
     for item in packet.observations[result['coverage']['observations_included']:8]:

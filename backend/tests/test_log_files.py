@@ -44,10 +44,10 @@ class DailyLogTests(unittest.TestCase):
 
     def test_midnight_restart_and_json_format(self):
         with tempfile.TemporaryDirectory() as directory:
-            sink = DailyFileHandler(directory)
+            sink = DailyFileHandler(directory,retention_days=3650)
             sink.handle(event_record('2026-10-10'))
             sink.handle(event_record('2026-10-11'))
-            DailyFileHandler(directory).handle(event_record('2026-10-11'))
+            DailyFileHandler(directory,retention_days=3650).handle(event_record('2026-10-11'))
             files = sorted(Path(directory).glob('*.log'))
             self.assertEqual([f.name for f in files], ['backend-2026-10-10.log', 'backend-2026-10-11.log'])
             self.assertEqual([len(f.read_text().splitlines()) for f in files], [1, 2])

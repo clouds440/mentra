@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.db.database import build_engine
 from app.assessments.repositories.postgres import AssessmentRepository
-from app.assessments.review_queue import pending_reports, reported_item, correct_report
+from app.assessments.repositories.review_queue import pending_reports, reported_item, correct_report
 from app.learner import LearnerEngine
 from app.learner.repositories.postgres import PostgresLearnerRepository
 

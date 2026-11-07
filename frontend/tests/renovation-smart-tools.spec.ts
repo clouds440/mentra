@@ -42,7 +42,7 @@ test('interactive delivery makes a written question directly answerable and pres
     created_at:'2026-10-26T00:00:00Z',preferences:{delivery:'interactive'},sources:[],paper:null,
     questions:[{id:'native-question',question_type:'written',answer_mode:'text',prompt:'Explain why equal fractions can have different numerators.',
       concept_ids:['fractions'],difficulty:.4,marks:1,source_tokens:[],options:[]}] };
-  const card = {id:'native-draft',assessment_id:null,conversation_id:'polish-chat',assessment};
+  const card = {id:'native-draft',assessment_id:null,conversation_id:'polish-chat',assessment,hydration:{version:1,attempt:null}};
   const status = {conversation:{id:'polish-chat',title:'Practice',revision:2,message_count:2,selection:{mode:'STANDARD'},created_at:assessment.created_at,updated_at:assessment.created_at},
     items:[{id:'native-request',conversation_id:'polish-chat',sequence:1,role:'user',content:'Give me 1 question quiz',created_at:assessment.created_at},
       {id:'native-reply',conversation_id:'polish-chat',sequence:2,role:'assistant',content:'One question practice',created_at:assessment.created_at,assessment_cards:[card]}],
@@ -95,7 +95,7 @@ test('ordinary chat does not fetch Library lists until requested', async ({ page
 test('a durable assessment reference appears before narration completes', async ({ page }) => {
   await workspace(page,true);
   const created='2026-10-26T00:00:00Z';
-  const card={id:'early-draft',assessment_id:null,conversation_id:'polish-chat',assessment:{
+  const card={id:'early-draft',assessment_id:null,conversation_id:'polish-chat',hydration:{version:1,attempt:null},assessment:{
     id:'early-assessment',context_id:'context-1',title:'Ready while Mentra continues',purpose:'practice',revision:1,created_at:created,
     preferences:{delivery:'interactive'},paper:null,sources:[],questions:[{id:'early-question',question_type:'short_answer',answer_mode:'text',
       prompt:'What does acceleration measure?',concept_ids:['motion'],difficulty:.3,marks:1,source_tokens:[],options:[]}]}};
@@ -112,6 +112,7 @@ test('a durable assessment reference appears before narration completes', async 
   await activity.getByRole('textbox',{name:'Answer question 1'}).fill('Change of velocity over time.');
   await expect(activity).toContainText('Ready while Mentra continues');
   await page.route('**/api/v1/assessments/chat-drafts/early-draft/publish',route=>route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Please try again.'}}}));
+  await activity.getByText('Practice details & help',{exact:true}).click();
   await activity.getByRole('button',{name:'Add to assessments',exact:true}).click();
   await activity.getByRole('button',{name:'Refresh',exact:true}).click();
   await expect.poll(()=>reads).toBe(2);
@@ -131,7 +132,7 @@ test('an early saved assessment retains its conversation actions', async ({ page
     created_at:'2026-10-26T00:00:00Z',preferences:{delivery:'interactive'},paper:null,sources:[],questions:[
       {id:'q',question_type:'short_answer',answer_mode:'text',prompt:'What is force?',concept_ids:['force'],difficulty:.3,marks:1,source_tokens:[],options:[]}]};
   let reads=0;
-  await page.route('**/api/v1/assessments/early-saved',route=>{reads++;return route.fulfill({json:assessment});});
+  await page.route('**/api/v1/assessments/early-saved/handoff*',route=>{reads++;return route.fulfill({json:{id:null,assessment_id:assessment.id,conversation_id:'polish-chat',assessment,hydration:{version:1,attempt:null}}});});
   await page.route('**/api/v1/conversations/polish-chat/turns/polish-turn/events*',route=>route.fulfill({contentType:'text/event-stream',body:
     `event: activity\ndata: ${JSON.stringify({schema_version:1,conversation_id:'polish-chat',turn_id:'polish-turn',attempt:1,sequence:1,
       step_id:'assessment-result',status:'completed',tool_name:'assessment_generate',user_message:'Practice ready',
@@ -139,8 +140,8 @@ test('an early saved assessment retains its conversation actions', async ({ page
   await page.goto('/chat/polish-chat');
   const activity=page.getByLabel('Current activity',{exact:true});
   await expect(activity.getByRole('textbox',{name:'Answer question 1'})).toBeVisible();
-  await activity.getByText('Practice options',{exact:true}).click();
-  await expect(activity.getByRole('button',{name:'Make harder',exact:true})).toBeDisabled();
+  await activity.getByRole('button',{name:'Assessment options',exact:true}).click();
+  await expect(page.getByRole('menuitem',{name:'Make harder',exact:true})).toBeDisabled();
   expect(reads).toBe(1);
 });
 
@@ -163,8 +164,8 @@ test('profile saves apply immediately and tab focus refreshes without BroadcastC
   await page.getByLabel('What should Mentra call you?',{exact:true}).fill('Updated immediately');
   await chooseOption(page.getByLabel('Explanation detail',{exact:true}), 'brief');
   await page.getByRole('button',{name:'Save profile',exact:true}).click();
-  await expect(page.getByText('Updated immediately',{exact:true})).toBeVisible();
-  await expect(page.getByText('Brief',{exact:true})).toBeVisible();
+  await expect(page.locator('dd').filter({hasText:/^Updated immediately$/})).toBeVisible();
+  await expect(page.locator('dd').filter({hasText:/^Brief$/})).toBeVisible();
   const before=reads;
   profile.details.preferred_name='Changed in another tab';profile.version++;
   await page.waitForTimeout(550);

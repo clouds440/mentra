@@ -56,7 +56,7 @@ class ProfileEvaluatorTests(unittest.TestCase):
         chat = get_system_prompt(PromptSource.CHAT)
         profile = get_system_prompt(PromptSource.STUDENT_PROFILE_EVALUATION)
         self.assertNotEqual(chat, profile)
-        self.assertIn('supportive learning assistant', chat)
+        self.assertIn('You are Mentra, a learning assistant.', chat)
         self.assertIn('broad teaching readiness', profile)
         shared = MentraLLM(object())
         self.assertIs(LangChainProfileEvaluator(shared).llm, shared)

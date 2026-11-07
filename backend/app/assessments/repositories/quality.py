@@ -45,6 +45,8 @@ def review_item(repository,owner,identifier,question_id,expected_revision,operat
             fingerprint=fingerprint,created_at=repository.clock()))
         session.execute(update(assessments).where(assessments.c.id==identifier,assessments.c.learner_id==owner)
             .values(questions=questions,revision=assessment['revision']+1))
+        from app.challenge.repositories.store import invalidate
+        invalidate(repository,session,owner,identifier)
         # Saved chat copies must show the same quarantine/correction. Existing
         # client submissions are fenced by the canonical assessment regardless.
         for draft in session.execute(select(chat_drafts).where(chat_drafts.c.learner_id==owner,
@@ -98,6 +100,8 @@ def quarantine_derivatives(repository,tx,owner,source_id,root,operation_id,reaso
             question['validation']=dict(question.get('validation') or {},state='invalidated')
         session.execute(update(assessments).where(assessments.c.id==saved['id'],assessments.c.learner_id==owner)
             .values(questions=questions,revision=saved['revision']+1))
+        from app.challenge.repositories.store import invalidate
+        invalidate(repository,session,owner,saved['id'])
         for draft in session.execute(select(chat_drafts).where(chat_drafts.c.learner_id==owner,chat_drafts.c.assessment_id==saved['id'])).mappings().all():
             session.execute(update(chat_drafts).where(chat_drafts.c.id==draft['id']).values(payload=dict(draft['payload'],
                 questions=questions,revision=saved['revision']+1)))

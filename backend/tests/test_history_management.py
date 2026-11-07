@@ -350,17 +350,21 @@ class HistoryManagementTests(unittest.TestCase):
         management = HistoryManagement(self.repo, self.reader, MemoryValidator(Verifier()))
         class BadModel:
             calls = 0
-            def bind_tools(self, tools): return self
+            def bind_tools(self, tools,**kwargs): return self
             async def ainvoke(self, messages):
                 self.calls += 1
                 return AIMessage(content='', tool_calls=[dict(name='not_a_tool', args={}, id='bad_'+str(self.calls), type='tool_call')])
         class Factory:
             def get_model(self): return model
         model = BadModel()
-        with self.assertRaises(AppError): asyncio.run(ChatService(Factory()).reply([('user', row['content'])], history_runtime=(management, self.owner, scope)))
-        self.assertLessEqual(model.calls, 5)
+        answer = asyncio.run(ChatService(Factory()).reply([('user', row['content'])], history_runtime=(management, self.owner, scope)))
+        self.assertIn('couldn’t finish', answer)
+        self.assertIn('retry the unfinished part', answer)
+        self.assertEqual(scope['response_outcome']['state'], 'failed')
+        self.assertLessEqual(model.calls, 7)
         class NoTools:
             async def ainvoke(self, messages): return AIMessage(content='Tools unavailable; general answer.')
+        row,scope=self.question()
         model = NoTools()
         answer = asyncio.run(ChatService(Factory()).reply([('user', row['content'])], history_runtime=(management, self.owner, scope)))
         self.assertIn('Tools unavailable', answer)
@@ -441,9 +445,10 @@ class HistoryManagementTests(unittest.TestCase):
             async def ainvoke(self, messages):
                 self.seen = messages
                 results = [x for x in messages if isinstance(x, ToolMessage)]
-                if results: return AIMessage(content='', tool_calls=[dict(name='NewChatReply',
+                if any(x.tool_call_id=='call_1' for x in results): return AIMessage(content='', tool_calls=[dict(name='FinishResponse',
                     args=dict(content='Saved this preference.', conversation_title='Learning with Flowcharts'),
                     id='final_answer', type='tool_call')])
+                if not results:return AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',args=dict(tool_names=['user_memory']),id='enable-memory')])
                 system = str(messages[0].content)
                 data = json.loads(system[system.rfind('\n\n{')+2:])
                 question = next(x.content for x in reversed(messages) if x.type == 'human')
@@ -454,7 +459,7 @@ class HistoryManagementTests(unittest.TestCase):
             def get_model(self): return model
         model = Model(); chat_service = ChatService(Factory())
         conversation = ConversationService(self.chat)
-        request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='I prefer flowcharts '+uuid4().hex)
+        request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='Remember that I prefer flowcharts '+uuid4().hex)
         async def generate(history, selection, scope):
             answer = await chat_service.reply(history, history_runtime=(management, owner, scope))
             return dict(content=answer)
@@ -472,9 +477,11 @@ class MigrationRehearsal(unittest.TestCase):
             request = SendTurn(conversation_id=uuid4(), client_turn_id=uuid4(), expected_revision=0, content='Preserve this question')
             job = repo.begin_turn(owner, request)
             repo.finish(owner, job, dict(content='Preserve this answer'))
-            with db.engine.connect() as connection:
-                command.downgrade(migration_config(connection), '20261008_0005')
-            upgrade(db.engine)
+            from app.db.migrate import downgrade
+            try:
+                with self.assertRaisesRegex(RuntimeError,'Preserve semantic outcome'):
+                    downgrade(db.engine,'20261008_0005')
+            finally:upgrade(db.engine)
             self.assertEqual([x['content'] for x in repo.history(owner, str(request.conversation_id))['items']], ['Preserve this question','Preserve this answer'])
 
 

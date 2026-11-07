@@ -55,7 +55,7 @@ test('automatic practice retries the same operation and opens the tagged revisio
     return bodies.length === 1 ? route.fulfill({status:503,json:{error:{code:'UNAVAILABLE',message:'Please retry.'}}})
       : route.fulfill({json:{id:'revision-job',state:'queued',title:'Revision assessment',completed_parts:0,total_parts:2,result:null,error:null,can_retry:false}});
   });
-  await page.route('**/api/v1/assessments/generation-jobs/revision-job', route => route.fulfill({json:{id:'revision-job',state:'completed',title:'Revision assessment',completed_parts:2,total_parts:2,result,error:null,can_retry:false}}));
+  await page.route('**/api/v1/assessments/generation-jobs/revision-job', route => route.fulfill({json:{id:'revision-job',state:'completed',title:'Revision assessment',completed_parts:2,total_parts:2,result,hydration:{version:1,attempt:null},error:null,can_retry:false}}));
   await page.route('**/api/v1/assessments/page?**', route => route.fulfill({json:{items:[],next_offset:null,contexts:[],detail:new URL(route.request().url()).searchParams.get('assessment_id') === 'revision-1' ? result : null,attempts:[]}}));
   await page.route('**/api/v1/assessments/revision-1', route => route.fulfill({json:result}));
   await page.route('**/api/v1/assessments/revision-1/attempts', route => route.fulfill({json:[]}));

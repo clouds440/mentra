@@ -133,6 +133,10 @@ class AcceptedRevisionTests(unittest.IsolatedAsyncioTestCase):
         class Model:
             async def ainvoke(self,source,payload,**kwargs):
                 self.assert_source=source.value
+                if source.value=='assessment_choice_review':
+                    from app.langchain.choice_review import ChoiceReviewBatch
+                    return ChoiceReviewBatch(items=[dict(position=q['position'],answer_ids=['a'],answerable=True,
+                        explanation_valid=True,scope_preserved=True,requested_change_met=True,confidence=1,reason_code='ok') for q in payload['questions']])
                 if source.value!='assessment_generation': raise AssertionError('Unnecessary model stage')
                 payloads.append(payload)
                 return GeneratedAssessmentBatch(title='Existing practice revised',questions=[dict(question(2),prompt='Clearer question two')])

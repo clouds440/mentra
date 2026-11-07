@@ -287,8 +287,8 @@ class AuthenticationTests(unittest.TestCase):
         from sqlalchemy import update
         with self.db.sessions.begin() as session:
             session.execute(update(auth_session).values(expires_at=None))
-        with self.db.engine.begin() as connection:
-            command.downgrade(migration_config(connection), '20261007_0001')
+        from app.db.migrate import downgrade
+        downgrade(self.db.engine, '20261007_0001')
         with self.assertRaises(AuthenticationError):
             self.service.authenticate(response.access_token)
         self.assertEqual(self.count(auth_session), 1)

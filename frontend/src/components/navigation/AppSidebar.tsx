@@ -91,22 +91,22 @@ export function AppSidebar({
         aria-label="Main navigation"
         style={{ '--sidebar-width': `${collapsed ? 56 : width}px` } as CSSProperties}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[17rem] shrink-0 flex-col border-r border-border bg-surface duration-200 ease-out motion-reduce:transition-none lg:relative lg:z-20 lg:w-[var(--sidebar-width)] lg:translate-x-0',
+          'product-sidebar fixed inset-y-0 left-0 z-50 flex w-[17rem] shrink-0 flex-col border-r border-border bg-surface duration-200 ease-out motion-reduce:transition-none lg:relative lg:z-20 lg:w-[var(--sidebar-width)] lg:translate-x-0',
           resizing ? 'transition-none' : 'transition-[width,transform]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         {resizeHandle}
-        <div className={cn('flex h-12 shrink-0 items-center justify-between px-4', collapsed && 'lg:justify-center lg:px-0')}>
+        <div className={cn('sidebar-brand flex h-16 shrink-0 items-center justify-between px-5', collapsed && 'lg:justify-center lg:px-0')}>
           <div className="flex min-w-0 items-center gap-3">
             <MentraLogo />
             <span
               className={cn(
-                'text-[15px] font-semibold tracking-tight text-accent/90',
+                'text-xl font-semibold tracking-tight text-heading',
                 collapsed && 'lg:hidden',
               )}
             >
-              Mentra
+              mentra
             </span>
           </div>
           <button
@@ -123,7 +123,7 @@ export function AppSidebar({
           <button
             aria-label="Start a new chat"
             className={cn(
-              'flex h-10 w-full items-center gap-3 rounded-control border border-border bg-card px-3 text-sm font-medium text-heading shadow-sm transition-colors hover:border-border-strong hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+              'sidebar-new-chat flex h-10 w-full items-center gap-3 rounded-control border border-border bg-card px-3 text-sm font-medium text-heading transition-colors hover:border-border-strong hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
               collapsed && 'lg:justify-center lg:px-0',
             )}
             onClick={() => {
@@ -144,8 +144,9 @@ export function AppSidebar({
         </div>
 
         <nav className={cn('space-y-1 px-3 pt-4', collapsed && 'lg:px-1.5')} aria-label="Workspace">
+          <p className={cn('sidebar-section-label', collapsed && 'lg:hidden')}>Workspace</p>
           {primaryNavigation.map(({ label, to, icon: Icon }) => {
-            const isActive = to === '/' ? location.pathname === '/' : location.pathname === to || location.pathname.startsWith(`${to}/`);
+            const isActive = to === '/' ? location.pathname === '/' || location.pathname.startsWith('/chat/') : location.pathname === to || location.pathname.startsWith(`${to}/`);
             return (
             <Link
               key={to}
@@ -155,9 +156,9 @@ export function AppSidebar({
               aria-current={isActive ? 'page' : undefined}
               className={
                 cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  'sidebar-nav-link flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   isActive
-                    ? 'bg-card font-medium text-foreground shadow-sm'
+                    ? 'bg-active font-medium text-accent'
                     : 'text-muted hover:bg-hover hover:text-foreground',
                   collapsed && 'lg:justify-center lg:px-0',
                 )

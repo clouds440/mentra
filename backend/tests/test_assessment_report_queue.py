@@ -1,7 +1,7 @@
 import unittest
 from uuid import uuid4
 from sqlalchemy import select, func
-from app.assessments.review_queue import pending_reports, reported_item, correct_report
+from app.assessments.repositories.review_queue import pending_reports, reported_item, correct_report
 from app.assessments.repositories.tables import item_reviews
 from app.core.exceptions import AppError
 from testing.assessment_workers import run_assessment_pipeline

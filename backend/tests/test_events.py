@@ -12,7 +12,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from app.core.exceptions import AppError
 from app.db.metadata import metadata
-from app.db.migrate import migration_config, upgrade
+from app.db.migrate import migration_config, upgrade, downgrade
 from app.history_management.events.schemas import (EventCreate, EventDraft, EventEdit,
     EventPage, EventSync, EventOutcome, PreferencesEdit, TemporalPreview)
 from app.history_management.events.temporal import local_choices, bounds, reminder_due, bucket, preview
@@ -462,8 +462,11 @@ class EventPersistenceTests(unittest.TestCase):
         baseline = snapshots()
         with self.db.engine.connect() as connection:
             self.assertEqual(compare_metadata(MigrationContext.configure(connection), metadata), [])
-            command.downgrade(migration_config(connection), '20261008_0006')
-            connection.commit()
+        try:
+            with self.assertRaisesRegex(RuntimeError,'Preserve memory history|Preserve semantic outcome'):
+                downgrade(self.db.engine,'20261008_0006')
+        finally:
+            upgrade(self.db.engine)
         try:
             self.assertEqual(MemoryRepository(self.db.sessions).detail(self.owner, memory['id'])['content'], memory['content'])
             self.assertEqual(snapshots(), baseline)

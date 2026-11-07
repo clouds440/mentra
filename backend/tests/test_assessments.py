@@ -393,8 +393,8 @@ class AssessmentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_current_generation_hash_replays_identical_requests(self):
         from app.history_management.repositories.events.postgres import request_hash
-        payload = self.request.model_dump(mode='json')
-        self.assertEqual(request_hash(payload),request_hash(self.request.fingerprint_payload()))
+        normalized=GenerationRequest.model_validate(self.request.model_dump(mode='json'))
+        self.assertEqual(request_hash(normalized.fingerprint_payload()),request_hash(self.request.fingerprint_payload()))
         assessment = await self.service.generate(self.owner,self.request)
         self.assertEqual((await self.service.generate(self.owner,self.request)).id,assessment.id)
 

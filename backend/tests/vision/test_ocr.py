@@ -121,7 +121,7 @@ class VisionOCRTests(unittest.TestCase):
         vision.asset_revisions.return_value = ()
         vision.extract_image_text.side_effect = VisionError('Image exceeds the pixel limit.')
         parser = NativeDocumentParser(create_document_reader(vision=vision, isolated=False))
-        with self.assertRaisesRegex(ExtractionError, 'Image exceeds the pixel limit.'):
+        with patch.object(Path,'read_bytes',return_value=b'synthetic image'), patch('app.documents.readers.images.EmbeddedImages.capture'), self.assertRaisesRegex(ExtractionError, 'Image exceeds the pixel limit.'):
             parser.parse(Path('source.png'), 'image/png', 200, 120)
 
     def test_rag_capabilities_and_cache_identity_keep_the_existing_shape(self):
@@ -137,4 +137,4 @@ class VisionOCRTests(unittest.TestCase):
             self.assertEqual(result['resource_limits']['cpu_seconds'], 120)
             self.assertTrue(result['content_limitations'])
             self.assertEqual(parser.version,
-                'documents-native-vision-v3:pypdf=test;python-docx=test;python-pptx=test;beautifulsoup4=test;Pillow=pillow;tesseract=tesseract version;pdftoppm=poppler version')
+                'documents-native-vision-v4:pypdf=test;python-docx=test;python-pptx=test;beautifulsoup4=test;Pillow=pillow;tesseract=tesseract version;pdftoppm=poppler version')

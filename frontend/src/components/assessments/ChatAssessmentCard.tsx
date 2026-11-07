@@ -136,9 +136,10 @@ export const ChatAssessmentCard = memo(function ChatAssessmentCard({ initial, hy
   const isMCQ = !card.deleted && usesInteractiveAssessment(card.assessment);
   function adjust(difficulty: 'easier' | 'harder') {
     if (!card.conversation_id || chatBusy || busy) return;
-    const target = card.id ? `chat draft ${card.id}` : `assessment ${card.assessment_id}`;
-    void chatStore.send(card.conversation_id, `Make ${target} ${difficulty}. Keep the topic, question count and delivery, and preserve the original.`,
-      { mode: 'STANDARD' });
+    const title=card.assessment.title.replace(/\s+/g,' ').trim();
+    void chatStore.send(card.conversation_id, `Make “${title}” ${difficulty}. Keep the topic, question count and delivery, and preserve the original.`,
+      { mode: 'STANDARD' },false,[],undefined,[],{source_kind:card.id?'draft':'assessment',source_id:card.id??card.assessment_id!,
+        expected_revision:card.assessment.revision,direction:difficulty});
   }
   const actions = <>
     {!card.assessment_id && <Button size="sm" disabled={!ready || busy} loading={busy && !answerAction} onClick={() => void save()}>Add to assessments</Button>}

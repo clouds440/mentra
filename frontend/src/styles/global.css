@@ -20,13 +20,13 @@
 
 /* Semantic palette: components use these tokens through Tailwind or CSS variables. */
 :root {
-  --radius-control: 9px;
-  --radius-panel: 14px;
-  --background: 235 239 244;
-  --card: 250 251 253;
-  --surface: 225 231 239;
-  --input: 250 251 253;
-  --popover: 250 251 253;
+  --radius-control: 10px;
+  --radius-panel: 18px;
+  --background: 239 242 247;
+  --card: 251 252 254;
+  --surface: 228 234 242;
+  --input: 251 252 254;
+  --popover: 251 252 254;
   --overlay-opacity: 0.36;
   --border: 200 210 223;
   --border-strong: 128 145 168;
@@ -39,7 +39,7 @@
   --hover: 216 225 236;
   --active: 207 220 234;
   --message: 220 230 241;
-  --accent: 3 105 161;
+  --accent: 3 97 150;
   --accent-foreground: 255 255 255;
   --primary: 3 105 161;
   --primary-hover: 7 89 133;
@@ -67,25 +67,25 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --background: 21 22 23;
-  --card: 26 27 29;
-  --surface: 32 33 35;
-  --input: 23 24 25;
-  --popover: 34 35 38;
+  --background: 20 22 26;
+  --card: 26 29 34;
+  --surface: 31 35 41;
+  --input: 22 25 30;
+  --popover: 32 36 43;
   --overlay-opacity: 0.52;
   --overlay: 0 0 0;
   --shadow: 0 0 0;
-  --border: 58 60 64;
-  --border-strong: 105 107 112;
-  --border-hover: 125 127 132;
-  --foreground: 228 227 223;
-  --heading: 238 237 233;
-  --body: 209 208 204;
-  --muted: 170 169 166;
-  --subtle: 150 149 145;
-  --hover: 43 45 48;
-  --active: 34 46 63;
-  --message: 38 39 41;
+  --border: 54 62 74;
+  --border-strong: 105 119 139;
+  --border-hover: 125 141 161;
+  --foreground: 228 232 238;
+  --heading: 238 241 246;
+  --body: 207 215 225;
+  --muted: 169 179 194;
+  --subtle: 149 160 176;
+  --hover: 40 47 57;
+  --active: 31 46 67;
+  --message: 34 40 49;
   --accent: 119 164 220;
   --accent-foreground: 17 21 28;
   --primary: 91 143 207;
@@ -97,9 +97,9 @@
   --rich-warning: 215 192 138;
   --rich-danger: 226 162 171;
   --rich-accent: 119 164 220;
-  --code: 24 25 27;
-  --code-surface: 29 30 32;
-  --code-header: 37 38 40;
+  --code: 22 26 32;
+  --code-surface: 27 32 39;
+  --code-header: 34 40 49;
   --syntax-comment: 155 153 149;
   --syntax-keyword: 182 161 214;
   --syntax-string: 160 191 160;
@@ -114,7 +114,7 @@
 @layer base {
   :root {
     color-scheme: light;
-    font-family: Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    font-family: 'Inter Variable', Inter, 'Noto Naskh Arabic Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -329,11 +329,11 @@
   max-width: 100%;
   overflow: hidden;
   margin: 1.1rem 0;
-  border: 1px solid rgb(var(--border-strong) / 75%);
-  border-radius: 14px;
+  border: 1px solid rgb(var(--border) / 35%);
+  border-radius: 10px;
   background: rgb(var(--code-surface));
   color: rgb(var(--body));
-  box-shadow: 0 2px 8px rgb(var(--shadow) / 3%);
+  box-shadow: none;
 }
 .code-toolbar {
   display: flex;

@@ -1,0 +1,1555 @@
+{
+  "results": [
+    {
+      "route": "/library",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/LibraryPage-DPOTo-Zw.js",
+          "bytes": 9685
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CBkqsrXD.js",
+          "bytes": 2245
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/practiceIntent-cvMyr3ZH.js",
+          "bytes": 913
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/Select-CE8dka6O.js",
+          "bytes": 5176
+        },
+        {
+          "name": "/assets/Pagination-D_yK2GRJ.js",
+          "bytes": 1274
+        },
+        {
+          "name": "/assets/ViewToggle-B3r96Cxw.js",
+          "bytes": 834
+        },
+        {
+          "name": "/assets/rag-D2Yl3Fda.js",
+          "bytes": 2394
+        },
+        {
+          "name": "/assets/MaterialSourceTab-C-XEOu5Y.js",
+          "bytes": 2996
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/SourceViewer-CewJ_tZV.js",
+          "bytes": 11084
+        },
+        {
+          "name": "/assets/MarkdownContent-CFcak3a4.js",
+          "bytes": 506450
+        },
+        {
+          "name": "/assets/ProgressBar-TlHtcTjk.js",
+          "bytes": 1685
+        },
+        {
+          "name": "/assets/arrow-down-CSNOYxhT.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/plus-MCsO_OOF.js",
+          "bytes": 380
+        },
+        {
+          "name": "/assets/folder-open-C9XnoqRQ.js",
+          "bytes": 519
+        },
+        {
+          "name": "/assets/panel-right-open-lK2HKSz3.js",
+          "bytes": 464
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 325.19999998807907,
+      "layoutShift": 0
+    },
+    {
+      "route": "/progress",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/ProgressPage-BowPOICy.js",
+          "bytes": 50582
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CBkqsrXD.js",
+          "bytes": 2245
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/EventProposalCard-Cui1ylPG.js",
+          "bytes": 9461
+        },
+        {
+          "name": "/assets/Select-CE8dka6O.js",
+          "bytes": 5176
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/plus-MCsO_OOF.js",
+          "bytes": 380
+        },
+        {
+          "name": "/assets/calendar-days-BHMou0Iq.js",
+          "bytes": 719
+        },
+        {
+          "name": "/assets/learning-DvUYhQVq.js",
+          "bytes": 2226
+        },
+        {
+          "name": "/assets/Pagination-D_yK2GRJ.js",
+          "bytes": 1274
+        },
+        {
+          "name": "/assets/practiceIntent-cvMyr3ZH.js",
+          "bytes": 913
+        },
+        {
+          "name": "/assets/activity-l_QStH03.js",
+          "bytes": 461
+        },
+        {
+          "name": "/assets/circle-check-C9j9LGQl.js",
+          "bytes": 437
+        },
+        {
+          "name": "/assets/trending-up-DCtNb38P.js",
+          "bytes": 397
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 320.5,
+      "layoutShift": 0
+    },
+    {
+      "route": "/assessments",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/AssessmentsPage-DwZKW2DV.js",
+          "bytes": 1522
+        },
+        {
+          "name": "/assets/AssessmentWorkspace-Dx_WNKuF.js",
+          "bytes": 93814
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CBkqsrXD.js",
+          "bytes": 2245
+        },
+        {
+          "name": "/assets/Select-CE8dka6O.js",
+          "bytes": 5176
+        },
+        {
+          "name": "/assets/MarkdownContent-CFcak3a4.js",
+          "bytes": 506450
+        },
+        {
+          "name": "/assets/ProgressBar-TlHtcTjk.js",
+          "bytes": 1685
+        },
+        {
+          "name": "/assets/printer-SPdWQUhQ.js",
+          "bytes": 546
+        },
+        {
+          "name": "/assets/clock-3-DzC_3Ylg.js",
+          "bytes": 396
+        },
+        {
+          "name": "/assets/ViewToggle-B3r96Cxw.js",
+          "bytes": 834
+        },
+        {
+          "name": "/assets/Pagination-D_yK2GRJ.js",
+          "bytes": 1274
+        },
+        {
+          "name": "/assets/assessmentDelivery-PlyYJLWm.js",
+          "bytes": 2453
+        },
+        {
+          "name": "/assets/circle-check-C9j9LGQl.js",
+          "bytes": 437
+        },
+        {
+          "name": "/assets/circle-x-BrifOcmb.js",
+          "bytes": 455
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/circle-minus-CFWefNOA.js",
+          "bytes": 424
+        },
+        {
+          "name": "/assets/rotate-ccw-DGUaqt0c.js",
+          "bytes": 427
+        },
+        {
+          "name": "/assets/flag-74sAz49E.js",
+          "bytes": 481
+        },
+        {
+          "name": "/assets/practiceIntent-cvMyr3ZH.js",
+          "bytes": 913
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/FormField-P6IQfAIN.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/rag-D2Yl3Fda.js",
+          "bytes": 2394
+        },
+        {
+          "name": "/assets/learning-DvUYhQVq.js",
+          "bytes": 2226
+        },
+        {
+          "name": "/assets/sparkles-D68houfJ.js",
+          "bytes": 739
+        },
+        {
+          "name": "/assets/plus-MCsO_OOF.js",
+          "bytes": 380
+        },
+        {
+          "name": "/assets/loader-circle-CKxlKQ1X.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/ellipsis-BrSY7S0R.js",
+          "bytes": 481
+        },
+        {
+          "name": "/assets/chevron-up-C4M3Iczj.js",
+          "bytes": 355
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 324.5,
+      "layoutShift": 0.0145263671875
+    },
+    {
+      "route": "/settings",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/SettingsPage-BzsRvaM6.js",
+          "bytes": 15290
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CBkqsrXD.js",
+          "bytes": 2245
+        },
+        {
+          "name": "/assets/Select-CE8dka6O.js",
+          "bytes": 5176
+        },
+        {
+          "name": "/assets/ProfileEstimates-2jdUQoyw.js",
+          "bytes": 16134
+        },
+        {
+          "name": "/assets/FormField-P6IQfAIN.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/chatAppearance-BZgmlXio.js",
+          "bytes": 633
+        },
+        {
+          "name": "/assets/database-BHURCHbQ.js",
+          "bytes": 470
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 223.6000000089407,
+      "layoutShift": 0
+    },
+    {
+      "route": "/notifications",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/NotificationsPage-De5DtEHg.js",
+          "bytes": 5400
+        },
+        {
+          "name": "/assets/WorkspaceHeader-CBkqsrXD.js",
+          "bytes": 2245
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/bell-ring-DjwznNPK.js",
+          "bytes": 624
+        },
+        {
+          "name": "/assets/calendar-days-BHMou0Iq.js",
+          "bytes": 719
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 208.59999999403954,
+      "layoutShift": 0.03021240234375
+    },
+    {
+      "route": "/chat/polish-chat",
+      "javascript": [
+        {
+          "name": "/theme.js",
+          "bytes": 602
+        },
+        {
+          "name": "/assets/index-kgse4PF1.js",
+          "bytes": 475000
+        },
+        {
+          "name": "/assets/AppLayout-BQgaueoJ.js",
+          "bytes": 44499
+        },
+        {
+          "name": "/assets/Popover-CdrZA5Ch.js",
+          "bytes": 3910
+        },
+        {
+          "name": "/assets/ThemeSelector-BtSsl8nk.js",
+          "bytes": 1370
+        },
+        {
+          "name": "/assets/sun-CqJzvYNj.js",
+          "bytes": 699
+        },
+        {
+          "name": "/assets/moon-CEqgwdzv.js",
+          "bytes": 444
+        },
+        {
+          "name": "/assets/monitor-C8ZjhFba.js",
+          "bytes": 486
+        },
+        {
+          "name": "/assets/search-BSH3h1iW.js",
+          "bytes": 401
+        },
+        {
+          "name": "/assets/ActionMenu-ysuWiO-h.js",
+          "bytes": 1475
+        },
+        {
+          "name": "/assets/message-square-BgAw5ZNZ.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/ellipsis-vertical-DTfXUEXS.js",
+          "bytes": 488
+        },
+        {
+          "name": "/assets/chevron-right-C7ji5_2r.js",
+          "bytes": 862
+        },
+        {
+          "name": "/assets/pencil-DfvGbEqp.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/trash-BHIyNrbO.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/message-square-text-BAl8Yuv1.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/layout-grid-Dc0cAIaR.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/clipboard-check-JUyLGBCK.js",
+          "bytes": 531
+        },
+        {
+          "name": "/assets/settings-2-BKRgvY8C.js",
+          "bytes": 479
+        },
+        {
+          "name": "/assets/brain-Cs_dsJvY.js",
+          "bytes": 804
+        },
+        {
+          "name": "/assets/circle-user-round-Cszod5Y4.js",
+          "bytes": 506
+        },
+        {
+          "name": "/assets/bell-B1UZQnTz.js",
+          "bytes": 517
+        },
+        {
+          "name": "/assets/notifications-CL3Ounu-.js",
+          "bytes": 1573
+        },
+        {
+          "name": "/assets/Tabs-BZ5VEdGH.js",
+          "bytes": 17799
+        },
+        {
+          "name": "/assets/proxy-rLH72gf6.js",
+          "bytes": 15338
+        },
+        {
+          "name": "/assets/SwitchLayoutGroupContext-CyhEmZTn.js",
+          "bytes": 3700
+        },
+        {
+          "name": "/assets/SourceAnnotations-CcYo9hgj.js",
+          "bytes": 6154
+        },
+        {
+          "name": "/assets/SourceLink-CcXFMDzF.js",
+          "bytes": 1850
+        },
+        {
+          "name": "/assets/sidePanelState-_BDvt1nC.js",
+          "bytes": 1790
+        },
+        {
+          "name": "/assets/sourcePreference-BczHwxKH.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/quote-CooYvOZ3.js",
+          "bytes": 616
+        },
+        {
+          "name": "/assets/rotate-ccw-clock-CWWANcZI.js",
+          "bytes": 493
+        },
+        {
+          "name": "/assets/file-text-CLWVgZcW.js",
+          "bytes": 612
+        },
+        {
+          "name": "/assets/pin-off-S2xVn7QM.js",
+          "bytes": 561
+        },
+        {
+          "name": "/assets/pin-CvLYlnzQ.js",
+          "bytes": 573
+        },
+        {
+          "name": "/assets/external-link-BUXxhqHW.js",
+          "bytes": 478
+        },
+        {
+          "name": "/assets/message-square-plus-DeQb_T5d.js",
+          "bytes": 537
+        },
+        {
+          "name": "/assets/panel-right-17UF2oid.js",
+          "bytes": 416
+        },
+        {
+          "name": "/assets/list-S-Z4tjpc.js",
+          "bytes": 529
+        },
+        {
+          "name": "/assets/arrow-left-Bv2slxkP.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/arrow-right-DRpGpIs_.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/panel-left-CkTYE19g.js",
+          "bytes": 434
+        },
+        {
+          "name": "/assets/ChatPage-CbRiYc5f.js",
+          "bytes": 91525
+        },
+        {
+          "name": "/assets/rag-D2Yl3Fda.js",
+          "bytes": 2394
+        },
+        {
+          "name": "/assets/book-open-text-K0cYEfTq.js",
+          "bytes": 665
+        },
+        {
+          "name": "/assets/image-plus-CHt5UPEE.js",
+          "bytes": 590
+        },
+        {
+          "name": "/assets/camera-CLFFaS27.js",
+          "bytes": 563
+        },
+        {
+          "name": "/assets/loader-circle-CKxlKQ1X.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/paperclip-aNKe67Xw.js",
+          "bytes": 460
+        },
+        {
+          "name": "/assets/plus-MCsO_OOF.js",
+          "bytes": 380
+        },
+        {
+          "name": "/assets/mic-C93HjEsh.js",
+          "bytes": 462
+        },
+        {
+          "name": "/assets/square-Di6gNoTy.js",
+          "bytes": 374
+        },
+        {
+          "name": "/assets/pause-R4nHIBTC.js",
+          "bytes": 438
+        },
+        {
+          "name": "/assets/play-DAUfMUcn.js",
+          "bytes": 417
+        },
+        {
+          "name": "/assets/rotate-ccw-DGUaqt0c.js",
+          "bytes": 427
+        },
+        {
+          "name": "/assets/arrow-up-EJ5Ithh7.js",
+          "bytes": 389
+        },
+        {
+          "name": "/assets/use-reduced-motion-Cp4BRwyJ.js",
+          "bytes": 136
+        },
+        {
+          "name": "/assets/lightbulb-Dhovi5fI.js",
+          "bytes": 513
+        },
+        {
+          "name": "/assets/sparkles-D68houfJ.js",
+          "bytes": 739
+        },
+        {
+          "name": "/assets/SourceViewer-CewJ_tZV.js",
+          "bytes": 11084
+        },
+        {
+          "name": "/assets/MarkdownContent-CFcak3a4.js",
+          "bytes": 506450
+        },
+        {
+          "name": "/assets/ProgressBar-TlHtcTjk.js",
+          "bytes": 1685
+        },
+        {
+          "name": "/assets/usePageRefresh-DJQOaeh-.js",
+          "bytes": 623
+        },
+        {
+          "name": "/assets/arrow-down-CSNOYxhT.js",
+          "bytes": 392
+        },
+        {
+          "name": "/assets/list-tree-Do_DND5M.js",
+          "bytes": 523
+        },
+        {
+          "name": "/assets/ChatAttachmentPreview-DnI0dcop.js",
+          "bytes": 3842
+        },
+        {
+          "name": "/assets/Select-CE8dka6O.js",
+          "bytes": 5176
+        },
+        {
+          "name": "/assets/image-D2G7x6Y_.js",
+          "bytes": 496
+        },
+        {
+          "name": "/assets/library-big-DbKwSf4S.js",
+          "bytes": 553
+        },
+        {
+          "name": "/assets/book-plus-B2IPL412.js",
+          "bytes": 498
+        },
+        {
+          "name": "/assets/EventProposalCard-Cui1ylPG.js",
+          "bytes": 9461
+        },
+        {
+          "name": "/assets/Toggle-C7tz-FdA.js",
+          "bytes": 5166
+        },
+        {
+          "name": "/assets/assessmentDelivery-PlyYJLWm.js",
+          "bytes": 2453
+        },
+        {
+          "name": "/assets/chatAppearance-BZgmlXio.js",
+          "bytes": 633
+        },
+        {
+          "name": "/assets/FormField-P6IQfAIN.js",
+          "bytes": 503
+        },
+        {
+          "name": "/assets/layers-UKHznfoU.js",
+          "bytes": 669
+        },
+        {
+          "name": "/assets/motionFeatures-B8NkNctG.js",
+          "bytes": 103121
+        }
+      ],
+      "readyMs": 417.1000000089407,
+      "layoutShift": 0
+    }
+  ],
+  "typing": {
+    "samples": [
+      0.20000000298023224,
+      4.299999997019768,
+      5.5,
+      5.200000002980232,
+      7.700000002980232,
+      9.899999991059303,
+      3.5999999940395355,
+      14.5,
+      4.699999988079071,
+      2.9000000059604645,
+      5.4000000059604645,
+      8.799999997019768,
+      4.200000002980232,
+      12.600000008940697,
+      4.5999999940395355,
+      1.0999999940395355,
+      4.600000008940697,
+      6.100000008940697,
+      8.899999991059303,
+      14.200000002980232,
+      4.9000000059604645,
+      0,
+      1.7000000029802322,
+      4.5
+    ],
+    "longTasks": []
+  }
+}

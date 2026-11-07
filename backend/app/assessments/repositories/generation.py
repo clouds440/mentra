@@ -47,6 +47,9 @@ class GenerationJobs:
                 source_turn_id=source_turn_id, revision=1, resume_until=None,
                 error=None, attempts=0, claim_id=None, claim_until=None, created_at=self.repository.clock())
             session.execute(jobs.insert().values(**row))
+            if request.challenge_choice_id:
+                from app.challenge.repositories.store import register_choice
+                register_choice(self.repository,session,owner,request,row)
             return self.public(row)
 
     def replay(self, owner, request, conversation=None):

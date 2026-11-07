@@ -183,7 +183,7 @@ export function ChatComposer({
     <form
       ref={composerRef}
       aria-label="Message Mentra"
-      className="chat-composer chat-prose rounded-panel border border-border-strong bg-card p-1.5 shadow-panel focus-within:border-border-hover"
+      className="chat-composer chat-prose rounded-panel border border-border-strong bg-card p-1.5 shadow-panel"
       onPaste={handlePaste}
       onSubmit={(event) => {
         event.preventDefault();
@@ -212,7 +212,6 @@ export function ChatComposer({
         hidden={voice.busy}
         aria-label="Ask Mentra anything"
         aria-haspopup="listbox"
-        aria-expanded={pickerOpen}
         aria-controls={pickerOpen ? 'study-material-results' : undefined}
         aria-activedescendant={pickerOpen ? activeOptionId : undefined}
         aria-autocomplete="list"

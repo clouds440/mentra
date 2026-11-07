@@ -1,12 +1,13 @@
 from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.rag.schemas import ChatSelection
 from app.workspace.schemas import SourceAnnotation
 
 
 from .interactions import InteractionResponse
+from app.challenge.schemas import ChallengeAction
 
 class SendTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -17,10 +18,17 @@ class SendTurn(BaseModel):
     source_annotations: list[SourceAnnotation] = Field(default_factory=list, max_length=4)
     retrieval: ChatSelection = Field(default_factory=ChatSelection)
     interaction_response: InteractionResponse | None = None
+    challenge_action: ChallengeAction | None = None
     retry: bool = False
     resume_from: UUID | None = None
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=4)
     timezone: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode='after')
+    def isolated_challenge_action(self):
+        if self.challenge_action and (self.interaction_response or self.source_annotations or self.attachment_ids or self.resume_from):
+            raise ValueError('Send difficulty actions separately from attachments, selections and other interactions.')
+        return self
 
     @field_validator('timezone')
     @classmethod

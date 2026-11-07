@@ -4,9 +4,9 @@ from uuid import UUID
 from sqlalchemy import and_, or_, select
 from app.core.exceptions import AppError
 from app.history_management.repositories.events.postgres import request_hash
-from .quality import stored_question
-from .schemas import GeneratedQuestion
-from .repositories.tables import item_reviews, assessments
+from ..quality import stored_question
+from ..schemas import GeneratedQuestion
+from .tables import item_reviews, assessments
 
 
 def pending_reports(repository, owner, *, after=None, limit=50):

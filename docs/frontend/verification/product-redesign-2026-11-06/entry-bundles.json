@@ -1,0 +1,22 @@
+{
+  "original": {
+    ".js": {
+      "bytes": 519339,
+      "gzip_bytes": 160723
+    },
+    ".css": {
+      "bytes": 111542,
+      "gzip_bytes": 20748
+    }
+  },
+  "redesign": {
+    ".js": {
+      "bytes": 474988,
+      "gzip_bytes": 151070
+    },
+    ".css": {
+      "bytes": 125262,
+      "gzip_bytes": 23330
+    }
+  }
+}

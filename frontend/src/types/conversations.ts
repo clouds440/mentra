@@ -9,6 +9,7 @@ export interface StoredMessage extends ChatMessageData {
   conversation_id: string; sequence: number; created_at: string;
 }
 export interface PendingTurn {
+  challenge_action?: ChallengeAction;
   source_annotations?: import('./sourceAnnotations').SourceAnnotation[];
   timezone?: string;
   interaction_response?: import('./interactions').InteractionResponse;
@@ -17,6 +18,7 @@ export interface PendingTurn {
   attachment_ids?: string[];
   resume_from?: string;
 }
+export interface ChallengeAction { source_kind:'draft'|'assessment'; source_id:string; expected_revision:number; direction:'easier'|'harder' }
 export interface Turn {
   response_outcome?: import('./chat').ResponseOutcome;
   control_action?: import('./chat').ResponseOutcome['control_action'];

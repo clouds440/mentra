@@ -298,3 +298,132 @@ checks and the old Progress row fixture). The offscreen three-chart check was in
 on the current build (two of three isolated retries passed); no lazy-chart production code
 was changed. These checks are not counted as passing. The page-cache test now excludes
 notification-stream reconnects from page-data reads, preserving its actual cache assertion.
+
+
+## Product redesign and copy refresh — 2026-11-06
+
+The interface now uses a warm neutral canvas, restrained teal accents, stronger type
+hierarchy and continuous page sections. Page identity, section spacing, form controls,
+collection items, source panels and modal presentation share one visual system in
+`global.css` and `product.css`. Library, Progress, Assessments, Settings, notifications,
+onboarding and authentication inherit the system. Sign-in has a responsive two-column
+introduction; phones retain a focused single-column form. Chat has an editorial welcome
+with four clear starting actions and compact mobile rows. Existing application state,
+URLs, source interactions, drafts, assessment scoring and backend contracts are preserved.
+
+Agent-Native Design contains the interactive reference prototype:
+[Mentra — A quieter learning workspace](https://design.agent-native.com/_agent-native/open?app=design&view=editor&designId=dVUCD_1tVifSc860AobTH).
+Its example sources and progress are illustrative; the repository implementation uses
+the existing authenticated data services.
+
+Radix Tabs supplies keyboard activation and roving focus while retaining feature-owned
+panel IDs. Radix Switch supplies keyboard/form behavior through the shared Toggle and
+its boolean `onCheckedChange` contract. Framer Motion provides short entry transitions
+and spring tab indicators; its DOM/layout features load asynchronously. Reduced motion
+skips welcome/header entry and staggering. The unused WebGL welcome renderer and its
+obsolete renderer-specific tests were replaced by static-welcome behavior checks.
+Saved chat routes now correctly highlight Chat in primary navigation. The authenticated
+workspace loads separately from account entry.
+
+Copy changes clarify empty states and next actions without changing domain meaning.
+Examples include “Save chat assessments automatically”, a practical explanation of chat
+reading size, clearer Library guidance, and more direct descriptions for Progress,
+Assessments and Settings. Safety, grading, memory/privacy and recovery disclosures retain
+their precise behavior. Automated accessibility checks also identified and removed an
+unsupported `aria-expanded` attribute on the multiline chat textbox; its popup association
+and active-option navigation remain in place.
+
+Validation: strict TypeScript and production build passed, as did UI contrast checks,
+theme checks and 50 Chromium journeys (47 shared/product checks plus 3 replacement
+welcome checks). Tests cover 320–2560px layouts, both themes, modal focus, keyboard tabs
+and switches, persisted notification preferences, mobile composer bounds, attachment and
+camera controls, source browsing/pins/selections, sidebar resizing and a 200-message chat.
+WCAG A/AA automated scans pass on the five main routes in both themes and account entry
+at phone/desktop widths. These scans supplement keyboard/responsive checks; they are not
+a blanket accessibility certification. API responses are fixtures, not live learner data.
+The complete application/backend suite was not rerun for this presentation change.
+
+The original main entry JavaScript measured 160,723 gzip bytes; the redesign measured
+151,070 (6.0% smaller). Entry CSS increased from 20,748 to 23,330 gzip bytes; combined
+entry JS/CSS is 3.9% smaller. Deferred workspace and motion code is additional route work,
+so entry reduction does not imply a corresponding reduction in total authenticated-route
+transfer. The local performance journey remains below the 0.1 layout-shift threshold and
+records no long typing tasks with 200 messages. These are controlled local measurements,
+not production Core Web Vitals. Existing optional diagram/export chunks still produce
+Vite size warnings.
+
+[Visual evidence and measurements](verification/product-redesign-2026-11-06/)
+include original/redesigned chat, mobile chat, Library, dark Settings, sign-in, bundle
+sizes, browser measurements and successful test logs. Reproduce the fixture-based
+production checks with `npm run build` followed by `npm run test:design` in `frontend`.
+Changes are local; no deployment was performed.
+
+
+## Page-first review and preservation of actions — 2026-11-06
+
+The follow-up centers the feature pages. Library now offers URL-backed grid/list views
+and an explicit Refresh action, while keeping Add material, search, all context/archive
+filters, context state controls, pagination, source opening, Manage material, Study in
+chat and Quiz this material. View changes do not refetch data or discard filters;
+filters and reloads preserve list view. Progress moves the overview above review content
+and places topics beside suggested practice when space allows. Context selection,
+observations, concept review, topic search/grouping and practice actions are retained.
+Assessments adds a Create assessment shortcut and a return-to-collection action while
+keeping every tab, question format, source option, attempt and grading action. Settings
+adds jump links to its existing sections; Password links appear only where password
+management is supported. Notifications uses a continuous feed with every existing
+filter, refresh, target link, read/dismiss and pagination action intact. Source details,
+uploads, events, memories, notification preferences and onboarding were reviewed too.
+
+The missing side-panel toggle in the earlier chat screenshot was inherited behavior:
+SidePanelTrigger returned null with no tabs, launcher or pins. The toggle is now always
+available on workspace routes, and can open an empty panel. The empty state explains
+source opening/pinning and retains Browse. Desktop and mobile close behavior and focus
+return remain intact; empty panels do not expose an invalid empty tablist.
+
+A static comparison against HEAD inspected 92 feature files and 408 original JSX
+click/submit handlers, navigation targets and option-value definitions. The only changed
+original handler is the intentionally strengthened side-panel toggle. No original page
+action or option definition was removed. This source inventory is supplemented by actual
+browser journeys for action visibility, Library view/filter persistence, material save /
+archive / reindex / delete / tagging / versions, all twelve question formats, Settings
+shortcuts and switches, notification actions and onboarding calibration/skip/theme choices.
+
+Validation: production build, strict TypeScript, theme/contrast checks and all 59
+Chromium journeys passed. Tests open and close the empty side panel on all twelve feature
+page routes plus new chat, at 390px and 1440px. Existing 320–2560px layout, modal, source,
+attachment and accessibility checks also pass. A performance regression exposed a late
+font swap: the root named Inter while the bundled family is Inter Variable. The root now
+uses the installed family and preloads its Latin subset. The final local layout-shift
+measurements are 0 for Library, Progress, Settings and saved chat, 0.0146 for Assessments,
+and 0.0303 for Notifications; the 200-message typing journey records no long tasks.
+These are controlled fixture measurements, not field Core Web Vitals or a full backend
+validation. No deployment was performed.
+
+[Page previews, action inventory, successful checks and performance evidence](verification/product-redesign-2026-11-06/page-review/)
+cover Library, uploads, material details, Progress, Events, Assessments, creation,
+mistakes, Settings, memories, notification preferences, notifications and onboarding.
+The Agent-Native Design reference now opens on Library and includes an always-available
+side-panel toggle alongside its existing appearance control.
+
+
+## Restore the original palette and remove composer focus styling — 2026-11-06
+
+At the user's direction, restored the established blue accent, cool blue-gray light
+surfaces and night-dark/graphite palette. Refinements stay within those original shades;
+the light blue text accent is slightly deeper to preserve contrast on selected navigation.
+The green theme accent and green-tinted surfaces are superseded. Existing success-state
+colors retain their original semantic purpose. Page layouts, typography, actions,
+interactions and all other redesign changes remain intact.
+
+Removed the composer textarea's focus outline/shadow and the parent form's focus glow /
+border change. Other controls keep their existing focus behavior. The Agent-Native Design
+reference received the same color-family restoration with its structure unchanged.
+
+The Docker frontend image was rebuilt and its container recreated. It is healthy. Theme
+and palette-contrast checks passed, as did four targeted browser journeys against the
+actual Docker-served bundle: light/dark at 390px and 1440px, typing in the composer,
+unchanged outer-composer appearance on focus, no textarea focus ring, and Library WCAG
+A/AA scans. [Current palette and focused-composer screenshots](verification/product-redesign-2026-11-06/palette-restoration/)
+replace the green-palette screenshots as the current visual reference. Earlier validation
+and layout screenshots above document their respective revisions.

@@ -40,6 +40,14 @@ from app.student_profile.service import StudentProfileService
 from app.api.routes.student_profile import router as profile_router
 
 
+class BrowserModelFactory:
+    """Each concurrent browser request owns its mutable fake tool bindings."""
+    def __init__(self,factory):self.factory=factory
+    def get_model(self):
+        from copy import copy
+        return copy(self.factory).get_model()
+
+
 @asynccontextmanager
 async def lifespan(application):
     database = PostgresSandbox(seed_learners=False)
@@ -57,7 +65,9 @@ async def lifespan(application):
                                embedding, QdrantClient(':memory:', force_disable_check_same_thread=True))
     application.state.rag_service = RAGService(RAGRepository(database.sessions,files), LearnerEngine(database.repository),
         embedding, vector, files, settings, admission=application.state.work_admission)
-    llm = MentraLLM(HistoryChatFactory())
+    from app.langchain.model_factory import ModelFactory
+    model_factory=HistoryChatFactory()
+    llm = MentraLLM(model_factory if isinstance(model_factory,ModelFactory) else BrowserModelFactory(model_factory))
     from app.langchain.concept_identity import ConceptIdentityResolver
     application.state.learner_service = LearnerEngine(database.repository, generated_concept_resolver=ConceptIdentityResolver(llm))
     application.state.chat_service = ChatService(llm)
@@ -74,6 +84,8 @@ async def lifespan(application):
     from app.assessments.evidence_worker import AssessmentEvidenceWorker
     grading_worker = AssessmentWorker(application.state.assessment_service)
     assessment_evidence_worker = AssessmentEvidenceWorker(application.state.assessment_service)
+    from app.challenge.repositories.worker import ChallengeWorker
+    challenge_worker=ChallengeWorker(application.state.assessment_service.repository)
     from app.assessments.generation_worker import AssessmentGenerationWorker
     generation_worker = AssessmentGenerationWorker(application.state.assessment_service)
     from app.assessments.source_worker import SourceWorker
@@ -100,6 +112,7 @@ async def lifespan(application):
             await asyncio.to_thread(application.state.history_management.events.repository.deliver_reminders)
             await grading_worker.run_once()
             await assessment_evidence_worker.run_once()
+            await challenge_worker.run_once()
             await source_worker.run_once()
             await asyncio.sleep(0.2)
 
@@ -152,6 +165,8 @@ from app.api.routes.learning import router as learning_router
 app.include_router(learning_router, prefix='/api/v1')
 from app.api.routes.assessments import router as assessments_router
 app.include_router(assessments_router, prefix='/api/v1')
+from app.api.routes.challenge import router as challenge_router
+app.include_router(challenge_router,prefix='/api/v1')
 
 
 def cleanup_database():

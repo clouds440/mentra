@@ -54,7 +54,7 @@ export function OnboardingPage({ calibrationOnly = false }: { calibrationOnly?: 
   }
   function complete(next: StudentProfile) { setFinished(next); replace(next); }
   const results = finished ? profile : attempt?.status === 'completed' ? profile : null;
-  return <main className="min-h-dvh bg-background px-3 py-4 text-foreground sm:px-6 sm:py-10">
+  return <main className="onboarding-page min-h-dvh bg-background px-3 py-4 text-foreground sm:px-6 sm:py-10">
     <div className="mx-auto w-full max-w-xl">
       <header className="mb-7 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5"><MentraLogo /><span className="text-lg font-semibold tracking-tight">mentra</span></div>

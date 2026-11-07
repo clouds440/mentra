@@ -1,5 +1,4 @@
 """Explicit, bounded serializable state between chat graph nodes."""
-import json
 from langchain_core.messages import messages_to_dict, messages_from_dict, HumanMessage
 from app.chat.response import ChatResponse
 
@@ -53,7 +52,8 @@ class ResponseRuntime:
         payload['evidence_ids'] = list(self.scope.get('evidence_ids', []))
         # Store only data, never service objects, closures, coroutines or source
         # selection permissions. Explicit sources are revalidated on every run.
-        payload = json.loads(json.dumps(payload, default=lambda value: value.model_dump(mode='json')))
+        from pydantic_core import to_jsonable_python
+        payload = to_jsonable_python(payload)
         return dict(policy_version=POLICY_VERSION, attempt=self.scope.get('attempt',1), conversation=messages_to_dict(self.conversation), scope=payload,
             active=sorted(self.selection.active), pending=sorted(self.selection.pending), explicit=sorted(getattr(self.selection,'explicit',())),
             budget={key:getattr(self.budget, key) for key in

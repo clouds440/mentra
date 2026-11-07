@@ -117,10 +117,11 @@ class PersistenceTests(unittest.TestCase):
         self.assertIsNone(self.usage.cached(self.owner, 'oversized', NOW))
 
     def test_migration_down_up_preserves_non_feature_data_and_metadata(self):
+        from app.db.migrate import downgrade
         with self.db.engine.connect() as connection:
             before = connection.scalar(select(func.count()).select_from(learner))
-            command.downgrade(migration_config(connection), '20261010_0016')
-            connection.commit()
+        downgrade(self.db.engine, '20261010_0016')
+        with self.db.engine.connect() as connection:
             self.assertNotIn('web_search_call', inspect(connection).get_table_names())
             self.assertEqual(connection.scalar(select(func.count()).select_from(learner)), before)
         upgrade(self.db.engine)

@@ -1,17 +1,20 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { m, useReducedMotion } from '../ui/Motion';
 
 /** Shared hierarchy for authenticated workspace pages. */
 export function WorkspaceHeader({ title, description, icon: Icon, actions }: {
   title: string; description: string; icon: LucideIcon; actions?: ReactNode;
 }) {
-  return <header className="workspace-header">
-    <div className="flex min-w-0 flex-1 basis-full items-start gap-3 sm:basis-0">
-      <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border bg-surface text-accent"><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></span>
-      <div className="min-w-0"><h1 className="page-title">{title}</h1><p className="mt-1.5 max-w-xl text-sm leading-6 text-muted">{description}</p></div>
+  const reducedMotion = useReducedMotion();
+  return <m.header className="workspace-header" initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .18 }}>
+    <div className="workspace-heading-group">
+      <div className="workspace-eyebrow"><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>Your learning workspace</span></div>
+      <h1 className="page-title">{title}</h1>
+      <p className="workspace-description">{description}</p>
     </div>
     {actions && <div className="action-row">{actions}</div>}
-  </header>;
+  </m.header>;
 }
 
 export function WorkspaceEmpty({ title, description, icon: Icon, action }: {

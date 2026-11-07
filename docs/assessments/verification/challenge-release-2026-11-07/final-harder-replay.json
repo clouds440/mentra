@@ -1,0 +1,88 @@
+{
+  "samples": [
+    {
+      "sample": 0,
+      "direction": "harder",
+      "handoff_ms": 344.04,
+      "elapsed_ms": 37232.01,
+      "state": "completed",
+      "calls": [
+        {
+          "source": "assessment_generation",
+          "elapsed_ms": 10361.53,
+          "count": 3
+        },
+        {
+          "source": "assessment_generation",
+          "elapsed_ms": 10642.08,
+          "count": 3
+        },
+        {
+          "source": "assessment_generation",
+          "elapsed_ms": 2449.48,
+          "count": 1
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 3373.43
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 3029.69
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 3490.87
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 3710.13
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 3269.23
+        },
+        {
+          "source": "assessment_generation",
+          "elapsed_ms": 6620.96,
+          "count": 2
+        },
+        {
+          "source": "assessment_generation",
+          "elapsed_ms": 4438.59,
+          "count": 1
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 2419.66
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 1600.77
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 1325.4
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 1877.85
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 1566.35
+        },
+        {
+          "source": "assessment_choice_review",
+          "elapsed_ms": 4202.21
+        }
+      ],
+      "original_unchanged": true,
+      "private_template_replay": true,
+      "questions": 6,
+      "average_difficulty": 0.45,
+      "fresh_prompts": 6
+    }
+  ],
+  "model": "deepseek-flash"
+}

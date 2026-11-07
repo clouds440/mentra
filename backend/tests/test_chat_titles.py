@@ -11,6 +11,7 @@ from app.chat.schemas import SendTurn
 from app.chat.service import ConversationService
 from app.chat.repositories.postgres import ChatRepository
 from app.chat.titles import NewChatReply
+from app.langchain.decision_schemas import FinishResponse
 from app.langchain.chat_service import ChatService
 from app.langchain.llm import MentraLLM
 from app.langchain.orchestration_service import OrchestrationService
@@ -59,7 +60,7 @@ class TitleGenerationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state['conversation_title'], 'Understanding Photosynthesis')
         self.assertEqual(answer, 'Plants turn light into energy.')
         self.assertEqual(''.join(deltas), answer)
-        self.assertIn(NewChatReply, model.calls[0][1])
+        self.assertIn(FinishResponse, model.calls[0][1])
         self.assertEqual(model.calls[0][2], 'required')
         self.assertIn('first message in a new conversation', model.calls[0][0][0].content)
         self.assertEqual(len(model.calls), 1)
@@ -79,11 +80,12 @@ class TitleGenerationTests(unittest.IsolatedAsyncioTestCase):
             queries.append(query)
             return dict(outcome='applied', result='safe data')
         tool = StructuredTool.from_function(name='lookup', description='Lookup', args_schema=Input, coroutine=lookup)
-        model = ScriptedModel([AIMessage(content='', tool_calls=[dict(name='lookup', id='lookup1', args=dict(query='photosynthesis'))]), output()])
+        model = ScriptedModel([AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',id='enable',args=dict(tool_names=['lookup']))]),
+            AIMessage(content='', tool_calls=[dict(name='lookup', id='lookup1', args=dict(query='photosynthesis'))]), output()])
         state = scope()
         self.assertEqual(await self.reply(model, state, [tool]), 'Plants turn light into energy.')
         self.assertEqual(queries, ['photosynthesis'])
-        self.assertEqual(len(model.calls), 2)
+        self.assertEqual(len(model.calls), 3)
         self.assertEqual(state['conversation_title'], 'Understanding Photosynthesis')
 
     async def test_invalid_title_does_not_lose_answer(self):

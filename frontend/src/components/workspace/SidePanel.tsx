@@ -19,12 +19,10 @@ const drawerOptions = { desktopQuery, inertIds: ['workspace-content', 'main-side
   fallbackFocus: '[aria-controls="workspace-side-panel"]:is(button), #workspace-main' };
 
 export function SidePanelTrigger({ inDrawer = false }: { inDrawer?: boolean }) {
-  const { tabs, visible, launcher } = useSidePanelState();
+  const { visible } = useSidePanelState();
   const actions = useSidePanelActions();
-  const { items } = usePinnedSources();
-  if (!tabs.length && !launcher && !items.length && !visible) return null;
   const label = visible ? 'Hide side panel' : 'Open side panel';
-  return <IconButton size="sm" className={inDrawer ? 'workspace-chrome-control' : 'workspace-chrome-control workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={() => actions?.toggle(!!items.length || visible)}>
+  return <IconButton size="sm" className={inDrawer ? 'workspace-chrome-control' : 'workspace-chrome-control workspace-panel-global-trigger'} aria-label={label} title={label} aria-controls={panelId} aria-expanded={visible} onClick={() => visible ? actions?.hide() : actions?.toggle(true)}>
     <PanelRight size={17} aria-hidden="true" />
   </IconButton>;
 }
@@ -41,7 +39,7 @@ export function SidePanel() {
   const [browsing, setBrowsing] = useState(false);
   const [browseSection, setBrowseSection] = useState<'chat' | 'pinned'>('chat');
   const section = launcher ? browseSection : 'pinned';
-  const { error: pinError } = usePinnedSources();
+  const { error: pinError, items: pins, busy: pinsBusy } = usePinnedSources();
   const [hasBrowsed, setHasBrowsed] = useState(false);
   const drag = useRef<{ pointer: number; start: number; scroll: number; moved: boolean }>(undefined);
   const opener = useRef<HTMLElement | null>(null);
@@ -142,7 +140,7 @@ export function SidePanel() {
         <header className="workspace-panel-tabs">
           <div ref={rail} className="workspace-panel-rail">
             {edges.overflow && <IconButton size="sm" className="workspace-panel-chevron" aria-label="Scroll tabs left" disabled={!edges.left} onClick={() => scrollTabs(-1)}><ChevronLeft size={14} aria-hidden="true" /></IconButton>}
-            <div ref={strip} role="tablist" aria-label="Side panel tabs" className="workspace-panel-strip" onScroll={measureTabs}
+            <div ref={strip} role={tabs.length ? 'tablist' : undefined} aria-label={tabs.length ? 'Side panel tabs' : undefined} className="workspace-panel-strip" onScroll={measureTabs}
               onPointerDown={event => {
                 if (event.button === 0 && event.isPrimary && event.pointerType === 'mouse' && event.currentTarget.scrollWidth > event.currentTarget.clientWidth)
                   drag.current = { pointer: event.pointerId, start: event.clientX, scroll: event.currentTarget.scrollLeft, moved: false };
@@ -162,6 +160,7 @@ export function SidePanel() {
               onPointerCancel={() => { drag.current = undefined; }}
               onPointerUp={() => { requestAnimationFrame(() => { drag.current = undefined; }); }}
               onClickCapture={event => { if (drag.current?.moved) { event.preventDefault(); event.stopPropagation(); } }}>
+              {!tabs.length && <span className="workspace-panel-label">Sources</span>}
               {tabs.map(tab => <div key={tab.id} role="presentation" className="workspace-panel-tab" data-selected={tab.id === active}>
                 <button type="button" id={tabId(tab.id)} role="tab" aria-controls={contentId(tab.id)} aria-selected={tab.id === active}
                   tabIndex={tab.id === active ? 0 : -1} title={tab.title} onClick={() => actions.select(tab.id)} onKeyDown={event => tabKey(event, tab.id)}>
@@ -216,7 +215,12 @@ export function SidePanel() {
             </PanelResourceScope.Provider></PanelTabScope.Provider>
           </section>;
         })}
-        {!tabs.length && visible && <PinnedSourceList />}
+        {!tabs.length && visible && <div className="workspace-panel-empty">
+          <PanelRight size={28} strokeWidth={1.4} aria-hidden="true" />
+          <h2>Your sources, beside your work</h2>
+          <p>Open a Library material or a chat source to read it here. Pin useful sources to return to them across chats.</p>
+          {(pins.length > 0 || pinsBusy || pinError) && <PinnedSourceList />}
+        </div>}
       </div>
     </aside>
   </>;

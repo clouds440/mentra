@@ -1,0 +1,12 @@
+
+Running 4 tests using 1 worker
+
+
+
+(node:4212) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/4] .cache\composer-focus.spec.ts:5:73 › restored light palette and ring-free composer at 390
+[2/4] .cache\composer-focus.spec.ts:5:73 › restored light palette and ring-free composer at 1440
+[3/4] .cache\composer-focus.spec.ts:5:73 › restored dark palette and ring-free composer at 390
+[4/4] .cache\composer-focus.spec.ts:5:73 › restored dark palette and ring-free composer at 1440
+  4 passed (5.0s)

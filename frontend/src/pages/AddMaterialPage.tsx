@@ -29,7 +29,7 @@ export function AddMaterialPage() {
     return () => controller.abort();
   }, [reload]);
 
-  return <PageShell className="library-page">
+  return <PageShell className="library-page add-material-page">
     <Link to="/library" className={buttonStyles({ variant: 'ghost', size: 'sm', className: 'w-fit -ml-2 text-muted' })}><ArrowLeft size={15} aria-hidden="true" />Back to Library</Link>
     <WorkspaceHeader title="Add material" description="Your notes, books and ideas. Turn a source into something you can study with Mentra." icon={FilePlus2} />
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={refresh}>Try again</Button></div>}

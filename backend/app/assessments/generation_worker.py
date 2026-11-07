@@ -122,7 +122,7 @@ class AssessmentGenerationWorker:
             from app.db.errors import database_failure_code
             code = error.code if isinstance(error, AppError) else database_failure_code(error) or type(error).__name__
             workflow_logger.event('assessment.generation_failed', stage=stage,error_code=code,error_type=type(error).__name__)
-            message = error.message if isinstance(error, AppError) and error.code in ('ASSESSMENT_SOURCES_REQUIRED','ASSESSMENT_PAPER_MARKS','ASSESSMENT_INVALID_GENERATION','ASSESSMENT_TARGET_CHANGED') else 'Generation was interrupted. Completed sections are kept; retry to continue.'
+            message = error.message if isinstance(error, AppError) and error.code in ('ASSESSMENT_SOURCES_REQUIRED','ASSESSMENT_PAPER_MARKS','ASSESSMENT_INVALID_GENERATION','ASSESSMENT_TARGET_CHANGED','ASSESSMENT_REVIEW_UNAVAILABLE') else 'Generation was interrupted. Completed sections are kept; retry to continue.'
             try: await run_in_threadpool(jobs.update, job, state='failed', error=message,
                 progress=dict(job['progress'],failure=dict(stage=stage,code=code)))
             except AppError: pass  # A newer lease owns publication now.

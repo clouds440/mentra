@@ -1,3 +1,4 @@
+from testing.prompt_context import context_data
 import asyncio
 import json
 import unittest
@@ -176,7 +177,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         state=self.scope | dict(context_rows=[],current_user_message_id=str(uuid4()),history_references=[],memory_references=[])
         class Script:
             async def ainvoke_messages(self, source, messages, **kwargs):
-                context = json.loads(kwargs['system_context'])
+                context = context_data(kwargs['system_context'])
                 inventories.append(context.get('web_evidence'))
                 count = len(inventories)
                 if count < 3:
@@ -209,7 +210,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
                 rounds.append(names)
                 if 'web_search' in names:
                     return AIMessage(content='',tool_calls=[dict(id=f'lookup-{len(rounds)}',name='web_search',args=dict(query=f'evidence-{len(rounds)}'))])
-                context=json.loads(kwargs['system_context'])
+                context=context_data(kwargs['system_context'])
                 assert context['web_search_phase']['closed']
                 return AIMessage(content='The requested explanation is supported [[W1]].')
         await tool_reply(Script(),[HumanMessage(content='Explain a concept.')],None,str(uuid4()),state,(),{})
@@ -268,7 +269,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
                 return AIMessage(content='Completed from the three returned searches [[W1]].')
         with patch('app.langchain.history_orchestration.count_tokens_approximately',side_effect=constrained_context), \
              patch.object(settings,'chat_input_tokens',12288), patch.object(settings,'chat_recovery_input_tokens',13824), \
-             patch.object(settings,'chat_context_window_tokens',16384):
+             patch.object(settings,'chat_context_window_tokens',18000):
             await tool_reply(Script(),[HumanMessage(content='Explain the topic with historical pictures.')],None,str(uuid4()),state,(),{})
         self.assertEqual(rounds,[0,2,3])
         self.assertEqual(self.provider.search.await_count,3)

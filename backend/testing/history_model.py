@@ -62,6 +62,18 @@ class HistoryChatFactory(TestChatFactory):
                         mode = 'multiple_choice' if kind=='multiple_select' else 'single_choice' if kind in ('mcq','true_false') else 'text'
                         questions.append(dict(number=i+1, context='Use this shared case.' if paper else '', parts=[dict(path=[part] if paper else [], question_type=kind, answer_mode=mode, marks=marks, brief='A useful question') for part in (['a','b'] if paper else [''])]))
                     return schema(title='Designed assessment', duration_minutes=data.get('duration_minutes') or 60, instructions='Answer all parts.', sections=[dict(title='Section A', question_count=count, questions=questions)])
+                if schema.__name__ == 'IndependentSolutionBatch':
+                    return schema(items=[dict(position=q['position'],answer_ids=[o['id'] for o in q['options'] if
+                        o['label'] in ('A supported explanation.','True','First correct choice','Second correct choice')],
+                        answerable=True,confidence=1,solution='A supported explanation.') for q in data['questions']])
+                if schema.__name__ == 'ChoiceReviewBatch':
+                    # This oracle covers this fixture's intentionally simple
+                    # choices. It never reads a generator-supplied private key.
+                    return schema(items=[dict(position=q['position'],answer_ids=[o['id'] for o in q['options'] if
+                        o['label'] in ('A supported explanation.','True','First correct choice','Second correct choice')],
+                        answerable=True,explanation_valid=True,scope_preserved=True,requested_change_met=True,
+                        change_kind='reasoning_steps',change_basis='Synthetic fixture adds a reasoning step.',
+                        confidence=1,reason_code='ok') for q in data['questions']])
                 if schema.__name__ in ('GeneratedAssessment', 'GeneratedAssessmentBatch'):
                     revised = bool(data.get('revision_instructions'))
                     questions = []

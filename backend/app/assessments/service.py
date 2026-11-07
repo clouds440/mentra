@@ -151,6 +151,8 @@ class AssessmentService:
         if source and source['context_id'] != request.context_id:
             raise AppError('ASSESSMENT_CONTEXT_MISMATCH', 'Revise within the original learning context.', 422)
         if source:
+            if request.expected_source_revision is not None and source['revision']!=request.expected_source_revision:
+                raise AppError('REVISION_CONFLICT','This assessment changed. Request a new difficulty adjustment.',409)
             from .quality import answerable
             answerable(source)
         return source

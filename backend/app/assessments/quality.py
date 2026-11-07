@@ -114,12 +114,22 @@ def check_question(question, *, planned_context=''):
     arabic_checked=arabic_dot_key_check(question)
     if len(labels)!=len(set(labels)): raise GenerationMismatch('duplicate_option_labels')
     if len(question.options)>6: raise GenerationMismatch('too_many_choice_options')
+    if question.answer_mode=='multiple_choice' and labels:
+        glyph=lambda text:unicodedata.normalize('NFKC',text).strip(' *`')
+        offered={glyph(option.label) for option in question.options}
+        if all(len(value)==1 and unicodedata.category(value).startswith('L') for value in offered):
+            for line in question.prompt.splitlines():
+                listed=re.split(r'[\s,،;؛]+',line.strip(' *`'))
+                if len(listed)>1 and all(len(glyph(value))==1 and unicodedata.category(glyph(value)).startswith('L') for value in listed):
+                    if {glyph(value) for value in listed}!=offered:
+                        raise GenerationMismatch('selectable_list_must_match_options',
+                            correction='Rewrite the displayed selectable list and options to contain exactly the same letters, with at most six options.')
     answer=normalized(question.model_answer)
     if len(answer)>=24 and any(answer in normalized(context) for context in (question.context,planned_context) if context):
         raise GenerationMismatch('answer_leaked_in_question_context')
     return dict(policy=POLICY,state='admitted',checks=['shape','unique_choices','context_leak',
         *(['executable_key'] if executable_choice_check(question) else []),
-        *(['arabic_letter_dot_key'] if arabic_checked else [])],semantic_review='unverified')
+        *(['arabic_letter_dot_key'] if arabic_checked else [])],semantic_review='model_cross_checked' if question._choice_reviewed else 'unverified')
 
 
 def answerable(assessment):
@@ -129,7 +139,8 @@ def answerable(assessment):
 
 
 def stored_question(question, identifier):
-    return dict(question.model_dump(mode='json'), id=identifier, validation=check_question(question))
+    return dict(question.model_dump(mode='json'), id=identifier, validation=dict(check_question(question),
+        challenge_change_verified=question._challenge_change_verified))
 
 
 def public_validation(question):

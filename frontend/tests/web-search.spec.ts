@@ -51,7 +51,8 @@ test('web progress shows websites and favicon citations survive canonical reload
   await page.setViewportSize({ width: 360, height: 740 });
   await answer.last().getByText('Web sources (2)', { exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-  await expect(sources).toContainText('Recently cached web results were reused');
+  await expect(sources).toContainText('Python release information');
+  await expect(sources).toContainText('Searched');
   const latestCitation = sources.getByRole('link', { name: 'Open web source W1:', exact: false }).first();
   await latestCitation.focus();
   await expect(latestCitation).toBeFocused();

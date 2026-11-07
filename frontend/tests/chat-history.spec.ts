@@ -69,7 +69,7 @@ test('durable history, incremental requests, cached navigation, rename and delet
   await page.getByRole('button', { name: 'Actions for Renamed persistent chat', exact: true }).focus();
   await page.getByRole('button', { name: 'Actions for Renamed persistent chat', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete chat', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('link', { name: 'Renamed persistent chat', exact: true })).toHaveCount(0);
   await page.goto(firstURL);
@@ -128,7 +128,7 @@ test('unaccepted send can be retried and blocked IndexedDB remains usable', asyn
   });
   await page.getByRole('textbox', { name: 'Ask Mentra anything' }).fill('Retry an unaccepted question');
   await page.getByRole('button', { name: 'Send message' }).click();
-  await page.getByRole('button', { name: 'Retry sending', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry response', exact: true }).click();
   await expect(page.getByRole('article', { name: 'Mentra response' })).toHaveCount(1);
   await page.reload();
   await expect(page.getByRole('article', { name: 'Your message' })).toHaveCount(1);
@@ -203,7 +203,7 @@ test('a delayed completion cannot resurrect a chat deleted in another tab', asyn
   await other.getByRole('button', { name: 'Actions for Deletion race conversation', exact: true }).focus();
   await other.getByRole('button', { name: 'Actions for Deletion race conversation', exact: true }).click();
   await other.getByRole('menuitem', { name: 'Delete', exact: true }).click();
-  await other.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
+  await other.getByRole('button', { name: 'Delete chat', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Deletion race conversation', exact: true })).toHaveCount(0);
   release();
   await expect(page.getByRole('article')).toHaveCount(0);

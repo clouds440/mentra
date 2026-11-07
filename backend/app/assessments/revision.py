@@ -40,8 +40,22 @@ def reusable_revision(request, original):
         if request.revision_question_numbers:
             raise AppError('ASSESSMENT_REVISION_SCOPE', 'Change question content separately from assessment structure or length.', 422)
         return None
-    # Private keys stay inside the service. If a historical payload cannot be
-    # reconstructed safely, use the full validated generation path instead.
+    references = [question_reference(question,index) for index,question in enumerate(questions,1)]
+    selected = set(request.revision_question_numbers or references)
+    if selected - set(references):
+        raise AppError('ASSESSMENT_QUESTION_NOT_FOUND', 'Choose question references from the original assessment.', 422)
+    positions = [index for index,reference in enumerate(references) if reference in selected]
+    # A complete rewrite needs the approved outline, never the old answer key.
+    # Validate public structure without forcing old keys/options into a new DTO
+    # or spending another model call redesigning the same outline.
+    if len(positions)==len(questions):
+        from .schemas import PublicQuestion
+        outline=[PublicQuestion.model_validate({key:value for key,value in question.items()
+            if key in PublicQuestion.model_fields}) for question in questions]
+        plan=[{key:getattr(question,key) for key in ('question_type','answer_mode','context','section','number','part','marks')} for question in outline]
+        return dict(retained=[None]*len(questions),positions=positions,plan=plan,
+            paper=PaperInfo.model_validate(paper) if paper else None,original=dict(original))
+    # A partial edit must reconstruct every unchanged private item safely.
     try:
         retained = [GeneratedQuestion.model_validate({key:value for key,value in question.items()
                     if key in GeneratedQuestion.model_fields}) for question in questions]
@@ -49,11 +63,6 @@ def reusable_revision(request, original):
         if request.revision_question_numbers:
             raise AppError('ASSESSMENT_REVISION_SOURCE', 'The original grading data is unavailable for a partial revision.', 409) from None
         return None
-    references = [question_reference(question,index) for index,question in enumerate(questions,1)]
-    selected = set(request.revision_question_numbers or references)
-    if selected - set(references):
-        raise AppError('ASSESSMENT_QUESTION_NOT_FOUND', 'Choose question references from the original assessment.', 422)
-    positions = [index for index,reference in enumerate(references) if reference in selected]
     plan = [{key:getattr(retained[index],key) for key in
              ('question_type','answer_mode','context','section','number','part','marks')} for index in positions]
     return dict(retained=retained, positions=positions, plan=plan,

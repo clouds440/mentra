@@ -33,6 +33,20 @@ class OrchestrationService:
             return await self._chat_reply(messages, retrieval, owner, history_policy, history_scope)
 
     async def _chat_reply(self, messages, retrieval, owner, history_policy=None, history_scope=None):
+        if history_scope and history_scope.get('challenge_action'):
+            if self.assessments is None or history_scope.get('stateless'):
+                raise AppError('ASSESSMENT_UNAVAILABLE','Assessments are unavailable.',503)
+            activity=history_scope.get('activity',ActivityPublisher())
+            await activity.ensure_active()
+            from app.challenge.repositories.actions import queue_action
+            job=await run_in_threadpool(queue_action,self.assessments,owner,history_scope)
+            direction=history_scope['challenge_action']['direction']
+            outcome=dict(version=3,state='in_progress',retryable=False,tasks=[dict(id='difficulty-revision',
+                operation='assessment_revise',state='in_progress',required=True,job_id=job['id'],
+                job_kind='generation',effect_certainty='committed')])
+            history_scope['response_outcome']=outcome
+            return ChatResponse(content=f'Creating a {direction} version. Your original is kept.',
+                assessment_cards=[dict(id=job['id'],generation_job_id=job['id'],title=job['title'])],response_outcome=outcome)
         if history_scope is None and owner:
             from uuid import uuid4
             rows = [dict(id=str(uuid4()), role=role, content=content) for role, content in messages]

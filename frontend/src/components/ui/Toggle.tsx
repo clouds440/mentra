@@ -1,32 +1,32 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useId, type ComponentPropsWithoutRef, type ReactNode } from 'react';
+import * as SwitchPrimitive from '@radix-ui/react-switch';
 import { cn } from '../../utils/cn';
 
-export interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size' | 'children'> {
+export interface ToggleProps extends Omit<ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>, 'children'> {
   checked: boolean;
   label: ReactNode;
   description?: ReactNode;
 }
 
-/** Native keyboard/form behavior with one shared, theme-aware switch design. */
+/** Radix owns keyboard, form participation and checked-state semantics. */
 export function Toggle({ label, description, className, id, checked, disabled, ...props }: ToggleProps) {
   const generatedId = useId();
   const labelId = `${id ?? generatedId}-label`;
   const descriptionId = `${id ?? generatedId}-description`;
   return (
-    <label className={cn('flex items-start justify-between gap-4 text-sm', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer', className)}>
-      <span className="min-w-0 flex-1 py-2">
+    <div className={cn('flex items-start justify-between gap-4 text-sm', disabled && 'opacity-60', className)}>
+      <label htmlFor={id ?? generatedId} className={cn('min-w-0 flex-1 py-2', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}>
         <span id={labelId} className="font-medium text-heading">{label}</span>
         {description && <span id={descriptionId} className="mt-1 block font-normal leading-6 text-muted">{description}</span>}
-      </span>
-      <span className="relative flex min-h-10 w-10 shrink-0 items-center">
-        <input {...props} id={id ?? generatedId} type="checkbox" role="switch" checked={checked} disabled={disabled}
+      </label>
+      <span className="flex min-h-11 shrink-0 items-center">
+        <SwitchPrimitive.Root {...props} id={id ?? generatedId} checked={checked} disabled={disabled}
           aria-labelledby={props['aria-labelledby'] ?? labelId}
           aria-describedby={[props['aria-describedby'], description ? descriptionId : undefined].filter(Boolean).join(' ') || undefined}
-          className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-[inherit] opacity-0" />
-        <span aria-hidden="true" className="pointer-events-none relative h-[22px] w-10 rounded-full border border-border-strong bg-border-strong transition-colors duration-150 peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background motion-reduce:transition-none">
-          <span className={cn('absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-accent-foreground shadow-sm transition-transform duration-150 motion-reduce:transition-none', checked ? 'translate-x-[18px]' : 'translate-x-0')} />
-        </span>
+          className="product-switch">
+          <SwitchPrimitive.Thumb className="product-switch-thumb" />
+        </SwitchPrimitive.Root>
       </span>
-    </label>
+    </div>
   );
 }

@@ -56,8 +56,8 @@ def upgrade():
     )
 
 
-def downgrade():
-    if op.get_bind().scalar(
+def guard_downgrade(connection):
+    if connection.scalar(
         sa.text(
             "SELECT EXISTS(SELECT 1 FROM hm_memory_revision WHERE snapshot IS NOT NULL)"
         )
@@ -65,6 +65,10 @@ def downgrade():
         raise RuntimeError(
             "Preserve memory history; roll forward rather than deleting revision snapshots."
         )
+
+
+def downgrade():
+    guard_downgrade(op.get_bind())
     op.drop_table("hm_memory_vector")
     op.drop_column("hm_suppression", "reason")
     op.drop_column("hm_memory_evidence", "valid_until_revision")

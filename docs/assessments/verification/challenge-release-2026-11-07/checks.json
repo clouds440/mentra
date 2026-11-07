@@ -1,0 +1,11 @@
+{
+  "backend_modules": 129,
+  "backend_tests": 1303,
+  "backend_method": "complete module run plus corrected and final changed-module reruns",
+  "browser_cases_passed": 528,
+  "browser_failures": [],
+  "excluded": [
+    "launch-https.spec.ts: opt-in isolated TLS deployment, not localhost"
+  ],
+  "method": "complete browser inventory plus compiled/UI and corrective reruns; no applicable case omitted"
+}

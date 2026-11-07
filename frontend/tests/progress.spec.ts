@@ -24,19 +24,25 @@ async function progress(page: Page, options: {failOnce?:string; reviews?:boolean
       if (reviewGate) await reviewGate;
       if (fail === id) { fail = undefined; return route.fulfill({status:503,json:{error:{code:'SERVICE_UNAVAILABLE',message:'Private technical diagnostic'}}}); }
       pending = pending.filter(item => item.id !== id); body = {status:decision === 'confirm' ? 'confirmed' : 'discarded', concept_id:decision === 'confirm' ? id : null};
-    } else if (path.endsWith('/learning/understanding')) {
+    } else if (path.endsWith('/learning/understanding') || path.endsWith('/learning/topics')) {
       requests.push(url);
       const query = url.searchParams.get('query')?.toLowerCase() ?? '';
       if (query === 'models 22' && searchGate) await searchGate;
       const all = url.searchParams.get('context_id') === 'physics' ? [{...topics[0], name:'Forces'}] : topics;
       const filtered = all.filter(item => item.name.toLowerCase().includes(query));
       const offset = Math.min(Number(url.searchParams.get('offset')), Math.max(0, Math.floor((filtered.length - 1)/10)*10));
-      body = {items:filtered.slice(offset,offset+10), total:filtered.length, total_concepts:all.length, offset, limit:10, generated_at:date};
+      body = {items:filtered.slice(offset,offset+10).map(t=>({...t,id:t.concept_id,scope:'Tracked learning area',revision:1,subskill_count:1,checked_count:t.mastery?1:0})), ungrouped_count:0, total:filtered.length, total_concepts:all.length, offset, limit:10, generated_at:date};
     } else if (path.endsWith('/learning')) body = {
       learner:{concepts:topics.slice(0,12),generated_at:date,context_ids:['ai']},
       recommendations:[{concept_id:'new',name:'Model training',reason:'insufficient_evidence',knowledge_status:'insufficient_evidence',recommended_difficulty:.3}, {concept_id:'unknown',name:'New topic',reason:'TRACE_private',knowledge_status:'developing',recommended_difficulty:.3}],
       verification:[{concept_id:'new',name:'New models',reason:'insufficient_evidence'}, {concept_id:'difficulty',name:'Fine-tuning difficulty',reason:'difficulty_unverified'}, ...(options.reviews ? [{concept_id:'mixed',name:'Transfer learning',reason:'contradictory_evidence'}] : [])],
     };
+    if (path.endsWith('/learning/page')) body = {
+      overview:{learner:{concepts:topics.slice(0,12),generated_at:date,context_ids:['ai']},
+        recommendations:[{concept_id:'new',name:'Model training',reason:'insufficient_evidence',knowledge_status:'insufficient_evidence',recommended_difficulty:.3}],
+        verification:options.reviews?[{concept_id:'mixed',name:'Transfer learning',reason:'contradictory_evidence'}]:[]},
+      contexts:[{context_id:'ai',name:'AI basics',status:'ACTIVE'},{context_id:'physics',name:'Physics',status:'DORMANT'}],
+      candidates:pending,understanding:{items:topics.slice(0,10),total:topics.length,total_concepts:topics.length,offset:0,limit:10,generated_at:date}};
     await route.fulfill({json:body});
   });
   return {writes, requests,
@@ -49,36 +55,36 @@ async function progress(page: Page, options: {failOnce?:string; reviews?:boolean
 
 test('understanding pages cover the full collection with small page controls', async ({page}) => {
   await progress(page); await page.goto('/progress');
-  const table = page.getByRole('table',{name:'Your understanding'});
-  await expect(table.getByRole('row')).toHaveCount(11);
-  await expect(page.getByText('Showing 1–10 of 25 topics')).toBeVisible();
-  const pages = page.getByRole('navigation',{name:'Understanding pages'});
+  const table = page.getByRole('region',{name:'Your understanding'});
+  await expect(table.getByRole('button',{name:/^Explore /})).toHaveCount(10);
+  await expect(page.getByRole('button',{name:'Explore AI models 00',exact:true})).toBeVisible();
+  const pages = page.getByRole('navigation',{name:'Learning topics'});
   await expect(pages.getByRole('button',{name:'Previous page'})).toBeDisabled();
   await pages.getByRole('button',{name:'Next page'}).click();
-  await expect(page.getByText('Showing 11–20 of 25 topics')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Explore AI models 10',exact:true})).toBeVisible();
   await pages.getByRole('button',{name:'Page 3',exact:true}).click();
-  await expect(table.getByRole('row')).toHaveCount(6);
-  await expect(page.getByText('Showing 21–25 of 25 topics')).toBeVisible();
+  await expect(table.getByRole('button',{name:/^Explore /})).toHaveCount(5);
+  await expect(page.getByRole('button',{name:'Explore AI models 24',exact:true})).toBeVisible();
   await expect(pages.getByRole('button',{name:'Page 3',exact:true})).toHaveAttribute('aria-current','page');
   await expect(pages.getByRole('button',{name:'Next page'})).toBeDisabled();
   await pages.getByRole('button',{name:'Previous page'}).click();
-  await expect(page.getByText('Showing 11–20 of 25 topics')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Explore AI models 10',exact:true})).toBeVisible();
 });
 
 test('search finds topics beyond page one, resets pages and explains empty results', async ({page}) => {
   await progress(page); await page.goto('/progress');
   await page.getByRole('button',{name:'Page 3',exact:true}).click();
-  await page.getByRole('searchbox',{name:'Search your understanding'}).fill('models 24');
-  await expect(page.getByText('Showing 1–1 of 1 topics')).toBeVisible();
-  await expect(page.getByRole('table').getByText('AI models 24')).toBeVisible();
+  await page.getByRole('searchbox',{name:'Search topics and subskills'}).fill('models 24');
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByRole('button',{name:/^Explore /})).toHaveCount(1);
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByText('AI models 24')).toBeVisible();
   await page.getByRole('searchbox').fill('no matching topic');
-  await expect(page.getByRole('heading',{name:'No matching topics'})).toBeVisible();
-  await page.getByRole('button',{name:'Clear topic search'}).click();
-  await expect(page.getByText('Showing 1–10 of 25 topics')).toBeVisible();
+  await expect(page.getByText('No matching topics. Try another term.',{exact:true})).toBeVisible();
+  await page.getByRole('searchbox',{name:'Search topics and subskills'}).fill('');
+  await expect(page.getByRole('button',{name:'Explore AI models 00',exact:true})).toBeVisible();
   await page.getByRole('combobox',{name:'Learning context'}).click();
   await page.getByRole('option',{name:'Physics',exact:true}).click();
-  await expect(page.getByRole('table').getByText('Forces',{exact:true})).toBeVisible();
-  await expect(page.getByText('Showing 1–1 of 1 topics')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByText('Forces',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByRole('button',{name:/^Explore /})).toHaveCount(1);
 });
 
 test('late search results cannot replace a newer query', async ({page}) => {
@@ -86,9 +92,9 @@ test('late search results cannot replace a newer query', async ({page}) => {
   await page.getByRole('searchbox').fill('models 22');
   await expect.poll(() => state.requests.some(url => url.searchParams.get('query') === 'models 22')).toBe(true);
   await page.getByRole('searchbox').fill('models 24');
-  await expect(page.getByRole('table').getByText('AI models 24')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByText('AI models 24')).toBeVisible();
   state.releaseSearch();
-  await expect(page.getByRole('table').getByText('AI models 22')).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Your understanding'}).getByText('AI models 22')).toHaveCount(0);
 });
 
 for (const action of ['Confirm','Dismiss']) test(`only ${action} loads for the selected suggestion`, async ({page}) => {
@@ -119,12 +125,11 @@ test('unsupported review stays hidden and every section has learner-facing expla
   await progress(page); await page.goto('/progress');
   await expect(page.getByRole('heading',{name:'Your understanding'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Check your understanding'})).toHaveCount(0);
-  await expect(page.getByText('Getting started',{exact:true})).toBeVisible();
+  await expect(page.getByText('0 of 1 tracked subskills checked',{exact:true})).toBeVisible();
   await expect(page.getByText(/It doesn’t mark it learned or change your score/)).toBeVisible();
   await expect(page.getByText(/Start with a few practice questions/)).toBeVisible();
   await expect(page.getByText(/insufficient_evidence|difficulty_unverified|TRACE_private|Private technical/)).toHaveCount(0);
-  await page.getByText('What do these estimates mean?',{exact:true}).click();
-  await expect(page.getByText(/learning indicators, not exam grades/)).toBeVisible();
+  await expect(page.getByText(/Checked skills describe your practice so far, not coverage of a whole syllabus/)).toBeVisible();
 });
 
 for (const theme of ['light','dark']) test(`meaningful review is actionable and responsive in ${theme}`, async ({page}, info) => {
@@ -134,7 +139,7 @@ for (const theme of ['light','dark']) test(`meaningful review is actionable and 
   const reviews = page.getByRole('region',{name:'Check your understanding',exact:true});
   await expect(reviews.getByText('Transfer learning',{exact:true})).toBeVisible();
   await expect(reviews.getByText(/recent answers gave mixed results/)).toBeVisible();
-  await expect(reviews.getByRole('link',{name:'Check this topic'})).toHaveAttribute('href',/practice=Transfer%20learning/);
+  await expect(reviews.getByRole('link',{name:'Check this topic'})).toHaveAttribute('href',/topic=Transfer\+learning&purpose=verification&concept=mixed/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('progress-mobile.png'),fullPage:true});
 });

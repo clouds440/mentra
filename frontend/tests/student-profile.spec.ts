@@ -88,7 +88,7 @@ test('calibration submits together, evaluates results, and profile preferences r
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Brief', { exact: true })).toBeVisible();
+  await expect(page.locator('dd').filter({hasText:/^Brief$/})).toBeVisible();
   const after = await (await context.request.get('http://127.0.0.1:18003/api/v1/student-profile')).json();
   expect(after.details.learning_preference).toBe('balanced');
   expect(after.estimates).toEqual(before.estimates);

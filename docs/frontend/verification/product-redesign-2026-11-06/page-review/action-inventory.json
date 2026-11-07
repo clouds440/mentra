@@ -1,0 +1,562 @@
+{
+  "scope": "JSX click/submit handlers, link targets, and option values in feature components and pages; shared UI primitives reviewed through behavior tests. Counts are source definitions, not distinct product features.",
+  "feature_files": 92,
+  "original_source_definitions": 408,
+  "reviewed_change": "SidePanelTrigger now calls hide() when visible and toggle(true) when closed, allowing the empty panel to open. The toggle is always rendered.",
+  "inventory": [
+    {
+      "file": "frontend/src/components/assessments/AnswerSheetUpload.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentCreateForm.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentFeedback.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentGenerationCard.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentPaper.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentSettings.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssessmentWorkspace.tsx",
+      "originalActions": 12,
+      "currentActions": 15,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/AssistanceSelector.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/ChatAssessmentCard.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/DownloadAnswers.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/ItemReview.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/LearningTargetPicker.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/MCQAssessment.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/MistakePractice.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/MistakesPractice.tsx",
+      "originalActions": 11,
+      "currentActions": 11,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/PrintPaperButton.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/assessments/QuestionProgress.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/auth/AuthForm.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/auth/AuthRoutes.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/auth/LogoutButton.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/auth/PasswordSettings.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatAppearanceSettings.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatAttachmentCard.tsx",
+      "originalActions": 8,
+      "currentActions": 8,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatAttachmentPreview.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatComposer.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatEmptyState.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatMessage.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatSearch.tsx",
+      "originalActions": 7,
+      "currentActions": 7,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChatSources.tsx",
+      "originalActions": 8,
+      "currentActions": 8,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ChoiceCard.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ComposerCamera.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ContextualActions.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ConversationList.tsx",
+      "originalActions": 10,
+      "currentActions": 10,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/ConversationalQuestionnaire.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/CopyResponse.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/HistoryReferenceViewer.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/SavedChatExchange.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/SourceSelector.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/chat/VoiceInput.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/CaptionedImage.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/ChartControls.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/CodeBlock.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/ImageGallery.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/MarkdownContent.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/MermaidDiagram.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/content/RechartsFigure.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/events/EventAgenda.tsx",
+      "originalActions": 20,
+      "currentActions": 20,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/events/EventEditor.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/events/EventHistory.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/events/EventProposalCard.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/interactions/InteractionField.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/CaptureRecovery.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/ConceptReview.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/LearningObservations.tsx",
+      "originalActions": 17,
+      "currentActions": 17,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/LearningProgress.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/LearningSuggestions.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/MoveSubskill.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/ProgressEvidence.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/QuickReview.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/learning/TopicProgress.tsx",
+      "originalActions": 15,
+      "currentActions": 15,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/library/MaterialPicker.tsx",
+      "originalActions": 6,
+      "currentActions": 6,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/library/MaterialSourceTab.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/library/MaterialUpload.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/library/SourceDiagrams.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/library/SourceViewer.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/memories/MemoriesSettings.tsx",
+      "originalActions": 13,
+      "currentActions": 13,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/memories/MemoryDetails.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/memories/MemoryEditor.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/memories/MemoryList.tsx",
+      "originalActions": 6,
+      "currentActions": 6,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/navigation/AppSidebar.tsx",
+      "originalActions": 10,
+      "currentActions": 10,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/notifications/NotificationBell.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/notifications/NotificationSettings.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/CalibrationAssessment.tsx",
+      "originalActions": 4,
+      "currentActions": 4,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/ProfileEstimates.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/ProfileForm.tsx",
+      "originalActions": 5,
+      "currentActions": 5,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/ProfileRoutes.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/ProfileSettings.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/student-profile/TeachingPreferences.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/webSearch/SourceLink.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/webSearch/WebCitation.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/webSearch/WebSourcePreview.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/workspace/PinnedSources.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/components/workspace/SidePanel.tsx",
+      "originalActions": 10,
+      "currentActions": 10,
+      "missing": [
+        "onClick:{() => actions?.toggle(!!items.length || visible)}"
+      ]
+    },
+    {
+      "file": "frontend/src/components/workspace/SourceAnnotations.tsx",
+      "originalActions": 3,
+      "currentActions": 3,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/AddMaterialPage.tsx",
+      "originalActions": 2,
+      "currentActions": 2,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/ChatPage.tsx",
+      "originalActions": 7,
+      "currentActions": 7,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/LibraryPage.tsx",
+      "originalActions": 18,
+      "currentActions": 19,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/MaterialDetailPage.tsx",
+      "originalActions": 16,
+      "currentActions": 16,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/NotificationsPage.tsx",
+      "originalActions": 7,
+      "currentActions": 7,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/OnboardingPage.tsx",
+      "originalActions": 7,
+      "currentActions": 7,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/ProgressPage.tsx",
+      "originalActions": 1,
+      "currentActions": 1,
+      "missing": []
+    },
+    {
+      "file": "frontend/src/pages/SettingsPage.tsx",
+      "originalActions": 0,
+      "currentActions": 4,
+      "missing": []
+    }
+  ]
+}

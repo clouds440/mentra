@@ -181,7 +181,7 @@ async function setup(page: Page, failSecondUpload = false, preview?: {filename?:
     if (path.endsWith('/auth/login')) { authenticated=true; return route.fulfill({json:identity}); }
     if (path.endsWith('/auth/me') && !authenticated) return route.fulfill({status:401,json:{error:{code:'UNAUTHORIZED'}}});
     if (path.endsWith('/auth/me')) body = identity;
-    else if (path.endsWith('/student-profile')) body = { learner_id: 'image-user', details: { education_level: 'college', field_of_study: 'Physics', learning_goal: 'Understand motion', learning_preference: 'balanced', explanation_depth: 'standard' },
+    else if (path.endsWith('/student-profile')) body = { learner_id: identity.learner_id, details: { education_level: 'college', field_of_study: 'Physics', learning_goal: 'Understand motion', learning_preference: 'balanced', explanation_depth: 'standard' },
       estimates: Object.fromEntries(['overall_proficiency', 'reasoning', 'quantitative', 'comprehension', 'domain_familiarity'].map(key => [key, { value: null, confidence: 0, evidence_count: 0 }])),
       onboarding_phase: 'complete', calibration_status: 'skipped', evaluation_status: 'not_started', version: 1, context_version: 1 };
     else if (path.endsWith('/conversations/sync')) body = { reset: false, cursor: conversation.revision, has_more: false, conversations: [conversation], deleted_ids: [], list_cursor: null };

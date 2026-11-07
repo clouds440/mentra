@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     learner_ranking_mode: Literal['adaptive','recent_due'] = 'adaptive'
     learner_personalization_enabled: bool = True
+    learner_challenge_adaptation_enabled: bool = True
+    learner_challenge_capture_enabled: bool = True
     learner_capture_enabled: bool = True
     learner_organization_enabled: bool = True
     log_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR'] = 'INFO'

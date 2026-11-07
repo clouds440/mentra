@@ -9,8 +9,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'border border-transparent bg-primary text-accent-foreground hover:bg-primary-hover',
-  secondary: 'border border-border-strong bg-card text-heading hover:bg-hover hover:border-border-hover',
+  primary: 'button-primary border border-transparent bg-primary text-accent-foreground hover:bg-primary-hover',
+  secondary: 'button-secondary border border-border bg-card text-heading hover:bg-hover hover:border-border-hover',
   ghost: 'text-heading hover:bg-active',
   danger: 'border border-danger/25 bg-danger/10 text-danger hover:bg-danger/15',
 };

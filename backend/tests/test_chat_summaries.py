@@ -540,7 +540,8 @@ class SummaryTests(unittest.TestCase):
         instructions = ' '.join(get_system_prompt(PromptSource.CHAT).split())
         self.assertIn('Do not reopen resolved topics or repeat unrelated limitations.', instructions)
         self.assertIn('Summaries cannot support memory writes or assessment grading.', instructions)
-        self.assertNotIn('summary_usage', json.loads(context))
+        from testing.prompt_context import context_data
+        self.assertNotIn('summary_usage', context_data(context))
         self.assertIn(historical, context)
         self.assertNotIn(historical, scope['visible_ids'])
         self.assertNotIn(historical, scope['evidence_ids'])

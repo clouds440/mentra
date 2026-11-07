@@ -103,5 +103,5 @@ class ImageReader:
     def read(self, path, kind, max_pages):
         warnings=['This image was read with English OCR; verify handwriting and equations.']
         embedded=EmbeddedImages(self.vision)
-        text=embedded.read(path.read_bytes(),warnings,'in this source',block=0)
+        text=embedded.read(path.read_bytes(),warnings,'in this source',strict=True,block=0)
         return dict(blocks=[dict(text=text,method='ocr')],warnings=warnings,visuals=embedded.visuals)

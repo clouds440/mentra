@@ -51,7 +51,7 @@ class ConversationService:
         if not request.content.strip() and not request.source_annotations:
             raise AppError('CHAT_EMPTY_MESSAGE', 'Enter a message.', 422)
         reservation = None
-        if self.admission:
+        if self.admission and not request.challenge_action:
             previous = await run_in_threadpool(self.repository.replay_turn, owner, request)
             if previous:
                 return previous
@@ -66,6 +66,7 @@ class ConversationService:
         if reservation and not job['run']:
             await run_in_threadpool(self.admission.release, reservation)
         if job['run']:
+            job['challenge_action']=bool(request.challenge_action)
             job['_admission'] = reservation
             task = workflow_logger.start_task(self._generate(owner, job, generate, with_scope), name='chat.generate')
             self.tasks.add(task)
@@ -102,7 +103,8 @@ class ConversationService:
 
     async def _resume(self, owner, conversation_id, turn_id, body, generate, *, with_scope=True, fingerprint=None):
         reservation = None
-        if self.admission:
+        action=await run_in_threadpool(self.repository.challenge_row,owner,conversation_id,turn_id)
+        if self.admission and not action:
             reservation = await run_in_threadpool(self.admission.acquire, 'model', owner,
                 capacity=16, owner_capacity=2, seconds=300)
         try:
@@ -117,6 +119,7 @@ class ConversationService:
             page = await run_in_threadpool(self.repository.status, owner, conversation_id)
             return dict(page, continued_turn_id=turn_id)
         job['_admission'] = reservation
+        job['challenge_action']=bool(action)
         task = workflow_logger.start_task(self._generate(owner, job, generate, with_scope), name='chat.resume')
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
@@ -168,7 +171,11 @@ class ConversationService:
         activity_sink = None
         scope = None
         try:
-            if self.summaries:
+            if job.get('challenge_action'):
+                row=await run_in_threadpool(self.repository.challenge_row,owner,job['conversation_id'],job['turn_id'])
+                if not row:raise AppError('CHALLENGE_ACTION_REQUIRED','This difficulty action is unavailable.',409)
+                rows,summary=[row],None
+            elif self.summaries:
                 rows, summary = await self.summaries.load_context(owner, job['conversation_id'], job['user_sequence'])
             else:
                 rows = await run_in_threadpool(self.repository.context_rows, owner, job['conversation_id'], job['user_sequence'])
@@ -186,6 +193,7 @@ class ConversationService:
             if with_scope:
                 current = next(row for row in rows if row['sequence'] == job['user_sequence'])
                 scope = dict(job, interaction_response=current.get('metadata', {}).get('interaction_response'), current_user_message_id=current['id'], context_rows=rows,
+                    challenge_action=current.get('metadata',{}).get('challenge_action'),
                     visible_ids=[], visible_user_messages=[], evidence_ids={current['id']},
                     history_references=[], memory_references=[])
                 from app.langchain.activity import ActivityPublisher

@@ -99,12 +99,12 @@ test('Library accepts extensionless source files and source extension aliases', 
   await page.reload();
   await expect(page.getByRole('form', { name: 'Add material', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back to Library', exact: true }).click();
-  await page.getByRole('link', { name: 'Source Files', exact: true }).click();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('link', { name: 'Manage material', exact: true }).click();
+  await expect(page.getByText(/^Ready to study/)).toBeVisible({ timeout: 20_000 });
   await picker.setInputFiles({ name: 'decorators.hpp', mimeType: 'text/plain', buffer: Buffer.from('// Python decorators wrap functions.\nvoid wrapper();\n') });
   await page.getByRole('button', { name: 'Submit replacement', exact: true }).click();
   await expect(page.getByText(/decorators.hpp.*Latest upload/)).toBeVisible();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/^Ready to study/)).toBeVisible({ timeout: 20_000 });
 });
 
 test('Library upload, refresh, grounded chat, citation, replacement and deletion', async ({ page }) => {
@@ -137,17 +137,17 @@ test('Library upload, refresh, grounded chat, citation, replacement and deletion
   await page.getByRole('button', { name: 'Hide side panel' }).click();
   await page.goto('/library');
   await page.getByRole('listitem').filter({ hasText: 'Decorator Notes' }).getByRole('link', { name: 'Manage material' }).click();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^Ready to study/)).toBeVisible();
   await page.getByLabel('File', { exact: true }).setInputFiles({ name: 'decorators-v2.txt', mimeType: 'text/plain', buffer: Buffer.from('Python decorators now have revised source examples and reusable wrappers.') });
   await page.getByRole('button', { name: 'Submit replacement', exact: true }).click();
   await expect(page.getByText(/decorators-v2.txt.*Latest upload/)).toBeVisible();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/^Ready to study/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Archive material', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unarchive material', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Unarchive material', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Archive material', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Reindex material', exact: true }).click();
-  await expect(page.getByText('Ready to study', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/^Ready to study/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Delete material', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
   await expect(page).toHaveURL(/\/library\?deleted=1$/);

@@ -30,6 +30,14 @@ class FinishResponse(BaseModel):
     outcome: OutcomeState = 'completed'
     tasks: list[RequestedTask] = Field(default_factory=list, max_length=20)
 
+    @field_validator('conversation_title',mode='before')
+    @classmethod
+    def valid_title(cls,value):
+        if value is None:return None
+        if not isinstance(value,str):return None
+        value=' '.join(value.split())
+        return value if 1<=len(value)<=80 else None
+
 
 class OutcomeControl(BaseModel):
     model_config = ConfigDict(extra='forbid')

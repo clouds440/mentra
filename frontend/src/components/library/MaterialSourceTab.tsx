@@ -60,7 +60,7 @@ export function MaterialSourceTab({ initial, version, archivedContext = false, a
   return <>
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3">
       <Link onClick={panel?.hide} className={buttonStyles({ size: 'sm', variant: 'ghost' })} to={'/library/' + encodeURIComponent(doc.id)}>Manage material</Link>
-      {(doc.archived || archivedContext) && <Toggle label="Allow viewing archived source material" checked={consent} onChange={event => setConsent(event.target.checked)} />}
+      {(doc.archived || archivedContext) && <Toggle label="Allow viewing archived source material" checked={consent} onCheckedChange={checked => setConsent(checked)} />}
     </div>
     {error && <p role="alert" className="px-4 py-3 text-sm text-danger">{error} <Button size="sm" variant="ghost" onClick={refresh}>Retry</Button></p>}
     {loaded && !unavailable && current ? <SourceReader key={current.id + ':' + consent} filename={current.filename} includeArchived={consent} status={status}

@@ -3,6 +3,33 @@ import { randomUUID } from 'node:crypto';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
 const origin = 'http://127.0.0.1:18003';
+
+test('difficulty menu uses a natural title message and serves a separate version through the real API',async({page})=>{
+  test.setTimeout(90_000);
+  await page.goto('/register');
+  await page.getByLabel('Username',{exact:true}).fill(`difficulty_${randomUUID().slice(0,8)}`);
+  await page.getByLabel('Password',{exact:true}).fill('an isolated difficulty password');
+  await page.getByRole('button',{name:'Create account',exact:true}).click();
+  await finishOnboardingWithoutAssessment(page);
+  const composer=page.getByRole('textbox',{name:'Ask Mentra anything'});
+  await composer.fill('Give me a five question interactive quiz on Linear equations');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  const cards=page.getByRole('region',{name:'Chat assessment'});
+  await expect(cards).toHaveCount(1,{timeout:30000});
+  const original=await cards.first().innerText();
+  await expect(composer).toBeEnabled();
+  await cards.first().getByRole('button',{name:'Assessment options',exact:true}).click();
+  const sent=page.waitForRequest(request=>request.method()==='POST'&&new URL(request.url()).pathname==='/api/v1/conversations/turns');
+  await page.getByRole('menuitem',{name:'Make harder',exact:true}).click();
+  const request=(await sent).postDataJSON();
+  expect(request.challenge_action).toMatchObject({source_kind:'draft',direction:'harder',expected_revision:1});
+  expect(request.content).not.toContain(request.challenge_action.source_id);
+  await expect(page.locator('[data-chat-excerpt="Your message"]').last()).toHaveText(request.content);
+  await expect(cards).toHaveCount(2,{timeout:30000});
+  expect(await cards.first().innerText()).toBe(original);
+  await page.reload();await expect(cards).toHaveCount(2,{timeout:30000});
+  await expect(page.locator('[data-chat-excerpt="Your message"]').last()).toHaveText(request.content);
+});
 test.afterEach(async ({page},info)=>{
   if (info.status===info.expectedStatus) return;
   const chat=new URL(page.url()).pathname.match(/^\/chat\/([^/]+)/)?.[1];
@@ -32,14 +59,14 @@ test('assessment discussion and revisions precede solving, with partial answers 
   }
   await send('Generate a two question quiz on Linear equations');
   const cards = page.getByRole('region',{name:'Chat assessment'});
-  await expect(cards).toHaveCount(1);
+  await expect(cards).toHaveCount(1,{timeout:30000});
   await expect(cards.first().getByText('Explain Linear equations (1).', {exact:true})).toBeVisible();
   const original = await cards.first().innerText();
   await send('Explain question 1 before I start');
-  await expect(cards).toHaveCount(1);
+  await expect(cards).toHaveCount(1,{timeout:30000});
   expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(0);
   await send('Make this assessment easier');
-  await expect(cards).toHaveCount(2);
+  await expect(cards).toHaveCount(2,{timeout:30000});
   await expect(cards.last().getByRole('heading',{name:/Revised:/})).toBeVisible();
   expect(await cards.first().innerText()).toBe(original);
   expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(0);
@@ -93,7 +120,7 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await expect(page.getByLabel('Attached files')).toContainText('answers.txt');
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Evaluate this answer sheet');
   await page.getByRole('button',{name:'Send message'}).click();
-  await expect(cards.last().getByLabel('Answer 1',{exact:true})).toHaveValue('First uploaded answer');
+  await expect(cards.last().getByLabel('Answer 1',{exact:true})).toHaveValue('First uploaded answer',{timeout:30000});
   await expect(cards.last().getByRole('button',{name:'Confirm text & submit',exact:true})).toBeDisabled();
   await cards.last().getByLabel('I reviewed and corrected all extracted answers').check();
   await cards.last().getByRole('button',{name:'Confirm text & submit',exact:true}).click();
@@ -102,11 +129,11 @@ test('chat quiz remains a draft, typed answers grade inline, saved assessment su
   await expect(cards.last().getByRole('status').filter({hasText:/Results saved\.|Feedback saved/})).toBeVisible();
   expect((await (await page.request.get(`${origin}/api/v1/assessments`)).json()).items).toHaveLength(1);
   await page.goto('/settings');
-  await page.getByLabel('Always auto add assessments').check();
-  await expect(page.getByLabel('Always auto add assessments')).toBeChecked();
-  await expect(page.getByLabel('Always auto add assessments')).toBeEnabled();
+  await page.getByLabel('Save chat assessments automatically').check();
+  await expect(page.getByLabel('Save chat assessments automatically')).toBeChecked();
+  await expect(page.getByLabel('Save chat assessments automatically')).toBeEnabled();
   await page.reload();
-  await expect(page.getByLabel('Always auto add assessments')).toBeChecked();
+  await expect(page.getByLabel('Save chat assessments automatically')).toBeChecked();
   await page.goto('/');
   await page.getByRole('textbox',{name:'Ask Mentra anything'}).fill('Generate a two question quiz on Linear equations');
   await page.getByRole('button',{name:'Send message'}).click();

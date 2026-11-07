@@ -181,6 +181,10 @@ class SmallWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 calls.append(source.value)
                 if source is PromptSource.ASSESSMENT_TARGETS:
                     return AssessmentTargets(concept_names=['Fractions: halves'])
+                if source is PromptSource.ASSESSMENT_CHOICE_REVIEW:
+                    from app.langchain.choice_review import ChoiceReviewBatch
+                    return ChoiceReviewBatch(items=[dict(position=q['position'],answer_ids=['a'],answerable=True,
+                        explanation_valid=True,scope_preserved=True,requested_change_met=True,confidence=1,reason_code='ok') for q in payload['questions']])
                 if source is PromptSource.ASSESSMENT_DESIGN:
                     return AssessmentDesign(title='Fractions', sections=[dict(title='Practice',question_count=1,
                         question_type='mcq',part_marks=[1])])
@@ -199,8 +203,8 @@ class SmallWorkflowTests(unittest.IsolatedAsyncioTestCase):
     async def test_designed_and_standard_content_keep_validation_with_one_standard_call(self):
         before, reference = await self.run_workflow(False)
         after, result = await self.run_workflow(True)
-        self.assertEqual(before, ['assessment_design', 'assessment_generation'])
-        self.assertEqual(after, ['assessment_generation'])
+        self.assertEqual(before, ['assessment_design', 'assessment_generation','assessment_choice_review'])
+        self.assertEqual(after, ['assessment_generation','assessment_choice_review'])
         self.assertEqual(result.title, reference.title)
         self.assertEqual(result.paper, reference.paper)
         self.assertEqual(result.questions[0].model_dump(exclude={'section', 'number'}),

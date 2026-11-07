@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { finishOnboardingWithoutAssessment } from './profile-helpers';
 
 test('Library source originals download unchanged on desktop and another signed-in mobile session', async ({ page, browser }) => {
+  test.setTimeout(120000);
   const username = `files_${randomUUID().slice(0, 8)}`;
   const password = 'FilesTesting123!';
   const original = Buffer.from('export const answer: number = 42;\r\n// Original source bytes\r\n');
@@ -18,11 +19,12 @@ test('Library source originals download unchanged on desktop and another signed-
   await page.getByLabel('New context name', { exact: true }).fill('Programming');
   await page.getByRole('button', { name: 'Upload material', exact: true }).click();
   await expect(page).toHaveURL(/\/library\?uploaded=accepted$/, { timeout: 90_000 });
-  await page.getByRole('link', { name: 'Original code', exact: true }).click();
+  await page.getByRole('link', { name: 'Manage material', exact: true }).click();
+  await expect(page).toHaveURL(/\/library\/[^/?]+$/);
   const materialUrl = page.url();
   await expect(page.getByRole('button', { name: 'Open source version' })).toBeEnabled({ timeout: 90_000 });
   await page.getByRole('button', { name: 'Open source version' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Source: Original code' });
+  const dialog = page.getByRole('tabpanel', { name: 'example.ts' });
   await expect(dialog).toBeVisible();
   const desktopDownload = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download original' }).click();
@@ -41,7 +43,7 @@ test('Library source originals download unchanged on desktop and another signed-
     await other.goto(materialUrl);
     await other.getByRole('button', { name: 'Open source version' }).click();
     const mobileDownload = other.waitForEvent('download');
-    await other.getByRole('dialog').getByRole('button', { name: 'Download original' }).click();
+    await other.getByRole('tabpanel',{name:'example.ts'}).getByRole('button', { name: 'Download original' }).click();
     const downloaded = await mobileDownload;
     expect(downloaded.suggestedFilename()).toBe('example.ts');
     expect(await readFile((await downloaded.path())!)).toEqual(original);

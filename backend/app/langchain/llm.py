@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 
 from .model_factory import ModelFactory
 from .prompts import PromptSource, get_system_prompt
@@ -47,7 +47,10 @@ class MentraLLM:
                     model_name=self.model_factory._settings.ai_vision_model if source is PromptSource.ASSESSMENT_TRANSCRIPTION else None)
                  if isinstance(self.model_factory, ModelFactory) else self.model_factory.get_model())
         if output_schema is not None:
-            return model.with_structured_output(output_schema, method="function_calling",
+            from urllib.parse import urlsplit
+            json_review=(source is PromptSource.ASSESSMENT_CHOICE_REVIEW and isinstance(self.model_factory,ModelFactory)
+                and urlsplit(self.model_factory._settings.ai_base_url).hostname=='api.deepseek.com')
+            return model.with_structured_output(output_schema, method="json_mode" if json_review else "function_calling",
                 **({'include_raw': True} if isinstance(self.model_factory, ModelFactory) else {}))
         return model
 
@@ -76,12 +79,17 @@ class MentraLLM:
             log_usage(result['raw'], source, cost)
             if source is PromptSource.MEMORY_SUMMARY and getattr(result['raw'], 'response_metadata', {}).get('finish_reason') == 'length':
                 raise ValueError('Truncated memory summary')
-            if result.get('parsing_error'):
-                raise result['parsing_error']
-            result = result['parsed']
+            if result.get('parsing_error') or result['parsed'] is None:
+                from .structured_result import candidate
+                result = candidate(result['raw'],output_schema)
+            else:
+                result = result['parsed']
         else:
             log_usage(result, source, cost)
-        return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result
+        if output_schema is not None:
+            from .structured_result import validate
+            return validate(result,output_schema,assessment=source is PromptSource.ASSESSMENT_GENERATION)
+        return result
 
     async def ainvoke_messages(self, source: PromptSource, messages: Sequence[BaseMessage], *,
                                output_schema: type[BaseModel] | None = None,
@@ -113,6 +121,8 @@ class MentraLLM:
         reserve_workflow(source, cost, **({'config': config} if config else {}))
         model = self._model(source, output_schema)
         if tools:
+            if not callable(getattr(model,'bind_tools',None)):
+                raise NotImplementedError('Configured model does not support tool binding.')
             model = model.bind_tools(tools, **({'tool_choice': tool_choice} if tool_choice is not None else {}))
         from .provider_invocation import invoke_provider
         try:
@@ -138,9 +148,14 @@ class MentraLLM:
                                            maximum_attempts=getattr(config, 'ai_max_retries', 2) + 1)
         if output_schema and isinstance(result, dict) and 'raw' in result and 'parsed' in result:
             log_usage(result['raw'], source, cost)
-            if result.get('parsing_error'):
-                raise result['parsing_error']
-            result = result['parsed']
+            if result.get('parsing_error') or result['parsed'] is None:
+                from .structured_result import candidate
+                result = candidate(result['raw'],output_schema)
+            else:
+                result = result['parsed']
         else:
             log_usage(result, source, cost)
-        return TypeAdapter(output_schema).validate_python(result) if output_schema is not None else result
+        if output_schema is not None:
+            from .structured_result import validate
+            return validate(result,output_schema,assessment=source is PromptSource.ASSESSMENT_GENERATION)
+        return result

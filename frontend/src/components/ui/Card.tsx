@@ -7,7 +7,7 @@ export function Card({ className, elevated = false, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-panel border border-border bg-card',
+        'ui-card rounded-panel border border-border bg-card',
         elevated && 'shadow-panel',
         className,
       )}

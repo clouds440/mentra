@@ -1,12 +1,12 @@
 import { createBrowserRouter, Navigate, useLocation } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { RouteLoading, RouteLoadError } from './components/ui/RouteBoundary';
-import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { AuthProvider } from './components/auth/AuthProvider';
 import { RequireAuth, RequireGuest } from './components/auth/AuthRoutes';
 import { ChatSession } from './components/chat/ChatSession';
 import { ProfileReady, RequireOnboardingComplete } from './components/student-profile/ProfileRoutes';
+import { ProductMotion } from './components/ui/Motion';
 
 function EventsRedirect() {
   const location = useLocation();
@@ -37,7 +37,7 @@ const router = createBrowserRouter([{
           return { Component: () => <OnboardingPage calibrationOnly /> };
         } },
         { Component: RequireOnboardingComplete, children: [
-          { Component: AppLayout, children: [{ ErrorBoundary: RouteLoadError, children: [
+          { lazy: async () => ({ Component: (await import('./layouts/AppLayout')).AppLayout }), children: [{ ErrorBoundary: RouteLoadError, children: [
             { index: true, ...chat },
             { path: 'chat/:conversationId', ...chat },
             { path: 'library', lazy: async () => ({ Component: (await import('./pages/LibraryPage')).LibraryPage }) },
@@ -57,8 +57,8 @@ const router = createBrowserRouter([{
 }]);
 
 export default function App() {
-  return <AuthProvider>
+  return <ProductMotion><AuthProvider>
     <ChatSession />
     <RouterProvider router={router} />
-  </AuthProvider>;
+  </AuthProvider></ProductMotion>;
 }

@@ -44,7 +44,7 @@ function AppWorkspace() {
   }
 
   return (
-    <div className={`relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground ${sidebar.resizing ? 'select-none' : ''}`}>
+    <div className={`product-workspace relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground ${sidebar.resizing ? 'select-none' : ''}`}>
       <a href="#workspace-main" className="skip-link">Skip to content</a>
       <AppSidebar
         collapsed={collapsed}

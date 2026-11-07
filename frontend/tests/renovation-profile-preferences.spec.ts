@@ -36,7 +36,7 @@ for (const width of [375, 1280]) test(`teaching defaults combine, preview locall
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
   expect(saved[0]).toMatchObject({ learning_preference: 'examples_first', participation: 'interactive', visual_support: 'prefer_visuals', explanation_depth: 'deep', learning_purpose: 'apply' });
-  await page.reload(); await expect(page.getByText('Interactive', { exact: true })).toBeVisible();
+  await page.reload(); await expect(page.locator('dd').filter({hasText:/^Interactive$/})).toBeVisible();
   await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
   await chooseOption(page.getByLabel('Participation', { exact: true }), 'mostly_explanations');
   await chooseOption(page.getByLabel('Visual support', { exact: true }), 'mostly_text');

@@ -39,10 +39,12 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
             rounds = 0
             async def ainvoke_messages(self, source, messages, **kwargs):
                 self.rounds += 1
-                results = [message.tool_call_id for message in messages if isinstance(message, ToolMessage)]
+                results = [message.tool_call_id for message in messages if isinstance(message, ToolMessage) and message.tool_call_id!='enable']
                 if self.rounds == 1:
-                    return AIMessage(content='', tool_calls=[dict(name='read_a',args={},id='a'),dict(name='read_b',args={},id='b')])
+                    return AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',args=dict(tool_names=['read_a','read_b']),id='enable')])
                 if self.rounds == 2:
+                    return AIMessage(content='', tool_calls=[dict(name='read_a',args={},id='a'),dict(name='read_b',args={},id='b')])
+                if self.rounds == 3:
                     assert results == ['a','b']
                     return AIMessage(content='', tool_calls=[dict(name='read_a',args={},id='a2')])
                 assert results == ['a','b','a2']
@@ -52,14 +54,16 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
             result = await tool_reply(model, [HumanMessage(content='Study', id='user-1')], SimpleNamespace(events=None),
                 'owner', self.scope(), (), {})
         self.assertEqual(result.content, 'Complete')
-        self.assertEqual(model.rounds, 3)
+        self.assertEqual(model.rounds, 4)
 
     async def test_large_committed_write_returns_truthful_receipt(self):
         async def write(): return dict(outcome='saved', memory=dict(id='memory-id', content='x'*16000))
         tool = StructuredTool.from_function(name='user_memory', description='write', args_schema=Empty, coroutine=write)
         class Model:
             async def ainvoke_messages(self, source, messages, **kwargs):
-                results = [message for message in messages if isinstance(message, ToolMessage)]
+                all_results=[message for message in messages if isinstance(message,ToolMessage)]
+                if not all_results:return AIMessage(content='',tool_calls=[dict(name='enable_workflow_tools',args=dict(tool_names=['user_memory']),id='enable-write')])
+                results = [message for message in all_results if message.tool_call_id!='enable-write']
                 if not results:
                     return AIMessage(content='', tool_calls=[dict(name='user_memory',args={},id='write')])
                 receipt = json.loads(results[-1].content)
@@ -74,9 +78,9 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
     def test_normal_packet_fits_but_large_unicode_and_model_context_do_not(self):
         ToolBudget().consume(json.dumps(dict(concepts=[dict(id=str(index), details='x'*80) for index in range(8)])))
-        with self.assertRaises(AppError): ToolBudget().consume('😀'*4000)
+        with self.assertRaises(AppError): ToolBudget().consume('😀'*10000)
         with self.assertRaises(AppError):
-            check_input([HumanMessage(content='Answer. '*10000)], PromptSource.ASSESSMENT_GRADING)
+            check_input([HumanMessage(content='Answer. '*30000)], PromptSource.ASSESSMENT_GRADING)
 
     def test_nested_workflows_share_one_budget(self):
         from app.langchain.workflow_budget import model_budget
@@ -90,7 +94,7 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(AppError): parent.reserve(1,1)
 
     def test_write_receipt_reserves_utf8_bytes_as_well_as_tokens(self):
-        budget = ToolBudget(result_characters=12000,result_tokens=2500)
+        budget = ToolBudget(result_characters=ToolBudget().max_result_bytes-1,result_tokens=2500)
         with self.assertRaises(AppError): budget.call(True)
 
     def test_missing_tokenizer_cache_never_downloads_on_request(self):

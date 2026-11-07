@@ -103,7 +103,7 @@ class PromptActivationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(PromptSource.CHAT_ASSESSMENT, rounds[0]['additional_sources'])
         self.assertIn(PromptSource.CHAT_ASSESSMENT, rounds[1]['additional_sources'])
         self.assertIn(PromptSource.CHAT_ASSESSMENT, rounds[2]['additional_sources'])
-        self.assertIsNone(rounds[2]['tools'])
+        self.assertIn('assessment_lookup',[getattr(tool,'name',None) for tool in rounds[2]['tools']])
         self.assertTrue(result.content)
 
     def test_all_prompt_sources_have_versioned_instructions(self):

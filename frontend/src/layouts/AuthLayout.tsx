@@ -1,17 +1,29 @@
 import { Outlet } from 'react-router';
 import { MentraLogo } from '../components/brand/MentraLogo';
+import { ArrowUpRight, BookOpen, Check, Compass } from 'lucide-react';
 
 export function AuthLayout() {
   return (
-    <main className="flex min-h-dvh flex-col bg-background px-5 py-8 text-foreground sm:px-6 sm:py-12">
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <div className="mb-8 flex items-center gap-3" aria-label="Mentra">
-          <MentraLogo className="h-10 w-10" />
-          <span className="text-xl font-semibold tracking-tight">mentra</span>
+    <main className="auth-layout">
+      <section className="auth-story" aria-label="About Mentra">
+        <div className="auth-brand"><MentraLogo /><span>mentra</span></div>
+        <div className="auth-story-body">
+          <p className="welcome-eyebrow"><span aria-hidden="true" />Your space to understand</p>
+          <h2>Big ideas.<br />Small steps.<br /><em>Real understanding.</em></h2>
+          <p>A thoughtful learning companion that connects your questions, your material, and your next breakthrough.</p>
+          <div className="auth-learning-path" aria-hidden="true">
+            <span><BookOpen size={18} />Bring your curiosity<Check size={15} /></span>
+            <span><Compass size={18} />Find your own pace<Check size={15} /></span>
+            <span><ArrowUpRight size={18} />Keep moving forward<span className="auth-path-dot" /></span>
+          </div>
         </div>
-        <div className="w-full max-w-md"><Outlet /></div>
-        <p className="mt-8 text-xs text-subtle">A quieter way to learn.</p>
-      </div>
+        <p className="auth-story-footer">Made for the way you learn.</p>
+      </section>
+      <section className="auth-form-area" aria-label="Your account">
+        <div className="auth-mobile-brand"><MentraLogo /><span>mentra</span></div>
+        <div className="auth-form-content"><Outlet /></div>
+        <p className="auth-form-footer">A quieter way to learn.</p>
+      </section>
     </main>
   );
 }

@@ -1,4 +1,3 @@
-import LightRays from '../components/chat/LightRays';
 import { buttonStyles } from '../components/ui/Button';
 import { useChatScroll } from '../hooks/useChatScroll';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -194,13 +193,6 @@ export function ChatPage() {
 
   return (
     <section aria-label="Chat workspace" data-chat-size={chatFontSize} className="chat-scope relative isolate flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-      {!view.loading && view.messages.length === 0 && <LightRays
-        raysOrigin="top-center" raysColor="#7FE3FF" raysSpeed={0.5}
-        lightSpread={1} rayLength={3} glow={0.6} haze={0.5}
-        followMouse mouseInfluence={0.1} rayDensity={1.6}
-        raySharpness={0.5} atmosphere={0.7} distortion={0.12}
-        cursorShadow={false} clickPulse={false}
-      />}
       {conversationId && matchedMessage && <Suspense fallback={null}><SavedChatExchange key={`${identity?.learner_id}:${conversationId}:${matchedMessage}`} conversation={conversationId} message={matchedMessage} onClose={closeExchange} /></Suspense>}
       {view.loading && !view.messages.length ? (
         <div className="min-h-0 flex-1 overflow-hidden"><Skeleton variant="chat" /></div>

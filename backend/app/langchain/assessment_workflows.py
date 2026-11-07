@@ -1,3 +1,4 @@
+import re
 from app.core.exceptions import AppError
 from app.assessments.schemas import GeneratedAssessment, GeneratedAssessmentBatch, GradedAssessment
 from app.learner.schemas import EvidenceSubmissionRequest
@@ -117,6 +118,8 @@ class AssessmentWorkflows:
         if request.concept_ids:
             for index, item in enumerate(question_plan):
                 item['target_subskill_id'] = str(request.concept_ids[index % len(request.concept_ids)])
+        from app.challenge.generation import planning_targets
+        challenge_targets=planning_targets(request,revision,question_plan,learner_context)
         async def save_progress():
             if checkpoint:
                 await checkpoint(dict(schema_version=1, plan=question_plan, paper=paper.model_dump(mode='json') if paper else None,
@@ -137,10 +140,13 @@ class AssessmentWorkflows:
         long_revision=bool(revision and sum(len(q['prompt']) for q in revision['questions'])>6000)
         split=expected_output>reserve*.95 or context_size>max(2000,config.chat_context_window_tokens-reserve-6000) or long_revision
         batch_size=(3 if long_revision else 6) if split else len(question_plan)
+        if request.challenge_direction and any(item.get('answer_mode')=='text' for item in question_plan):
+            batch_size=min(batch_size,3)
         workflow_logger.event('assessment.generation_plan', parts=len(question_plan), batch_size=batch_size,
             concurrent_batches=min(2,(len(question_plan)+batch_size-1)//batch_size), compact=compact)
         from .assessment_payloads import generation_payload
         shared_payload = dict(topic=request.topic, question_format=request.question_format,
+            language=request.language,challenge_targets=challenge_targets,
             instructions=request.instructions, purpose=request.purpose, targets=targets,
             recommendations=[item.model_dump(mode='json', exclude_none=True) for item in recommendations if item.concept_id in concepts],
             verification=[item.model_dump(mode='json', exclude_none=True) for item in verification if item.concept_id in concepts],
@@ -149,6 +155,12 @@ class AssessmentWorkflows:
             paper=dict(duration_minutes=paper.duration_minutes, total_marks=paper.total_marks, instructions=paper.instructions,
                 sections=[dict(title=section.title, instructions=section.instructions) for section in paper.sections]) if paper else None,
             **(dict(revision_instructions=revision.get('instructions', request.revision_instructions)) if revision else {}))
+        if re.search('[\u0600-\u06ff]',request.topic+' '.join(q['prompt'] for q in (revision or {}).get('questions',[]))) or 'arabic' in request.topic.casefold():
+            from .assessment_reference import REFERENCE
+            shared_payload['domain_reference']=REFERENCE
+        from .choice_review import ChoiceReviewer
+        reviewer=ChoiceReviewer(self.llm)
+        review_originals=(reuse['original'] if reuse else revision or {}).get('questions')
         async def generate_batch(offset, prior):
             batch_plan = question_plan[offset:offset+batch_size]
             batch_count = len(batch_plan)
@@ -157,18 +169,29 @@ class AssessmentWorkflows:
                     question_format=request.question_format, concepts=set(concepts) if request.concept_ids else None,
                     require_attribution=bool(request.concept_ids), tokens={source['token'] for source in sources}, grounded=request.grounded,
                     previous=[*unchanged_prompts, *[question.prompt.casefold().strip() + '|' + question.context.casefold().strip() for question in prior]], plan=batch_plan)
+                if request.challenge_direction:
+                    invalid=[index+1 for index,(question,planned) in enumerate(zip(result.questions,batch_plan))
+                        if set(question.concept_ids)!=set(planned['required_subskill_ids']) or question.concept_names]
+                    if invalid:raise GenerationMismatch('challenge_targets_must_match_source',question_indices=invalid)
                 if revision and revision.get('mistake_revision'):
                     originals = {item['prompt'].strip().casefold() for item in revision['questions']}
                     if any(question.prompt.strip().casefold() in originals for question in result.questions):
                         raise GenerationMismatch('revision_questions_require_fresh_wording')
             payload = generation_payload(shared=shared_payload, plan=question_plan, offset=offset,
                 batch_size=batch_size, prior=prior, revision=reuse['original'] if reuse else revision)
+            if request.challenge_direction:
+                # A difficulty rewrite needs the tasks, not a copy of the old
+                # distractors. In particular, do not prime another oversized list.
+                for original in payload.get('original_questions',[]):original.pop('options',None)
             if unchanged:
                 payload['unchanged_question_overview'] = [dict(excerpt=question.prompt[:160], truncated=len(question.prompt)>160) for question in unchanged]
+            async def review_batch(result):
+                await reviewer.verify(result.questions,topic=request.topic,direction=request.challenge_direction,
+                    originals=review_originals[offset:offset+batch_count] if review_originals else None,skills=targets)
             generated = await invoke_generated(self.llm, PromptSource.ASSESSMENT_GENERATION,
             payload, output_schema=GeneratedAssessmentBatch,
-                maximum_attempts=1 if batch_count>6 else 2,
-                validate=validate_batch)
+                maximum_attempts=1 if batch_count>6 else 3 if request.challenge_direction or any(item.get('answer_mode') in ('single_choice','multiple_choice') for item in batch_plan) else 2,
+                validate=validate_batch,review=review_batch)
             return generated, batch_plan
         # Independent outline batches overlap; only ordered prefixes are checkpointed.
         # This keeps refresh/retry deterministic even when a later call finishes first.
@@ -207,6 +230,9 @@ class AssessmentWorkflows:
                 for _,task in tasks:
                     if not task.done(): task.cancel()
                 await asyncio.gather(*(task for _,task in tasks),return_exceptions=True)
+        # Check resumed private checkpoints as well; serialized model data cannot
+        # assert that an independent cross-check already happened.
+        await reviewer.verify(questions,topic=request.topic,direction=request.challenge_direction,originals=review_originals)
         if reuse:
             merged = list(reuse['retained'])
             for index, question in zip(reuse['positions'], questions):
@@ -298,10 +324,8 @@ class AssessmentWorkflows:
         assessment, attempt = job['assessment'], job['attempt']
         lineage = assessment.get('practice_lineage') or {}
         exposed = bool(lineage.get('known_exposure'))
-        from sqlalchemy import select
-        from app.assessments.repositories.tables import prediction_snapshots
-        exposure=dict(unit_of_work._session.execute(select(prediction_snapshots.c.question_id,prediction_snapshots.c.first_exposure).where(
-            prediction_snapshots.c.learner_id==job['owner'],prediction_snapshots.c.attempt_id==job['id'])).all())
+        from app.assessments.repositories.evidence import first_exposures
+        exposure=first_exposures(unit_of_work._session,job['owner'],job['id'])
         questions = {question['id']:question for question in assessment['questions']}
         requests = []
         previous = {(receipt.get('question_id'),receipt['concept_id']):receipt['evidence_id'] for receipt in (attempt.get('evidence_receipt') or []) if receipt['accepted']}

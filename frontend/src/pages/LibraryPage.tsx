@@ -7,6 +7,7 @@ import { usePendingWork, usePageRefresh, refreshPage } from '../hooks/usePageRef
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Input, Select, Pagination, buttonStyles } from '../components/ui';
+import { ViewToggle } from '../components/ui/ViewToggle';
 import { libraryPage, pendingJob, materialError, transitionContext } from '../services/rag';
 import { MaterialSourceTab } from '../components/library/MaterialSourceTab';
 import { useSidePanelActions } from '../components/workspace/sidePanelState';
@@ -22,9 +23,10 @@ export function LibraryPage() {
   const archive = requestedArchive === 'all' || requestedArchive === 'archived' ? requestedArchive : 'available';
   const contextId = params.get('context') ?? '';
   const query = params.get('query') ?? '';
+  const view = params.get('view') === 'list' ? 'list' : 'grid';
   const [search, setSearch] = useState(query);
   useEffect(() => setSearch(query), [query]);
-  function filterParams(values: Record<string, string>) { setParams({ archived: archive, ...(contextId ? { context: contextId } : {}), ...(query ? { query } : {}), ...values }); }
+  function filterParams(values: Record<string, string>) { setParams({ archived: archive, ...(view === 'list' ? { view } : {}), ...(contextId ? { context: contextId } : {}), ...(query ? { query } : {}), ...values }); }
   const [list, setList] = useState<MaterialList>(); const [loadedQuery, setLoadedQuery] = useState('');
   const queryKey = JSON.stringify([offset, archive, contextId, query]); const visible = loadedQuery === queryKey ? list : undefined; const [contexts, setContexts] = useState<LearningContext[]>([]);
   const [error, setError] = useState('');
@@ -55,10 +57,10 @@ export function LibraryPage() {
   }, [offset, archive, contextId, query, reload]);
   async function changeContext(id: string, status: string) { try { await transitionContext(id, status); refresh(); } catch (e) { setError(materialError(e)); } }
   return <PageShell className="library-page">
-    <WorkspaceHeader title="Library" description="Keep your sources together. Bring them into a conversation whenever you’re ready to study." icon={BookOpen} actions={<Button onClick={() => navigate('/library/new')}><Plus size={16} aria-hidden="true" />Add material</Button>} />
+    <WorkspaceHeader title="Library" description="Your notes, books, and sources. Ready whenever you want to explore an idea." icon={BookOpen} actions={<Button onClick={() => navigate('/library/new')}><Plus size={16} aria-hidden="true" />Add material</Button>} />
     {notice && <p role="status" className="text-sm text-muted">{notice}</p>}
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{error}<Button variant="secondary" onClick={() => refreshPage(refresh)}>Try again</Button></div>}
-    <PageSection title="Study materials" description="A source for every part of your learning." className="library-filters" actions={visible && <span className="library-count">{visible.total} {visible.total === 1 ? 'material' : 'materials'}</span>}>
+    <PageSection title="Study materials" description="Find a source, open it beside your work, or bring it into chat." className="library-filters" actions={visible && <span className="library-count">{visible.total} {visible.total === 1 ? 'material' : 'materials'}</span>}>
       <div className="library-filter-grid">
       <form className="library-query" role="search" onSubmit={event => { event.preventDefault(); filterParams({ query: search.trim(), offset: '0' }); }}><label htmlFor="library-query" className="text-sm">Find a source</label><div className="flex min-w-0 gap-2"><Input id="library-query" type="search" aria-label="Search Library" placeholder="Search titles or filenames…" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} /><Button type="submit" variant="secondary">Search</Button>{query && <Button variant="ghost" onClick={() => { setSearch(''); filterParams({ query: '', offset: '0' }); }}>Clear</Button>}</div></form>
       <div className="grid min-w-0 gap-3 sm:grid-cols-2">
@@ -67,9 +69,13 @@ export function LibraryPage() {
       </div>
       </div>
     </PageSection>
+    <div className="library-results-heading">
+      <div><h2>Your sources</h2><p>{visible ? `${visible.total} ${visible.total === 1 ? 'material' : 'materials'}${query ? ' matching your search' : ' in this view'}` : 'Finding your materials…'}</p></div>
+      <div className="action-row"><Button variant="ghost" size="sm" onClick={() => refreshPage(refresh)}>Refresh</Button><ViewToggle label="Library view" view={view} onChange={value => { const next = new URLSearchParams(params); if (value === 'grid') next.delete('view'); else next.set('view', value); setParams(next, { replace: true }); }} /></div>
+    </div>
     {!visible && !error && <PageSkeleton />}
-    {visible?.items.length === 0 && <WorkspaceEmpty title={query ? 'No matching materials' : archive === 'archived' ? 'No archived material' : 'Your next source starts here'} description="Add notes, books, documents or images, then study with them in chat." icon={FolderOpen} action={archive !== 'archived' && <Button variant="secondary" onClick={() => navigate('/library/new')}>Add your first material</Button>} />}
-    <ul className="workspace-grid library-materials">{visible?.items.map(doc => { const job = pendingJob(doc); return <li key={doc.id} className="workspace-item library-material"><div className="flex items-center justify-between gap-3"><span className="library-file-icon"><FileText size={21} strokeWidth={1.5} aria-hidden="true" /></span><span className={`library-material-status ${job ? 'is-preparing' : doc.active_generation_id ? 'is-ready' : ''}`}>{job ? 'Preparing' : doc.active_generation_id ? 'Ready to study' : doc.jobs[0]?.error ? 'Needs attention' : 'Pending'}{doc.archived ? ' · Archived' : ''}</span></div><div className="min-w-0"><button type="button" className="library-material-title inline-flex items-baseline gap-2 text-left" title="Open in side panel" onClick={() => panel?.open({
+    {visible?.items.length === 0 && <WorkspaceEmpty title={query ? 'No sources match your search' : archive === 'archived' ? 'No archived material' : 'Make room for your first source'} description="Add your notes, a document, or an image. Then explore it with Mentra in chat." icon={FolderOpen} action={archive !== 'archived' && <Button variant="secondary" onClick={() => navigate('/library/new')}>Add your first material</Button>} />}
+    <ul className="workspace-grid library-materials" data-view={view}>{visible?.items.map(doc => { const job = pendingJob(doc); return <li key={doc.id} className="workspace-item library-material"><div className="flex items-center justify-between gap-3"><span className="library-file-icon"><FileText size={21} strokeWidth={1.5} aria-hidden="true" /></span><span className={`library-material-status ${job ? 'is-preparing' : doc.active_generation_id ? 'is-ready' : ''}`}>{job ? 'Preparing' : doc.active_generation_id ? 'Ready to study' : doc.jobs[0]?.error ? 'Needs attention' : 'Pending'}{doc.archived ? ' · Archived' : ''}</span></div><div className="min-w-0"><button type="button" className="library-material-title inline-flex items-baseline gap-2 text-left" title="Open in side panel" onClick={() => panel?.open({
       title: doc.title, resource: { kind: 'library', title: doc.title, document_id: doc.id }, icon: <FileText size={14} aria-hidden="true" />,
       content: <MaterialSourceTab initial={doc} archivedContext={contexts.some(item => doc.context_ids.includes(item.context_id) && item.status === 'ARCHIVED')} />,
     })}><span>{doc.title}</span><PanelRightOpen size={14} className="shrink-0 self-center text-muted" aria-hidden="true" /></button><p className="mt-2 break-all text-xs text-muted">{doc.filename}</p></div><div className="library-context-tags">{doc.context_ids.map(id => <span key={id}>{contexts.find(context => context.context_id === id)?.name ?? 'Context'}</span>)}</div>{doc.jobs[0]?.error && <p className="text-sm text-danger">This material could not be processed.</p>}<div className="library-material-actions"><Link to={`/library/${doc.id}`} className={buttonStyles({variant: 'ghost', size: 'sm', className: '-ml-2' })}>Manage material<ArrowUpRight size={14} aria-hidden="true" /></Link><div className="flex flex-wrap gap-1">{doc.active_generation_id && !doc.archived && <Link to={`/?document=${doc.id}`} className={buttonStyles({variant: 'secondary', size: 'sm'})}><MessageSquare size={14} aria-hidden="true" />Study in chat</Link>}{doc.active_generation_id && !doc.archived && <Link className={buttonStyles({variant: 'ghost', size: 'sm'})} to={practiceLink({ document_ids: [doc.id], context_id: contexts.find(item => doc.context_ids.includes(item.context_id) && item.status !== 'ARCHIVED')?.context_id, topic: doc.title })}><ClipboardCheck size={14} aria-hidden="true" />Quiz this material</Link>}</div></div></li>; })}</ul>

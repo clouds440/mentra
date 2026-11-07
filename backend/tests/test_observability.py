@@ -26,6 +26,8 @@ class Capture(logging.Handler):
 
 class LoggingTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        summaries=patch.object(settings,'log_workflow_summaries',True)
+        summaries.start();self.addCleanup(summaries.stop)
         self.capture = Capture()
         self.target = logging.getLogger('mentra.events')
         self.old_handlers, self.old_level, self.old_propagate = self.target.handlers, self.target.level, self.target.propagate
@@ -368,13 +370,12 @@ class DurableLoggingTests(unittest.IsolatedAsyncioTestCase):
     async def test_additive_migration_preserves_legacy_records(self):
         from alembic import command
         from sqlalchemy import select
-        from app.db.migrate import migration_config,upgrade
+        from app.db.migrate import migration_config,upgrade,downgrade
         from app.chat.repositories.tables import conversations,turns
         from testing.identities import learner_id
         from uuid import uuid4
         from datetime import datetime,timezone
-        with self.db.engine.begin() as connection:
-            command.downgrade(migration_config(connection),'20261009_0013')
+        downgrade(self.db.engine,'20261009_0013')
         owner,cid,tid=learner_id('alice'),str(uuid4()),str(uuid4())
         stamp=datetime.now(timezone.utc)
         with self.db.engine.begin() as connection:

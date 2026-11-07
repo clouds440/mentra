@@ -146,6 +146,8 @@ class ChatRepository:
             fingerprint = sha256((fingerprint + json.dumps(ordered, ensure_ascii=False, separators=(',', ':'))).encode()).hexdigest()
         if request.timezone:
             fingerprint = sha256((fingerprint + request.timezone).encode()).hexdigest()
+        if request.challenge_action:
+            fingerprint=sha256((fingerprint+request.challenge_action.model_dump_json()).encode()).hexdigest()
         return fingerprint
 
     def replay_turn(self, owner, request):
@@ -224,6 +226,8 @@ class ChatRepository:
                     raise AppError('CHAT_BUSY', 'Wait for the current response before sending another message.', 409)
                 session.execute(update(t).where(t.c.id == pending['id']).values(state='FAILED', error='Generation interrupted.'))
             interaction_metadata = {}
+            if request.challenge_action:
+                interaction_metadata['challenge_action']=request.challenge_action.model_dump(mode='json')
             if request.interaction_response:
                 from app.chat.interactions import resolve_responses
                 reply = request.interaction_response
@@ -322,14 +326,14 @@ class ChatRepository:
                 'deferred' if outcome.state in ('awaiting_input','in_progress','paused') else 'success',code=outcome.reason_code)
             from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
             if not incomplete or not outcome.retryable or job.get('_discard_checkpoint'): delete_response_checkpoints(session, owner, job['turn_id'])
-            if response is not None and not context_changed:
+            if response is not None and not context_changed and not job.get('challenge_action'):
                 from app.langchain.repositories.evidence import ChatEvidenceRepository
                 ChatEvidenceRepository.queue(session, owner, job)
             session.execute(update(c).where(c.c.id == row['id']).values(message_count=sequence, revision=row['revision']+1, updated_at=now(), **conversation_values))
             if not error:
                 from .summary_jobs import queue
                 queue(session, owner, row['id'], sequence)
-                if not incomplete:
+                if not incomplete and not job.get('challenge_action'):
                     from app.history_management.repositories.memory_capture import enqueue
                     enqueue(session, owner, None, job['turn_id'], job['attempt'])
             self._change(session, owner, row['id'], state)
@@ -575,6 +579,16 @@ class ChatRepository:
             session.execute(update(c).where(c.c.id == conversation_id).values(**values))
             self._change(session, owner, conversation_id, state)
             return dict(row, **values)
+
+    def challenge_row(self, owner, conversation_id, turn_id):
+        """Read the durable action alone; difficulty clicks need no chat history."""
+        with self.sessions() as session:
+            row=session.execute(select(m).join(t,and_(t.c.conversation_id==m.c.conversation_id,
+                t.c.user_sequence==m.c.sequence,t.c.learner_id==m.c.learner_id)).join(c,and_(
+                    c.c.id==t.c.conversation_id,c.c.learner_id==t.c.learner_id)).where(
+                        t.c.id==turn_id,t.c.learner_id==owner,c.c.id==conversation_id,c.c.deleted_at.is_(None),
+                        m.c.metadata['challenge_action'].is_not(None),m.c.metadata.has_key('challenge_action'))).mappings().first()
+            return dict(row) if row else None
 
     def context_rows(self, owner, conversation_id, through=None, limit=256):
         with self.sessions() as session:

@@ -1,0 +1,50 @@
+[
+  {
+    "mobile": false,
+    "cpu_rate": 1,
+    "samples": 30,
+    "ready_p95_ms": 30.100000008940697,
+    "interaction_samples": 124,
+    "interaction_p95_ms": 34.400000005960464,
+    "by_kind": {
+      "choice": {
+        "samples": 30,
+        "p95_ms": 28
+      },
+      "text": {
+        "samples": 64,
+        "p95_ms": 31.100000008940697
+      },
+      "navigation": {
+        "samples": 30,
+        "p95_ms": 36.70000000298023
+      }
+    },
+    "blocking_hydration_reads": 0,
+    "navigation_writes": 0
+  },
+  {
+    "mobile": true,
+    "cpu_rate": 4,
+    "samples": 30,
+    "ready_p95_ms": 41.5,
+    "interaction_samples": 124,
+    "interaction_p95_ms": 32.69999998807907,
+    "by_kind": {
+      "choice": {
+        "samples": 30,
+        "p95_ms": 63.79999999701977
+      },
+      "text": {
+        "samples": 64,
+        "p95_ms": 30.30000001192093
+      },
+      "navigation": {
+        "samples": 30,
+        "p95_ms": 32.69999998807907
+      }
+    },
+    "blocking_hydration_reads": 0,
+    "navigation_writes": 0
+  }
+]

@@ -64,6 +64,18 @@ class QuestionnaireSchemaTests(unittest.IsolatedAsyncioTestCase):
         runtime.restore(snapshot)
         self.assertIn('present_questionnaire', selection.active)
 
+    def test_checkpoint_serializes_memory_dates_and_rejects_service_objects(self):
+        from datetime import datetime,timezone
+        from types import SimpleNamespace
+        from app.langchain.response_runtime import ResponseRuntime
+        from app.langchain.tool_selection import ToolSelection
+        scope={'_tool_execution_state':{'results':{'memory':{'updated_at':datetime(2026,11,7,tzinfo=timezone.utc)}}}}
+        budget=ToolBudget();selection=ToolSelection([],{},{})
+        runtime=ResponseRuntime([],scope,budget,selection,SimpleNamespace())
+        self.assertEqual(runtime.capture()['scope']['_tool_execution_state']['results']['memory']['updated_at'],'2026-11-07T00:00:00Z')
+        scope['_tool_execution_state']['results']['memory']['service']=object()
+        with self.assertRaises(ValueError):runtime.capture()
+
 
 class QuestionnairePersistenceTests(unittest.TestCase):
     @classmethod

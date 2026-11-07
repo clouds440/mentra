@@ -142,6 +142,8 @@ class AssessmentRepository:
                 operation_id=str(request.client_request_id), fingerprint=fingerprint)
             from .mistake_practice import inherit_practice_lineage
             row['practice_lineage'] = inherit_practice_lineage(self, session, owner, request, questions, row['id'])
+            from app.challenge.repositories.store import publication_preferences
+            row['preferences']=publication_preferences(self,session,owner,request,row)
             if revision_snapshot:
                 from .revision_practice import revision_lineage
                 row['practice_lineage'] = revision_lineage(revision_snapshot, questions)
@@ -498,6 +500,8 @@ class AssessmentRepository:
     def remove(self, owner, identifier):
         with self.transactions.write(owner) as tx:
             self._assessment(tx._session, owner, identifier)
+            from app.challenge.repositories.store import invalidate
+            invalidate(self,tx._session,owner,identifier)
             from app.langchain.repositories.checkpoint_tables import delete_thread
             for attempt_id in tx._session.execute(select(t.c.id).where(t.c.learner_id == owner, t.c.assessment_id == identifier)).scalars():
                 delete_thread(tx._session, f'assessment-transcription-v1:{owner}:{attempt_id}')

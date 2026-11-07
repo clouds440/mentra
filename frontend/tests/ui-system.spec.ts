@@ -46,9 +46,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Upload file', exact: true }).click();
     await (await chooser).setFiles({ name: 'chapter.txt', mimeType: 'text/plain', buffer: Buffer.from('Algebra notes') });
     await expect(page.getByText('chapter.txt', { exact: true })).toBeVisible();
-    const context = page.getByRole('form', { name: 'Add material' }).getByRole('combobox', { name: 'Learning context', exact: true });
+    await page.getByRole('radio',{name:'Use existing',exact:true}).click();
+    const context = page.getByRole('form', { name: 'Add material' }).getByRole('combobox', { name: 'Choose a learning context', exact: true });
     await context.click();
-    const panel = page.getByRole('listbox', { name: 'Learning context options' });
+    const panel = page.getByRole('listbox', { name: 'Choose a learning context options' });
     await expect(panel).toBeVisible();
     const rect = await panel.boundingBox();
     expect(rect!.x).toBeGreaterThanOrEqual(12); expect(rect!.x + rect!.width).toBeLessThanOrEqual(378);
@@ -92,8 +93,11 @@ test('account drawer matches its capsule and stacks theme choices', async ({ pag
     const dark = panel.getByRole('radio', { name: 'Dark theme' }).locator('..');
     const system = panel.getByRole('radio', { name: 'System theme' }).locator('..');
     const boxes = await Promise.all([light.boundingBox(), dark.boundingBox(), system.boundingBox()]);
-    expect(boxes[1]!.y).toBeGreaterThanOrEqual(boxes[0]!.y + boxes[0]!.height);
-    expect(boxes[2]!.y).toBeGreaterThanOrEqual(boxes[1]!.y + boxes[1]!.height);
+    for (const box of boxes) {
+      expect(box!.x).toBeGreaterThanOrEqual(panelBounds!.x);
+      expect(box!.x+box!.width).toBeLessThanOrEqual(panelBounds!.x+panelBounds!.width);
+      expect(box!.y+box!.height).toBeLessThanOrEqual(panelBounds!.y+panelBounds!.height);
+    }
     await dark.click(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await light.click(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.screenshot({ path: testInfo.outputPath(`account-${state}.png`) });

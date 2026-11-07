@@ -1,0 +1,74 @@
+
+> mentra-frontend@0.1.0 test:design
+> playwright test --config playwright.design.config.ts --reporter=line
+
+
+[WebServer] (node:2700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 59 tests using 1 worker
+
+(node:1104) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/59] tests\page-actions.spec.ts:19:34 › every page keeps the side-panel toggle usable without sources at 390px
+[2/59] tests\page-actions.spec.ts:19:34 › every page keeps the side-panel toggle usable without sources at 1440px
+[3/59] tests\page-actions.spec.ts:47:34 › Library views preserve filtering and every source action at 390px
+[4/59] tests\page-actions.spec.ts:47:34 › Library views preserve filtering and every source action at 1440px
+[5/59] tests\page-actions.spec.ts:67:1 › material management keeps all source and maintenance actions
+[6/59] tests\page-actions.spec.ts:78:1 › assessment creation retains all twelve question formats and optional source settings
+[7/59] tests\page-actions.spec.ts:91:1 › Settings shortcuts retain every profile, preference, password, memory and notification control
+[8/59] tests\page-actions.spec.ts:108:1 › notification actions remain available in the new feed layout
+[9/59] tests\page-actions.spec.ts:116:1 › onboarding keeps profile, calibration, skip, sign-out and theme choices
+[10/59] tests\product-design.spec.ts:12:33 › product screens remain usable at 390px in light
+[11/59] tests\product-design.spec.ts:12:33 › product screens remain usable at 768px in light
+[12/59] tests\product-design.spec.ts:12:33 › product screens remain usable at 1440px in light
+[13/59] tests\product-design.spec.ts:12:33 › product screens remain usable at 1440px in dark
+[14/59] tests\product-design.spec.ts:12:33 › product screens remain usable at 2560px in light
+[15/59] tests\product-design.spec.ts:36:34 › account entry stays readable and validates fields at 390px
+[16/59] tests\product-design.spec.ts:36:34 › account entry stays readable and validates fields at 1440px
+[17/59] tests\product-design.spec.ts:54:40 › workspace has no automated WCAG A/AA violations in light
+[18/59] tests\product-design.spec.ts:54:40 › workspace has no automated WCAG A/AA violations in dark
+[19/59] tests\product-design.spec.ts:67:1 › keyboard tabs and switches update the intended preference and preserve focus
+[20/59] tests\product-design.spec.ts:91:1 › empty chat offers clear starting actions without a graphics context
+[21/59] tests\renovation-chat-welcome.spec.ts:4:40 › welcome actions start a conversation and return to a fresh workspace in light
+[22/59] tests\renovation-chat-welcome.spec.ts:4:40 › welcome actions start a conversation and return to a fresh workspace in dark
+[23/59] tests\renovation-chat-welcome.spec.ts:18:1 › welcome works with reduced motion and never requests a graphics context
+[24/59] tests\renovation-composer-add.spec.ts:10:34 › composer plus stages multiple removable references at 390
+[25/59] tests\renovation-composer-add.spec.ts:10:34 › composer plus stages multiple removable references at 1440
+[26/59] tests\renovation-composer-add.spec.ts:60:1 › camera captures into the existing attachment tray and releases its stream
+[27/59] tests\renovation-dialog.spec.ts:5:34 › side panel close control stays fixed while a long source scrolls at 390px
+[28/59] tests\renovation-dialog.spec.ts:5:34 › side panel close control stays fixed while a long source scrolls at 1280px
+[29/59] tests\renovation-dialog.spec.ts:35:1 › chat reference opens in the side panel and its fullscreen diagram closes independently
+[30/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 320 light
+[31/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 320 dark
+[32/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 390 light
+[33/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 390 dark
+[34/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 430 light
+[35/59] tests\renovation-mobile-chat.spec.ts:5:3 › mobile chat stays centered with quiet corner controls 430 dark
+[36/59] tests\renovation-navigation.spec.ts:11:34 › jump to bottom appears only well above the latest messages at 390
+[37/59] tests\renovation-navigation.spec.ts:11:34 › jump to bottom appears only well above the latest messages at 1280
+[38/59] tests\renovation-navigation.spec.ts:47:1 › sidebar resizes, snaps below its expanded minimum and restores by dragging
+[39/59] tests\renovation-navigation.spec.ts:66:1 › sidebar keyboard controls and saved width preserve mobile navigation
+[40/59] tests\renovation-page-system.spec.ts:6:39 › standard page frames and tabs stay within 360px
+[41/59] tests\renovation-page-system.spec.ts:6:39 › standard page frames and tabs stay within 768px
+[42/59] tests\renovation-page-system.spec.ts:6:39 › standard page frames and tabs stay within 1440px
+[43/59] tests\renovation-page-system.spec.ts:24:1 › event history and narrow dropdowns retain their content
+[44/59] tests\renovation-page-system.spec.ts:50:1 › profile editing uses a modal without moving the page header
+[45/59] tests\renovation-page-system.spec.ts:60:1 › dark workspace uses the same frames with populated library cards
+[46/59] tests\renovation-page-system.spec.ts:69:1 › dismissed suggestions remain visible after reload without per-card requests
+[47/59] tests\renovation-page-system.spec.ts:83:1 › Learning defaults to all areas and can narrow to active areas
+[48/59] tests\renovation-page-system.spec.ts:97:1 › profile settings show Friendly by default and save the selected personality
+[49/59] tests\renovation-performance.spec.ts:5:1 › production entry routes and 200-message typing expose measured browser costs
+[50/59] tests\renovation-side-panel.spec.ts:29:1 › opening the desktop panel animates without shifting the workspace
+[51/59] tests\renovation-side-panel.spec.ts:63:1 › sources open new tabs, retain previews, resize and scroll without losing chat position
+[52/59] tests\renovation-side-panel.spec.ts:187:1 › the mobile right drawer restores focus and supports browser links with the preference on or off
+[53/59] tests\renovation-side-panel.spec.ts:223:1 › Library material opens as a source tab and still links to management
+[54/59] tests\renovation-side-panel.spec.ts:240:1 › the panel dropdown browses sources from earlier messages without changing chat scroll
+[55/59] tests\renovation-side-panel.spec.ts:285:1 › quotes only the selected text from chat and keeps it as an annotation after sending
+[56/59] tests\renovation-side-panel.spec.ts:311:1 › Browse keeps account pins across reloads and Reader follows independent tab history
+[57/59] tests\renovation-side-panel.spec.ts:368:1 › mobile adds the whole publisher page from the menu without selecting text
+[58/59] tests\renovation-tabs.spec.ts:5:3 › tabs scroll on one line with boundary-aware rounded arrows light
+[59/59] tests\renovation-tabs.spec.ts:5:3 › tabs scroll on one line with boundary-aware rounded arrows dark
+  59 passed (1.7m)

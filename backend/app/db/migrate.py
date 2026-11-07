@@ -42,6 +42,15 @@ def _migrate(engine=None, *, revision='head', direction='upgrade', lock_timeout:
                 raise RuntimeError('Timed out waiting for the database migration lock.')
             sleep(0.05)
         try:
+            if direction=='downgrade':
+                from alembic.script import ScriptDirectory
+                from alembic.migration import MigrationContext
+                current=MigrationContext.configure(connection).get_current_revision()
+                if current:
+                    for step in ScriptDirectory.from_config(migration_config(connection)).iterate_revisions(current,revision):
+                        guard=getattr(step.module,'guard_downgrade',None)
+                        if guard:guard(connection)
+                connection.commit()  # No snapshot may wait on concurrent-index DDL.
             getattr(command, direction)(migration_config(connection), revision)
         finally:
             connection.rollback()

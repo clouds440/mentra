@@ -9,7 +9,8 @@ for(const direction of ['easier','harder'])test(`Make ${direction} sends the exa
   await page.getByRole('menuitem',{name:`Make ${direction}`,exact:true}).click();
   const request=await sent;
   expect(request.postDataJSON()).toMatchObject({conversation_id:'handoff-chat',retrieval:{mode:'STANDARD'},
-    content:`Make chat draft handoff-draft ${direction}. Keep the topic, question count and delivery, and preserve the original.`});
+    content:`Make “Net force” ${direction}. Keep the topic, question count and delivery, and preserve the original.`,
+    challenge_action:{source_kind:'draft',source_id:'handoff-draft',expected_revision:1,direction}});
   await expect(state.quiz.getByRole('radio').first()).toBeChecked();
 });
 

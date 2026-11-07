@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal, Annotated
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, PrivateAttr
 
 class Contract(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
@@ -84,6 +84,10 @@ class AssessmentDesign(Contract):
 
 class GenerationRequest(Contract):
     client_request_id: UUID
+    challenge_choice_id: UUID | None = None
+    challenge_direction: Literal['easier','harder'] | None = None
+    expected_source_revision: int | None = Field(default=None,ge=1)
+    language: Literal['en','ar','und'] = 'und'
     context_id: str = Field(min_length=1, max_length=100)
     topic: str = Field(min_length=1, max_length=200)
     concept_names: list[str] = Field(default_factory=list)
@@ -135,6 +139,10 @@ class GenerationRequest(Contract):
                 raise ValueError('Choose at least one question per selected format.')
             self.question_format = self.question_formats[0] if len(self.question_formats) == 1 else 'mixed'
         targets = int(self.revision_draft_id is not None) + int(self.revision_assessment_id is not None)
+        if (self.challenge_choice_id is None)!=(self.challenge_direction is None):
+            raise ValueError('Difficulty actions require a choice receipt and direction together.')
+        if self.challenge_choice_id is not None and (targets!=1 or self.expected_source_revision is None):
+            raise ValueError('Difficulty actions require a single revision source and its expected revision.')
         if targets and (self.concept_ids or self.topic_id):
             raise ValueError('Revisions retain their original concepts; exact practice targets require a new assessment.')
         if targets > 1 or bool(targets) != bool(self.revision_instructions):
@@ -151,8 +159,12 @@ class GenerationRequest(Contract):
         return self
 
     def fingerprint_payload(self):
-        """One current canonical contract; retry identity includes every field."""
-        return self.model_dump(mode='json')
+        """Canonical semantic modifiers; absent challenge/language changes have no effect."""
+        value=self.model_dump(mode='json')
+        for key in ('challenge_choice_id','challenge_direction','expected_source_revision'):
+            if value[key] is None:value.pop(key)
+        if value['language']=='und':value.pop('language')
+        return value
 
 
 class AssessmentIntent(GenerationRequest):
@@ -181,6 +193,9 @@ class AssessmentSelection(Contract):
     concept_names: list[str] = Field(default_factory=list)
 
 class AssessmentPreferences(Contract):
+    challenge_choice_id: UUID | None = None
+    challenge_family: str | None = None
+    language: Literal['en','ar','und'] = 'und'
     level: str | None = None
     result_style: Literal['marks', 'grade', 'feedback'] = 'marks'
     delivery: AssessmentDelivery | None = None
@@ -190,6 +205,9 @@ class MCQOption(Contract):
     label: str = Field(min_length=1)
 
 class GeneratedQuestion(Contract):
+    _choice_reviewed: bool = PrivateAttr(default=False)
+    _challenge_change_verified: bool = PrivateAttr(default=False)
+    language: Literal['en','ar','und'] = 'und'
     learning_targets: list[dict[str, str]] = Field(default_factory=list)
     question_type: str | None = None
     answer_mode: Literal['text', 'single_choice', 'multiple_choice'] | None = None
@@ -202,7 +220,7 @@ class GeneratedQuestion(Contract):
     concept_ids: list[str] = Field(default_factory=list)
     difficulty: float = Field(ge=0, le=1)
     marks: float = Field(gt=0)
-    options: list[MCQOption] = Field(default_factory=list)
+    options: list[MCQOption] = Field(default_factory=list,max_length=6)
     correct_option_id: str | None = None
     correct_option_ids: list[str] = Field(default_factory=list)
     @model_validator(mode='after')
@@ -297,6 +315,7 @@ class SubmitAnswers(Contract):
     assistance: AssessmentAssistance = AssessmentAssistance.unknown
 
 class PublicQuestion(Contract):
+    language: Literal['en','ar','und'] = 'und'
     validation: dict = Field(default_factory=lambda: dict(state='legacy',semantic_review='unverified'))
     learning_targets: list[dict[str, str]] = Field(default_factory=list)
     question_type: str | None = None

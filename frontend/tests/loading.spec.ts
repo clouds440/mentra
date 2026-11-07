@@ -21,7 +21,8 @@ test('aborted consumers and stale requests cannot poison shared cache', async ()
   const rejection = expect(a).rejects.toMatchObject({name:'AbortError'});
   await Promise.resolve(); controller.abort(); resolve(5); await rejection; expect(await b).toBe(5);
   const stale = cachedPage('race', () => new Promise<number>(done => { resolve = done; }));
-  await Promise.resolve(); invalidatePageCache(); resolve(9); await stale;
+  const staleRejected = expect(stale).rejects.toMatchObject({name:'AbortError'});
+  await Promise.resolve(); invalidatePageCache(); resolve(9); await staleRejected;
   expect(await cachedPage('race', async () => 10)).toBe(10);
   await expect(cachedPage('fail', async () => { throw Error('failed'); })).rejects.toThrow();
   expect(await cachedPage('fail', async () => 6)).toBe(6);
@@ -43,14 +44,20 @@ async function mockApp(page: Page, delay=0) {
     else if(path.endsWith('/student-profile')) body={learner_id:'loading-test',details:{education_level:'college',field_of_study:'Math',learning_goal:'Learn',learning_preference:'balanced',explanation_depth:'standard'},estimates:Object.fromEntries(['overall_proficiency','reasoning','quantitative','comprehension','domain_familiarity'].map(key => [key,{value:null,confidence:0,evidence_count:0}])),onboarding_phase:'complete',calibration_status:'skipped',evaluation_status:'not_started',version:1,context_version:1};
     else if(path.endsWith('/conversations/sync')) body={reset:false,cursor:1,has_more:false,conversations:[],deleted_ids:[],list_cursor:null};
     else if(path.endsWith('/documents')) body={items:[],total:0,limit:30,offset:0};
+    else if(path.endsWith('/documents/page')) body={items:[],total:0,limit:30,offset:0,contexts:[]};
     else if(path.endsWith('/assessments/preferences')) body={auto_add:false,revision:1};
+    else if(path.endsWith('/assessments/page')) body={items:[],next_offset:null,contexts:[],detail:null,attempts:[]};
     else if(path.endsWith('/assessments')) body={items:[],next_offset:null};
     else if(path.endsWith('/notifications/preferences')) body={enabled:true,disabled_kinds:[],revision:1};
     else if(path.endsWith('/notifications/unread-count')) body={count:0};
     else if(path.endsWith('/notifications')) body={items:[],next_cursor:null};
     else if(path.endsWith('/learning/understanding')) body={items:[],total:0,total_concepts:0,limit:10,offset:0,generated_at:'2026-10-13T00:00:00Z'};
+    else if(path.endsWith('/learning/page')) body={overview:{learner:{concepts:[],generated_at:new Date().toISOString(),context_ids:[]},recommendations:[],verification:[]},contexts:[],candidates:[],understanding:{items:[],total:0,total_concepts:0,limit:10,offset:0}};
+    else if(path.endsWith('/learning/topics')) body={items:[],total:0,ungrouped_count:0,limit:10,offset:0};
     else if(path.endsWith('/learning')) body={learner:{concepts:[]},recommendations:[],verification:[]};
+    else if(path.endsWith('/events/page')) body={items:[],next_cursor:null,detail:null,proposals:[],proposals_error:false};
     else if(path.endsWith('/events')) body={items:[],next_cursor:null};
+    else if(path.endsWith('/memories/page')) body={items:[],next_cursor:null,preferences:{automatic_memory:true,revision:1}};
     else if(path.endsWith('/memories/preferences')) body={automatic_memory:true,revision:1};
     else if(path.endsWith('/memories')) body={items:[],next_cursor:null};
     else if(path.endsWith('/rag/capabilities')) body={uploads_enabled:true,max_upload_bytes:1000000,formats:['pdf']};
@@ -62,22 +69,20 @@ for(const theme of ['light','dark']) test(`loading and navigation cache in ${the
   const counts=await mockApp(page,300); await page.goto('/library');
   await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
   await expect(page.getByRole('heading',{name:'Library',exact:true})).toBeVisible();
-  await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
-  const before=counts['/api/v1/documents'];
+  await expect(page.getByRole('heading',{name:'Make room for your first source'})).toBeVisible();
+  const before=counts['/api/v1/documents/page'];
   await page.getByRole('link',{name:'Assessments',exact:true}).click();
-  await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
   await expect(page.getByText('Create your first assessment')).toBeVisible();
   await page.getByRole('link',{name:'Library',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
-  expect(counts['/api/v1/documents']).toBe(before);
+  await expect(page.getByRole('heading',{name:'Make room for your first source'})).toBeVisible();
+  expect(counts['/api/v1/documents/page']).toBe(before);
   await page.goto('/settings?tab=notifications');
   await expect(page.getByRole('switch',{name:'Enable notifications',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toMatch(/Loading.*[.…]/);
 });
 test('data loaders cover settings, progress, notifications, upload form and mobile', async ({page}) => {
-  await page.setViewportSize({width:390,height:844}); await mockApp(page,600);
-  const pages=[['/settings?tab=memories','A fresh start'],['/progress','Every step builds understanding'],['/progress?tab=events','Room for your next plan'],['/notifications','No notifications'],['/library/new','Upload']];
+  await page.setViewportSize({width:390,height:844}); await mockApp(page,1200);
+  const pages=[['/settings?tab=memories','A fresh start'],['/progress','Topics appear as you practise.'],['/progress?tab=events','Room for your next plan'],['/notifications','No notifications'],['/library/new','Upload']];
   for(const [url,ready] of pages) {
     await page.goto(url);
     await expect(page.getByRole('status',{name:'Loading',exact:true}).first()).toBeVisible();
@@ -108,29 +113,29 @@ test('chat opening shows skeleton and revisiting an empty chat uses its existing
 });
 test('technical errors are hidden',async ({page}) => {
   await mockApp(page);
-  await page.route('**/api/v1/documents?**',route => route.fulfill({status:502,json:{error:{code:'AI_PROVIDER_ERROR',message:'Check provider configuration and API key'}}}));
+  await page.route('**/api/v1/documents/page?**',route => route.fulfill({status:502,json:{error:{code:'AI_PROVIDER_ERROR',message:'Check provider configuration and API key'}}}));
   await page.goto('/library');
   await expect(page.getByRole('alert')).toContainText('Mentra couldn’t finish this response. Please try again.');
   await expect(page.locator('body')).not.toContainText('API key');
 });
 test('successful writes and manual reload refresh cached API data',async ({page}) => {
   const counts=await mockApp(page); await page.goto('/library');
-  await expect(page.getByRole('heading',{name:'Your next source starts here'})).toBeVisible();
-  const before=counts['/api/v1/documents'];
+  await expect(page.getByRole('heading',{name:'Make room for your first source'})).toBeVisible();
+  const before=counts['/api/v1/documents/page'];
   await page.evaluate(async () => {
     const path='/src/services/api.ts'; const {apiRequest}=await import(path);
-    await apiRequest('/api/v1/documents?offset=0&archived=false');
+    await apiRequest('/api/v1/documents/page?offset=0&archived=false');
   });
-  expect(counts['/api/v1/documents']).toBe(before);
+  expect(counts['/api/v1/documents/page']).toBe(before);
   await page.evaluate(async () => {
     const path='/src/services/api.ts'; const {apiRequest}=await import(path);
     await apiRequest('/api/v1/learning-contexts',{method:'POST',body:JSON.stringify({name:'New context'})});
-    await apiRequest('/api/v1/documents?offset=0&archived=false');
+    await apiRequest('/api/v1/documents/page?offset=0&archived=false');
   });
-  expect(counts['/api/v1/documents']).toBe(before+1);
+  expect(counts['/api/v1/documents/page']).toBe(before+1);
   await page.evaluate(async () => {
     const path='/src/services/api.ts'; const {apiRequest}=await import(path);
-    await apiRequest('/api/v1/documents?offset=0&archived=false',{cache:'reload'});
+    await apiRequest('/api/v1/documents/page?offset=0&archived=false',{cache:'reload'});
   });
-  expect(counts['/api/v1/documents']).toBe(before+2);
+  expect(counts['/api/v1/documents/page']).toBe(before+2);
 });

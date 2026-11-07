@@ -36,3 +36,5 @@ api_router.include_router(profile_router)
 api_router.include_router(rag_router)
 api_router.include_router(web_preview_router)
 api_router.include_router(workspace_pins_router)
+from app.api.routes.challenge import router as challenge_router
+api_router.include_router(challenge_router)

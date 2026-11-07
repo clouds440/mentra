@@ -62,7 +62,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   }
 
   return (
-    <Card className="auth-enter p-5 shadow-panel sm:p-6">
+    <Card className="auth-form auth-enter p-5 sm:p-6">
       <div className="mb-7">
         <h1 className="text-2xl font-medium tracking-tight text-foreground">
           {registration ? 'Create your account' : 'Welcome back'}

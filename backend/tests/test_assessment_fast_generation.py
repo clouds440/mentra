@@ -17,13 +17,14 @@ class FastGenerationTests(unittest.IsolatedAsyncioTestCase):
         from app.langchain.concept_identity import ConceptIdentityResolver
         self.learner.generated_concepts.resolver = ConceptIdentityResolver(self.service.workflows.llm)
 
-    async def test_standard_five_questions_need_only_one_model_call_even_for_new_skills(self):
+    async def test_standard_five_questions_use_one_content_call_and_one_independent_key_check(self):
         request = GenerationRequest(client_request_id=uuid4(), context_id=self.context.context_id,
             topic='New skill topic', count=5, question_format='mcq')
         with patch.object(self.service.workflows.llm, 'ainvoke', wraps=self.service.workflows.llm.ainvoke) as calls:
             value = await self.service.generate(self.owner, request)
         self.assertEqual(len(value.questions), 5)
-        self.assertEqual([call.args[0] for call in calls.await_args_list], [PromptSource.ASSESSMENT_GENERATION])
+        self.assertEqual([call.args[0] for call in calls.await_args_list], [PromptSource.ASSESSMENT_GENERATION,PromptSource.ASSESSMENT_CHOICE_REVIEW])
+        self.assertTrue(all(q.validation['semantic_review']=='model_cross_checked' for q in value.questions))
         again = await self.service.generate(self.owner, request.model_copy(update={'client_request_id': uuid4()}))
         self.assertEqual(value.questions[0].concept_ids, again.questions[0].concept_ids)
         with self.db.sessions() as session:

@@ -91,6 +91,7 @@ async function workspace(page: Page, running = false, populated = false, stream 
     else if (path.endsWith('/documents') || path.endsWith('/documents/page')) body = {items:populated ? [{id:'material-1', title:'Motion and forces', filename:'Physics notes.pdf', context_ids:[context.context_id], jobs:[], active_generation_id:'generation-1', archived:false}] : [], total:populated ? 1 : 0, limit:30, offset:0, contexts:[context]};
     else if (path.endsWith('/learning-contexts')) body = [context];
     else if (path.endsWith('/learning/understanding')) body = {items:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [],total:populated ? 1 : 0,total_concepts:populated ? 1 : 0,limit:10,offset:0,generated_at:conversation.created_at};
+    else if (path.endsWith('/learning/topics')) body = {items:populated ? [{id:'motion-topic', name:'Motion and forces', scope:'Force, motion and their relationships.', context_id:context.context_id, subskill_count:6, checked_count:1, revision:1}] : [],total:populated ? 1 : 0,ungrouped_count:0,limit:10,offset:0,generated_at:conversation.created_at};
     else if (path.endsWith('/learning')) body = {learner:{concepts:populated ? [{concept_id:'forces', name:'Forces', knowledge_status:'developing', mastery:.6, estimate_confidence:.5, retention_confidence:.4}] : [], generated_at:conversation.created_at, context_ids:[]}, recommendations:populated ? [{concept_id:'forces', name:'Forces', reason:'A little more practice will help you connect the ideas.'}] : [], verification:[]};
     else if (path.endsWith('/assessments/preferences')) body = {auto_add:false, revision:1};
     else if (path.endsWith('/assessments') || path.endsWith('/assessments/page')) body = {items:populated ? [{id:'assessment-1', title:'Understanding forces', questions:[], question_count:0,part_count:0,has_paper:false,purpose:'practice'}] : [], next_offset:null,contexts:[context],detail:null,attempts:[]};
@@ -186,8 +187,8 @@ for (const size of [{width:1280,height:800}, {width:1280,height:400}, {width:390
     await expect(final.locator('strong')).toHaveText('important');
     await expect(final.getByRole('button', {name:'Copy code'})).toBeVisible();
     await expect(final.getByLabel('Interactive question')).toBeVisible();
-    await expect(final).toHaveClass(/chat-response-reveal/);
-    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0.9s');
+    await expect(final).not.toHaveClass(/chat-response-reveal/);
+    expect(await final.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0s');
     await expect.poll(() => final.evaluate(el => getComputedStyle(el).maskImage), {timeout:1500, intervals:[50]}).toBe('none');
     const heading = await final.getByRole('heading', {name:'Formatted answer'}).boundingBox();
     const chatBounds = await chat.boundingBox();
@@ -273,7 +274,7 @@ test('global scrollbars are thin, transparent and arrowless in both themes', asy
       expect(style.width).toBe('6px'); expect(style.height).toBe('6px');
       expect(style.arrows).toBe('none'); expect(style.arrowHeight).toBe('0px');
       expect(style.track).toBe('rgba(0, 0, 0, 0)'); expect(style.corner).toBe('rgba(0, 0, 0, 0)');
-      expect(style.thumb).toBe(theme === 'light' ? 'rgb(203, 213, 225)' : 'rgb(51, 65, 85)');
+      expect(style.thumb).toBe(theme === 'light' ? 'rgb(203, 213, 225)' : 'rgb(71, 72, 75)');
       expect(style.clip).toBe('padding-box');
     }
   }
@@ -377,7 +378,7 @@ test('floating shell controls leave the full viewport available to chat', async 
   expect(geometry.top).toBe(0);
   expect(geometry.height).toBe(geometry.viewport);
   await expect(controls).not.toContainText(title);
-  await expect(page.locator('header')).toHaveCount(0);
+  await expect(page.locator('header:visible')).toHaveCount(0);
   await page.getByRole('button', {name:'Collapse sidebar'}).click();
   await expect(page.getByRole('button', {name:'Expand sidebar'})).toBeVisible();
   await controls.getByRole('link', {name:/Notifications/}).click();
