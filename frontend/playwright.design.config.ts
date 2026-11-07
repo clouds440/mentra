@@ -8,6 +8,7 @@ const frontend = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   testDir: './tests',
   testMatch: [
+    'chat-organization.spec.ts', 'renovation-chat-menu.spec.ts',
     'product-design.spec.ts', 'page-actions.spec.ts', 'renovation-page-system.spec.ts',
     'renovation-tabs.spec.ts', 'renovation-navigation.spec.ts',
     'renovation-dialog.spec.ts', 'renovation-mobile-chat.spec.ts',

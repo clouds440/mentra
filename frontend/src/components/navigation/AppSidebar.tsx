@@ -178,7 +178,7 @@ export function AppSidebar({
         </nav>
 
         {(!collapsed || !desktop) && (
-          <ConversationList onOpen={() => { setAccountOpen(false); onCloseMobile(); }} />
+          <ConversationList onOpen={() => { setAccountOpen(false); onCloseMobile(); }} onNewChat={onNewChat} />
         )}
 
         <div className={cn('mt-auto shrink-0 p-3 pt-4', collapsed && 'lg:px-1.5')}>

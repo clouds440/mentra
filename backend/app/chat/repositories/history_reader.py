@@ -24,7 +24,7 @@ class ChatReadFacade:
             s.c.revision, s.c.through_sequence, c.c.updated_at,
             (c.c.message_count > s.c.through_sequence).label('has_newer_messages')).join(s,
                 and_(s.c.conversation_id == c.c.id, s.c.learner_id == c.c.learner_id)).where(
-            c.c.learner_id == owner, s.c.learner_id == owner, c.c.deleted_at.is_(None),
+            c.c.learner_id == owner, s.c.learner_id == owner, c.c.deleted_at.is_(None), c.c.archived_at.is_(None), c.c.pending_action.is_distinct_from('delete'),
             c.c.id != current_chat, s.c.revision > 0, s.c.through_sequence > 0,
             func.length(s.c.content).between(1, settings.chat_summary_max_characters),
             or_(vector.op('@@')(query), text_value.ilike(pattern, escape='\\'))
@@ -38,7 +38,7 @@ class ChatReadFacade:
                 raise AppError('CHAT_SEARCH_BUSY', 'This search took too long. Try more specific keywords.', 503) from None
             raise
 
-    def search_saved(self, owner, query: str, offset: int = 0):
+    def search_saved(self, owner, query: str, offset: int = 0, include_archived: bool = False):
         from sqlalchemy import case, literal, union_all
         from sqlalchemy.exc import DBAPIError
         from app.chat.schemas import ChatSearchPage
@@ -51,10 +51,12 @@ class ChatReadFacade:
         position = func.strpos(func.lower(m.c.content), func.lower(query))
         snippet = case((position > 70, literal('…')), else_=literal('')) + func.substr(
             m.c.content, func.greatest(1, position - 70), 240)
-        columns = [m.c.conversation_id, c.c.title, m.c.id.label('matched_message_id'), m.c.sequence,
+        columns = [m.c.conversation_id, c.c.title, m.c.id.label('matched_message_id'), m.c.sequence, c.c.archived_at,
             m.c.role, snippet.label('snippet'), m.c.created_at]
         base = select(*columns).join(c, and_(c.c.id==m.c.conversation_id, c.c.learner_id==m.c.learner_id)).where(
-            m.c.learner_id==owner, c.c.deleted_at.is_(None), m.c.role.in_(['user','assistant']))
+            m.c.learner_id==owner, c.c.deleted_at.is_(None), c.c.pending_action.is_distinct_from('delete'), m.c.role.in_(['user','assistant']))
+        if not include_archived:
+            base = base.where(c.c.archived_at.is_(None))
         order = (m.c.created_at.desc(), m.c.id.desc())
         # Separate branches keep the existing content trigram index usable. Title
         # matches contribute one latest-message hit rather than an entire transcript.
@@ -126,6 +128,9 @@ class ChatReadFacade:
                 or_(m.c.conversation_id != current_chat, m.c.sequence < current_sequence)]
             if ids:
                 eligible.append(m.c.conversation_id.in_(ids))
+            else:
+                eligible.append(c.c.archived_at.is_(None))
+            eligible.append(c.c.pending_action.is_distinct_from('delete'))
             if body.before_sequence is not None:
                 if body.scope != 'current_chat':
                     raise AppError('HISTORY_CURSOR_INVALID', 'Sequence anchors require current_chat scope.', 422)

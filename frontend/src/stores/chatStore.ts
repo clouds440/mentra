@@ -6,7 +6,7 @@ import { chatErrorMessage } from '../services/userError';
 import { reconcileOutcome } from '../services/responseOutcome';
 import { ChatCache } from './chatCache';
 import { openBroadcastChannel } from '../utils/broadcastChannel';
-import type { Conversation, MessagePage, PendingTurn, StoredMessage, Turn } from '../types/conversations';
+import type { Conversation, MessagePage, PendingTurn, StoredMessage, Turn, ChatAction, ChatManagementOutbox } from '../types/conversations';
 import type { ChatSelection } from '../types/rag';
 
 interface ChatView {
@@ -24,9 +24,14 @@ function sameData(left: unknown, right: unknown): boolean {
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => Object.prototype.hasOwnProperty.call(b, key) && sameData(a[key], b[key]));
 }
-interface ListView { items: Conversation[]; loading: boolean; error: string | null; more: boolean }
+interface ListView { items: Conversation[]; loading: boolean; error: string | null; more: boolean; managementVersion: number; actionError: string | null; notice: string | null }
 
 class ChatStore {
+  private management = new Map<string, ChatManagementOutbox>();
+  private managementVersion = 0;
+  private managementTimer: ReturnType<typeof setTimeout> | null = null;
+  private managementRun: Promise<void> | null = null;
+  private managementWrites = Promise.resolve();
   private outcomeRefresh = new Set<string>();
   private interactionDrafts = new Map<string, import('../types/interactions').InteractionDraft>();
   interactionDraft(key: string) { return this.interactionDrafts.get(key); }
@@ -59,7 +64,7 @@ class ChatStore {
   private channel: BroadcastChannel | null = null;
   private pollers = new Map<string, ReturnType<typeof setTimeout>>();
   private responseStarts = new Map<string, number>();
-  private list: ListView = { items: [], loading: true, error: null, more: false };
+  private list: ListView = { items: [], loading: true, error: null, more: false, managementVersion: 0, actionError: null, notice: null };
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   snapshot = () => this.list;
   subscribeChat = (id: string, fn: () => void) => {
@@ -69,7 +74,10 @@ class ChatStore {
   view = (id: string) => this.views.get(id) ?? empty;
   conversation = (id: string) => this.chats.get(id);
   private publish() {
-    this.list = { ...this.list, items: [...this.chats.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id)), more: !!this.listCursor };
+    this.list = { ...this.list, managementVersion: this.managementVersion, items: [...this.chats.values()].filter(row => !this.deleted.has(row.id)).map(row => {
+      const pending = this.pendingAction(row.id);
+      return pending && pending !== row.pending_action ? { ...row, pending_action: pending } : row;
+    }).sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id)), more: !!this.listCursor };
     this.listeners.forEach(fn => fn());
   }
   private setView(id: string, patch: Partial<ChatView>) {
@@ -82,7 +90,13 @@ class ChatStore {
     for (const row of rows) {
       if (this.deleted.has(row.id)) continue;
       const previous = this.chats.get(row.id);
-      if (!previous || previous.revision <= row.revision) this.chats.set(row.id, row);
+      if (!previous || previous.revision <= row.revision) {
+        if (previous && (previous.archived_at !== row.archived_at || previous.pinned_at !== row.pinned_at || previous.pending_action !== row.pending_action)) this.managementVersion++;
+        this.chats.set(row.id, row);
+        if (row.pending_action && row.pending_action_id && !this.management.has(row.pending_action_id)) this.management.set(row.pending_action_id, {
+          accepted: true, request: { client_request_id: row.pending_action_id, action: row.pending_action, items: [{ conversation_id: row.id, expected_revision: row.revision }] },
+        });
+      }
     }
   }
   private alive(signal: AbortSignal) { return !signal.aborted && signal === this.controller.signal; }
@@ -97,13 +111,17 @@ class ChatStore {
       const stored = await cache.hydrate(); if (!this.alive(signal)) return;
       this.mergeChats(stored.conversations); this.cursor = stored.cursor; this.listCursor = stored.listCursor;
       stored.pending.forEach(value => this.pending.set(value.conversation_id, value));
+      stored.management.forEach(value => { if (value?.request?.client_request_id && Array.isArray(value.request.items)) this.management.set(value.request.client_request_id, value); });
       this.publish();
     } catch { /* Start from the server when the cache cannot be read. */ }
     if (!this.alive(signal)) return;
     await this.sync();
+    if (this.alive(signal)) void this.runManagement();
     if (this.alive(signal)) for (const id of this.pending.keys()) void this.open(id);
   }
   stop(clear = false) {
+    if (this.managementTimer) clearTimeout(this.managementTimer);
+    this.managementTimer = null; this.managementRun = null; this.managementWrites = Promise.resolve(); this.management.clear(); this.managementVersion = 0;
     this.controller.abort(); this.controller = new AbortController(); this.channel?.close(); this.channel = null;
     this.pollers.forEach(timer => clearTimeout(timer)); this.pollers.clear();
     this.responseStarts.clear(); this.outcomeRefresh.clear();
@@ -112,7 +130,7 @@ class ChatStore {
     this.opened.clear(); this.chats.clear(); this.deleted.clear(); this.pending.clear(); this.loads.clear(); this.views.clear(); this.loadedMessages.clear(); this.sequences.clear();
     this.drafts.clear();
     this.interactionDrafts.clear();
-    this.list = { items: [], loading: true, error: null, more: false }; this.publish();
+    this.list = { items: [], loading: true, error: null, more: false, managementVersion: 0, actionError: null, notice: null }; this.publish();
     this.chatListeners.forEach(values => values.forEach(fn => fn()));
   }
   sync() {
@@ -151,6 +169,7 @@ class ChatStore {
     })();
     this.syncing = operation;
     void operation.finally(() => { if (this.syncing === operation) this.syncing = null; });
+    void operation.then(() => { if (this.alive(signal) && this.management.size) void this.runManagement(); });
     return operation;
   }
   async more() {
@@ -321,6 +340,7 @@ class ChatStore {
     catch (error) { if (this.alive(signal)) this.setView(id, { loading: false, error: this.error(error) }); }
   }
   async send(id: string, content: string, retrieval: ChatSelection, retry = false, attachments: import('../services/chatAttachments').ChatAttachment[] = [], interactionResponse?: import('../types/interactions').InteractionResponse, sourceAnnotations: import('../types/sourceAnnotations').SourceAnnotation[] = [], challengeAction?: import('../types/conversations').ChallengeAction) {
+    if (this.pendingAction(id)) { this.setView(id, { error: 'This chat has a pending action. Wait for it to finish.' }); return false; }
     if (!this.owner || this.view(id).busy) return false;
     if (this.view(id).olderWindow) {
       const signal = this.controller.signal;
@@ -429,27 +449,115 @@ class ChatStore {
       if (this.alive(signal) && this.view(id).busy && attempt < 50) this.poll(id, attempt + 1);
     }, Math.min(2000 + attempt * 500, 10000)));
   }
-  async rename(id: string, title: string) {
-    const chat = this.chats.get(id); if (!chat) return;
+  async rename(id: string, title: string, source?: Conversation) {
+    if (this.pendingAction(id)) return;
+    const chat = source ?? this.chats.get(id); if (!chat) return;
     const signal = this.controller.signal, cache = this.cache!;
     try {
       const row = await api.renameChat(chat, title, signal); if (!this.alive(signal)) return;
-      this.mergeChats([row]); this.publish(); await this.persist(() => cache.apply([row], [], []));
+      this.mergeChats([row]); this.managementVersion++; this.publish(); await this.persist(() => cache.apply([row], [], []));
       this.channel?.postMessage('changed'); void this.sync();
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, error: this.error(error) }; this.publish(); void this.sync(); } }
   }
-  async remove(id: string) {
-    const chat = this.chats.get(id); if (!chat) return false;
+  async remove(id: string, source?: Conversation) {
+    if (this.pendingAction(id)) return false;
+    const chat = source ?? this.chats.get(id); if (!chat) return false;
     const signal = this.controller.signal, cache = this.cache!;
     try {
       await api.deleteChat(chat, signal); if (!this.alive(signal)) return false;
-      this.deleted.add(id); this.chats.delete(id); this.pending.delete(id); this.setView(id, empty); this.publish();
+      this.deleted.add(id); this.chats.delete(id); this.pending.delete(id); this.managementVersion++; this.setView(id, empty); this.publish();
       this.clearInteractionDrafts(id);
       this.loadedMessages.delete(id); this.sequences.delete(id);
       await this.persist(() => cache.apply([], [], [id])); this.channel?.postMessage('changed'); void this.sync(); return true;
     } catch (error) { if (this.alive(signal)) { this.list = { ...this.list, error: this.error(error) }; this.publish(); void this.sync(); } return false; }
   }
   private error(error: unknown) { return error instanceof ApiError ? error.message : 'Your chats could not be loaded.'; }
+  pendingAction(id: string): ChatAction | null {
+    for (const operation of this.management.values()) if (!operation.finished?.includes(id) && operation.request.items.some(item => item.conversation_id === id)) return operation.request.action;
+    return this.chats.get(id)?.pending_action ?? null;
+  }
+  clearManagementFeedback() { this.list = { ...this.list, actionError: null, notice: null }; this.publish(); }
+  private persistManagement() {
+    const cache = this.cache, value = [...this.management.values()].map(item => ({ ...item }));
+    const write = this.managementWrites.catch(() => {}).then(async () => { if (cache) await this.persist(() => cache.management(value)); });
+    this.managementWrites = write;
+    return write;
+  }
+  bulk(chats: Conversation[], action: ChatAction) {
+    if (!this.owner || !chats.length || chats.length > 100 || chats.some(chat => this.pendingAction(chat.id))) return false;
+    const request = { client_request_id: crypto.randomUUID(), action, items: chats.map(chat => ({ conversation_id: chat.id, expected_revision: chat.revision })) };
+    this.mergeChats(chats);
+    this.management.set(request.client_request_id, { request, accepted: false });
+    this.list = { ...this.list, actionError: null, notice: null }; this.publish();
+    void this.runManagement();
+    return true;
+  }
+  async organize(chat: Conversation, change: { pinned?: boolean; archived?: boolean }) {
+    if (!this.owner || this.pendingAction(chat.id)) return false;
+    const signal = this.controller.signal, cache = this.cache!;
+    try {
+      const row = await api.organizeChat(chat, change, signal);
+      if (!this.alive(signal)) return false;
+      this.mergeChats([row]); this.managementVersion++; this.publish();
+      await this.persist(() => cache.apply([row], [], []));
+      this.channel?.postMessage('changed'); void this.sync();
+      return true;
+    } catch (error) {
+      if (this.alive(signal)) { this.list = { ...this.list, actionError: this.error(error) }; this.publish(); void this.sync(); }
+      return false;
+    }
+  }
+  private runManagement(): Promise<void> {
+    if (this.managementRun) return this.managementRun;
+    if (!this.owner || !this.management.size) return Promise.resolve();
+    const signal = this.controller.signal, cache = this.cache!;
+    const run = (async () => {
+      await this.persistManagement();
+      for (const [id, operation] of [...this.management]) {
+        if (!this.alive(signal)) return;
+        try {
+          const job = operation.accepted ? await api.chatAction(id, signal) : await api.queueChatAction(operation.request, signal);
+          if (!this.alive(signal)) return;
+          this.management.set(id, { ...operation, accepted: true, finished: [...job.completed_ids, ...job.failed_items.map(item => item.conversation_id)] });
+          if (job.action === 'delete' && job.completed_ids.length) {
+            for (const cid of job.completed_ids) {
+              this.deleted.add(cid); this.chats.delete(cid); this.pending.delete(cid); this.clearInteractionDrafts(cid);
+              this.loadedMessages.delete(cid); this.sequences.delete(cid); this.setView(cid, empty);
+            }
+            await this.persist(() => cache.apply([], [], job.completed_ids));
+          }
+          if (!this.alive(signal)) return;
+          if (job.state === 'completed') {
+            this.management.delete(id); this.managementVersion++;
+            const verb = job.action === 'delete' ? 'Deleted' : job.action === 'archive' ? 'Archived' : 'Unarchived';
+            this.list = { ...this.list, notice: `${verb} ${job.completed_ids.length} ${job.completed_ids.length === 1 ? 'chat' : 'chats'}.`,
+              actionError: job.failed_items.length ? `${job.failed_items.length} ${job.failed_items.length === 1 ? 'chat could' : 'chats could'} not be updated. Their contents were kept. Refresh and try again.` : null };
+          }
+          await this.persistManagement();
+          if (!this.alive(signal)) return;
+          await this.sync(); this.channel?.postMessage('changed');
+        } catch (error) {
+          if (!this.alive(signal)) return;
+          if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
+            this.management.delete(id); this.managementVersion++;
+            this.list = { ...this.list, actionError: this.error(error) };
+            await this.persistManagement(); await this.sync();
+          } else this.list = { ...this.list, actionError: 'Could not confirm your chat action. Your selection is kept and will retry in the background.' };
+        }
+        if (this.alive(signal)) this.publish();
+      }
+    })();
+    this.managementRun = run;
+    void run.finally(() => {
+      if (this.managementRun !== run) return;
+      this.managementRun = null;
+      if (this.alive(signal) && this.management.size) {
+        if (this.managementTimer) clearTimeout(this.managementTimer);
+        this.managementTimer = setTimeout(() => { this.managementTimer = null; void this.runManagement(); }, 1500);
+      }
+    });
+    return run;
+  }
   hasPending(id: string) { return this.pending.has(id); }
   pendingInteraction(id: string) { return this.pending.get(id)?.interaction_response ?? null; }
   clearUnsent(id: string) { this.setView(id, { unsent: null, error: null }); }

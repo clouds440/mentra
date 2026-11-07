@@ -1,7 +1,7 @@
 """Content-free worker progress and bounded queue diagnostics."""
 from datetime import datetime, timezone
 from time import monotonic
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, literal
 from sqlalchemy.dialects.postgresql import insert
 from .health import workers
 
@@ -23,7 +23,7 @@ def queue_status(sessions,clock=lambda:datetime.now(timezone.utc)):
     from app.langchain.repositories.evidence_tables import jobs as chat_evidence
     from app.rag.repositories.tables import jobs as rag
     from app.history_management.repositories.tables import summary_jobs as memory, capture_jobs
-    from app.chat.repositories.tables import summary_jobs as chat
+    from app.chat.repositories.tables import summary_jobs as chat, management_jobs
     from app.history_management.repositories.events.tables import reminders
     from app.files.tables import assets
     from app.learner.repositories.tables.maintenance import maintenance_jobs
@@ -42,6 +42,7 @@ def queue_status(sessions,clock=lambda:datetime.now(timezone.utc)):
         ('summarizer',chat,chat.c.failed.is_(False),chat.c.queued_at,chat.c.lease_until),
         ('summarizer',capture_jobs,capture_jobs.c.failed.is_(False) & capture_jobs.c.completed_at.is_(None),capture_jobs.c.queued_at,capture_jobs.c.lease_until),
         ('events.reminders',reminders,(reminders.c.state=='pending') & (reminders.c.due_at<=stamp),reminders.c.due_at,reminders.c.due_at),
+        ('events.reminders',management_jobs,management_jobs.c.state!='completed',management_jobs.c.created_at,None),
         ('files.cleanup',assets,(assets.c.state!='DELETED') & ((assets.c.state=='DELETE_PENDING') | (assets.c.expires_at<=stamp)),assets.c.created_at,assets.c.lease_until),
     ]
     result=[]
@@ -50,7 +51,8 @@ def queue_status(sessions,clock=lambda:datetime.now(timezone.utc)):
         session.execute(text("SET LOCAL statement_timeout = '1s'"))
         seen=dict(session.execute(select(workers.c.role,workers.c.last_seen)).all())
         for role,table,pending,created,lease in specs:
-            count,oldest,leased=session.execute(select(func.count(),func.min(created),func.count().filter(lease>stamp)).select_from(table).where(pending)).one()
+            active = func.count().filter(lease>stamp) if lease is not None else literal(0)
+            count,oldest,leased=session.execute(select(func.count(),func.min(created),active).select_from(table).where(pending)).one()
             age=max(0,(stamp-oldest).total_seconds()) if oldest else 0
             heartbeat=seen.get(role)
             fresh=heartbeat is not None and (stamp-heartbeat).total_seconds()<60

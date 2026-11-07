@@ -13,6 +13,7 @@ import { ChatAppearanceSettings } from '../components/chat/ChatAppearanceSetting
 import { useAuth } from '../components/auth/AuthProvider';
 
 const MemoriesSettings = lazy(() => import('../components/memories/MemoriesSettings').then(module => ({ default: module.MemoriesSettings })));
+const ArchivedChatsSettings = lazy(() => import('../components/chat/ArchivedChatsSettings').then(module => ({ default: module.ArchivedChatsSettings })));
 
 const settingSections = [
   {
@@ -27,9 +28,9 @@ export function SettingsPage() {
   const { identity } = useAuth();
   const canChangePassword = !!identity?.user_id && !identity.provider;
   const [params, setParams] = useSearchParams();
-  const sections = ['profile', 'memories', 'notifications'] as const;
+  const sections = ['profile', 'memories', 'notifications', 'archive'] as const;
   const requested = params.get('tab');
-  const tab = requested === 'memories' || requested === 'notifications' ? requested : 'profile';
+  const tab = requested === 'memories' || requested === 'notifications' || requested === 'archive' ? requested : 'profile';
   const [visitedMemories, setVisitedMemories] = useState(tab === 'memories');
   useEffect(() => { if (tab === 'memories') setVisitedMemories(true); }, [tab]);
   function changeTab(value: string) {
@@ -43,7 +44,7 @@ export function SettingsPage() {
     <PageShell className="settings-page">
         <WorkspaceHeader title="Settings" description="Your learning, your way. Adjust your profile, memories, and reminders." icon={Settings2} />
 
-        <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
+        <Tabs label="Settings sections" value={tab} onChange={changeTab} options={sections.map(value => ({ value, label: value === 'profile' ? 'Profile & preferences' : value === 'memories' ? 'Memories' : value === 'archive' ? 'Archived chats' : 'Notifications', id: `settings-tab-${value}`, panel: `settings-panel-${value}` }))} />
         <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" hidden={tab !== 'profile'} className="settings-stack">
         <nav aria-label="Profile page sections" className="settings-jump-links"><span>On this page</span><a href="#settings-profile">Learning profile</a><a href="#settings-preferences">Preferences</a>{canChangePassword && <a href="#settings-security">Password</a>}<a href="#settings-data">Your data</a></nav>
         <div id="settings-profile"><ProfileSettings /></div>
@@ -71,6 +72,9 @@ export function SettingsPage() {
         </div>
         <div role="tabpanel" id="settings-panel-notifications" aria-labelledby="settings-tab-notifications" hidden={tab !== 'notifications'}>
           {tab === 'notifications' && <NotificationSettings />}
+        </div>
+        <div role="tabpanel" id="settings-panel-archive" aria-labelledby="settings-tab-archive" hidden={tab !== 'archive'}>
+          {tab === 'archive' && <Suspense fallback={<Skeleton variant="list" />}><ArchivedChatsSettings /></Suspense>}
         </div>
     </PageShell>
   );

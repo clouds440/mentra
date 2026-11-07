@@ -1,4 +1,4 @@
-"""Lightweight reminder producer. No model, embedding or document initialization."""
+"""Lightweight reminders and durable chat actions. No model initialization."""
 import logging
 import signal
 from threading import Event
@@ -17,12 +17,23 @@ def main():
     from app.db.worker_status import Heartbeat
     heartbeat = Heartbeat(sessions)
     repository = EventRepository(sessions, notifications=create_notifications(sessions))
+    from app.chat.repositories.management import ChatManagement
+    from app.chat.repositories.postgres import ChatRepository
+    management = ChatManagement(ChatRepository(sessions))
     stopping = Event()
     from app.chat.repositories.attachments import AttachmentRepository
     from time import monotonic
     last_cleanup = 0
     for name in (signal.SIGTERM, signal.SIGINT): signal.signal(name, lambda *_: stopping.set())
     while not stopping.is_set():
+        managed = 0
+        try:
+            for _ in range(10):
+                if stopping.is_set() or not management.run_once():
+                    break
+                managed += 1
+        except Exception:
+            logging.getLogger('mentra').exception('Chat management batch failed; retrying durable batch')
         try:
             from app.core.logging import workflow_logger
             with workflow_logger.workflow('events.reminder_batch', quiet=True) as execution:
@@ -41,7 +52,7 @@ def main():
                 last_cleanup = monotonic()
         except Exception:
             logging.getLogger('mentra').exception('Reminder batch failed; retrying bounded batch')
-        stopping.wait(5)
+        stopping.wait(.1 if managed else 5)
 
 
 if __name__ == '__main__': main()

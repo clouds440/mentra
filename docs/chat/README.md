@@ -16,6 +16,7 @@ Durable conversations, rich responses, questionnaires, saved search and UI inter
 | [Interactive chat UI: implementation and verification](Interactive_UI_Verification.md) | Dated audit / evidence record. |
 | [Persistent conversations](persistent-chat.md) | Feature contracts or implementation reference. |
 | [Saved chat search](saved-chat-search.md) | Feature contracts or implementation reference. |
+| [Pins, archive and bulk chat actions](chat-organization.md) | Organization, durable background work and recovery contracts. |
 
 ## Assets and evidence
 

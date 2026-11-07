@@ -53,6 +53,11 @@ export function errorMessage(status: number, code: string): string {
   if (code === 'FILES_INTEGRITY') return 'This file could not be verified. Please retry the upload.';
   if (code === 'CHAT_SEARCH_BUSY') return 'This search took too long. Try a more specific phrase.';
   if (code === 'CHAT_SEARCH_QUERY_INVALID') return 'Use a search phrase of at most 200 characters.';
+  if (code === 'CHAT_ACTION_PENDING') return 'This chat has a pending action. Wait for it to finish.';
+  if (code === 'CHAT_ACTION_LIMIT') return 'Wait for earlier chat actions to finish before starting another.';
+  if (code === 'CHAT_PIN_LIMIT') return 'You can pin up to 100 chats. Unpin one to make room.';
+  if (code === 'CHAT_ARCHIVED') return 'Unarchive this chat before pinning it.';
+  if (code === 'CHAT_ACTION_CONFLICT') return 'This selection changed. Refresh your chats and try again.';
   if (code === 'ASSESSMENT_PRACTICE_DELETED') return 'This follow-up was deleted. Refresh the results before choosing new practice.';
   if (code === 'ASSESSMENT_REVIEW_REQUIRED') return 'A question needs review. Your saved answers are preserved.';
   if (code === 'ASSESSMENT_REVIEW_REASON') return 'Choose a reason for reviewing this question.';

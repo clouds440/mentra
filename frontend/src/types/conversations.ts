@@ -2,9 +2,18 @@ import type { ChatMessageData } from './chat';
 import type { ChatSelection } from './rag';
 
 export interface Conversation {
+  archived_at?: string | null; pinned_at?: string | null;
+  pending_action?: ChatAction | null; pending_action_id?: string | null;
   id: string; title: string; revision: number; message_count: number;
   selection: ChatSelection; created_at: string; updated_at: string; deleted_at: string | null;
 }
+export type ChatAction = 'archive' | 'unarchive' | 'delete';
+export interface BulkChatRequest { client_request_id: string; action: ChatAction; items: { conversation_id: string; expected_revision: number }[] }
+export interface ChatManagementJob {
+  id: string; action: ChatAction; items: BulkChatRequest['items']; completed_ids: string[];
+  failed_items: { conversation_id: string; error: string }[]; state: 'queued' | 'running' | 'completed';
+}
+export interface ChatManagementOutbox { request: BulkChatRequest; accepted: boolean; finished?: string[] }
 export interface StoredMessage extends ChatMessageData {
   conversation_id: string; sequence: number; created_at: string;
 }
@@ -38,6 +47,7 @@ export interface SyncPage {
   conversations: Conversation[]; deleted_ids: string[]; active?: MessagePage; list_cursor?: string | null;
 }
 export interface ChatSearchHit {
+  archived_at?: string | null;
   conversation_id: string; title: string; matched_message_id: string; sequence: number;
   role: 'user' | 'assistant'; snippet: string; created_at: string; matched_in: 'message' | 'title';
 }

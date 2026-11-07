@@ -7,6 +7,7 @@ open an exact matching exchange. Browser Back restores the phrase and search UI.
 | Contract | Behavior |
 | --- | --- |
 | Search endpoint | `GET /api/v1/conversations/search?query=&offset=` |
+| Archive | Excluded by default. Explicit `include_archived=true` switch includes archived chats and labels those results. |
 | Matching | Case-insensitive literal substring in title or user/assistant message; all scripts supported; `%`, `_` and backslash are literal |
 | Bounds | Query up to 200 characters; 20 hits per page, at most 200 results; refine the phrase beyond that cap |
 | Title match | Latest eligible message represents the chat once unless it already matched by message |

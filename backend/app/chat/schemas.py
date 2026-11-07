@@ -42,6 +42,38 @@ class EditConversation(BaseModel):
     title: str = Field(min_length=1, max_length=120)
 
 
+class OrganizeConversation(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=1)
+    pinned: bool | None = None
+    archived: bool | None = None
+
+    @model_validator(mode='after')
+    def one_change(self):
+        if (self.pinned is None) == (self.archived is None):
+            raise ValueError('Choose exactly one pin or archive change.')
+        return self
+
+
+class ManagedChat(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    conversation_id: UUID
+    expected_revision: int = Field(ge=1)
+
+
+class BulkChatAction(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    client_request_id: UUID
+    action: Literal['archive', 'unarchive', 'delete']
+    items: list[ManagedChat] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode='after')
+    def distinct_chats(self):
+        if len({item.conversation_id for item in self.items}) != len(self.items):
+            raise ValueError('Choose each chat only once.')
+        return self
+
+
 class StopTurn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     attempt: int = Field(ge=1)
@@ -54,6 +86,7 @@ class ResumeTurn(StopTurn):
 
 
 class ChatSearchHit(BaseModel):
+    archived_at: datetime | None = None
     conversation_id: UUID
     title: str
     matched_message_id: UUID

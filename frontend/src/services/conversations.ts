@@ -2,7 +2,11 @@ import { apiRequest } from './api';
 import type { Conversation, MessagePage, PendingTurn, SyncPage } from '../types/conversations';
 
 const base = '/api/v1/conversations';
-export const searchChats = (query: string, offset: number, signal: AbortSignal) => apiRequest<import('../types/conversations').ChatSearchPage>(`${base}/search?${new URLSearchParams({query,offset:String(offset)})}`, {signal,cache:'no-store'});
+export const searchChats = (query: string, offset: number, signal: AbortSignal, includeArchived = false) => apiRequest<import('../types/conversations').ChatSearchPage>(`${base}/search?${new URLSearchParams({query,offset:String(offset),include_archived:String(includeArchived)})}`, {signal,cache:'no-store'});
+export const archivedChats = (cursor: string | null, signal?: AbortSignal) => apiRequest<{ items: Conversation[]; next_cursor: string | null }>(`${base}?${new URLSearchParams({archived:'true',limit:'30',...(cursor ? {cursor} : {})})}`, {signal,cache:'no-store'});
+export const organizeChat = (chat: Conversation, change: { pinned?: boolean; archived?: boolean }, signal?: AbortSignal) => apiRequest<Conversation>(`${base}/${chat.id}/organization`, {method:'PATCH',body:JSON.stringify({expected_revision:chat.revision,...change}),signal});
+export const queueChatAction = (request: import('../types/conversations').BulkChatRequest, signal?: AbortSignal) => apiRequest<import('../types/conversations').ChatManagementJob>(`${base}/bulk`, {method:'POST',body:JSON.stringify(request),signal});
+export const chatAction = (id: string, signal?: AbortSignal) => apiRequest<import('../types/conversations').ChatManagementJob>(`${base}/bulk/${encodeURIComponent(id)}`, {signal,cache:'no-store'});
 export const savedExchange = (conversation: string, message: string, signal: AbortSignal) => apiRequest<import('../types/conversations').SavedExchange>(`${base}/${encodeURIComponent(conversation)}/messages/${encodeURIComponent(message)}/window`, {signal,cache:'no-store'});
 export const syncChats = (cursor: number | null, active?: string, signal?: AbortSignal) => {
   const query = new URLSearchParams();

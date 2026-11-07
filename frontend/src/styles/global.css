@@ -750,7 +750,7 @@ dialog::backdrop { background: rgb(var(--overlay) / var(--overlay-opacity)); }
 .chat-visual-actions .ui-button:hover, .chat-visual-actions .ui-button:focus-visible { color: rgb(var(--heading)); }
 .chat-search-dialog[open] { height: min(35rem, 84dvh); }
 .recents-header:has(.recents-toggle:hover) { background: rgb(var(--hover)); color: rgb(var(--foreground)); }
-.recents-list-reveal { display: grid; flex: 1; min-height: 0; grid-template-rows: 1fr; }
+.recents-list-reveal { display: grid; flex: 1; min-height: 0; min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
 .recents-list-reveal[data-expanded='false'] { grid-template-rows: 0fr; visibility: hidden; }
 .overlay-panel.composer-add-menu { box-shadow: none; }
 @media (prefers-reduced-motion: no-preference) {

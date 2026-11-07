@@ -75,6 +75,8 @@ test('keyboard tabs and switches update the intended preference and preserve foc
   const profile = page.getByRole('tab', { name: 'Profile & preferences' });
   await profile.focus();
   await page.keyboard.press('End');
+  await expect(page.getByRole('tab', { name: 'Archived chats', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   const notifications = page.getByRole('tab', { name: 'Notifications', exact: true });
   await expect(notifications).toBeFocused();
   await expect(notifications).toHaveAttribute('aria-selected', 'true');

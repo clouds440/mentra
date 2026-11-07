@@ -1,5 +1,5 @@
 import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Conversation, PendingTurn, StoredMessage } from '../types/conversations';
+import type { Conversation, PendingTurn, StoredMessage, ChatManagementOutbox } from '../types/conversations';
 
 interface CacheSchema extends DBSchema {
   conversations: { key: string; value: Conversation; indexes: { updated: string } };
@@ -30,13 +30,16 @@ export class ChatCache {
   }
   async hydrate() {
     const db = await this.db;
-    if (!db) return { conversations: [], pending: [], cursor: null, listCursor: null };
+    if (!db) return { conversations: [], pending: [], cursor: null, listCursor: null, management: [] as ChatManagementOutbox[] };
     const tx = db.transaction(['conversations', 'pending', 'meta']);
-    const [conversations, pending, cursor, listCursor] = await Promise.all([
+    const [conversations, pending, cursor, listCursor, management] = await Promise.all([
       tx.objectStore('conversations').getAll(), tx.objectStore('pending').getAll(),
       tx.objectStore('meta').get('cursor'), tx.objectStore('meta').get('listCursor'),
+      tx.objectStore('meta').get('management'),
     ]);
-    return { conversations, pending, cursor: typeof cursor === 'number' ? cursor : null, listCursor: typeof listCursor === 'string' ? listCursor : null };
+    let outbox: ChatManagementOutbox[] = [];
+    try { if (typeof management === 'string') outbox = JSON.parse(management); } catch { /* Server pending markers still recover accepted work. */ }
+    return { conversations, pending, cursor: typeof cursor === 'number' ? cursor : null, listCursor: typeof listCursor === 'string' ? listCursor : null, management: Array.isArray(outbox) ? outbox : [] };
   }
   async messages(id: string) {
     const db = await this.db;
@@ -52,7 +55,9 @@ export class ChatCache {
     if (!db) return;
     const tx = db.transaction(['conversations', 'messages', 'pending', 'meta', 'deleted'], 'readwrite');
     if (reset) {
+      const management = await tx.objectStore('meta').get('management');
       await tx.objectStore('conversations').clear(); await tx.objectStore('messages').clear(); await tx.objectStore('meta').clear();
+      if (typeof management === 'string') await tx.objectStore('meta').put(management, 'management');
     }
     for (const chat of conversations) {
       if (await tx.objectStore('deleted').getKey(chat.id)) continue;
@@ -79,15 +84,17 @@ export class ChatCache {
       await tx.objectStore('meta').put(Math.max(typeof previous === 'number' ? previous : 0, cursor), 'cursor');
     }
     if (listCursor !== undefined) await tx.objectStore('meta').put(listCursor, 'listCursor');
-    // Cache only 80 conversations and 200 messages each. Eviction never touches PostgreSQL.
+    // Keep pinned/busy rows outside the ordinary 80-chat cache budget.
     const evicted: string[] = [];
     let chatCursor = await tx.objectStore('conversations').count() > 80 ? await tx.objectStore('conversations').index('updated').openCursor(null, 'prev') : null;
     let count = 0;
     let oldestKept: Conversation | null = null;
     while (chatCursor) {
-      if (++count > 80 && !await tx.objectStore('pending').get(chatCursor.primaryKey)) {
+      const protectedRow = !!chatCursor.value.pinned_at || !!chatCursor.value.pending_action;
+      if (!protectedRow) count++;
+      if (count > 80 && !protectedRow && !await tx.objectStore('pending').get(chatCursor.primaryKey)) {
         evicted.push(chatCursor.primaryKey); await chatCursor.delete();
-      } else oldestKept = chatCursor.value;
+      } else if (!protectedRow) oldestKept = chatCursor.value;
       chatCursor = await chatCursor.continue();
     }
     if (evicted.length && oldestKept) await tx.objectStore('meta').put(JSON.stringify([oldestKept.updated_at, oldestKept.id]), 'listCursor');
@@ -105,6 +112,10 @@ export class ChatCache {
     const db = await this.db;
     if (!db) return;
     if (value) await db.put('pending', value); else await db.delete('pending', id);
+  }
+  async management(value: ChatManagementOutbox[]) {
+    const db = await this.db;
+    if (db) await db.put('meta', JSON.stringify(value), 'management');
   }
   async close(clear = false) {
     (await this.db)?.close();

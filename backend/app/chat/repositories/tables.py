@@ -13,8 +13,12 @@ conversations = Table('chat_conversation', metadata,
     Column('title', Text, nullable=False), Column('selection', JSONB, nullable=False),
     Column('revision', BigInteger, nullable=False), Column('message_count', BigInteger, nullable=False),
     Column('created_at', DateTime(timezone=True), nullable=False), Column('updated_at', DateTime(timezone=True), nullable=False),
-    Column('deleted_at', DateTime(timezone=True)), UniqueConstraint('learner_id', 'id'),
+    Column('deleted_at', DateTime(timezone=True)),
+    Column('archived_at', DateTime(timezone=True)), Column('pinned_at', DateTime(timezone=True)),
+    Column('pending_action', Text), Column('pending_action_id', Uuid(as_uuid=False)),
+    UniqueConstraint('learner_id', 'id'),
     CheckConstraint('revision >= 1 AND message_count >= 0', name='chat_revision'),
+    CheckConstraint("(pending_action IS NULL) = (pending_action_id IS NULL) AND (pending_action IS NULL OR pending_action IN ('archive','unarchive','delete')) AND (archived_at IS NULL OR pinned_at IS NULL)", name='chat_organization_state'),
     Index('idx_chat_recent', 'learner_id', 'updated_at', 'id'))
 
 messages = Table('chat_message', metadata,
@@ -56,6 +60,18 @@ changes = Table('chat_change', metadata, owner(True), Column('revision', BigInte
     CheckConstraint('revision > 0', name='chat_change_revision'))
 
 TABLES = (conversations, messages, turns, sync_state, changes)
+management_jobs = Table('chat_management_job', metadata,
+    Column('id', Uuid(as_uuid=False), primary_key=True), owner(),
+    Column('action', Text, nullable=False), Column('request_hash', Text, nullable=False),
+    Column('items', JSONB, nullable=False), Column('completed_ids', JSONB, nullable=False, server_default='[]'),
+    Column('failed_items', JSONB, nullable=False, server_default='[]'),
+    Column('state', Text, nullable=False, server_default='queued'),
+    Column('created_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column('updated_at', DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("action IN ('archive','unarchive','delete') AND state IN ('queued','running','completed')", name='chat_management_state'),
+    CheckConstraint('jsonb_array_length(items) BETWEEN 1 AND 100', name='chat_management_size'),
+    Index('idx_chat_management_claim', 'state', 'created_at'))
+TABLES = (*TABLES, management_jobs)
 summaries = Table('chat_summary', metadata,
     Column('conversation_id', Uuid(as_uuid=False), primary_key=True), owner(),
     Column('content', Text, nullable=False), Column('through_sequence', BigInteger, nullable=False),

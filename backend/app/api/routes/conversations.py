@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, Response, Query
 from starlette.concurrency import run_in_threadpool
 from app.student_profile.dependencies import require_onboarded_identity
 from app.auth.dependencies import require_identity
-from app.chat.schemas import SendTurn, EditConversation, StopTurn, ResumeTurn
+from app.chat.schemas import SendTurn, EditConversation, StopTurn, ResumeTurn, OrganizeConversation, BulkChatAction
 from app.rag.schemas import ChatSelection
 from .chat import generate_reply
 from app.chat.schemas import ChatSearchPage, SavedExchange
@@ -17,10 +17,31 @@ def service(request: Request):
 
 @router.get('/search', response_model=ChatSearchPage)
 async def search_saved(request: Request, response: Response, query: str = Query('', max_length=200),
-        offset: int = Query(0, ge=0, le=180), identity=Depends(require_onboarded_identity)):
+        offset: int = Query(0, ge=0, le=180), include_archived: bool = False, identity=Depends(require_onboarded_identity)):
     from app.chat.repositories.history_reader import ChatReadFacade
     response.headers['Cache-Control'] = 'no-store'
-    return await run_in_threadpool(ChatReadFacade(service(request).repository).search_saved, identity.learner_id, query, offset)
+    return await run_in_threadpool(ChatReadFacade(service(request).repository).search_saved, identity.learner_id, query, offset, include_archived)
+
+
+@router.post('/bulk', status_code=202)
+async def bulk_action(body: BulkChatAction, request: Request, response: Response, identity=Depends(require_onboarded_identity)):
+    from app.chat.repositories.management import ChatManagement
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(ChatManagement(service(request).repository).enqueue, identity.learner_id, body)
+
+
+@router.get('/bulk/{operation_id}')
+async def bulk_status(operation_id: UUID, request: Request, response: Response, identity=Depends(require_identity)):
+    from app.chat.repositories.management import ChatManagement
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(ChatManagement(service(request).repository).status, identity.learner_id, str(operation_id))
+
+
+@router.patch('/{conversation_id}/organization')
+async def organize(conversation_id: UUID, body: OrganizeConversation, request: Request, response: Response, identity=Depends(require_onboarded_identity)):
+    from app.chat.repositories.management import ChatManagement
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(ChatManagement(service(request).repository).organize, identity.learner_id, str(conversation_id), body)
 
 
 @router.get('/{conversation_id}/messages/{message_id}/window', response_model=SavedExchange)
@@ -39,9 +60,9 @@ async def sync(request: Request, cursor: int | None = Query(None, ge=0), active:
 
 
 @router.get('')
-async def recent(request: Request, cursor: str | None = Query(None, max_length=300), limit: int = Query(40, ge=1, le=100),
+async def recent(request: Request, cursor: str | None = Query(None, max_length=300), limit: int = Query(40, ge=1, le=100), archived: bool = False,
                  identity=Depends(require_identity)):
-    return await run_in_threadpool(service(request).repository.recent, identity.learner_id, cursor, limit)
+    return await run_in_threadpool(service(request).repository.recent, identity.learner_id, cursor, limit, archived)
 
 
 @router.post('/turns')

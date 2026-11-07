@@ -46,6 +46,8 @@ class ChatRepository:
         row = session.execute(query.with_for_update() if lock else query).mappings().first()
         if not row:
             raise AppError('CHAT_NOT_FOUND', 'Conversation not found.', 404)
+        if row['pending_action'] == 'delete':
+            raise AppError('CHAT_ACTION_PENDING', 'This chat is being deleted.', 409)
         return dict(row)
 
     @staticmethod
@@ -79,9 +81,12 @@ class ChatRepository:
             conversation = self._conversation(session, owner, conversation_id)
             return dict(conversation=conversation, **self._page(session, owner, conversation_id, before, after, limit))
 
-    def recent(self, owner, cursor=None, limit=40):
+    def recent(self, owner, cursor=None, limit=40, archived=False):
         with self.sessions() as session:
-            query = select(c).where(c.c.learner_id == owner, c.c.deleted_at.is_(None))
+            ordering = c.c.archived_at if archived else c.c.updated_at
+            query = select(c).where(c.c.learner_id == owner, c.c.deleted_at.is_(None), c.c.archived_at.is_not(None) if archived else c.c.archived_at.is_(None))
+            if not archived:
+                query = query.where(c.c.pinned_at.is_(None))
             if cursor:
                 try:
                     stamp, identifier = json.loads(cursor)
@@ -89,25 +94,29 @@ class ChatRepository:
                     identifier = str(UUID(identifier))
                     if stamp.tzinfo is None:
                         raise ValueError('Cursor timestamp must include timezone')
-                    query = query.where(or_(c.c.updated_at < stamp, and_(c.c.updated_at == stamp, c.c.id < identifier)))
+                    query = query.where(or_(ordering < stamp, and_(ordering == stamp, c.c.id < identifier)))
                 except (ValueError, TypeError, KeyError, AttributeError):
                     raise AppError('CHAT_CURSOR_INVALID', 'Invalid conversation cursor.', 422)
-            rows = [dict(row) for row in session.execute(query.order_by(c.c.updated_at.desc(), c.c.id.desc()).limit(limit + 1)).mappings()]
+            rows = [dict(row) for row in session.execute(query.order_by(ordering.desc(), c.c.id.desc()).limit(limit + 1)).mappings()]
             more = len(rows) > limit
             rows = rows[:limit]
-            return dict(items=rows, next_cursor=json.dumps([rows[-1]['updated_at'].isoformat(), rows[-1]['id']]) if more else None)
+            return dict(items=rows, next_cursor=json.dumps([rows[-1]['archived_at' if archived else 'updated_at'].isoformat(), rows[-1]['id']]) if more else None)
 
     def sync(self, owner, cursor=None, active=None, limit=100):
         with self.sessions.begin() as session:
             state = self._sync_lock(session, owner)
             reset = cursor is None or cursor < state['floor'] or cursor > state['revision']
             if reset:
-                rows = [dict(row) for row in session.execute(select(c).where(c.c.learner_id == owner, c.c.deleted_at.is_(None))
+                rows = [dict(row) for row in session.execute(select(c).where(c.c.learner_id == owner, c.c.deleted_at.is_(None), c.c.archived_at.is_(None), c.c.pinned_at.is_(None))
                     .order_by(c.c.updated_at.desc(), c.c.id.desc()).limit(41)).mappings()]
                 more = len(rows) > 40
                 rows = rows[:40]
                 result = dict(reset=True, cursor=state['revision'], has_more=False, conversations=rows, deleted_ids=[],
                     list_cursor=json.dumps([rows[-1]['updated_at'].isoformat(), rows[-1]['id']]) if more else None)
+                extra = [dict(row) for row in session.execute(select(c).where(c.c.learner_id == owner,
+                    c.c.deleted_at.is_(None), or_(c.c.pinned_at.is_not(None), c.c.pending_action.is_not(None)))
+                    .order_by(c.c.pinned_at.desc().nulls_last(), c.c.id).limit(1100)).mappings()]
+                result['conversations'] = list({row['id']: row for row in [*rows, *extra]}.values())
             else:
                 events = session.execute(select(ch).where(ch.c.learner_id == owner, ch.c.revision > cursor)
                     .order_by(ch.c.revision).limit(limit + 1)).mappings().all()
@@ -547,38 +556,44 @@ class ChatRepository:
             row = self._conversation(session, owner, conversation_id, True)
             if row['revision'] != revision:
                 raise conflict()
-            values = dict(revision=revision+1, updated_at=now())
-            if remove:
-                from app.history_management.repositories.tables import capture_jobs
-                session.execute(delete(capture_jobs).where(capture_jobs.c.learner_id == owner, capture_jobs.c.conversation_id == conversation_id))
-                from .tables import summary_jobs
-                session.execute(delete(summary_jobs).where(summary_jobs.c.learner_id == owner, summary_jobs.c.conversation_id == conversation_id))
-                values['deleted_at'] = now()
-                from app.history_management.repositories.postgres import MemoryRepository
-                MemoryRepository.detach_chat(session, owner, conversation_id)
-                from app.history_management.repositories.events.postgres import EventRepository
-                EventRepository.detach_chat(session, owner, conversation_id)
-                from app.history_management.repositories.events.proposals import EventProposalRepository
-                EventProposalRepository.detach_chat(session, owner, conversation_id)
-                # Keep only the conversation tombstone; content is actually removed.
-                from .tables import attachments, summaries
-                from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
-                for identifier in session.scalars(select(t.c.id).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner)):
-                    delete_response_checkpoints(session, owner, identifier)
-                session.execute(delete(summaries).where(summaries.c.conversation_id == conversation_id, summaries.c.learner_id == owner))
-                from app.assessments.repositories.chat import ChatAssessmentRepository
-                ChatAssessmentRepository.detach_chat(session, owner, conversation_id)
-                session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
-                session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
-                session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))
-                values['message_count'] = 0
-            else:
-                values['title'] = title.strip()
-                if not values['title']:
-                    raise AppError('CHAT_TITLE_INVALID', 'Enter a conversation title.', 422)
-            session.execute(update(c).where(c.c.id == conversation_id).values(**values))
-            self._change(session, owner, conversation_id, state)
-            return dict(row, **values)
+            if row.get('pending_action'):
+                raise AppError('CHAT_ACTION_PENDING', 'This chat has a pending action. Wait for it to finish.', 409)
+            return self._edit_in_session(session, owner, row, state, title, remove)
+
+    def _edit_in_session(self, session, owner, row, state, title=None, remove=False):
+        conversation_id = row['id']
+        values = dict(revision=row['revision']+1, updated_at=now())
+        if remove:
+            from app.history_management.repositories.tables import capture_jobs
+            session.execute(delete(capture_jobs).where(capture_jobs.c.learner_id == owner, capture_jobs.c.conversation_id == conversation_id))
+            from .tables import summary_jobs
+            session.execute(delete(summary_jobs).where(summary_jobs.c.learner_id == owner, summary_jobs.c.conversation_id == conversation_id))
+            values.update(deleted_at=now(), pinned_at=None, pending_action=None, pending_action_id=None)
+            from app.history_management.repositories.postgres import MemoryRepository
+            MemoryRepository.detach_chat(session, owner, conversation_id)
+            from app.history_management.repositories.events.postgres import EventRepository
+            EventRepository.detach_chat(session, owner, conversation_id)
+            from app.history_management.repositories.events.proposals import EventProposalRepository
+            EventProposalRepository.detach_chat(session, owner, conversation_id)
+            # Keep only the conversation tombstone; content is actually removed.
+            from .tables import attachments, summaries
+            from app.langchain.repositories.response_checkpoints import delete_response_checkpoints
+            for identifier in session.scalars(select(t.c.id).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner)):
+                delete_response_checkpoints(session, owner, identifier)
+            session.execute(delete(summaries).where(summaries.c.conversation_id == conversation_id, summaries.c.learner_id == owner))
+            from app.assessments.repositories.chat import ChatAssessmentRepository
+            ChatAssessmentRepository.detach_chat(session, owner, conversation_id)
+            session.execute(delete(attachments).where(attachments.c.conversation_id == conversation_id, attachments.c.learner_id == owner))
+            session.execute(delete(t).where(t.c.conversation_id == conversation_id, t.c.learner_id == owner))
+            session.execute(delete(m).where(m.c.conversation_id == conversation_id, m.c.learner_id == owner))
+            values['message_count'] = 0
+        else:
+            values['title'] = title.strip()
+            if not values['title']:
+                raise AppError('CHAT_TITLE_INVALID', 'Enter a conversation title.', 422)
+        session.execute(update(c).where(c.c.id == conversation_id).values(**values))
+        self._change(session, owner, conversation_id, state)
+        return dict(row, **values)
 
     def challenge_row(self, owner, conversation_id, turn_id):
         """Read the durable action alone; difficulty clicks need no chat history."""

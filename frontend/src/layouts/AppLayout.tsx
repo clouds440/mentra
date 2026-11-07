@@ -1,5 +1,5 @@
 import { PanelLeft } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { NotificationBell } from '../components/notifications/NotificationBell';
@@ -10,6 +10,7 @@ import { SidePanel, SidePanelTrigger } from '../components/workspace/SidePanel';
 import { PinnedSourcesProvider } from '../components/workspace/PinnedSources';
 import { AnnotationDraftProvider, useResetNewChatExcerpts } from '../components/workspace/SourceAnnotations';
 import { SidePanelProvider } from '../components/workspace/sidePanelState';
+import { ChatManagementFeedback } from '../components/chat/ChatCollection';
 
 export function AppLayout() {
   const { identity } = useAuth();
@@ -24,7 +25,6 @@ function AppWorkspace() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [newChatKey, setNewChatKey] = useState(0);
   const [newChatPending, setNewChatPending] = useState(false);
-  const chatContext = useMemo(() => ({ newChatKey, newChatPending }), [newChatKey, newChatPending]);
   // Router transitions and local state can commit separately. Keep the old
   // composer inert until the destination and its draft reset have committed.
   useLayoutEffect(() => { setNewChatPending(false); }, [location.key]);
@@ -36,12 +36,13 @@ function AppWorkspace() {
   }, [location.pathname]);
 
   const resetExcerpts = useResetNewChatExcerpts();
-  function startNewChat() {
+  const startNewChat = useCallback(() => {
     resetExcerpts();
     setNewChatPending(true);
     setNewChatKey((key) => key + 1);
     navigate('/');
-  }
+  }, [navigate, resetExcerpts]);
+  const chatContext = useMemo(() => ({ newChatKey, newChatPending, startNewChat }), [newChatKey, newChatPending, startNewChat]);
 
   return (
     <div className={`product-workspace relative flex h-dvh min-h-0 overflow-hidden bg-background text-foreground ${sidebar.resizing ? 'select-none' : ''}`}>
@@ -81,6 +82,7 @@ function AppWorkspace() {
         <main id="workspace-main" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overflow-hidden outline-none ${isChat ? '' : 'pt-14'}`}>
           <Outlet context={chatContext} />
         </main>
+        <ChatManagementFeedback />
       </div>
       <SidePanel />
     </div>
